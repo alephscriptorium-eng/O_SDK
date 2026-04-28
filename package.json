@@ -10,12 +10,12 @@
     "up": "npm run setup && docker-compose up -d",
     "start": "docker-compose start",
     "stop": "docker-compose stop",
-    "down": "docker-compose down -v",
+    "downDELETEVOLS": "docker-compose down -v",
     "logs": "docker-compose logs -f",
     "oasis:logs": "docker-compose logs -f oasis-dev",
     "shell": "docker-compose exec oasis-dev /bin/bash",
     "backup-keys": "sh ./docker-scripts/backup-keys.sh",
-    "clean": "docker-compose down -v && docker system prune -f",
+    "cleanDELETEVOLS": "docker-compose down -v && docker system prune -f",
     "server-only": "docker-compose run --rm -p 8008:8008 oasis-dev server",
     "status": "docker-compose ps && docker ps",
     "restart": "docker-compose restart",
@@ -32,7 +32,8 @@
     "ecoin:info": "docker-compose exec ecoin-wallet ecoind -rpcwait -rpcconnect=127.0.0.1 -rpcport=7474 -rpcuser=ecoinrpc -rpcpassword=ecoinrpc getinfo",
     "ecoin:balance": "docker-compose exec ecoin-wallet ecoind -rpcwait -rpcconnect=127.0.0.1 -rpcport=7474 -rpcuser=ecoinrpc -rpcpassword=ecoinrpc getbalance",
     "ecoin:address": "docker-compose exec ecoin-wallet ecoind -rpcwait -rpcconnect=127.0.0.1 -rpcport=7474 -rpcuser=ecoinrpc -rpcpassword=ecoinrpc getnewaddress",
-    "net": "docker network inspect oasis-network-dev"
+    "net": "docker network inspect oasis-network-dev",
+    "ecoin:system": "docker exec ecoin-wallet sh -lc cat /home/ecoin/.ecoin/ecoin.conf"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
