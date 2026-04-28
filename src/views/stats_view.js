@@ -2,6 +2,11 @@ const { div, h2, p, section, button, form, input, ul, li, a, h3, span, strong, t
 const { template, i18n } = require('./main_views');
 
 Object.assign(i18n, {
+  statsChat: "Chats",
+  statsChatMessage: "Chat messages",
+  statsPad: "Pads",
+  statsPadEntry: "Pad entries",
+  statsGameScore: "Game scores",
   statsParliamentCandidature: "Parliament candidatures",
   statsParliamentTerm: "Parliament terms",
   statsParliamentProposal: "Parliament proposals",
@@ -27,8 +32,9 @@ exports.statsView = (stats, filter) => {
   const modes = ['ALL', 'MINE', 'TOMBSTONE'];
   const types = [
     'bookmark', 'event', 'task', 'votes', 'report', 'feed', 'project',
-    'image', 'audio', 'video', 'document', 'transfer', 'post', 'tribe',
-    'market', 'forum', 'job', 'aiExchange',
+    'image', 'torrent', 'audio', 'video', 'document', 'transfer', 'post', 'tribe',
+    'market', 'forum', 'job', 'aiExchange', 'map', 'shop', 'shopProduct',
+    'chat', 'chatMessage', 'pad', 'padEntry', 'gameScore', 'calendar', 'calendarDate', 'calendarNote',
     'parliamentCandidature','parliamentTerm','parliamentProposal','parliamentRevocation','parliamentLaw',
     'courtsCase','courtsEvidence','courtsAnswer','courtsVerdict','courtsSettlement','courtsSettlementProposal','courtsSettlementAccepted','courtsNomination','courtsNominationVote'
   ];
@@ -41,6 +47,7 @@ exports.statsView = (stats, filter) => {
     feed: i18n.statsFeed,
     project: i18n.statsProject,
     image: i18n.statsImage,
+    torrent: i18n.statsTorrent,
     audio: i18n.statsAudio,
     video: i18n.statsVideo,
     document: i18n.statsDocument,
@@ -51,6 +58,17 @@ exports.statsView = (stats, filter) => {
     forum: i18n.statsForum,
     job: i18n.statsJob,
     aiExchange: i18n.statsAiExchange,
+    map: i18n.statsMap,
+    shop: i18n.statsShop,
+    shopProduct: i18n.statsShopProduct,
+    chat: i18n.statsChat,
+    chatMessage: i18n.statsChatMessage,
+    pad: i18n.statsPad,
+    padEntry: i18n.statsPadEntry,
+    gameScore: i18n.statsGameScore,
+    calendar: i18n.statsCalendar,
+    calendarDate: i18n.statsCalendarDate,
+    calendarNote: i18n.statsCalendarNote,
     parliamentCandidature: i18n.statsParliamentCandidature,
     parliamentTerm: i18n.statsParliamentTerm,
     parliamentProposal: i18n.statsParliamentProposal,
@@ -99,12 +117,109 @@ exports.statsView = (stats, filter) => {
             )
           )
         ),
-        div({ style: headerStyle }, h3(`${i18n.bankingUserEngagementScore}: ${C(stats, 'karmaScore')}`)),
+        div({ class: "stats-karma-block" }, h3(`${i18n.bankingUserEngagementScore}: ${C(stats, 'karmaScore')}`)),
+        div({ style: headerStyle },
+          h3(i18n.statsCarbonFootprintTitle || 'Carbon Footprint'),
+          (() => {
+            const parseSize = (s) => {
+              if (!s) return 0;
+              const m = String(s).match(/([\d.]+)\s*(GB|MB|KB|B)/i);
+              if (!m) return 0;
+              const v = parseFloat(m[1]);
+              const u = m[2].toUpperCase();
+              if (u === 'GB') return v * 1024;
+              if (u === 'MB') return v;
+              if (u === 'KB') return v / 1024;
+              return v / (1024 * 1024);
+            };
+            const blobsMB = parseSize(stats.statsBlobsSize);
+            const chainMB = parseSize(stats.statsBlockchainSize);
+            const totalMB = blobsMB + chainMB;
+            const kWhPerMB = 0.0002;
+            const gCO2PerKWh = 475;
+            const networkCO2 = parseFloat((totalMB * kWhPerMB * gCO2PerKWh).toFixed(2));
+            const inhabitants = stats.usersKPIs?.totalInhabitants || stats.inhabitants || 1;
+            const userCO2 = parseFloat((networkCO2 / Math.max(1, inhabitants)).toFixed(2));
+            const maxAnnualCO2 = 500;
+
+            if (filter === 'MINE') {
+              const pct = networkCO2 > 0 ? Math.min(100, (userCO2 / networkCO2) * 100).toFixed(1) : '0.0';
+              return div({ class: 'carbon-chart' },
+                div({ class: 'carbon-bar-label' },
+                  span(i18n.statsCarbonUser || 'Your footprint'),
+                  span(`${userCO2} g CO₂`)
+                ),
+                div({ class: 'carbon-bar-track' },
+                  div({ class: 'carbon-bar-fill carbon-bar-mine', style: `width:${pct}%;` })
+                ),
+                div({ class: 'carbon-bar-label' },
+                  span(i18n.statsCarbonNetwork || 'Network total'),
+                  span(`${networkCO2} g CO₂`)
+                ),
+                div({ class: 'carbon-bar-track' },
+                  div({ class: 'carbon-bar-fill carbon-bar-network', style: 'width:100%;' })
+                ),
+                p({ class: 'carbon-bar-note' }, strong(`${pct}%`), ` ${i18n.statsCarbonOfNetwork || 'of network total'}`),
+                p({ class: 'carbon-bar-formula' }, 'Based on local data storage weight ', strong('(0.0002 kWh/MB × 475 g CO₂/kWh)'))
+              );
+            }
+            if (filter === 'TOMBSTONE') {
+              const tombCount = stats.tombstoneKPIs?.networkTombstoneCount || 0;
+              const avgTombBytes = 500;
+              const tombMB = (tombCount * avgTombBytes) / (1024 * 1024);
+              const tombCO2 = parseFloat((tombMB * kWhPerMB * gCO2PerKWh).toFixed(4));
+              const tombPct = networkCO2 > 0 ? Math.min(100, (tombCO2 / networkCO2) * 100).toFixed(1) : '0.0';
+              return div({ class: 'carbon-chart' },
+                div({ class: 'carbon-bar-label' },
+                  span(i18n.statsCarbonTombstone || 'Tombstoning footprint'),
+                  span(`${tombCO2} g CO₂`)
+                ),
+                div({ class: 'carbon-bar-track' },
+                  div({ class: 'carbon-bar-fill carbon-bar-mine', style: `width:${tombPct}%;` })
+                ),
+                div({ class: 'carbon-bar-label' },
+                  span(i18n.statsCarbonNetwork || 'Network total'),
+                  span(`${networkCO2} g CO₂`)
+                ),
+                div({ class: 'carbon-bar-track' },
+                  div({ class: 'carbon-bar-fill carbon-bar-network', style: 'width:100%;' })
+                ),
+                p({ class: 'carbon-bar-note' }, strong(`${tombPct}%`), ` ${i18n.statsCarbonOfNetwork || 'of network total'} (${tombCount} tombstones × ~${avgTombBytes} bytes)`),
+                p({ class: 'carbon-bar-formula' }, 'Based on estimated tombstone message size ', strong('(0.0002 kWh/MB × 475 g CO₂/kWh)'))
+              );
+            }
+            const pct = Math.min(100, (networkCO2 / maxAnnualCO2) * 100).toFixed(1);
+            return div({ class: 'carbon-chart' },
+              div({ class: 'carbon-bar-label' },
+                span(i18n.statsCarbonNetwork || 'Network footprint'),
+                span(`${networkCO2} g CO₂`)
+              ),
+              div({ class: 'carbon-bar-track' },
+                div({ class: 'carbon-bar-fill carbon-bar-network', style: `width:${pct}%;` })
+              ),
+              div({ class: 'carbon-bar-label' },
+                span(i18n.statsCarbonMaxAnnual || 'Annual max estimate'),
+                span(`${maxAnnualCO2} g CO₂`)
+              ),
+              div({ class: 'carbon-bar-track' },
+                div({ class: 'carbon-bar-fill carbon-bar-max', style: 'width:100%;' })
+              ),
+              p({ class: 'carbon-bar-note' }, strong(`${pct}%`), ` ${i18n.statsCarbonOfEstMax || 'of estimated max capacity'}`),
+              p({ class: 'carbon-bar-formula' }, 'Based on local data storage weight ', strong('(0.0002 kWh/MB × 475 g CO₂/kWh)'))
+            );
+          })()
+        ),
         div({ style: headerStyle },
           h3({ style: 'font-size:18px; color:#555; margin:8px 0; font-weight:600;' }, i18n.statsBankingTitle),
           ul({ style: 'list-style-type:none; padding:0; margin:0;' },
             li({ style: 'font-size:18px; color:#555; margin:8px 0;' }, `${i18n.statsEcoWalletLabel}: `, a({ href: '/wallet', style: 'color:#007bff; text-decoration:none; word-break:break-all;' }, stats?.banking?.myAddress || i18n.statsEcoWalletNotConfigured)),
             li({ style: 'font-size:18px; color:#555; margin:8px 0;' }, `${i18n.statsTotalEcoAddresses}: `, span({ style: 'color:#888;' }, String(stats?.banking?.totalAddresses || 0)))
+          )
+        ),
+        div({ style: headerStyle },
+          h3({ style: 'font-size:18px; color:#555; margin:8px 0; font-weight:600;' }, i18n.statsLogsTitle || 'Logs'),
+          ul({ style: 'list-style-type:none; padding:0; margin:0;' },
+            li({ style: 'font-size:18px; color:#555; margin:8px 0;' }, `${i18n.statsLogsEntries || 'Entries'}: `, span({ style: 'color:#888;' }, String(stats?.logsCount || 0)))
           )
         ),
         div({ style: headerStyle },
@@ -172,8 +287,20 @@ exports.statsView = (stats, filter) => {
               div({ style: blockStyle },
                 h2(`${i18n.statsNetworkContent}: ${totalContent}`),
                 ul(
-                  types.filter(t => t !== 'karmaScore').map(t => {
+                  types.filter(t => t !== 'karmaScore' && t !== 'shopProduct' && t !== 'padEntry' && t !== 'chatMessage').map(t => {
                     if (C(stats, t) <= 0) return null;
+                    if (t === 'shop') return li(
+                      span(`${labels[t]}: ${C(stats, t)}`),
+                      ul([li(`${labels.shopProduct}: ${C(stats, 'shopProduct')}`)])
+                    );
+                    if (t === 'pad') return li(
+                      span(`${labels[t]}: ${C(stats, t)}`),
+                      ul([li(`${labels.padEntry}: ${C(stats, 'padEntry')}`)])
+                    );
+                    if (t === 'chat') return li(
+                      span(`${labels[t]}: ${C(stats, t)}`),
+                      ul([li(`${labels.chatMessage}: ${C(stats, 'chatMessage')}`)])
+                    );
                     if (t !== 'tribe') return li(`${labels[t]}: ${C(stats, t)}`);
                     return li(
                       span(`${labels[t]}: ${C(stats, t)}`),
@@ -248,8 +375,12 @@ exports.statsView = (stats, filter) => {
                 div({ style: blockStyle },
                   h2(`${i18n.statsYourContent}: ${totalContent}`),
                   ul(
-                    types.filter(t => t !== 'karmaScore').map(t => {
+                    types.filter(t => t !== 'karmaScore' && t !== 'shopProduct').map(t => {
                       if (C(stats, t) <= 0) return null;
+                      if (t === 'shop') return li(
+                        span(`${labels[t]}: ${C(stats, t)}`),
+                        ul([li(`${labels.shopProduct}: ${C(stats, 'shopProduct')}`)])
+                      );
                       if (t !== 'tribe') return li(`${labels[t]}: ${C(stats, t)}`);
                       return li(
                         span(`${labels[t]}: ${C(stats, t)}`),

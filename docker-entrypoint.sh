@@ -11,6 +11,7 @@ CURRENT_DIR="/app"
 MODEL_DIR="$CURRENT_DIR/src/AI/models"
 MODEL_FILE="oasis-42-1-chat.Q4_K_M.gguf"
 MODEL_PATH="$MODEL_DIR/$MODEL_FILE"
+LEGACY_MODEL_PATH="$CURRENT_DIR/src/AI/$MODEL_FILE"
 CONFIG_FILE="$CURRENT_DIR/src/configs/oasis-config.json"
 
 # Configurar directorios necesarios
@@ -225,6 +226,15 @@ download_ai_model() {
     fi
 }
 
+link_ai_model() {
+    if [ -f "$MODEL_PATH" ]; then
+        ln -sf "$MODEL_PATH" "$LEGACY_MODEL_PATH"
+        echo "✅ Modelo IA enlazado para compatibilidad: $LEGACY_MODEL_PATH"
+    elif [ -L "$LEGACY_MODEL_PATH" ]; then
+        rm -f "$LEGACY_MODEL_PATH"
+    fi
+}
+
 # =============================================================================
 # FUNCIÓN: Configurar oasis según modelo IA (integración de oasis.sh)
 # =============================================================================
@@ -232,7 +242,7 @@ setup_oasis_config() {
     echo "Configurando OASIS según disponibilidad del modelo IA..."
     
     if [ -f "$CONFIG_FILE" ]; then
-        if [ -f "$MODEL_PATH" ]; then
+        if [ -f "$MODEL_PATH" ] || [ -f "$LEGACY_MODEL_PATH" ]; then
             echo "  → Modelo IA encontrado, habilitando IA en configuración..."
             sed -i.bak 's/"aiMod": *"off"/"aiMod": "on"/' "$CONFIG_FILE" 2>/dev/null || true
             echo "    ✓ aiMod: 'on'"
@@ -435,6 +445,9 @@ setup_ssb_config
 
 # 3. Descargar modelo IA si es necesario
 download_ai_model
+
+# 3b. Enlazar modelo IA al path esperado por Oasis AI sin volver a descargarlo
+link_ai_model
 
 # 3. Instalar dependencias críticas
 install_runtime_deps

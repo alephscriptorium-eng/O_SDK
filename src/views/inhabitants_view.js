@@ -1,6 +1,7 @@
 const { div, h2, p, section, button, form, img, a, textarea, input, br, span, strong } = require("../server/node_modules/hyperaxe");
 const { template, i18n } = require('./main_views');
 const { renderUrl } = require('../backend/renderUrl');
+const { getConfig } = require('../configs/config-manager');
 
 const DEFAULT_HASH_ENC = "%260000000000000000000000000000000000000000000%3D.sha256";
 const DEFAULT_HASH_PATH_RE = /\/image\/\d+\/%260000000000000000000000000000000000000000000%3D\.sha256$/;
@@ -54,15 +55,26 @@ const generateFilterButtons = (filters, currentFilter) =>
     )
   );
 
-function lastActivityBadge(user) {
-  const label = i18n.inhabitantActivityLevel;
-  const bucket = user.lastActivityBucket || 'red';
-  const dotClass = bucket === 'green' ? 'green' : bucket === 'orange' ? 'orange' : 'red';
-  return div(
-    { class: 'inhabitant-last-activity' },
-    span({ class: 'label' }, `${label}: `),
-    span({ class: `activity-dot ${dotClass}` }, '')
-  );
+function lastActivityBadge(user, isMe) {
+  const bucket = user && user.lastActivityBucket;
+  const dotClass =
+    bucket === 'green' ? 'green' : bucket === 'orange' ? 'orange' : bucket === 'red' ? 'red' : null;
+  if (!dotClass) return [];
+  const items = [
+    span({ class: 'inhabitant-last-activity' },
+      `${i18n.inhabitantActivityLevel}: `,
+      span({ class: `activity-dot ${dotClass}` }, '●'))
+  ];
+  const currentTheme = getConfig().themes.current;
+  const src = isMe ? (currentTheme === 'OasisKIT' ? 'KIT' : (currentTheme === 'OasisMobile' || process.env.OASIS_MOBILE === '1') ? 'MOBILE' : 'DESKTOP') : (user && user.deviceSource) || null;
+  if (src) {
+    const upper = String(src).toUpperCase();
+    const deviceClass = upper === 'KIT' ? 'device-kit' : upper === 'MOBILE' ? 'device-mobile' : 'device-desktop';
+    items.push(span({ class: 'inhabitant-last-activity' },
+      `${i18n.deviceLabel || 'Device'}: `,
+      span({ class: deviceClass }, src)));
+  }
+  return [div({ class: 'inhabitant-activity-group' }, ...items)];
 }
 
 const lightboxId = (id) => 'inhabitant_' + String(id || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -76,9 +88,17 @@ const renderInhabitantCard = (user, filter, currentUserId) => {
          img({ class: 'inhabitant-photo-details', src: resolvePhoto(user.photo, 256), alt: user.name || 'Anonymous' })
       ),
       br(),
-      span(`${i18n.bankingUserEngagementScore}: `),
-      h2(strong(typeof user.karmaScore === 'number' ? user.karmaScore : 0)),
-      lastActivityBadge(user)
+      ...lastActivityBadge(user, isMe),
+      div({ class: 'inhabitant-karma-ubi' },
+        span({ class: 'karma-line' }, `${i18n.bankingUserEngagementScore}: `, strong(String(typeof user.karmaScore === 'number' ? user.karmaScore : 0))),
+        span({ class: 'ubi-line' }, `${i18n.bankUbiThisMonth}: `, strong(`${Number(user.estimatedUBI || 0).toFixed(6)} ECO`)),
+        span({ class: 'ubi-line' }, `${i18n.bankUbiLastClaimed}: `,
+          user.lastClaimedDate
+            ? a({ href: '/transfers?filter=ubi', class: 'user-link' }, new Date(user.lastClaimedDate).toLocaleDateString())
+            : strong(i18n.bankUbiNeverClaimed)
+        ),
+        span({ class: 'ubi-line' }, `${i18n.bankUbiTotalClaimed}: `, strong(`${Number(user.totalClaimed || 0).toFixed(6)} ECO`))
+      )
     ),
     div({ class: 'inhabitant-details' },
       h2(user.name || 'Anonymous'),
@@ -252,6 +272,9 @@ exports.inhabitantsProfileView = (payload, currentUserId) => {
   const isMe = id && id === currentUserId;
   const title = i18n.inhabitantProfileTitle || i18n.inhabitantviewDetails;
   const karmaScore = typeof safe.karmaScore === 'number' ? safe.karmaScore : 0;
+  const estimatedUBI = Number(safe.estimatedUBI || 0);
+  const lastClaimedDate = safe.lastClaimedDate || null;
+  const totalClaimed = Number(safe.totalClaimed || 0);
 
   const providedBucket = typeof safe.lastActivityBucket === 'string' ? safe.lastActivityBucket : null;
   const dotClass = providedBucket === 'green' ? 'green' : providedBucket === 'orange' ? 'orange' : 'red';
@@ -280,12 +303,16 @@ exports.inhabitantsProfileView = (payload, currentUserId) => {
         div({ class: 'inhabitant-left' },
           img({ class: 'inhabitant-photo-details', src: image, alt: name || 'Anonymous' }),
           h2(name || 'Anonymous'),
-          span(`${i18n.bankingUserEngagementScore}: `),
-          h2(strong(karmaScore)),
-          div(
-            { class: 'inhabitant-last-activity' },
-            span({ class: 'label' }, `${i18n.inhabitantActivityLevel}:`),
-            span({ class: `activity-dot ${dotClass}` }, '')
+          ...lastActivityBadge({ lastActivityBucket: dotClass, deviceSource: safe.deviceSource }, isMe),
+          div({ class: 'inhabitant-karma-ubi' },
+            span({ class: 'karma-line' }, `${i18n.bankingUserEngagementScore}: `, strong(String(karmaScore))),
+            span({ class: 'ubi-line' }, `${i18n.bankUbiThisMonth}: `, strong(`${estimatedUBI.toFixed(6)} ECO`)),
+            span({ class: 'ubi-line' }, `${i18n.bankUbiLastClaimed}: `,
+              lastClaimedDate
+                ? a({ href: '/transfers?filter=ubi', class: 'user-link' }, new Date(lastClaimedDate).toLocaleDateString())
+                : strong(i18n.bankUbiNeverClaimed)
+            ),
+            span({ class: 'ubi-line' }, `${i18n.bankUbiTotalClaimed}: `, strong(`${totalClaimed.toFixed(6)} ECO`))
           ),
           (!isMe && (id || viewedId))
             ? form(
@@ -321,3 +348,4 @@ exports.inhabitantsProfileView = (payload, currentUserId) => {
   );
 };
 
+exports.lastActivityBadge = lastActivityBadge;

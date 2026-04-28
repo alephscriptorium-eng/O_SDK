@@ -8,6 +8,8 @@ const FILTER_LABELS = {
   mine: i18n.mine,
   pending: i18n.pending,
   closed: i18n.closed,
+  claimed: i18n.bankStatusClaimed,
+  expired: i18n.bankStatusExpired,
   epochs: i18n.bankEpochs,
   rules: i18n.bankRules,
   addresses: i18n.bankAddresses
@@ -25,14 +27,14 @@ const generateFilterButtons = (filters, currentFilter, action) =>
 
 const kvRow = (label, value) =>
   tr(td({ class: "card-label" }, label), td({ class: "card-value" }, value));
-  
+
 const fmtIndex = (value) => {
     return value ? value.toFixed(6) : "0.000000";
 };
 
 const pct = (value) => {
     if (value === undefined || value === null) return "0.000001%";
-    const formattedValue = (value).toFixed(6); 
+    const formattedValue = (value).toFixed(6);
     const sign = value >= 0 ? "+" : "";
     return `${sign}${formattedValue}%`;
 };
@@ -41,23 +43,36 @@ const fmtDate = (timestamp) => {
     return moment(timestamp).format('YYYY-MM-DD HH:mm:ss');
 };
 
+const fmtEcoTime = (ms) => {
+  if (!ms || ms <= 0) return `0 ${i18n.bankUnitMs || 'ms'}`;
+  if (ms < 1000) return `${Number(ms).toFixed(3)} ${i18n.bankUnitMs || 'ms'}`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(2)} ${i18n.bankUnitSeconds || 'seconds'}`;
+  const m = s / 60;
+  if (m < 60) return `${m.toFixed(2)} ${i18n.bankUnitMinutes || 'minutes'}`;
+  const h = m / 60;
+  if (h < 24) return `${h.toFixed(2)} ${i18n.bankHoursOfWork || 'hours'}`;
+  return `${(h / 24).toFixed(2)} ${i18n.bankUnitDays || 'days'}`;
+};
+
 const renderExchange = (ex) => {
   if (!ex) return div(p(i18n.bankExchangeNoData));
   const syncStatus = ex.isSynced ? i18n.bankingSyncStatusSynced : i18n.bankingSyncStatusOutdated;
   const syncStatusClass = ex.isSynced ? 'synced' : 'outdated';
-  const ecoInHours = ex.isSynced ? ex.ecoInHours : 0;
+  const ecoTimeLabel = ex.isSynced ? fmtEcoTime(ex.ecoTimeMs) : fmtEcoTime(0);
   return div(
     div({ class: "bank-summary" },
       table({ class: "bank-info-table" },
         tbody(
-          kvRow(i18n.bankingSyncStatus, 
+          kvRow(i18n.bankingSyncStatus,
             span({ class: syncStatusClass }, syncStatus)
           ),
           kvRow(i18n.bankExchangeCurrentValue, `${fmtIndex(ex.ecoValue)} ECO`),
           kvRow(i18n.bankCurrentSupply, `${Number(ex.currentSupply || 0).toFixed(6)} ECO`),
           kvRow(i18n.bankTotalSupply, `${Number(ex.totalSupply || 0).toFixed(6)} ECO`),
-          kvRow(i18n.bankEcoinHours, `${ecoInHours} ${i18n.bankHoursOfWork}`),
-          kvRow(i18n.bankInflation, `${ex.inflationFactor.toFixed(2)}%`)
+          kvRow(i18n.bankEcoinHours, ecoTimeLabel),
+          kvRow(i18n.bankInflation, `${ex.inflationFactor.toFixed(2)}%`),
+          kvRow(i18n.bankInflationMonthly, `${Number(ex.inflationMonthly || 0).toFixed(2)}%`)
         )
       )
     )
@@ -71,32 +86,56 @@ const renderOverviewSummaryTable = (s, rules) => {
   const w = 1 + score / 100;
   const cap = rules?.caps?.cap_user_epoch ?? 50;
   const future = Math.min(pool * (w / W), cap);
+  const availClass = s.ubiAvailability === "OK" ? "ubi-available" : "ubi-unavailable";
+  const availLabel = s.ubiAvailability === "OK" ? i18n.bankUbiAvailableOk : i18n.bankUbiAvailableNo;
   return div({ class: "bank-summary" },
     table({ class: "bank-info-table" },
       tbody(
         kvRow(i18n.bankUserBalance, `${Number(s.userBalance || 0).toFixed(6)} ECO`),
-        kvRow(i18n.bankPubBalance, `${Number(s.pubBalance || 0).toFixed(6)} ECO`),
+        kvRow(i18n.bankUbiAvailability, span({ class: availClass }, availLabel)),
+        s.pubId ? kvRow(i18n.pubIdLabel, a({ href: `/author/${encodeURIComponent(s.pubId)}`, class: "user-link" }, s.pubId)) : null,
         kvRow(i18n.bankEpoch, String(s.epochId || "-")),
         kvRow(i18n.bankPool, `${pool.toFixed(6)} ECO`),
         kvRow(i18n.bankWeightsSum, String(W.toFixed(6))),
         kvRow(i18n.bankingUserEngagementScore, String(score)),
-        kvRow(i18n.bankingFutureUBI, `${future.toFixed(6)} ECO`)
+        kvRow(i18n.bankUbiThisMonth, `${future.toFixed(6)} ECO`)
       )
     )
   );
 };
 
-function calculateFutureUBI(userEngagementScore, poolAmount) {
-  const maxScore = 100;
-  const scorePercentage = userEngagementScore / maxScore;
-  const estimatedUBI = poolAmount * scorePercentage;
-  return estimatedUBI;
-}
+const renderClaimUBIBlock = (pendingAllocation, isPub, alreadyClaimed, pubId, hasValidWallet, ubiAvailability) => {
+  if (alreadyClaimed) return "";
+  if (!pubId && !isPub) return "";
+  if (!isPub && !hasValidWallet) return "";
+  if (!isPub && ubiAvailability !== "OK") return "";
+  if (!pendingAllocation && !isPub) {
+    return div({ class: "bank-claim-ubi" },
+      div({ class: "bank-claim-card" },
+        form({ method: "POST", action: "/banking/claim-ubi" },
+          button({ type: "submit", class: "create-button bank-claim-btn" }, i18n.bankClaimUBI)
+        )
+      )
+    );
+  }
+  if (!pendingAllocation) return "";
+  return div({ class: "bank-claim-ubi" },
+    div({ class: "bank-claim-card" },
+      p(`${i18n.bankUbiThisMonth}: `, span({ class: "accent" }, `${Number(pendingAllocation.amount || 0).toFixed(6)} ECO`)),
+      p(`${i18n.bankEpoch}: `, span(pendingAllocation.concept || "")),
+      form({ method: "POST", action: `/banking/claim/${encodeURIComponent(pendingAllocation.id)}` },
+        button({ type: "submit", class: "create-button bank-claim-btn" }, isPub ? i18n.bankClaimAndPay : i18n.bankClaimUBI)
+      )
+    )
+  );
+};
 
 const filterAllocations = (allocs, filter, userId) => {
-  if (filter === "mine") return allocs.filter(a => a.to === userId && a.status === "UNCONFIRMED");
-  if (filter === "pending") return allocs.filter(a => a.status === "UNCONFIRMED");
+  if (filter === "mine") return allocs.filter(a => a.to === userId && (a.status === "UNCLAIMED" || a.status === "UNCONFIRMED"));
+  if (filter === "pending") return allocs.filter(a => a.status === "UNCLAIMED" || a.status === "UNCONFIRMED");
   if (filter === "closed") return allocs.filter(a => a.status === "CLOSED");
+  if (filter === "claimed") return allocs.filter(a => a.status === "CLAIMED");
+  if (filter === "expired") return allocs.filter(a => a.status === "EXPIRED");
   return allocs;
 };
 
@@ -126,7 +165,7 @@ const allocationsTable = (rows = [], userId) =>
               td(String(Number(r.amount || 0).toFixed(6))),
               td(r.status),
               td(
-                r.status === "UNCONFIRMED" && r.to === userId
+                (r.status === "UNCLAIMED" || r.status === "UNCONFIRMED") && r.to === userId
                   ? form({ method: "POST", action: `/banking/claim/${encodeURIComponent(r.id)}` },
                       button({ type: "submit", class: "filter-btn" }, i18n.bankClaimNow)
                     )
@@ -174,11 +213,15 @@ const flashText = (key) => {
   if (key === "invalid") return i18n.bankAddressInvalid;
   if (key === "deleted") return i18n.bankAddressDeleted;
   if (key === "not_found") return i18n.bankAddressNotFound;
+  if (key === "claimed_pending") return i18n.bankClaimedPending;
+  if (key === "already_claimed") return i18n.bankAlreadyClaimedThisMonth;
+  if (key === "no_pub_configured") return i18n.bankNoPubConfigured;
+  if (key === "no_funds") return i18n.bankUbiAvailableNo;
   return "";
 };
 
 const flashBanner = (msgKey) =>
-  !msgKey ? null : div({ class: "flash-banner" }, p(flashText(msgKey)));
+  !msgKey ? null : div({ class: "flash-banner" }, p(flashText(msgKey) || msgKey));
 
 const addressesToolbar = (rows = [], search = "") =>
   div({ class: "addr-toolbar" },
@@ -251,16 +294,15 @@ const renderAddresses = (data, userId) => {
                     td(a({ href: `/author/${encodeURIComponent(r.id)}`, class: "user-link" }, r.id)),
                     td(r.address),
                     td(r.source === "local" ? i18n.bankLocal : i18n.bankFromOasis),
-			td(
-			  r.source === "local"
-			    ? div({ class: "row-actions" },
-				form({ method: "POST", action: "/banking/addresses/delete", class: "addr-del" },
-				  input({ type: "hidden", name: "userId", value: r.id }),
-				  button({ type: "submit", class: "delete-btn", onclick: `return confirm(${JSON.stringify(i18n.bankAddressDeleteConfirm)})` }, i18n.bankAddressDelete)
-				)
-			      )
-			    : null
+		td(
+		  div({ class: "row-actions" },
+			form({ method: "POST", action: "/banking/addresses/delete", class: "addr-del" },
+			  input({ type: "hidden", name: "userId", value: r.id }),
+			  input({ type: "hidden", name: "source", value: r.source || "local" }),
+			  button({ type: "submit", class: "delete-btn", onclick: `return confirm(${JSON.stringify(i18n.bankAddressDeleteConfirm)})` }, i18n.bankAddressDelete)
 			)
+		  )
+		)
                   )
                 )
               )
@@ -270,15 +312,17 @@ const renderAddresses = (data, userId) => {
   );
 };
 
-const renderBankingView = (data, filter, userId) =>
+const renderBankingView = (data, filter, userId, isPub) =>
   template(
     i18n.banking,
     section(
       div({ class: "tags-header" }, h2(i18n.banking), p(i18n.bankingDescription)),
-      generateFilterButtons(["overview","exchange","mine","pending","closed","epochs","rules","addresses"], filter, "/banking"),
+      data.flash ? div({ class: "flash-banner" }, p(flashText(data.flash) || data.flash)) : null,
+      generateFilterButtons(["overview","exchange","mine","pending","closed","claimed","expired","epochs","rules","addresses"], filter, "/banking"),
       filter === "overview"
         ? div(
             renderOverviewSummaryTable(data.summary || {}, data.rules),
+            renderClaimUBIBlock(data.pendingUBI || null, isPub, data.alreadyClaimed, (data.summary || {}).pubId, (data.summary || {}).hasValidWallet, (data.summary || {}).ubiAvailability),
             allocationsTable((data.allocations || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), userId)
           )
         : filter === "exchange"
@@ -294,7 +338,58 @@ const renderBankingView = (data, filter, userId) =>
             userId
           )
     )
-  )
-  
-module.exports = { renderBankingView };
+  );
 
+const renderSingleAllocationView = (alloc, userId) => {
+  if (!alloc) return template(i18n.banking, section(div(p(i18n.bankNoAllocations))));
+  return template(
+    i18n.banking,
+    section(
+      div({ class: "tags-header" }, h2(i18n.banking)),
+      div({ class: "bank-summary" },
+        table({ class: "bank-info-table" },
+          tbody(
+            kvRow("ID", alloc.id || "-"),
+            kvRow(i18n.bankAllocConcept, alloc.concept || "-"),
+            kvRow(i18n.bankAllocFrom, alloc.from || "-"),
+            kvRow(i18n.bankAllocTo, alloc.to || "-"),
+            kvRow(i18n.bankAllocAmount, `${Number(alloc.amount || 0).toFixed(6)} ECO`),
+            kvRow(i18n.bankAllocStatus, alloc.status || "-"),
+            kvRow(i18n.bankAllocDate, alloc.createdAt ? fmtDate(alloc.createdAt) : "-"),
+            alloc.txid ? kvRow("TxID", a({ href: `https://ecoin.03c8.net/blockexplorer/search?q=${encodeURIComponent(alloc.txid)}`, target: "_blank" }, alloc.txid)) : null
+          )
+        )
+      ),
+      alloc.status === "UNCONFIRMED" && alloc.to === userId
+        ? form({ method: "POST", action: `/banking/claim/${encodeURIComponent(alloc.id)}` },
+            button({ type: "submit", class: "filter-btn" }, i18n.bankClaimNow)
+          )
+        : null,
+      div(a({ href: "/banking", class: "filter-btn" }, i18n.bankOverview))
+    )
+  );
+};
+
+const renderEpochView = (epoch, allocations) => {
+  if (!epoch) return template(i18n.banking, section(div(p(i18n.bankNoEpochs))));
+  return template(
+    i18n.banking,
+    section(
+      div({ class: "tags-header" }, h2(`${i18n.bankEpoch}: ${epoch.id}`)),
+      div({ class: "bank-summary" },
+        table({ class: "bank-info-table" },
+          tbody(
+            kvRow(i18n.bankEpochId, epoch.id || "-"),
+            kvRow(i18n.bankPool, `${Number(epoch.pool || 0).toFixed(6)} ECO`),
+            kvRow(i18n.bankWeightsSum, String(Number(epoch.weightsSum || 0).toFixed(6))),
+            kvRow(i18n.bankRuleHash, epoch.hash || "-")
+          )
+        )
+      ),
+      h2(i18n.bankEpochAllocations),
+      allocationsTable(allocations || [], "")
+    )
+  );
+};
+
+module.exports = { renderBankingView, renderSingleAllocationView, renderEpochView };

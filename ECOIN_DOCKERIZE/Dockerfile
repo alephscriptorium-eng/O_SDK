@@ -1,7 +1,7 @@
 # =============================================================================
 # ECOin P2P Cryptocurrency Wallet - Dockerfile
 # =============================================================================
-# Descripción: Construye ecoind (daemon) desde fuente para integrar con Oasis
+# Descripción: Instala ecoind (daemon) desde paquete .deb precompilado
 # Basado en: https://ecoin.03c8.net / https://github.com/epsylon/ecoin
 # =============================================================================
 
@@ -13,80 +13,56 @@ LABEL version="0.3"
 LABEL org.opencontainers.image.source="https://github.com/epsylon/ecoin"
 
 # =============================================================================
-# STAGE 1: Build dependencies
+# STAGE 1: Runtime dependencies
 # =============================================================================
 
 # Evitar prompts interactivos
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instalar dependencias de compilación
+# Instalar dependencias mínimas para ecoind precompilado
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Build essentials
-    build-essential \
-    g++ \
-    make \
-    # OpenSSL
-    libssl-dev \
-    libssl3 \
-    # Berkeley DB
-    libdb5.3-dev \
-    libdb5.3++-dev \
-    # LevelDB
-    libleveldb-dev \
-    # UPnP (opcional pero recomendado)
-    miniupnpc \
-    libminiupnpc-dev \
-    # Git para clonar
-    git \
-    # Certificados SSL
+    # Runtime base
     ca-certificates \
-    # Herramientas útiles
     curl \
     procps \
+    # Boost runtime (ecoin_amd64.deb enlaza contra 1.74 en Debian 12)
+    libboost-chrono1.74.0 \
+    libboost-filesystem1.74.0 \
+    libboost-program-options1.74.0 \
+    libboost-system1.74.0 \
+    libboost-thread1.74.0 \
+    # OpenSSL runtime
+    libssl-dev \
+    libssl3 \
+    # Berkeley DB runtime
+    libdb5.3-dev \
+    libdb5.3++-dev \
+    libdb5.3++ \
+    # Toolchain runtime
+    libgcc-s1 \
+    libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================================================
-# STAGE 2: Clone and build ECOin
+# STAGE 2: Install ECOin prebuilt package contents
 # =============================================================================
 
-# Crear directorio de build
-WORKDIR /build
+# Copiar paquete .deb local al contexto de build
+COPY ecoin_0.0.4-1_amd64.deb /tmp/ecoin_0.0.4-1_amd64.deb
 
-# Clonar repositorio ECOin (shallow clone para ahorrar espacio)
-RUN git clone --depth 1 https://github.com/epsylon/ecoin.git
-
-# Primero compilar LevelDB (requerido por ECOin)
-WORKDIR /build/ecoin/ecoin/src/leveldb
-RUN make libleveldb.a libmemenv.a -j$(nproc) || true
-
-# Compilar ecoind (daemon sin GUI)
-WORKDIR /build/ecoin/ecoin/src
-
-# El Makefile de ECOin usa Boost incluido en src/boost_1_68_0
-# Necesitamos compilar las librerías de Boost primero
-WORKDIR /build/ecoin/ecoin/src/boost_1_68_0
-RUN ./bootstrap.sh --prefix=/usr/local --with-libraries=system,filesystem,program_options,thread,chrono \
-    && ./b2 install -j$(nproc) link=static threading=multi runtime-link=static
-
-# Volver al src de ECOin y compilar
-WORKDIR /build/ecoin/ecoin/src
-
-# Build con opciones optimizadas para Docker (sin UPnP, sin IPv6)
-RUN make -f makefile.linux USE_UPNP=- USE_IPV6=- -j$(nproc) \
-    && strip ecoind \
-    && mv ecoind /usr/local/bin/ \
-    && chmod +x /usr/local/bin/ecoind
+RUN mkdir -p /tmp/ecoin-pkg /usr/share/ecoin/tools \
+    && dpkg-deb -x /tmp/ecoin_0.0.4-1_amd64.deb /tmp/ecoin-pkg \
+    && install -m 0755 /tmp/ecoin-pkg/usr/bin/ecoind /usr/local/bin/ecoind \
+    && if [ -f /tmp/ecoin-pkg/usr/bin/ecoin-cpuminer ]; then install -m 0755 /tmp/ecoin-pkg/usr/bin/ecoin-cpuminer /usr/local/bin/ecoin-cpuminer; fi \
+    && if [ -f /tmp/ecoin-pkg/usr/share/ecoin/tools/bootstrap.dat ]; then cp /tmp/ecoin-pkg/usr/share/ecoin/tools/bootstrap.dat /usr/share/ecoin/tools/bootstrap.dat; fi \
+    && rm -rf /tmp/ecoin-pkg /tmp/ecoin_0.0.4-1_amd64.deb
 
 # Verificar que el binario existe
-RUN ecoind --version || echo "Build completed"
+RUN ecoind --version || echo "Prebuilt ecoind installed"
 
 # =============================================================================
 # STAGE 3: Setup runtime environment
 # =============================================================================
-
-# Limpiar directorio de build para reducir tamaño de imagen
-WORKDIR /
-RUN rm -rf /build
 
 # Crear usuario no-root para seguridad
 RUN useradd -m -s /bin/bash -u 1000 ecoin
@@ -97,13 +73,15 @@ RUN mkdir -p /home/ecoin/.ecoin \
 
 # Copiar configuración base
 COPY --chown=ecoin:ecoin ecoin.conf /home/ecoin/.ecoin/ecoin.conf
+RUN sed -i 's/\r$//' /home/ecoin/.ecoin/ecoin.conf
 
 # Copiar bootstrap.dat si existe (acelera sync inicial)
 # COPY --chown=ecoin:ecoin bootstrap.dat /home/ecoin/.ecoin/bootstrap.dat
 
 # Copiar script de entrypoint
 COPY --chown=ecoin:ecoin docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # =============================================================================
 # STAGE 4: Runtime configuration

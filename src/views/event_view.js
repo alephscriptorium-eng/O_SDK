@@ -3,6 +3,7 @@ const { template, i18n } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl");
+const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel } = require("./maps_view");
 
 const userId = config.keys.id;
 
@@ -75,6 +76,7 @@ const renderEventOwnerActions = (e, returnTo) => {
 const renderEventAttendAction = (e, isAttending, returnTo) => {
   const st = normalizeEventStatus(e.status);
   if (st !== "OPEN") return null;
+  if (e.organizer === userId) return null;
   return form(
     { method: "POST", action: `/events/attend/${encodeURIComponent(e.id)}` },
     input({ type: "hidden", name: "returnTo", value: returnTo }),
@@ -147,16 +149,16 @@ const renderEventCommentsSection = (eventId, comments = [], currentFilter = "all
       { class: "comment-form-wrapper" },
       h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
       form(
-        { method: "POST", action: `/events/${encodeURIComponent(eventId)}/comments`, class: "comment-form" },
+        { method: "POST", action: `/events/${encodeURIComponent(eventId)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
         input({ type: "hidden", name: "returnTo", value: returnTo }),
         textarea({
           id: "comment-text",
           name: "text",
-          required: true,
           rows: 4,
           class: "comment-textarea",
           placeholder: i18n.voteNewCommentPlaceholder
         }),
+        div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
         br(),
         button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
       )
@@ -209,32 +211,14 @@ const renderEventItem = (e, filter) => {
     renderCardField(i18n.eventDescriptionLabel + ":", ""),
     p(...renderUrl(e.description)),
     renderCardField(i18n.eventDateLabel + ":", e.date ? moment(e.date).format("YYYY/MM/DD HH:mm:ss") : ""),
-    e.location && String(e.location).trim() ? renderCardField(i18n.eventLocationLabel + ":", e.location) : null,
-    renderCardField(i18n.eventPrivacyLabel + ":", privacyLabel(e.isPublic)),
     renderCardField(i18n.eventStatus + ":", eventStatusLabel(e.status)),
+    renderCardField(i18n.eventPrivacyLabel + ":", privacyLabel(e.isPublic)),
+    e.location && String(e.location).trim() ? renderCardField(i18n.eventLocationLabel + ":", e.location) : null,
+    renderMapLocationVisitLabel(e.mapUrl),
     urlHref ? renderCardField(i18n.eventUrlLabel + ":", a({ href: urlHref, target: "_blank", rel: "noopener noreferrer" }, urlHref)) : null,
     renderCardField(i18n.eventPriceLabel + ":", parseFloat(e.price || 0).toFixed(6) + " ECO"),
-    br(),
-    div(
-      { class: "card-field" },
-      span({ class: "card-label" }, i18n.eventAttendees + ":"),
-      span(
-        { class: "card-value" },
-        attendees.length
-          ? attendees
-              .filter(Boolean)
-              .map((id, i) => [i > 0 ? ", " : "", a({ class: "user-link", href: `/author/${encodeURIComponent(id)}` }, id)])
-              .flat()
-          : i18n.noAttendees
-      )
-    ),
-    br(),
-    e.tags && e.tags.filter(Boolean).length
-      ? div(
-          { class: "card-tags" },
-          e.tags.filter(Boolean).map((tag) => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: "tag-link" }, `#${tag}`))
-        )
-      : null,
+    renderCardField(i18n.eventAttendees + ":", String(attendees.length)),
+    br,
     div(
       { class: "card-comments-summary" },
       span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
@@ -330,7 +314,8 @@ exports.eventView = async (events, filter, eventId, returnTo) => {
             form(
               {
                 action: currentFilter === "edit" ? `/events/update/${encodeURIComponent(eventId)}` : "/events/create",
-                method: "POST"
+                method: "POST",
+                enctype: "multipart/form-data"
               },
               input({ type: "hidden", name: "returnTo", value: ret }),
               label(i18n.eventTitleLabel),
@@ -343,13 +328,16 @@ exports.eventView = async (events, filter, eventId, returnTo) => {
                 value: currentFilter === "edit" ? eventToEdit.title || "" : ""
               }),
               br(),
-              br(),
               label(i18n.eventDescriptionLabel),
               br(),
               textarea(
                 { name: "description", id: "description", placeholder: i18n.eventDescriptionPlaceholder, rows: "4" },
                 currentFilter === "edit" ? eventToEdit.description || "" : ""
               ),
+              br(),
+              label(i18n.uploadMedia),
+              br(),
+              input({ type: "file", name: "image", accept: "image/*" }),
               br(),
               br(),
               label(i18n.eventDateLabel),
@@ -383,6 +371,10 @@ exports.eventView = async (events, filter, eventId, returnTo) => {
                 value: currentFilter === "edit" ? eventToEdit.location || "" : ""
               }),
               br(),
+              label(i18n.mapLocationTitle || "Map Location"),
+              br(),
+              input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: eventToEdit?.mapUrl || "" }),
+              br(),
               br(),
               label(i18n.eventUrlLabel),
               br(),
@@ -414,31 +406,44 @@ exports.eventView = async (events, filter, eventId, returnTo) => {
   );
 };
 
-exports.singleEventView = async (event, filter, comments = []) => {
+exports.singleEventView = async (event, filter, comments = [], params = {}) => {
   const currentFilter = filter || "all";
   const commentCount = typeof event.commentCount === "number" ? event.commentCount : 0;
   const attendees = safeArray(event.attendees);
   const urlHref = safeExternalHref(event.url);
+
+  const isPrivateNoAccess = normalizePrivacy(event.isPublic) === "private" &&
+    String(event.organizer) !== String(userId) &&
+    !attendees.includes(userId);
+
+  const filterBar = div(
+    { class: "filters" },
+    form(
+      { method: "GET", action: "/events" },
+      button({ type: "submit", name: "filter", value: "all", class: currentFilter === "all" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterAll),
+      button({ type: "submit", name: "filter", value: "mine", class: currentFilter === "mine" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterMine),
+      button({ type: "submit", name: "filter", value: "today", class: currentFilter === "today" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterToday),
+      button({ type: "submit", name: "filter", value: "week", class: currentFilter === "week" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterWeek),
+      button({ type: "submit", name: "filter", value: "month", class: currentFilter === "month" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterMonth),
+      button({ type: "submit", name: "filter", value: "year", class: currentFilter === "year" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterYear),
+      button({ type: "submit", name: "filter", value: "archived", class: currentFilter === "archived" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterArchived),
+      button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.eventCreateButton)
+    )
+  );
+
+  if (isPrivateNoAccess) {
+    return template(
+      event.title,
+      section(filterBar, p({ class: "access-denied-msg" }, i18n.contentAccessDenied))
+    );
+  }
 
   const topbar = renderEventTopbar(event, currentFilter, { single: true });
 
   return template(
     event.title,
     section(
-      div(
-        { class: "filters" },
-        form(
-          { method: "GET", action: "/events" },
-          button({ type: "submit", name: "filter", value: "all", class: currentFilter === "all" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterAll),
-          button({ type: "submit", name: "filter", value: "mine", class: currentFilter === "mine" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterMine),
-          button({ type: "submit", name: "filter", value: "today", class: currentFilter === "today" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterToday),
-          button({ type: "submit", name: "filter", value: "week", class: currentFilter === "week" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterWeek),
-          button({ type: "submit", name: "filter", value: "month", class: currentFilter === "month" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterMonth),
-          button({ type: "submit", name: "filter", value: "year", class: currentFilter === "year" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterYear),
-          button({ type: "submit", name: "filter", value: "archived", class: currentFilter === "archived" ? "filter-btn active" : "filter-btn" }, i18n.eventFilterArchived),
-          button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.eventCreateButton)
-        )
-      ),
+      filterBar,
       div(
         { class: "card card-section event" },
         topbar ? topbar : null,
@@ -446,11 +451,18 @@ exports.singleEventView = async (event, filter, comments = []) => {
         renderCardField(i18n.eventDescriptionLabel + ":", ""),
         p(...renderUrl(event.description)),
         renderCardField(i18n.eventDateLabel + ":", event.date ? moment(event.date).format("YYYY/MM/DD HH:mm:ss") : ""),
-        event.location && String(event.location).trim() ? renderCardField(i18n.eventLocationLabel + ":", event.location) : null,
-        renderCardField(i18n.eventPrivacyLabel + ":", privacyLabel(event.isPublic)),
         renderCardField(i18n.eventStatus + ":", eventStatusLabel(event.status)),
+        renderCardField(i18n.eventPrivacyLabel + ":", privacyLabel(event.isPublic)),
+        event.location && String(event.location).trim() ? renderCardField(i18n.eventLocationLabel + ":", event.location) : null,
+        renderMapEmbed(params.mapData, event.mapUrl),
         urlHref ? renderCardField(i18n.eventUrlLabel + ":", a({ href: urlHref, target: "_blank", rel: "noopener noreferrer" }, urlHref)) : null,
         renderCardField(i18n.eventPriceLabel + ":", parseFloat(event.price || 0).toFixed(6) + " ECO"),
+        event.tags && event.tags.filter(Boolean).length
+          ? div(
+              { class: "card-tags" },
+              event.tags.filter(Boolean).map((tag) => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: "tag-link" }, `#${tag}`))
+            )
+          : null,
         br(),
         div(
           { class: "card-field" },
@@ -464,18 +476,6 @@ exports.singleEventView = async (event, filter, comments = []) => {
                   .flat()
               : i18n.noAttendees
           )
-        ),
-        br(),
-        event.tags && event.tags.filter(Boolean).length
-          ? div(
-              { class: "card-tags" },
-              event.tags.filter(Boolean).map((tag) => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: "tag-link" }, `#${tag}`))
-            )
-          : null,
-        div(
-          { class: "card-comments-summary" },
-          span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
-          span({ class: "card-value" }, String(commentCount))
         ),
         br(),
         p(

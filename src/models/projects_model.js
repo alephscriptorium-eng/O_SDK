@@ -28,9 +28,7 @@ module.exports = ({ cooler }) => {
   }
 
   function extractBlobId(possibleMarkdownImage) {
-    let blobId = possibleMarkdownImage
-    if (blobId && /\(([^)]+)\)/.test(blobId)) blobId = blobId.match(/\(([^)]+)\)/)[1]
-    return blobId
+    return possibleMarkdownImage || null
   }
 
   function normalizeMilestonesFrom(data) {
@@ -182,7 +180,8 @@ module.exports = ({ cooler }) => {
         backers: [],
         author: ssbClient.id,
         createdAt: new Date().toISOString(),
-        updatedAt: null
+        updatedAt: null,
+        mapUrl: String(data.mapUrl || "").trim()
       }
 
       return new Promise((res, rej) => ssbClient.publish(content, (e, m) => (e ? rej(e) : res(m))))

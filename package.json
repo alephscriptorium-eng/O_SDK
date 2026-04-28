@@ -12,6 +12,7 @@
     "stop": "docker-compose stop",
     "down": "docker-compose down -v",
     "logs": "docker-compose logs -f",
+    "oasis:logs": "docker-compose logs -f oasis-dev",
     "shell": "docker-compose exec oasis-dev /bin/bash",
     "backup-keys": "sh ./docker-scripts/backup-keys.sh",
     "clean": "docker-compose down -v && docker system prune -f",
@@ -19,7 +20,19 @@
     "status": "docker-compose ps && docker ps",
     "restart": "docker-compose restart",
     "update": "git pull && docker-compose build --no-cache && docker-compose up -d",
-    "top": "docker-compose top"
+    "top": "docker-compose top",
+    "ecoin:build": "docker-compose build ecoin-wallet",
+    "ecoin:up": "docker-compose up -d ecoin-wallet",
+    "ecoin:start": "docker-compose start ecoin-wallet",
+    "ecoin:stop": "docker-compose stop ecoin-wallet",
+    "ecoin:restart": "docker-compose restart ecoin-wallet",
+    "ecoin:logs": "docker-compose logs -f ecoin-wallet",
+    "ecoin:status": "docker-compose ps ecoin-wallet",
+    "ecoin:shell": "docker-compose exec ecoin-wallet /bin/bash",
+    "ecoin:info": "docker-compose exec ecoin-wallet ecoind -rpcwait -rpcconnect=127.0.0.1 -rpcport=7474 -rpcuser=ecoinrpc -rpcpassword=ecoinrpc getinfo",
+    "ecoin:balance": "docker-compose exec ecoin-wallet ecoind -rpcwait -rpcconnect=127.0.0.1 -rpcport=7474 -rpcuser=ecoinrpc -rpcpassword=ecoinrpc getbalance",
+    "ecoin:address": "docker-compose exec ecoin-wallet ecoind -rpcwait -rpcconnect=127.0.0.1 -rpcport=7474 -rpcuser=ecoinrpc -rpcpassword=ecoinrpc getnewaddress",
+    "net": "docker network inspect oasis-network-dev"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",

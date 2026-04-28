@@ -10,6 +10,8 @@ const modulesView = () => {
     { name: 'audios', label: i18n.modulesAudiosLabel, description: i18n.modulesAudiosDescription },
     { name: 'banking', label: i18n.modulesBankingLabel, description: i18n.modulesBankingDescription },
     { name: 'bookmarks', label: i18n.modulesBookmarksLabel, description: i18n.modulesBookmarksDescription },
+    { name: 'calendars', label: i18n.modulesCalendarsLabel, description: i18n.modulesCalendarsDescription },
+    { name: 'chats', label: i18n.modulesChatsLabel, description: i18n.modulesChatsDescription },
     { name: 'cipher', label: i18n.modulesCipherLabel, description: i18n.modulesCipherDescription },
     { name: 'courts', label: i18n.modulesCourtsLabel, description: i18n.modulesCourtsDescription },
     { name: 'docs', label: i18n.modulesDocsLabel, description: i18n.modulesDocsDescription },
@@ -17,23 +19,29 @@ const modulesView = () => {
     { name: 'favorites', label: i18n.modulesFavoritesLabel, description: i18n.modulesFavoritesDescription },
     { name: 'feed', label: i18n.modulesFeedLabel, description: i18n.modulesFeedDescription },
     { name: 'forum', label: i18n.modulesForumLabel, description: i18n.modulesForumDescription },
+    { name: 'games', label: i18n.modulesGamesLabel, description: i18n.modulesGamesDescription },
     { name: 'images', label: i18n.modulesImagesLabel, description: i18n.modulesImagesDescription },
     { name: 'invites', label: i18n.modulesInvitesLabel, description: i18n.modulesInvitesDescription },
     { name: 'jobs', label: i18n.modulesJobsLabel, description: i18n.modulesJobsDescription },
     { name: 'legacy', label: i18n.modulesLegacyLabel, description: i18n.modulesLegacyDescription },
     { name: 'latest', label: i18n.modulesLatestLabel, description: i18n.modulesLatestDescription },
+    { name: 'logs', label: i18n.modulesLogsLabel, description: i18n.modulesLogsDescription },
+    { name: 'maps', label: i18n.modulesMapLabel, description: i18n.modulesMapDescription },
     { name: 'market', label: i18n.modulesMarketLabel, description: i18n.modulesMarketDescription },
     { name: 'multiverse', label: i18n.modulesMultiverseLabel, description: i18n.modulesMultiverseDescription },
     { name: 'opinions', label: i18n.modulesOpinionsLabel, description: i18n.modulesOpinionsDescription },
+    { name: 'pads', label: i18n.modulesPadsLabel, description: i18n.modulesPadsDescription },
     { name: 'parliament', label: i18n.modulesParliamentLabel, description: i18n.modulesParliamentDescription },
     { name: 'pixelia', label: i18n.modulesPixeliaLabel, description: i18n.modulesPixeliaDescription },
     { name: 'projects', label: i18n.modulesProjectsLabel, description: i18n.modulesProjectsDescription },
     { name: 'popular', label: i18n.modulesPopularLabel, description: i18n.modulesPopularDescription },
     { name: 'reports', label: i18n.modulesReportsLabel, description: i18n.modulesReportsDescription },
+    { name: 'shops', label: i18n.modulesShopsLabel, description: i18n.modulesShopsDescription },
     { name: 'summaries', label: i18n.modulesSummariesLabel, description: i18n.modulesSummariesDescription },
     { name: 'tags', label: i18n.modulesTagsLabel, description: i18n.modulesTagsDescription },
     { name: 'tasks', label: i18n.modulesTasksLabel, description: i18n.modulesTasksDescription },
     { name: 'threads', label: i18n.modulesThreadsLabel, description: i18n.modulesThreadsDescription },
+    { name: 'torrents', label: i18n.modulesTorrentsLabel, description: i18n.modulesTorrentsDescription },
     { name: 'transfers', label: i18n.modulesTransfersLabel, description: i18n.modulesTransfersDescription },
     { name: 'trending', label: i18n.modulesTrendingLabel, description: i18n.modulesTrendingDescription },
     { name: 'tribes', label: i18n.modulesTribesLabel, description: i18n.modulesTribesDescription },
@@ -71,10 +79,33 @@ const modulesView = () => {
     )
   );
 
+  const PRESETS = {
+    minimal: ['feed', 'forum', 'games', 'images', 'videos', 'audios', 'bookmarks', 'tags', 'trending', 'popular', 'latest', 'threads', 'opinions', 'cipher', 'legacy'],
+    social: ['agenda', 'audios', 'bookmarks', 'calendars', 'chats', 'cipher', 'courts', 'docs', 'events', 'favorites', 'feed', 'forum', 'games', 'images', 'invites', 'legacy', 'logs', 'maps', 'multiverse', 'opinions', 'pads', 'parliament', 'pixelia', 'projects', 'reports', 'tags', 'tasks', 'threads', 'trending', 'tribes', 'videos', 'votes'],
+    economy: ['agenda', 'audios', 'bookmarks', 'calendars', 'chats', 'cipher', 'courts', 'docs', 'events', 'favorites', 'feed', 'forum', 'games', 'images', 'invites', 'legacy', 'logs', 'maps', 'multiverse', 'opinions', 'pads', 'parliament', 'pixelia', 'projects', 'reports', 'tags', 'tasks', 'threads', 'trending', 'tribes', 'videos', 'votes', 'banking', 'wallet', 'transfers', 'market', 'jobs', 'shops'],
+    full: modules.map(m => m.name)
+  };
+
+  const presetButtons = div({ class: 'preset-group', style: 'display:flex;gap:8px;flex-wrap:nowrap;margin-bottom:16px;' },
+    Object.entries(PRESETS).map(([key, mods]) => {
+      const presetLabel = (i18n[`modulesPreset_${key}`] || key).toUpperCase();
+      const isActive = modules.every(m => mods.includes(m.name) === (moduleStates[`${m.name}Mod`] === 'on'));
+      return form({ action: "/modules/preset", method: "post", style: "display:inline;margin:0;" },
+        input({ type: "hidden", name: "preset", value: key }),
+        button({
+          type: 'submit',
+          class: isActive ? 'filter-btn active' : 'filter-btn',
+        }, presetLabel)
+      );
+    })
+  );
+
   return template(
     i18n.modules,
     section(header),
     section(
+      h2(i18n.modulesPresetTitle || "Common Configurations"),
+      presetButtons,
       form(
         { action: "/save-modules", method: "post" },
         table(
