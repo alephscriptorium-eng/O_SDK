@@ -49,11 +49,10 @@ const settingsView = ({ version, aiPrompt }) => {
   );
 
   const updateFlagPath = path.join(__dirname, '../server/.update_required');
-  let updateButton = null;
+  let updateNotice = null;
   if (fs.existsSync(updateFlagPath)) {
-    updateButton = form(
-      { action: "/update", method: "post" },
-      button({ type: "submit" }, i18n.updateit)
+    updateNotice = p(
+      "Upstream Oasis updates are available. For this Dockerized deployment, update from the host repository and rebuild the container. In-app auto-update is disabled."
     );
   }
 
@@ -63,7 +62,7 @@ const settingsView = ({ version, aiPrompt }) => {
       div({ class: "tags-header" },
         h2(i18n.settings),
         p(a({ href: snhUrl, target: "_blank" }, i18n.settingsIntro({ version }))),
-        updateButton
+        updateNotice
       )
     ),
     section(

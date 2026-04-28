@@ -4315,12 +4315,9 @@ router
     ctx.redirect(safeReturnTo(ctx, fallback, ["/favorites"]));
   })
   .post("/update", koaBody(), async (ctx) => {
-    const exec = require("node:util").promisify(require("node:child_process").exec);
-    const { stdout, stderr } = await exec("git reset --hard && git pull");
-    console.log("oasis@version: updating Oasis...", stdout, stderr);
-    const { stdout: shOut, stderr: shErr } = await exec("sh install.sh");
-    console.log("oasis@version: running install.sh...", shOut, shErr);
-    ctx.redirect(new URL(ctx.request.header.referer).href);
+    console.warn("oasis@version: in-app auto-update is disabled for this Dockerized deployment. Update from the host repository and rebuild the container.");
+    const referer = ctx.request.header.referer;
+    ctx.redirect(referer ? new URL(referer).href : "/settings");
   })  
   .post("/settings/theme", koaBody(), async (ctx) => {
     const theme = String(ctx.request.body.theme || "").trim(), cfg = getConfig();
