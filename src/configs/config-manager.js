@@ -29,22 +29,30 @@ if (!fs.existsSync(configFilePath)) {
       "eventsMod": "on",
       "tasksMod": "on",
       "marketMod": "on",
-      "tribesMod": "on",
       "votesMod": "on",
+      "tribesMod": "on",
       "reportsMod": "on",
       "opinionsMod": "on",
+      "padsMod": "on",
+      "calendarsMod": "on",
       "transfersMod": "on",
       "feedMod": "on",
       "pixeliaMod": "on",
       "agendaMod": "on",
       "aiMod": "on",
       "forumMod": "on",
+      "gamesMod": "on",
       "jobsMod": "on",
+      "shopsMod": "on",
       "projectsMod": "on",
       "bankingMod": "on",
       "parliamentMod": "on",
       "courtsMod": "on",
-      "favoritesMod": "on"
+      "favoritesMod": "on",
+      "logsMod": "on",
+      "mapsMod": "on",
+      "chatsMod": "on",
+      "torrentsMod": "on"
     },
     "wallet": {
       "url": "http://localhost:7474",
@@ -53,9 +61,7 @@ if (!fs.existsSync(configFilePath)) {
       "fee": "5"
     },
     "walletPub": {
-      "url": "",
-      "user": "",
-      "pass": ""
+      "pubId": ""
     },
     "ai": {
       "prompt": "Provide an informative and precise response."
@@ -63,14 +69,20 @@ if (!fs.existsSync(configFilePath)) {
     "ssbLogStream": {
       "limit": 2000
     },
-    "homePage": "activity"
+    "homePage": "activity",
+    "language": "en",
+    "wish": "whole",
+    "pmVisibility": "whole"
   };
   fs.writeFileSync(configFilePath, JSON.stringify(defaultConfig, null, 2));
 }
 
 const getConfig = () => {
   const configData = fs.readFileSync(configFilePath);
-  return JSON.parse(configData);
+  const cfg = JSON.parse(configData);
+  if (cfg.wish !== 'whole' && cfg.wish !== 'mutuals') cfg.wish = 'whole';
+  if (cfg.pmVisibility !== 'whole' && cfg.pmVisibility !== 'mutuals') cfg.pmVisibility = 'whole';
+  return cfg;
 };
 
 const saveConfig = (newConfig) => {

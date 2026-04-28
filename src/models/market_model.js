@@ -53,7 +53,7 @@ const hasBidder = (poll, userId) => {
   return false
 }
 
-module.exports = ({ cooler }) => {
+module.exports = ({ cooler, tribeCrypto }) => {
   let ssb
   const openSsb = async () => {
     if (!ssb) ssb = await cooler.open()
@@ -94,7 +94,7 @@ module.exports = ({ cooler }) => {
   return {
     type: "market",
 
-    async createItem(item_type, title, description, image, price, tagsRaw = [], item_status, deadline, includesShipping = false, stock = 0) {
+    async createItem(item_type, title, description, image, price, tagsRaw = [], item_status, deadline, includesShipping = false, stock = 0, mapUrl = "", shopOpts = {}) {
       const ssbClient = await openSsb()
 
       const formattedDeadline = deadline ? moment(deadline, moment.ISO_8601, true) : null
@@ -103,8 +103,7 @@ module.exports = ({ cooler }) => {
 
       let blobId = null
       if (image) {
-        const match = String(image).match(/\(([^)]+)\)/)
-        blobId = match ? match[1] : image
+        blobId = String(image).trim() || null
       }
 
       const tags = Array.isArray(tagsRaw) ? tagsRaw.filter(Boolean) : String(tagsRaw).split(",").map((t) => t.trim()).filter(Boolean)
@@ -131,11 +130,22 @@ module.exports = ({ cooler }) => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         seller: ssbClient.id,
-        auctions_poll: []
+        auctions_poll: [],
+        mapUrl: String(mapUrl || "").trim(),
+        shopProductId: shopOpts.shopProductId || "",
+        shopId: shopOpts.shopId || "",
+        shopTitle: shopOpts.shopTitle || ""
       }
 
       return new Promise((resolve, reject) => {
-        ssbClient.publish(itemContent, (err, res) => (err ? reject(err) : resolve(res)))
+        ssbClient.publish(itemContent, (err, res) => {
+          if (err) return reject(err)
+          if (res && res.key && tribeCrypto) {
+            const key = tribeCrypto.generateTribeKey()
+            tribeCrypto.setKey(res.key, key, 1)
+          }
+          resolve(res)
+        })
       })
     },
 
@@ -323,7 +333,11 @@ module.exports = ({ cooler }) => {
           includesShipping: !!c.includesShipping,
           stock: Number(c.stock) || 0,
           deadline: c.deadline || null,
-          auctions_poll: Array.isArray(c.auctions_poll) ? c.auctions_poll : []
+          auctions_poll: (tribeCrypto && tribeCrypto.getKey(rootId)) ? (Array.isArray(c.auctions_poll) ? c.auctions_poll : []) : [],
+          mapUrl: c.mapUrl || "",
+          shopProductId: c.shopProductId || "",
+          shopId: c.shopId || "",
+          shopTitle: c.shopTitle || ""
         })
       }
 
@@ -457,7 +471,11 @@ module.exports = ({ cooler }) => {
         includesShipping: !!c.includesShipping,
         stock: Number(c.stock) || 0,
         deadline: c.deadline,
-        auctions_poll: Array.isArray(c.auctions_poll) ? c.auctions_poll : []
+        auctions_poll: (tribeCrypto && tribeCrypto.getKey(rootId)) ? (Array.isArray(c.auctions_poll) ? c.auctions_poll : []) : [],
+        mapUrl: c.mapUrl || "",
+        shopProductId: c.shopProductId || "",
+        shopId: c.shopId || "",
+        shopTitle: c.shopTitle || ""
       }
     },
 
@@ -490,6 +508,12 @@ module.exports = ({ cooler }) => {
           await this.updateItemById(item.id, { status })
         } catch (_) {}
       }
+    },
+
+    async getItemByShopProductId(shopProductId) {
+      if (!shopProductId) return null
+      const items = await this.listAllItems("all")
+      return items.find((i) => i.shopProductId === shopProductId) || null
     },
 
     async setItemAsSold(itemId) {

@@ -27,18 +27,26 @@
     "tribesMod": "on",
     "reportsMod": "on",
     "opinionsMod": "on",
+    "padsMod": "on",
+    "calendarsMod": "on",
     "transfersMod": "on",
     "feedMod": "on",
     "pixeliaMod": "on",
     "agendaMod": "on",
     "aiMod": "on",
     "forumMod": "on",
+    "gamesMod": "on",
     "jobsMod": "on",
+    "shopsMod": "on",
     "projectsMod": "on",
     "bankingMod": "on",
     "parliamentMod": "on",
     "courtsMod": "on",
-    "favoritesMod": "on"
+    "favoritesMod": "on",
+    "logsMod": "on",
+    "mapsMod": "on",
+    "chatsMod": "on",
+    "torrentsMod": "on"
   },
   "wallet": {
     "url": "http://localhost:7474",
@@ -47,9 +55,7 @@
     "fee": "5"
   },
   "walletPub": {
-    "url": "",
-    "user": "",
-    "pass": ""
+    "pubId": ""
   },
   "ai": {
     "prompt": "Provide an informative and precise response."
@@ -57,5 +63,8 @@
   "ssbLogStream": {
     "limit": 2000
   },
-  "homePage": "activity"
+  "homePage": "activity",
+  "language": "en",
+  "wish": "whole",
+  "pmVisibility": "whole"
 }

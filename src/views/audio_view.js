@@ -12,13 +12,15 @@ const {
   span,
   textarea,
   select,
+  label,
   option
 } = require("../server/node_modules/hyperaxe");
 
 const { template, i18n } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
-const { renderUrl } = require("../backend/renderUrl");
+const { renderUrl } = require("../backend/renderUrl")
+const { renderMapLocationVisitLabel } = require("./maps_view");
 const opinionCategories = require("../backend/opinion_categories");
 
 const userId = config.keys.id;
@@ -112,16 +114,16 @@ const renderAudioCommentsSection = (audioId, comments = [], returnTo = null) => 
       { class: "comment-form-wrapper" },
       h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
       form(
-        { method: "POST", action: `/audios/${encodeURIComponent(audioId)}/comments`, class: "comment-form" },
+        { method: "POST", action: `/audios/${encodeURIComponent(audioId)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
         returnTo ? input({ type: "hidden", name: "returnTo", value: returnTo }) : null,
         textarea({
           id: "comment-text",
           name: "text",
-          required: true,
           rows: 4,
           class: "comment-textarea",
           placeholder: i18n.voteNewCommentPlaceholder
         }),
+        div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
         br(),
         button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
       )
@@ -194,8 +196,6 @@ const renderAudioList = (audios, filter, params = {}) => {
           ),
           title ? h2(title) : null,
           renderAudioPlayer(audioObj),
-          safeText(audioObj.description) ? p(...renderUrl(audioObj.description)) : null,
-          renderTags(audioObj.tags),
           div(
             { class: "card-comments-summary" },
             span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
@@ -211,6 +211,7 @@ const renderAudioList = (audios, filter, params = {}) => {
               button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
             )
           ),
+          renderMapLocationVisitLabel(audioObj.mapUrl),
           br(),
           (() => {
             const createdTs = audioObj.createdAt ? new Date(audioObj.createdAt).getTime() : NaN;
@@ -228,22 +229,7 @@ const renderAudioList = (audios, filter, params = {}) => {
                   )
                 : null
             );
-          })(),
-          div(
-            { class: "voting-buttons" },
-            opinionCategories.map((category) =>
-              form(
-                { method: "POST", action: `/audios/opinions/${encodeURIComponent(audioObj.key)}/${category}` },
-                input({ type: "hidden", name: "returnTo", value: returnTo }),
-                button(
-                  { class: "vote-btn" },
-                  `${i18n[`vote${category.charAt(0).toUpperCase() + category.slice(1)}`] || category} [${
-                    audioObj.opinions?.[category] || 0
-                  }]`
-                )
-              )
-            )
-          )
+          })()
         );
       })
     : p(params.q ? i18n.audioNoMatch : i18n.noAudios);
@@ -265,6 +251,18 @@ const renderAudioForm = (filter, audioId, audioToEdit, params = {}) => {
       input({ type: "file", name: "audio", required: filter !== "edit" }),
       br(),
       br(),
+      span(i18n.audioTitleLabel),
+      br(),
+      input({ type: "text", name: "title", placeholder: i18n.audioTitlePlaceholder, value: audioToEdit?.title || "" }),
+      br(),
+      span(i18n.audioDescriptionLabel),
+      br(),
+      textarea({ name: "description", placeholder: i18n.audioDescriptionPlaceholder, rows: "4" }, audioToEdit?.description || ""),
+      br(),
+      span(i18n.mapLocationTitle || "Map Location"),
+      br(),
+      input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: audioToEdit?.mapUrl || "" }),
+      br(),
       span(i18n.audioTagsLabel),
       br(),
       input({
@@ -273,16 +271,6 @@ const renderAudioForm = (filter, audioId, audioToEdit, params = {}) => {
         placeholder: i18n.audioTagsPlaceholder,
         value: safeArr(audioToEdit?.tags).join(", ")
       }),
-      br(),
-      br(),
-      span(i18n.audioTitleLabel),
-      br(),
-      input({ type: "text", name: "title", placeholder: i18n.audioTitlePlaceholder, value: audioToEdit?.title || "" }),
-      br(),
-      br(),
-      span(i18n.audioDescriptionLabel),
-      br(),
-      textarea({ name: "description", placeholder: i18n.audioDescriptionPlaceholder, rows: "4" }, audioToEdit?.description || ""),
       br(),
       br(),
       button({ type: "submit" }, filter === "edit" ? i18n.audioUpdateButton : i18n.audioCreateButton)
@@ -417,6 +405,8 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
         renderAudioPlayer(audioObj),
         safeText(audioObj.description) ? p(...renderUrl(audioObj.description)) : null,
         renderTags(audioObj.tags),
+        br(),
+        renderMapLocationVisitLabel(audioObj.mapUrl),
         br(),
         (() => {
           const createdTs = audioObj.createdAt ? new Date(audioObj.createdAt).getTime() : NaN;

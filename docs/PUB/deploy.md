@@ -21,6 +21,7 @@ By default it uses port 8008, so make sure to expose that port (or whatever port
 
 Before running the server, create a config file that enables needed plugins and network options.
 
+   mkdir -p ~/.ssb
    nano ~/.ssb/config
 
 Paste this:
@@ -30,7 +31,7 @@ Paste this:
     "level": "info"
   },
   "caps": {
-    "shs": "iKOzhqNVTcKEZvUhW3A7TuKZ1d6qIbtsGIJ6+SBOaEQ="
+    "shs": "zTmidAb7t+tKi7W93FIHbOvlbd936x6G/vm8e8Td//A="
   },
   "pub": true,
   "local": false,
@@ -85,7 +86,7 @@ Paste this:
   "autofollow": {
     "enabled": true,
     "suggestions": [
-      "@HzmUrdZb1vRWCwn3giLx3p/EWKuDiO44gXAaeulz3d4=.ed25519"
+      "@mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519"
     ]
   }
 }
@@ -96,7 +97,6 @@ Be sure to replace {your-hostname} with your server’s domain or IP.
 
    npm -g install ssb-server
 
-   mkdir -p ~/.ssb
    cd ~/.ssb
    npm init -y
 
@@ -147,7 +147,7 @@ And make it executable:
 
 Use a session-manager such as screen or tmux to create a detachable session. Start the session and run the script:
 
-   sh ~/oasis-pub/oasis-pub-server.sh
+   ~/oasis-pub/oasis-pub-server.sh
 
 Then, detach the session.
 
@@ -161,7 +161,7 @@ To do this, first get the PUB's ID, with:
    ssb-server whoami
    
    {
-     "id": "@HzmUrdZb1vRWCwn3giLx3p/EWKuDiO44gXAaeulz3d4=.ed25519"
+     "id": "@mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519"
    }
 
 Then, publish a name with the following command:
@@ -193,7 +193,7 @@ To announce your PUB, publish this message:
    
 For example, to announce `solarnethub.com` PUB: "La Plaza":
 
-   ssb-server publish --type pub --address.key @HzmUrdZb1vRWCwn3giLx3p/EWKuDiO44gXAaeulz3d4=.ed25519 --address.host solarnethub.com --address.port 8008
+   ssb-server publish --type pub --address.key @mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519 --address.host solarnethub.com --address.port 8008
     
 ## 9) Following another PUB
 
@@ -205,7 +205,7 @@ To follow another PUB's feed, publish this other message:
 For example, to follow `solarnethub.com` PUB: "La Plaza":
 
    cd ~/oasis-pub 
-   ssb-server publish --type contact --contact "@HzmUrdZb1vRWCwn3giLx3p/EWKuDiO44gXAaeulz3d4=.ed25519" --following
+   ssb-server publish --type contact --contact "@mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519" --following
 
 ## 10) Join the Oasis PUB Network
 

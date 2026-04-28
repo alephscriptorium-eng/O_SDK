@@ -25,15 +25,16 @@ const settingsView = ({ version, aiPrompt }) => {
   const walletUrl = currentConfig.wallet.url;
   const walletUser = currentConfig.wallet.user;
   const walletFee = currentConfig.wallet.fee;
-  const pubWalletUrl = currentConfig.walletPub.url || '';
-  const pubWalletUser = currentConfig.walletPub.user || '';
-  const pubWalletPass = currentConfig.walletPub.pass || '';
+  const pubId = currentConfig.walletPub?.pubId || '';
+  const currentWish = currentConfig.wish === 'mutuals' ? 'mutuals' : 'whole';
+  const currentPmVisibility = currentConfig.pmVisibility === 'mutuals' ? 'mutuals' : 'whole';
 
   const themeElements = [
     option({ value: "Dark-SNH", selected: theme === "Dark-SNH" ? true : undefined }, "Dark-SNH"),
     option({ value: "Clear-SNH", selected: theme === "Clear-SNH" ? true : undefined }, "Clear-SNH"),
     option({ value: "Purple-SNH", selected: theme === "Purple-SNH" ? true : undefined }, "Purple-SNH"),
-    option({ value: "Matrix-SNH", selected: theme === "Matrix-SNH" ? true : undefined }, "Matrix-SNH")
+    option({ value: "Matrix-SNH", selected: theme === "Matrix-SNH" ? true : undefined }, "Matrix-SNH"),
+    option({ value: "OasisMobile", selected: theme === "OasisMobile" ? true : undefined }, "Oasis-Mobile")
   ];
 
   const languageOption = (longName, shortName) => {
@@ -88,7 +89,14 @@ const settingsView = ({ version, aiPrompt }) => {
             languageOption("English", "en"),
             languageOption("Español", "es"),
             languageOption("Français", "fr"),
-            languageOption("Euskara", "eu")
+            languageOption("Euskara", "eu"),
+            languageOption("Deutsch", "de"),
+            languageOption("Italiano", "it"),
+            languageOption("Português", "pt"),
+            languageOption("中文", "zh"),
+            languageOption("العربية", "ar"),
+            languageOption("हिन्दी", "hi"),
+            languageOption("Русский", "ru")
           ]),
           br(),
           br(),
@@ -141,6 +149,34 @@ const settingsView = ({ version, aiPrompt }) => {
     ),
     section(
       div({ class: "tags-header" },
+        h2(i18n.settingsWishTitle),
+        p(i18n.settingsWishDesc),
+        form(
+          { action: "/settings/wish", method: "POST" },
+          select({ name: "wish" },
+            option({ value: "whole", selected: currentWish === "whole" ? true : undefined }, i18n.settingsWishWhole),
+            option({ value: "mutuals", selected: currentWish === "mutuals" ? true : undefined }, i18n.settingsWishMutuals)
+          ), br(), br(),
+          button({ type: "submit" }, i18n.saveSettings)
+        )
+      )
+    ),
+    section(
+      div({ class: "tags-header" },
+        h2(i18n.settingsPmVisibilityTitle),
+        p(i18n.settingsPmVisibilityDesc),
+        form(
+          { action: "/settings/pm-visibility", method: "POST" },
+          select({ name: "pmVisibility" },
+            option({ value: "whole", selected: currentPmVisibility === "whole" ? true : undefined }, i18n.settingsPmVisibilityWhole),
+            option({ value: "mutuals", selected: currentPmVisibility === "mutuals" ? true : undefined }, i18n.settingsPmVisibilityMutuals)
+          ), br(), br(),
+          button({ type: "submit" }, i18n.saveSettings)
+        )
+      )
+    ),
+    section(
+      div({ class: "tags-header" },
         h2(i18n.wallet),
 	p(
 	  i18n.walletSettingsDescription, " ",
@@ -162,33 +198,18 @@ const settingsView = ({ version, aiPrompt }) => {
     ),
     section(
       div({ class: "tags-header" },
-        h2(i18n.pubWallet),
-        p(i18n.pubWalletDescription),
+        h2(i18n.pubIdTitle || "PUB Wallet"),
+        p(i18n.pubIdDescription || "Set the PUB OASIS ID. This will be used for PUB transactions (including the UBI)."),
         form(
-          { action: "/settings/pub-wallet", method: "POST" },
-          label({ for: "pub_wallet_url" }, i18n.walletAddress), br(),
+          { action: "/settings/pub-id", method: "POST" },
           input({
             type: "text",
-            id: "pub_wallet_url",
-            name: "wallet_url",
-            placeholder: pubWalletUrl,
-            value: pubWalletUrl
+            id: "pub_id",
+            name: "pub_id",
+            value: pubId,
+            placeholder: i18n.pubIdPlaceholder || "@example.ed25519"
           }), br(),
-          label({ for: "pub_wallet_user" }, i18n.walletUser), br(),
-          input({
-            type: "text",
-            id: "pub_wallet_user",
-            name: "wallet_user",
-            placeholder: pubWalletUser,
-            value: pubWalletUser
-          }), br(),
-          label({ for: "pub_wallet_pass" }, i18n.walletPass), br(),
-          input({
-            type: "password",
-            id: "pub_wallet_pass",
-            name: "wallet_pass"
-          }), br(),
-          button({ type: "submit" }, i18n.pubWalletConfiguration)
+          button({ type: "submit" }, i18n.pubIdSave || "Save configuration")
         )
       )
     ),

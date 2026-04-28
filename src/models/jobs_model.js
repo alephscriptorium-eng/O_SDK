@@ -33,7 +33,7 @@ const matchSearch = (job, q) => {
   return hay.includes(qq)
 }
 
-module.exports = ({ cooler }) => {
+module.exports = ({ cooler, tribeCrypto }) => {
   let ssb
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb }
 
@@ -45,7 +45,7 @@ module.exports = ({ cooler }) => {
       )
     )
 
-  const buildIndex = (messages) => {
+  const buildIndex = (messages, ssbClient) => {
     const tomb = new Set()
     const jobNodes = new Map()
     const parent = new Map()
@@ -110,10 +110,30 @@ module.exports = ({ cooler }) => {
       else set.delete(author)
     }
 
+    if (ssbClient) {
+      for (const m of messages) {
+        if (typeof m.value?.content !== 'string') continue
+        try {
+          const dec = ssbClient.private.unbox({ key: m.key, value: m.value, timestamp: m.value?.timestamp || m.timestamp || 0 })
+          if (!dec?.value?.content) continue
+          const c = dec.value.content
+          if (c.type !== 'job_sub' || !c.jobId) continue
+          const author = dec.value.author
+          if (!author) continue
+          const ts = dec.value.timestamp || m.timestamp || 0
+          const jobId = c.jobId
+          const k = `${jobId}::${author}`
+          const prev = jobSubLatest.get(k)
+          if (!prev || ts > prev.ts) jobSubLatest.set(k, { ts, value: !!c.value, author, jobId })
+        } catch {}
+      }
+    }
+
     return { tomb, jobNodes, parent, child, rootOf, tipOf, tipByRoot, subsByJob }
   }
 
   const buildJobObject = (node, rootId, subscribers) => {
+    const visibleSubs = (tribeCrypto && tribeCrypto.getKey(rootId)) || ssb?.id === (node.c?.author || node.author) ? subscribers : [];
     const c = node.c || {}
     let blobId = c.image || null
     if (blobId && /\(([^)]+)\)/.test(String(blobId))) blobId = String(blobId).match(/\(([^)]+)\)/)[1]
@@ -141,7 +161,8 @@ module.exports = ({ cooler }) => {
       updatedAt: c.updatedAt || null,
       status: c.status || "OPEN",
       tags: Array.isArray(c.tags) ? c.tags : normalizeTags(c.tags),
-      subscribers: Array.isArray(subscribers) ? subscribers : []
+      subscribers: Array.isArray(visibleSubs) ? visibleSubs : [],
+      mapUrl: c.mapUrl || ""
     }
   }
 
@@ -191,16 +212,24 @@ module.exports = ({ cooler }) => {
         author: ssbClient.id,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        status: "OPEN"
+        status: "OPEN",
+        mapUrl: String(jobData.mapUrl || "").trim()
       }
 
-      return new Promise((res, rej) => ssbClient.publish(content, (e, m) => e ? rej(e) : res(m)))
+      return new Promise((res, rej) => ssbClient.publish(content, (e, m) => {
+        if (e) return rej(e)
+        if (m && m.key && tribeCrypto) {
+          const key = tribeCrypto.generateTribeKey()
+          tribeCrypto.setKey(m.key, key, 1)
+        }
+        res(m)
+      }))
     },
 
     async resolveCurrentId(jobId) {
       const ssbClient = await openSsb()
       const messages = await readAll(ssbClient)
-      const { tomb, child } = buildIndex(messages)
+      const { tomb, child } = buildIndex(messages, ssbClient)
 
       let cur = jobId
       while (child.has(cur)) cur = child.get(cur)
@@ -211,7 +240,7 @@ module.exports = ({ cooler }) => {
     async resolveRootId(jobId) {
       const ssbClient = await openSsb()
       const messages = await readAll(ssbClient)
-      const { tomb, parent, child } = buildIndex(messages)
+      const { tomb, parent, child } = buildIndex(messages, ssbClient)
 
       let tip = jobId
       while (child.has(tip)) tip = child.get(tip)
@@ -225,7 +254,7 @@ module.exports = ({ cooler }) => {
     async updateJob(id, jobData) {
       const ssbClient = await openSsb()
       const messages = await readAll(ssbClient)
-      const idx = buildIndex(messages)
+      const idx = buildIndex(messages, ssbClient)
 
       const tipId = await this.resolveCurrentId(id)
       const node = idx.jobNodes.get(tipId)
@@ -356,7 +385,8 @@ module.exports = ({ cooler }) => {
         createdAt: new Date().toISOString()
       }
 
-      return new Promise((res, rej) => ssbClient.publish(msg, (e, m) => e ? rej(e) : res(m)))
+      const recps = [me, job.author]
+      return new Promise((res, rej) => ssbClient.private.publish(msg, recps, (e, m) => e ? rej(e) : res(m)))
     },
 
     async unsubscribeFromJob(id, userId) {
@@ -377,7 +407,8 @@ module.exports = ({ cooler }) => {
         createdAt: new Date().toISOString()
       }
 
-      return new Promise((res, rej) => ssbClient.publish(msg, (e, m) => e ? rej(e) : res(m)))
+      const recps = [me, job.author]
+      return new Promise((res, rej) => ssbClient.private.publish(msg, recps, (e, m) => e ? rej(e) : res(m)))
     },
 
     async listJobs(filter = "ALL", viewerId = null, query = {}) {
@@ -386,7 +417,7 @@ module.exports = ({ cooler }) => {
       const viewer = viewerId || me
 
       const messages = await readAll(ssbClient)
-      const idx = buildIndex(messages)
+      const idx = buildIndex(messages, ssbClient)
 
       const jobs = []
       for (const [rootId, tipId] of idx.tipByRoot.entries()) {
@@ -441,7 +472,7 @@ module.exports = ({ cooler }) => {
       void viewerId
 
       const messages = await readAll(ssbClient)
-      const idx = buildIndex(messages)
+      const idx = buildIndex(messages, ssbClient)
 
       let tipId = id
       while (idx.child.has(tipId)) tipId = idx.child.get(tipId)

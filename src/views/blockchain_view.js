@@ -1,24 +1,54 @@
-const { div, h2, p, section, button, form, a, input, span, pre, table, tr, td } = require("../server/node_modules/hyperaxe");
+const { div, h2, h3, p, section, button, form, a, input, span, pre, table, tr, td, strong } = require("../server/node_modules/hyperaxe");
 const { template, i18n } = require("../views/main_views");
 const moment = require("../server/node_modules/moment");
 
 const FILTER_LABELS = {
   votes: i18n.typeVotes, vote: i18n.typeVote, recent: i18n.recent, all: i18n.all,
-  mine: i18n.mine, tombstone: i18n.typeTombstone, pixelia: i18n.typePixelia,
+  mine: i18n.mine, tombstone: i18n.typeTombstone, logs: i18n.typeLog || 'LOGS', pixelia: i18n.typePixelia,
   curriculum: i18n.typeCurriculum, document: i18n.typeDocument, bookmark: i18n.typeBookmark,
   feed: i18n.typeFeed, event: i18n.typeEvent, task: i18n.typeTask, report: i18n.typeReport,
   image: i18n.typeImage, audio: i18n.typeAudio, video: i18n.typeVideo, post: i18n.typePost,
   forum: i18n.typeForum, about: i18n.typeAbout, contact: i18n.typeContact, pub: i18n.typePub,
   transfer: i18n.typeTransfer, market: i18n.typeMarket, job: i18n.typeJob, tribe: i18n.typeTribe,
   project: i18n.typeProject, banking: i18n.typeBanking, bankWallet: i18n.typeBankWallet, bankClaim: i18n.typeBankClaim,
-  aiExchange: i18n.typeAiExchange, parliament: i18n.typeParliament, courts: i18n.typeCourts
+  aiExchange: i18n.typeAiExchange, parliament: i18n.typeParliament, courts: i18n.typeCourts,
+  map: i18n.typeMap, shop: i18n.typeShop, shopProduct: i18n.typeShopProduct || 'Shop Product',
+  pad: i18n.typePad || 'PAD', chat: i18n.typeChat || 'CHAT', gameScore: i18n.typeGameScore || 'GAME SCORE',
+  calendar: i18n.typeCalendar || 'CALENDAR', torrent: i18n.typeTorrent
 };
 
-const BASE_FILTERS = ['recent', 'all', 'mine', 'tombstone'];
-const CAT_BLOCK1  = ['votes', 'event', 'task', 'report', 'parliament', 'courts'];
+const BASE_FILTERS = ['recent', 'all', 'mine', 'tombstone', 'logs'];
+const CAT_BLOCK1  = ['votes', 'event', 'task', 'report', 'calendar', 'parliament', 'courts'];
 const CAT_BLOCK2  = ['pub', 'tribe', 'about', 'contact', 'curriculum', 'vote', 'aiExchange'];
-const CAT_BLOCK3  = ['banking', 'job', 'market', 'project', 'transfer', 'feed', 'post', 'pixelia'];
-const CAT_BLOCK4  = ['forum', 'bookmark', 'image', 'video', 'audio', 'document'];
+const CAT_BLOCK3  = ['banking', 'job', 'market', 'project', 'transfer', 'feed', 'post', 'pixelia', 'shop', 'gameScore'];
+const CAT_BLOCK4  = ['forum', 'pad', 'chat', 'bookmark', 'image', 'video', 'audio', 'document', 'map', 'torrent'];
+
+const SEARCH_FIELDS = ['author','id','from','to'];
+
+const hiddenSearchInputs = (search) =>
+  SEARCH_FIELDS.map(k => {
+    const v = String(search?.[k] ?? '').trim();
+    return v ? input({ type: 'hidden', name: k, value: v }) : null;
+  }).filter(Boolean);
+
+const toDatetimeLocal = (s) => {
+  const raw = String(s || '').trim();
+  if (!raw) return '';
+  const ts = new Date(raw).getTime();
+  if (!Number.isFinite(ts)) return '';
+  return moment(ts).format('YYYY-MM-DDTHH:mm');
+};
+
+const toQueryString = (filter, search = {}) => {
+  const parts = [];
+  const f = String(filter || '').trim();
+  if (f) parts.push(`filter=${encodeURIComponent(f)}`);
+  for (const k of SEARCH_FIELDS) {
+    const v = String(search?.[k] ?? '').trim();
+    if (v) parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+  }
+  return parts.length ? `?${parts.join('&')}` : '';
+};
 
 const filterBlocks = (blocks, filter, userId) => {
   if (filter === 'recent') return blocks.filter(b => Date.now() - b.ts < 24*60*60*1000);
@@ -33,14 +63,17 @@ const filterBlocks = (blocks, filter, userId) => {
     const cset = new Set(['courtsCase','courtsEvidence','courtsAnswer','courtsVerdict','courtsSettlement','courtsSettlementProposal','courtsSettlementAccepted','courtsNomination','courtsNominationVote']);
     return blocks.filter(b => cset.has(b.type));
   }
+  if (filter === 'shop') return blocks.filter(b => b.type === 'shop' || b.type === 'shopProduct');
+  if (filter === 'logs') return blocks.filter(b => b.type === 'log' && b.author === userId);
   return blocks.filter(b => b.type === filter);
 };
 
-const generateFilterButtons = (filters, currentFilter, action) =>
+const generateFilterButtons = (filters, currentFilter, action, search = {}) =>
   div({ class: 'mode-buttons-cols' },
     filters.map(mode =>
       form({ method: 'GET', action },
         input({ type: 'hidden', name: 'filter', value: mode }),
+        ...hiddenSearchInputs(search),
         button({
           type: 'submit',
           class: currentFilter === mode ? 'filter-btn active' : 'filter-btn'
@@ -73,6 +106,7 @@ const getViewDetailsAction = (type, block) => {
     case 'job': return `/jobs/${encodeURIComponent(block.id)}`;
     case 'project': return `/projects/${encodeURIComponent(block.id)}`;
     case 'report': return `/reports/${encodeURIComponent(block.id)}`;
+    case 'calendar': return `/calendars/${encodeURIComponent(block.id)}`;
     case 'bankWallet': return `/wallet`;
     case 'bankClaim': return `/banking${block.content?.epochId ? `/epoch/${encodeURIComponent(block.content.epochId)}` : ''}`;
     case 'parliamentTerm': return `/parliament`;
@@ -89,12 +123,168 @@ const getViewDetailsAction = (type, block) => {
     case 'courtsSettlementAccepted': return `/courts`;
     case 'courtsNomination': return `/courts`;
     case 'courtsNominationVote': return `/courts`;
+    case 'map': return `/maps/${encodeURIComponent(block.id)}`;
+    case 'torrent': return `/torrents/${encodeURIComponent(block.id)}`;
+    case 'mapMarker': return block.content?.mapId ? `/maps/${encodeURIComponent(block.content.mapId)}` : `/maps`;
+    case 'shop': return `/shops/${encodeURIComponent(block.id)}`;
+    case 'shopProduct': return `/shops/product/${encodeURIComponent(block.id)}`;
+    case 'pad': return `/pads/${encodeURIComponent(block.id)}`;
+    case 'chat': return `/chats/${encodeURIComponent(block.id)}`;
+    case 'gameScore': return `/games?filter=scoring`;
+    case 'log': return `/logs/view/${encodeURIComponent(block.id)}`;
     default: return null;
   }
 };
 
-const renderSingleBlockView = (block, filter) =>
-  template(
+const TYPE_COLORS = {
+  post:'#3498db', vote:'#9b59b6', votes:'#9b59b6', about:'#1abc9c', contact:'#16a085',
+  pub:'#2ecc71', tribe:'#e67e22', event:'#e74c3c', task:'#f39c12', report:'#c0392b',
+  image:'#2980b9', audio:'#8e44ad', video:'#d35400', document:'#27ae60', bookmark:'#f1c40f',
+  forum:'#1abc9c', feed:'#95a5a6', transfer:'#e74c3c', market:'#e67e22', job:'#3498db',
+  project:'#2ecc71', banking:'#f39c12', bankWallet:'#f39c12', bankClaim:'#f39c12',
+  pixelia:'#9b59b6', curriculum:'#1abc9c', aiExchange:'#3498db', tombstone:'#7f8c8d',
+  parliamentTerm:'#8e44ad', parliamentProposal:'#8e44ad', parliamentLaw:'#8e44ad',
+  parliamentCandidature:'#8e44ad', parliamentRevocation:'#8e44ad',
+  courtsCase:'#c0392b', courtsEvidence:'#c0392b', courtsAnswer:'#c0392b',
+  courtsVerdict:'#c0392b', courtsSettlement:'#c0392b', courtsNomination:'#c0392b',
+  map:'#27ae60', mapMarker:'#27ae60',
+  shop:'#e67e22', shopProduct:'#e67e22',
+  pad:'#2ecc71', chat:'#3498db', gameScore:'#f39c12',
+  calendar:'#e74c3c'
+};
+
+const renderBlockDiagram = (blocks, qs) => {
+  const last2 = blocks.slice(0, 2);
+  if (!last2.length) return null;
+
+  return div({ class: 'block-diagram-section' },
+    h3({ class: 'block-diagram-title' }, i18n.blockchainLatestDatagram || 'Latest Datagram'),
+    ...last2.map(block => {
+      const ts = moment(block.ts).format('YYYY-MM-DD HH:mm:ss');
+      const typeLabel = (FILTER_LABELS[block.type] || block.type).toUpperCase();
+      const color = TYPE_COLORS[block.type] || '#95a5a6';
+      const shortId = block.id.length > 20 ? block.id.slice(0, 10) + '…' + block.id.slice(-8) : block.id;
+      const shortAuthor = block.author.length > 20 ? block.author.slice(0, 10) + '…' + block.author.slice(-8) : block.author;
+      const contentKeys = Object.keys(block.content || {}).filter(k => k !== 'type').join(', ');
+      const flags = [
+        block.isTombstoned ? 'TOMBSTONED' : null,
+        block.isReplaced ? 'REPLACED' : null,
+        block.content?.replaces ? 'EDIT' : null
+      ].filter(Boolean).join(' | ') || '—';
+
+      const datagramQs = qs ? `${qs}&view=datagram` : '?view=datagram';
+      return a({ href: `/blockexplorer/block/${encodeURIComponent(block.id)}${datagramQs}`, class: 'block-diagram-link' },
+        div({ class: 'block-diagram', style: `border-color:${color};` },
+          div({ class: 'block-diagram-ruler', style: `border-bottom-color:${color};` },
+            span('0'), span('4'), span('8'), span('16'), span('24'), span('31')
+          ),
+          div({ class: 'block-diagram-grid' },
+            div({ class: 'block-diagram-cell bd-seq' },
+              span({ class: 'bd-label' }, 'SEQ:'),
+              span({ class: 'bd-value' }, String(block.content?.sequence || '—'))
+            ),
+            div({ class: 'block-diagram-cell bd-type' },
+              span({ class: 'bd-label' }, 'TYPE:'),
+              span({ class: 'bd-value' }, typeLabel)
+            ),
+            div({ class: 'block-diagram-cell bd-ts' },
+              span({ class: 'bd-label' }, 'TIMESTAMP:'),
+              span({ class: 'bd-value' }, ts)
+            ),
+            div({ class: 'block-diagram-cell bd-id' },
+              span({ class: 'bd-label' }, 'BLOCK ID:'),
+              span({ class: 'bd-value' }, shortId)
+            ),
+            div({ class: 'block-diagram-cell bd-author' },
+              span({ class: 'bd-label' }, 'AUTHOR:'),
+              span({ class: 'bd-value' }, shortAuthor)
+            ),
+            div({ class: 'block-diagram-cell bd-flags' },
+              span({ class: 'bd-label' }, 'FLAGS:'),
+              span({ class: 'bd-value' }, flags)
+            ),
+            div({ class: 'block-diagram-cell bd-ctype' },
+              span({ class: 'bd-label' }, 'CONTENT.TYPE:'),
+              span({ class: 'bd-value' }, block.content?.type || '—')
+            ),
+            div({ class: 'block-diagram-cell bd-data' },
+              span({ class: 'bd-label' }, 'CONTENT:'),
+              span({ class: 'bd-value' }, contentKeys || '—')
+            )
+          )
+        )
+      );
+    })
+  );
+};
+
+const renderSingleBlockView = (block, filter = 'recent', userId, search = {}, viewMode = 'block', restricted = false) => {
+  if (!block) {
+    return template(
+      i18n.blockchain,
+      section(
+        div({ class: 'tags-header' },
+          h2(i18n.blockchain),
+          p(i18n.blockchainDescription)
+        ),
+        p(i18n.blockchainNoBlocks || 'No blocks')
+      )
+    );
+  }
+
+  const qs = toQueryString(filter, search);
+  const isDatagram = viewMode === 'datagram';
+
+  const blockContent = restricted
+    ? div(
+        div({ class: 'block-single' },
+          div({ class: 'block-row block-row--meta' },
+            span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockID}:`),
+            span({ class: 'blockchain-card-value' }, block.id)
+          ),
+          div({ class: 'block-row block-row--meta' },
+            span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockTimestamp}:`),
+            span({ class: 'blockchain-card-value' }, moment(block.ts).format('YYYY-MM-DDTHH:mm:ss.SSSZ')),
+            span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockType}:`),
+            span({ class: 'blockchain-card-value' }, (FILTER_LABELS[block.type]||block.type).toUpperCase())
+          )
+        ),
+        div({ class: 'block-row block-row--content' },
+          p({ class: 'access-denied-msg' }, i18n.blockAccessRestricted)
+        )
+      )
+    : isDatagram
+      ? renderBlockDiagram([block], qs)
+      : div(
+          div({ class: 'block-single' },
+            div({ class: 'block-row block-row--meta' },
+              span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockID}:`),
+              span({ class: 'blockchain-card-value' }, block.id)
+            ),
+            div({ class: 'block-row block-row--meta' },
+              span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockTimestamp}:`),
+              span({ class: 'blockchain-card-value' }, moment(block.ts).format('YYYY-MM-DDTHH:mm:ss.SSSZ')),
+              span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockType}:`),
+              span({ class: 'blockchain-card-value' }, (FILTER_LABELS[block.type]||block.type).toUpperCase())
+            ),
+            div({ class: 'block-row block-row--meta block-row--meta-spaced' },
+              a({ href:`/author/${encodeURIComponent(block.author)}`, class:'block-author user-link' }, block.author)
+            )
+          ),
+          div({ class:'block-row block-row--content' },
+            div({ class:'block-content-preview' },
+              block.content && typeof block.content.encryptedPayload === 'string'
+                ? div({ class: 'encrypted-payload-box' },
+                    p({ class: 'encrypted-label' }, `[${i18n.bxEncrypted || 'ENCRYPTED'}]`),
+                    p({ class: 'encrypted-hex-label' }, i18n.bxEncryptedHexLabel || 'Ciphertext (preview)'),
+                    pre({ class: 'json-content' }, String(block.content.encryptedPayload).slice(0, 128) + (String(block.content.encryptedPayload).length > 128 ? '…' : ''))
+                  )
+                : pre({ class:'json-content' }, JSON.stringify(block.content,null,2))
+            )
+          )
+        );
+
+  return template(
     i18n.blockchain,
     section(
       div({ class: 'tags-header' },
@@ -102,40 +292,23 @@ const renderSingleBlockView = (block, filter) =>
         p(i18n.blockchainDescription)
       ),
       div({ class: 'mode-buttons-row' },
-        div({ style: 'display:flex;flex-direction:column;gap:8px;' },
-          generateFilterButtons(BASE_FILTERS, filter, '/blockexplorer')
+        div({ class: 'filter-column' },
+          generateFilterButtons(BASE_FILTERS, filter, '/blockexplorer', search)
         ),
-        div({ style: 'display:flex;flex-direction:column;gap:8px;' },
-          generateFilterButtons(CAT_BLOCK1, filter, '/blockexplorer'),
-          generateFilterButtons(CAT_BLOCK2, filter, '/blockexplorer')
+        div({ class: 'filter-column' },
+          generateFilterButtons(CAT_BLOCK1, filter, '/blockexplorer', search),
+          generateFilterButtons(CAT_BLOCK2, filter, '/blockexplorer', search)
         ),
-        div({ style: 'display:flex;flex-direction:column;gap:8px;' },
-          generateFilterButtons(CAT_BLOCK3, filter, '/blockexplorer'),
-          generateFilterButtons(CAT_BLOCK4, filter, '/blockexplorer')
+        div({ class: 'filter-column' },
+          generateFilterButtons(CAT_BLOCK3, filter, '/blockexplorer', search),
+          generateFilterButtons(CAT_BLOCK4, filter, '/blockexplorer', search)
         )
       ),
-      div({ class: 'block-single' },
-        div({ class: 'block-row block-row--meta' },
-          span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockID}:`),
-          span({ class: 'blockchain-card-value' }, block.id)
-        ),
-        div({ class: 'block-row block-row--meta' },
-          span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockTimestamp}:`),
-          span({ class: 'blockchain-card-value' }, moment(block.ts).format('YYYY-MM-DDTHH:mm:ss.SSSZ')),
-          span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockType}:`),
-          span({ class: 'blockchain-card-value' }, (FILTER_LABELS[block.type]||block.type).toUpperCase())
-        ),
-        div({ class: 'block-row block-row--meta', style:'margin-top:8px;' },
-          a({ href:`/author/${encodeURIComponent(block.author)}`, class:'block-author user-link' }, block.author)
-        )
-      ),
-      div({ class:'block-row block-row--content' },
-        div({ class:'block-content-preview' },
-          pre({ class:'json-content' }, JSON.stringify(block.content,null,2))
-        )
-      ),
+      blockContent,
       div({ class:'block-row block-row--back' },
         form({ method:'GET', action:'/blockexplorer' },
+          input({ type: 'hidden', name: 'filter', value: filter }),
+          ...hiddenSearchInputs(search),
           button({ type:'submit', class:'filter-btn' }, `← ${i18n.blockchainBack}`)
         ),
         !block.isTombstoned && !block.isReplaced && getViewDetailsAction(block.type, block) ?
@@ -143,16 +316,26 @@ const renderSingleBlockView = (block, filter) =>
             button({ type:'submit', class:'filter-btn' }, i18n.visitContent)
           )
         : (block.isTombstoned || block.isReplaced) ?
-          div({ class: 'deleted-label', style: 'color:#b00;font-weight:bold;margin-top:8px;' },
+          div({ class: 'deleted-label' },
             i18n.blockchainContentDeleted || "This content has been deleted."
           )
         : null
       )
     )
   );
+};
 
-const renderBlockchainView = (blocks, filter, userId) =>
-  template(
+const renderBlockchainView = (blocks, filter, userId, search = {}) => {
+  const s = search || {};
+  const authorVal = String(s.author || '');
+  const idVal = String(s.id || '');
+  const fromVal = toDatetimeLocal(s.from);
+  const toVal = toDatetimeLocal(s.to);
+
+  const shown = filterBlocks(blocks, filter, userId);
+  const qs = toQueryString(filter, s);
+
+  return template(
     i18n.blockchain,
     section(
       div({ class:'tags-header' },
@@ -160,21 +343,41 @@ const renderBlockchainView = (blocks, filter, userId) =>
         p(i18n.blockchainDescription)
       ),
       div({ class:'mode-buttons-row' },
-        div({ style:'display:flex;flex-direction:column;gap:8px;' },
-          generateFilterButtons(BASE_FILTERS,filter,'/blockexplorer')
+        div({ class: 'filter-column' },
+          generateFilterButtons(BASE_FILTERS, filter, '/blockexplorer', s)
         ),
-        div({ style:'display:flex;flex-direction:column;gap:8px;' },
-          generateFilterButtons(CAT_BLOCK1,filter,'/blockexplorer'),
-          generateFilterButtons(CAT_BLOCK2,filter,'/blockexplorer')
+        div({ class: 'filter-column' },
+          generateFilterButtons(CAT_BLOCK1, filter, '/blockexplorer', s),
+          generateFilterButtons(CAT_BLOCK2, filter, '/blockexplorer', s)
         ),
-        div({ style:'display:flex;flex-direction:column;gap:8px;' },
-          generateFilterButtons(CAT_BLOCK3,filter,'/blockexplorer'),
-          generateFilterButtons(CAT_BLOCK4,filter,'/blockexplorer')
+        div({ class: 'filter-column' },
+          generateFilterButtons(CAT_BLOCK3, filter, '/blockexplorer', s),
+          generateFilterButtons(CAT_BLOCK4, filter, '/blockexplorer', s)
         )
       ),
-      filterBlocks(blocks,filter,userId).length===0
+	div({ class: 'blockexplorer-search' },
+	  form({ method: 'GET', action: '/blockexplorer', class: 'blockexplorer-search-form' },
+	    input({ type: 'hidden', name: 'filter', value: filter }),
+	    div({ class: 'blockexplorer-search-row' },
+	      div({ class: 'blockexplorer-search-pair' },
+		input({ type: 'text', name: 'id', value: idVal, placeholder: i18n.blockchainBlockID, class: 'blockexplorer-search-input' }),
+		input({ type: 'text', name: 'author', value: authorVal, placeholder: i18n.courtsJudgeIdPh, class: 'blockexplorer-search-input' })
+	      ),
+	      div({ class: 'blockexplorer-search-dates' },
+		input({ type: 'datetime-local', name: 'from', value: fromVal, class: 'blockexplorer-search-input' }),
+		input({ type: 'datetime-local', name: 'to', value: toVal, class: 'blockexplorer-search-input' })
+	      ),
+	      div({ class: 'blockexplorer-search-actions' },
+		button({ type: 'submit', class: 'filter-box__button' }, i18n.searchSubmit)
+	      )
+	    )
+	  )
+	),
+      renderBlockDiagram(shown, qs),
+      h2({ class: 'block-diagram-title' }, 'Blockchain Blocks'),
+      shown.length === 0
         ? div(p(i18n.blockchainNoBlocks))
-        : filterBlocks(blocks,filter,userId)
+        : shown
             .sort((a,b)=>{
               const ta = a.type==='market'&&a.content.updatedAt
                 ? new Date(a.content.updatedAt).getTime()
@@ -187,13 +390,14 @@ const renderBlockchainView = (blocks, filter, userId) =>
             .map(block=>
               div({ class:'block' },
                 div({ class:'block-buttons' },
-                  a({ href:`/blockexplorer/block/${encodeURIComponent(block.id)}`, class:'btn-singleview', title:i18n.blockchainDetails },'⦿'),
+                  block.restricted ? null : a({ href:`/blockexplorer/block/${encodeURIComponent(block.id)}${qs}`, class:'btn-singleview', title:i18n.blockchainDetails }, '⦿'),
+                  block.restricted ? null : a({ href:`/blockexplorer/block/${encodeURIComponent(block.id)}${qs}&view=datagram`, class:'btn-singleview btn-datagram', title:i18n.blockchainDatagram || 'Datagram' }, '⊞'),
                   !block.isTombstoned && !block.isReplaced && getViewDetailsAction(block.type, block) ?
                     form({ method:'GET', action:getViewDetailsAction(block.type, block) },
                       button({ type:'submit', class:'filter-btn' }, i18n.visitContent)
                     )
                   : (block.isTombstoned || block.isReplaced) ?
-                    div({ class: 'deleted-label', style: 'color:#b00;font-weight:bold;margin-top:8px;' },
+                    div({ class: 'deleted-label' },
                       i18n.blockchainContentDeleted || "This content has been deleted."
                     )
                   : null
@@ -210,6 +414,7 @@ const renderBlockchainView = (blocks, filter, userId) =>
             )
     )
   );
+};
 
 module.exports = { renderBlockchainView, renderSingleBlockView };
 

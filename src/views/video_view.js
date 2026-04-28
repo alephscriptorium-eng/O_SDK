@@ -11,6 +11,7 @@ const {
   video: videoHyperaxe,
   span,
   textarea,
+  label,
   select,
   option
 } = require("../server/node_modules/hyperaxe");
@@ -18,7 +19,8 @@ const {
 const moment = require("../server/node_modules/moment");
 const { template, i18n } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
-const { renderUrl } = require("../backend/renderUrl");
+const { renderUrl } = require("../backend/renderUrl")
+const { renderMapLocationVisitLabel } = require("./maps_view");
 const opinionCategories = require("../backend/opinion_categories");
 
 const userId = config.keys.id;
@@ -128,16 +130,16 @@ const renderVideoCommentsSection = (videoId, comments = [], returnTo = null) => 
       { class: "comment-form-wrapper" },
       h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
       form(
-        { method: "POST", action: `/videos/${encodeURIComponent(videoId)}/comments`, class: "comment-form" },
+        { method: "POST", action: `/videos/${encodeURIComponent(videoId)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
         returnTo ? input({ type: "hidden", name: "returnTo", value: returnTo }) : null,
         textarea({
           id: "comment-text",
           name: "text",
-          required: true,
           rows: 4,
           class: "comment-textarea",
           placeholder: i18n.voteNewCommentPlaceholder
         }),
+        div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
         br(),
         button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
       )
@@ -204,8 +206,6 @@ const renderVideoList = (videos, filter, params = {}) => {
           ),
           title ? h2(title) : null,
           renderVideoPlayer(videoObj),
-          safeText(videoObj.description) ? p(...renderUrl(videoObj.description)) : null,
-          renderTags(videoObj.tags),
           div(
             { class: "card-comments-summary" },
             span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
@@ -221,6 +221,7 @@ const renderVideoList = (videos, filter, params = {}) => {
               button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
             )
           ),
+          renderMapLocationVisitLabel(videoObj.mapUrl),
           br(),
           (() => {
             const createdTs = videoObj.createdAt ? new Date(videoObj.createdAt).getTime() : NaN;
@@ -238,22 +239,7 @@ const renderVideoList = (videos, filter, params = {}) => {
                   )
                 : null
             );
-          })(),
-          div(
-            { class: "voting-buttons" },
-            opinionCategories.map((category) =>
-              form(
-                { method: "POST", action: `/videos/opinions/${encodeURIComponent(videoObj.key)}/${category}` },
-                input({ type: "hidden", name: "returnTo", value: returnTo }),
-                button(
-                  { class: "vote-btn" },
-                  `${i18n[`vote${category.charAt(0).toUpperCase() + category.slice(1)}`] || category} [${
-                    videoObj.opinions?.[category] || 0
-                  }]`
-                )
-              )
-            )
-          )
+          })()
         );
       })
     : p(params.q ? i18n.videoNoMatch : i18n.noVideos);
@@ -276,6 +262,18 @@ const renderVideoForm = (filter, videoId, videoToEdit, params = {}) => {
       input({ type: "file", name: "video", required: filter !== "edit" }),
       br(),
       br(),
+      span(i18n.videoTitleLabel),
+      br(),
+      input({ type: "text", name: "title", placeholder: i18n.videoTitlePlaceholder, value: videoToEdit?.title || "" }),
+      br(),
+      span(i18n.videoDescriptionLabel),
+      br(),
+      textarea({ name: "description", placeholder: i18n.videoDescriptionPlaceholder, rows: "4" }, videoToEdit?.description || ""),
+      br(),
+      span(i18n.mapLocationTitle || "Map Location"),
+      br(),
+      input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: videoToEdit?.mapUrl || "" }),
+      br(),
       span(i18n.videoTagsLabel),
       br(),
       input({
@@ -284,16 +282,6 @@ const renderVideoForm = (filter, videoId, videoToEdit, params = {}) => {
         placeholder: i18n.videoTagsPlaceholder,
         value: safeArr(videoToEdit?.tags).join(", ")
       }),
-      br(),
-      br(),
-      span(i18n.videoTitleLabel),
-      br(),
-      input({ type: "text", name: "title", placeholder: i18n.videoTitlePlaceholder, value: videoToEdit?.title || "" }),
-      br(),
-      br(),
-      span(i18n.videoDescriptionLabel),
-      br(),
-      textarea({ name: "description", placeholder: i18n.videoDescriptionPlaceholder, rows: "4" }, videoToEdit?.description || ""),
       br(),
       br(),
       button({ type: "submit" }, filter === "edit" ? i18n.videoUpdateButton : i18n.videoCreateButton)
@@ -424,6 +412,8 @@ exports.singleVideoView = async (videoObj, filter = "all", comments = [], params
         renderVideoPlayer(videoObj),
         safeText(videoObj.description) ? p(...renderUrl(videoObj.description)) : null,
         renderTags(videoObj.tags),
+        br(),
+        renderMapLocationVisitLabel(videoObj.mapUrl),
         br(),
         (() => {
           const createdTs = videoObj.createdAt ? new Date(videoObj.createdAt).getTime() : NaN;
