@@ -1,0 +1,1 @@
+https://github.com/epsylon/ecoin/releases/download/amd64/ecoin_0.0.4-1_amd64.deb

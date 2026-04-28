@@ -7,16 +7,21 @@ const log = (msg) => console.log(`[OASIS] [PATCH] ${msg}`);
 const ssbRefPath = path.resolve(__dirname, '../src/server/node_modules/ssb-ref/index.js');
 if (fs.existsSync(ssbRefPath)) {
   const data = fs.readFileSync(ssbRefPath, 'utf8');
-  const patched = data.replace(
-    /exports\.parseAddress\s*=\s*deprecate\([^)]*\)/,
-    'exports.parseAddress = parseAddress'
-  );
-  if (patched !== data) {
-    fs.writeFileSync(ssbRefPath, patched);
-    log('Patched ssb-ref to remove deprecated usage of parseAddress');
-  } else {
-    log('ssb-ref patch skipped: target line not found');
+  const alreadyClean = /exports\.parseAddress\s*=\s*parseAddress/.test(data);
+  if (!alreadyClean) {
+    const patched = data.replace(
+      /exports\.parseAddress\s*=\s*deprecate\(\s*['"][^'"]*['"]\s*,\s*parseAddress\s*\)/,
+      'exports.parseAddress = parseAddress'
+    );
+    if (patched !== data) {
+      fs.writeFileSync(ssbRefPath, patched);
+      log('Patched ssb-ref to remove deprecated usage of parseAddress');
+    } else {
+      log('ssb-ref patch skipped: unexpected parseAddress export format');
+    }
   }
+} else {
+  log('ssb-ref patch skipped: file not found at ' + ssbRefPath);
 }
 
 // === Patch ssb-blobs ===
@@ -27,7 +32,7 @@ if (fs.existsSync(ssbBlobsPath)) {
   const marker = 'want: function (id, cb)';
   const startIndex = data.indexOf(marker);
   if (startIndex !== -1) {
-    const endIndex = data.indexOf('},', startIndex); // end of function block
+    const endIndex = data.indexOf('},', startIndex);
     if (endIndex !== -1) {
       const before = data.slice(0, startIndex);
       const after = data.slice(endIndex + 2);

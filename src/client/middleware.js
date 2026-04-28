@@ -47,15 +47,27 @@ module.exports = ({ host, port, middleware, allowHost }) => {
     }
     console.error(err);
     if (ctx && isValidRequest(ctx.request)) {
-      err.message = err.stack;
+      err.message = err.message || 'Internal server error';
       err.expose = true;
     }
     return null;
   });
 
   app.use(mount("/assets", assets));
-  
-  // pdf viewer
+
+  const maptiles = new Koa();
+  maptiles.use(koaStatic(join(__dirname, "..", "maps", "tiles")));
+  app.use(mount("/maptiles", maptiles));
+
+  const mapcache = new Koa();
+  mapcache.use(koaStatic(join(__dirname, "..", "maps", "cache")));
+  app.use(mount("/mapcache", mapcache));
+
+
+  const gamesStatic = new Koa();
+  gamesStatic.use(koaStatic(join(__dirname, "..", "games")));
+  app.use(mount("/game-assets", gamesStatic));
+
   app.use(mount("/js", koaStatic(path.join(__dirname, 'public/js'))));
   app.use(koaStatic(path.join(__dirname, 'public')));
 
@@ -64,25 +76,26 @@ module.exports = ({ host, port, middleware, allowHost }) => {
     //console.log("Requesting:", ctx.path); // uncomment to check for HTTP requests
     
     const csp = [
-      "default-src 'self' blob:", 
-      "img-src 'self'",
-      "form-action 'self'",
-      "media-src 'self'",
+      "default-src 'self'",
+      "script-src 'self' http://localhost:3000/js",
       "style-src 'self'",
-      "script-src 'self' http://localhost:3000/js",  // pdfviewer
+      "img-src 'self'",
+      "media-src 'self' blob:",
+      "worker-src 'self' blob:",
+      "frame-src 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
+      "base-uri 'none'",
+      "frame-ancestors 'none'"
     ].join("; ");
 
     ctx.set("Content-Security-Policy", csp);
     ctx.set("X-Frame-Options", "SAMEORIGIN");
 
-    const isBlobPath = ctx.path.startsWith("/blob/");
-
-    if (isBlobPath === false) {
-      ctx.set("X-Content-Type-Options", "nosniff");
-    }
+    ctx.set("X-Content-Type-Options", "nosniff");
 
     ctx.set("Referrer-Policy", "same-origin");
-    ctx.set("Feature-Policy", "speaker 'self'");
+    ctx.set("Permissions-Policy", "speaker=(self)");
 
     const validHostsString = validHosts.join(" or ");
 

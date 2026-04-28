@@ -6,6 +6,8 @@ const moment = require("../server/node_modules/moment");
 const { template, i18n } = require('./main_views');
 const { config } = require('../server/SSB_server.js');
 const { renderUrl } = require('../backend/renderUrl');
+const { renderTextWithStyles } = require('../backend/renderTextWithStyles');
+const { sanitizeHtml } = require('../backend/sanitizeHtml');
 
 const userId = config.keys.id;
 const BASE_FILTERS = ['hot','all','mine','recent','top'];
@@ -181,7 +183,10 @@ const renderForumList = (forums, currentFilter) =>
                 href: `/forum/${encodeURIComponent(f.key)}`
               }, f.title)
             ),
-            div({ class: 'forum-body' }, ...renderUrl(f.text || '')),
+	    div({
+	      class: 'forum-body',
+	      innerHTML: sanitizeHtml(renderTextWithStyles(f.text || ''))
+	    }),
             div({ class: 'forum-meta' },
               span({ class: 'forum-positive-votes' },
                 `▲: ${f.positiveVotes || 0}`),
@@ -190,8 +195,8 @@ const renderForumList = (forums, currentFilter) =>
               span({ class: 'forum-participants' },
                 `${i18n.forumParticipants.toUpperCase()}: ${f.participants?.length || 1}`),
               span({ class: 'forum-messages' },
-                `${i18n.forumMessages.toUpperCase()}: ${f.messagesCount - 1}`),
-              form({ method: 'GET', action: `/forum/${encodeURIComponent(f.key)}`, style: 'visit-forum-form' },
+                `${i18n.forumMessages.toUpperCase()}: ${(f.messagesCount || 1) - 1}`),
+              form({ method: 'GET', action: `/forum/${encodeURIComponent(f.key)}`, class: 'visit-forum-form' },
                 button({ type: 'submit', class: 'filter-btn' }, i18n.forumVisitButton)
               )
             ),
@@ -208,7 +213,7 @@ const renderForumList = (forums, currentFilter) =>
               ? div({ class: 'forum-owner-actions' },
                 form({
                   method: 'POST',
-                  action: `/forum/delete/${f.key}`,
+                  action: `/forum/delete/${encodeURIComponent(f.key)}`,
                   class: 'forum-delete-form'
                 },
                   button({ type: 'submit', class: 'delete-btn' },
@@ -248,7 +253,7 @@ exports.forumView = async (forums, currentFilter) => {
       currentFilter === 'create'
         ? renderForumForm()
         : renderForumList(
-          getFilteredForums(currentFilter || 'hot', forums),
+          getFilteredForums(currentFilter || 'all', forums),
           currentFilter
         )
     )
@@ -263,7 +268,7 @@ exports.singleForumView = async (forum, messagesData, currentFilter) => {
         h2(i18n.forumTitle),
         p(i18n.forumDescription)
       ),
-      div({ class: 'mode-buttons' },
+       div({ class: 'mode-buttons-cols' },
         generateFilterButtons(BASE_FILTERS, currentFilter, '/forum', {
           hot: i18n.forumFilterHot,
           all: i18n.forumFilterAll,
@@ -313,12 +318,10 @@ exports.singleForumView = async (forum, messagesData, currentFilter) => {
               style: 'margin-left:12px;'
             }, forum.author)
           ),
-          div(
-            ...(forum.text || '').split('\n')
-              .map(l => l.trim())
-              .filter(l => l)
-              .map(l => p(...renderUrl(l)))
-          ),
+	  div({
+	    class: 'forum-body',
+	    innerHTML: sanitizeHtml(renderTextWithStyles(forum.text || ''))
+	  }),
           div({ class: 'forum-meta' },
             span({ class: 'votes-count' },
               `▲: ${messagesData.positiveVotes}`),

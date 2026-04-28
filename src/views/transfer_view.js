@@ -61,9 +61,10 @@ const renderConfirmationsBar = (confirmedCount, required) => {
   const cc = Math.max(0, Number(confirmedCount || 0))
   return div(
     { class: "confirmations-block" },
-      { class: "card-field" },
+    div({ class: "card-field" },
       span({ class: "card-label" }, `${i18n.transfersConfirmations}: `),
-      span({ class: "card-value" }, `${cc}/${req}`),
+      span({ class: "card-value" }, `${cc}/${req}`)
+    ),
     progress({ class: "confirmations-progress", value: cc, max: req })
   )
 }
@@ -104,7 +105,6 @@ const renderTransferTopbar = (transfer, filter, params = {}) => {
 
   const chips = []
   if (isExpired) chips.push(span({ class: "chip chip-warn" }, i18n.transfersExpiredBadge))
-  if (isExpiringSoon) chips.push(span({ class: "chip chip-warn" }, i18n.transfersExpiringSoonBadge))
 
   const leftActions = []
 
@@ -159,10 +159,11 @@ const generateTransferCard = (transfer, filter, params = {}) => {
   const isUnconfirmed = String(transfer.status || "").toUpperCase() === "UNCONFIRMED"
   const dl = transfer.deadline ? moment(transfer.deadline) : null
   const isExpired = dl && dl.isValid() ? dl.isBefore(moment()) : false
+  const tags = Array.isArray(transfer.tags) ? transfer.tags.map(t => String(t).toUpperCase()) : []
+  const isUbi = tags.includes("UBI")
   const showConfirm = isUnconfirmed && transfer.to === userId && !confirmedBy.includes(userId) && !isExpired
 
   const topbar = renderTransferTopbar(transfer, filter, params)
-  const tagsNode = renderTags(transfer.tags)
 
   return div(
     { class: "transfer-item" },
@@ -170,14 +171,11 @@ const generateTransferCard = (transfer, filter, params = {}) => {
       { class: "card-section transfer" },
       topbar ? topbar : null,
       renderCardField(`${i18n.transfersConcept}:`, transfer.concept || ""),
-      renderCardField(`${i18n.transfersDeadline}:`, dl && dl.isValid() ? dl.format("YYYY-MM-DD HH:mm") : ""),
+      isUbi ? null : renderCardField(`${i18n.transfersDeadline}:`, dl && dl.isValid() ? dl.format("YYYY-MM-DD HH:mm") : ""),
       renderCardField(`${i18n.transfersStatus}:`, i18n[statusKey(transfer.status)] || String(transfer.status || "")),
-      renderCardField(`${i18n.transfersAmount}:`, `${fmtAmount(transfer.amount)} ECO`),
-      renderCardField(`${i18n.transfersFrom}:`, a({ class: "user-link", href: `/author/${encodeURIComponent(transfer.from)}` }, transfer.from)),
-      renderCardField(`${i18n.transfersTo}:`, a({ class: "user-link", href: `/author/${encodeURIComponent(transfer.to)}` }, transfer.to)),
-      br(),
+      br,
+      div({ class: "transfer-amount-highlight" }, renderCardField(`${i18n.transfersAmount}:`, `${fmtAmount(transfer.amount)} ECO`)),
       renderConfirmationsBar(confirmedCount, required),
-      br(),
       showConfirm
         ? form(
             { method: "POST", action: `/transfers/confirm/${encodeURIComponent(transfer.id)}` },
@@ -187,26 +185,11 @@ const generateTransferCard = (transfer, filter, params = {}) => {
             br()
           )
         : null,
-      tagsNode ? tagsNode : null,
-      tagsNode ? br() : null,
       p(
         { class: "card-footer" },
         span({ class: "date-link" }, `${moment(transfer.createdAt).format("YYYY-MM-DD HH:mm")} ${i18n.performed} `),
         a({ href: `/author/${encodeURIComponent(transfer.from)}`, class: "user-link" }, `${transfer.from}`),
         renderUpdatedLabel(transfer.createdAt, transfer.updatedAt)
-      ),
-      div(
-        { class: "voting-buttons transfer-voting-buttons" },
-        opinionCategories.map(category =>
-          form(
-            { method: "POST", action: `/transfers/opinions/${encodeURIComponent(transfer.id)}/${category}` },
-            input({ type: "hidden", name: "returnTo", value: returnTo }),
-            button(
-              { class: "vote-btn" },
-              `${i18n[`vote${category.charAt(0).toUpperCase() + category.slice(1)}`] || category} [${transfer.opinions?.[category] || 0}]`
-            )
-          )
-        )
       )
     )
   )
@@ -217,6 +200,7 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
 
   const title =
     normalizedFilter === "mine"        ? i18n.transfersMineSectionTitle :
+    normalizedFilter === "ubi"         ? i18n.transfersUBISectionTitle :
     normalizedFilter === "pending"     ? i18n.transfersPendingSectionTitle :
     normalizedFilter === "top"         ? i18n.transfersTopSectionTitle :
     normalizedFilter === "unconfirmed" ? i18n.transfersUnconfirmedSectionTitle :
@@ -237,6 +221,7 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
 
   let filtered =
     normalizedFilter === "mine"        ? list.filter(t => t.from === userId || t.to === userId) :
+    normalizedFilter === "ubi"         ? list.filter(t => safeArr(t.tags).some(tag => String(tag).toUpperCase() === "UBI")) :
     normalizedFilter === "pending"     ? list.filter(t => String(t.status || "").toUpperCase() === "UNCONFIRMED" && t.to === userId && !safeArr(t.confirmedBy).includes(userId)) :
     normalizedFilter === "top"         ? list.filter(t => String(t.status || "").toUpperCase() === "CLOSED") :
     normalizedFilter === "unconfirmed" ? list.filter(t => String(t.status || "").toUpperCase() === "UNCONFIRMED") :
@@ -285,6 +270,7 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
           input({ type: "hidden", name: "sort", value: sort }),
           button({ type: "submit", name: "filter", value: "all", class: normalizedFilter === "all" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterAll),
           button({ type: "submit", name: "filter", value: "mine", class: normalizedFilter === "mine" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterMine),
+          button({ type: "submit", name: "filter", value: "ubi", class: normalizedFilter === "ubi" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterUBI),
           button({ type: "submit", name: "filter", value: "market", class: normalizedFilter === "market" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterMarket),
           button({ type: "submit", name: "filter", value: "pending", class: normalizedFilter === "pending" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterPending),
           button({ type: "submit", name: "filter", value: "unconfirmed", class: normalizedFilter === "unconfirmed" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterUnconfirmed),
@@ -306,11 +292,9 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
               br(),
               input({ type: "text", name: "to", required: true, pattern: "^@[A-Za-z0-9+/]+={0,2}\\.ed25519$", title: i18n.transfersToUserValidation, value: transferToEdit.to || "" }),
               br(),
-              br(),
               label(i18n.transfersConcept),
               br(),
               input({ type: "text", name: "concept", required: true, value: transferToEdit.concept || "" }),
-              br(),
               br(),
               label(i18n.transfersAmount),
               br(),
@@ -378,6 +362,8 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
   const isUnconfirmed = String(transfer.status || "").toUpperCase() === "UNCONFIRMED"
   const dl = transfer.deadline ? moment(transfer.deadline) : null
   const isExpired = dl && dl.isValid() ? dl.isBefore(moment()) : false
+  const tags = Array.isArray(transfer.tags) ? transfer.tags.map(t => String(t).toUpperCase()) : []
+  const isUbi = tags.includes("UBI")
   const showConfirm = isUnconfirmed && transfer.to === userId && !confirmedBy.includes(userId) && !isExpired
 
   const topbar = renderTransferTopbar(transfer, normalizedFilter, { ...params, q, sort, single: true })
@@ -396,6 +382,7 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
           input({ type: "hidden", name: "sort", value: sort }),
           button({ type: "submit", name: "filter", value: "all", class: normalizedFilter === "all" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterAll),
           button({ type: "submit", name: "filter", value: "mine", class: normalizedFilter === "mine" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterMine),
+          button({ type: "submit", name: "filter", value: "ubi", class: normalizedFilter === "ubi" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterUBI),
           button({ type: "submit", name: "filter", value: "market", class: normalizedFilter === "market" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterMarket),
           button({ type: "submit", name: "filter", value: "pending", class: normalizedFilter === "pending" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterPending),
           button({ type: "submit", name: "filter", value: "unconfirmed", class: normalizedFilter === "unconfirmed" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterUnconfirmed),
@@ -410,15 +397,15 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
         div(
           { class: "card-section transfer" },
           topbar ? topbar : null,
-          renderCardField(`${i18n.transfersConcept}:`, transfer.concept || ""),
-          renderCardField(`${i18n.transfersDeadline}:`, dl && dl.isValid() ? dl.format("YYYY-MM-DD HH:mm") : ""),
-          renderCardField(`${i18n.transfersStatus}:`, i18n[statusKey(transfer.status)] || String(transfer.status || "")),
-          renderCardField(`${i18n.transfersAmount}:`, `${fmtAmount(transfer.amount)} ECO`),
           renderCardField(`${i18n.transfersFrom}:`, a({ class: "user-link", href: `/author/${encodeURIComponent(transfer.from)}` }, transfer.from)),
           renderCardField(`${i18n.transfersTo}:`, a({ class: "user-link", href: `/author/${encodeURIComponent(transfer.to)}` }, transfer.to)),
-          br(),
+          br,
+          div({ class: "transfer-amount-highlight" }, renderCardField(`${i18n.transfersAmount}:`, `${fmtAmount(transfer.amount)} ECO`)),
+          renderCardField(`${i18n.transfersConcept}:`, transfer.concept || ""),
+          isUbi ? null : renderCardField(`${i18n.transfersDeadline}:`, dl && dl.isValid() ? dl.format("YYYY-MM-DD HH:mm") : ""),
+          renderCardField(`${i18n.transfersStatus}:`, i18n[statusKey(transfer.status)] || String(transfer.status || "")),
+          br,
           renderConfirmationsBar(confirmedCount, required),
-          br(),
           showConfirm
             ? form(
                 { method: "POST", action: `/transfers/confirm/${encodeURIComponent(transfer.id)}` },

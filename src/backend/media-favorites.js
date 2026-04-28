@@ -6,8 +6,14 @@ const FILE = path.join(__dirname, "../configs/media-favorites.json");
 const DEFAULT = {
   audios: [],
   bookmarks: [],
+  calendars: [],
+  chats: [],
   documents: [],
   images: [],
+  maps: [],
+  pads: [],
+  shops: [],
+  torrents: [],
   videos: []
 };
 

@@ -1,8 +1,23 @@
-const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, ul, li, table, thead, tbody, tr, th, td, progress } = require("../server/node_modules/hyperaxe")
+const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, ul, li, table, thead, tbody, tr, th, td, progress, video, audio } = require("../server/node_modules/hyperaxe")
 const { template, i18n } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderUrl } = require("../backend/renderUrl")
+const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel, renderMapEmbedWithZoom } = require("./maps_view")
+
+const renderMediaBlob = (value) => {
+  if (!value) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}` })
+  const mVideo = s.match(/\[video:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
+  if (mVideo) return video({ controls: true, class: 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}` })
+  const mAudio = s.match(/\[audio:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
+  if (mAudio) return audio({ controls: true, class: 'post-audio', src: `/blob/${encodeURIComponent(mAudio[1])}` })
+  const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
+  if (mImg) return img({ src: `/blob/${encodeURIComponent(mImg[1])}`, class: 'post-image' })
+  return null
+}
 
 const userId = config.keys.id
 
@@ -115,9 +130,6 @@ const renderBudget = (project) => {
   const pct = S.goal > 0 ? clamp(Math.round((S.assigned / S.goal) * 100), 0, 100) : 0
   return div(
     { class: `budget-summary${S.exceeded ? " over" : ""}` },
-    renderCardField(i18n.projectBudgetGoal + ":", `${S.goal} ECO`),
-    renderCardField(i18n.projectBudgetAssigned + ":", `${S.assigned} ECO`),
-    renderCardField(i18n.projectBudgetRemaining + ":", `${S.remaining} ECO`),
     S.goal > 0 ? renderProgressBlock(i18n.projectBudgetAssigned + ":", `${S.assigned}/${S.goal}`, pct, 100) : null,
     S.exceeded ? p({ class: "warning" }, i18n.projectBudgetOver) : null
   )
@@ -480,16 +492,17 @@ const renderProjectList = (projects, filter) => {
           { class: `project-card ${statusClass}` },
           topbar ? topbar : null,
           h2(pr.title),
-          pr.image ? div({ class: "activity-image-preview" }, img({ src: `/blob/${encodeURIComponent(pr.image)}` })) : null,
           safeText(pr.description) ? renderCardFieldRich(i18n.projectDescription + ":", renderUrl(pr.description)) : null,
-          renderCardField(i18n.projectStatus + ":", i18n["projectStatus" + statusUpper] || statusUpper),
+          pr.image ? div({ class: "activity-image-preview" }, renderMediaBlob(pr.image)) : null,
+          br(),
+          div({ class: "project-goal-highlight" }, renderCardField(i18n.projectGoal + ":", `${pr.goal} ECO`)),
+          div({ class: "project-goal-highlight" }, renderCardField(i18n.projectFollowers + ":", String(followersCount(pr)))),
           renderProgressBlock(i18n.projectProgress + ":", `${pct}%`, pct, 100),
-          renderCardField(i18n.projectGoal + ":", `${pr.goal} ECO`),
-          renderCardField(i18n.projectPledged + ":", `${pr.pledged || 0} ECO`),
           renderProgressBlock(i18n.projectFunding + ":", `${fundingPct}%`, fundingPct, 100),
-          renderCardField(i18n.projectMilestones + ":", `${mileDone}/${mileTotal}`),
-          renderCardField(i18n.projectFollowers + ":", String(followersCount(pr))),
-          renderCardField(i18n.projectBackers + ":", `${backersCount(pr)} · ${backersTotal(pr)} ECO`),
+            pr.mapUrl ? div({ class: "project-maploc" },
+            span({ class: "card-label" }, (i18n.mapLocationTitle || "Map Location") + ":"),
+            br(), br(),
+            a({ href: pr.mapUrl, class: "map-location-link" }, pr.mapUrl)) : null,
           isMineAuthor
             ? div(
                 { class: "project-admin-block" },
@@ -564,7 +577,6 @@ const renderProjectList = (projects, filter) => {
                 )
               )
             : null,
-            br(),
           div(
             { class: "card-comments-summary" },
             span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
@@ -604,21 +616,24 @@ const renderProjectForm = (project, mode) => {
       br(),
       input({ type: "text", name: "title", required: true, placeholder: i18n.projectTitlePlaceholder, value: pr.title || "" }),
       br(),
-      br(),
       label(i18n.projectDescription),
       br(),
       textarea({ name: "description", rows: "6", required: true, placeholder: i18n.projectDescriptionPlaceholder }, pr.description || ""),
       br(),
-      br(),
       label(i18n.projectImage),
       br(),
-      input({ type: "file", name: "image", accept: "image/*" }),
+      input({ type: "file", name: "image" }),
       br(),
-      pr.image ? img({ src: `/blob/${encodeURIComponent(pr.image)}`, class: "existing-image" }) : null,
+      pr.image ? renderMediaBlob(pr.image) : null,
       br(),
       label(i18n.projectGoal),
       br(),
       input({ type: "number", step: "0.01", min: "0.01", name: "goal", required: true, placeholder: i18n.projectGoalPlaceholder, value: pr.goal || "" }),
+      br(),
+      br(),
+      label(i18n.mapLocationTitle || "Map Location"),
+      br(),
+      input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: pr.mapUrl || "" }),
       br(),
       br(),
       label(i18n.projectDeadline),
@@ -631,11 +646,9 @@ const renderProjectForm = (project, mode) => {
       br(),
       input({ type: "text", name: "milestoneTitle", required: true, placeholder: i18n.projectMilestoneTitlePlaceholder }),
       br(),
-      br(),
       label(i18n.projectMilestoneDescription),
       br(),
       textarea({ name: "milestoneDescription", rows: "3", placeholder: i18n.projectMilestoneDescriptionPlaceholder }),
-      br(),
       br(),
       label(i18n.projectMilestoneTargetPercent),
       br(),
@@ -682,7 +695,7 @@ exports.projectsView = async (projectsOrForm, filter) => {
   )
 }
 
-exports.singleProjectView = async (project, filter, comments) => {
+exports.singleProjectView = async (project, filter, comments, params = {}) => {
   const pr = project || {}
   const f = String(filter || "ALL").toUpperCase()
   const isAuthor = pr.author === userId
@@ -716,30 +729,54 @@ exports.singleProjectView = async (project, filter, comments) => {
         topbar ? topbar : null,
         !isAuthor && safeArr(pr.followers).includes(userId) ? p({ class: "hint" }, i18n.projectYouFollowHint) : null,
         h2(pr.title),
-        pr.image ? div({ class: "activity-image-preview" }, img({ src: `/blob/${encodeURIComponent(pr.image)}` })) : null,
         safeText(pr.description) ? renderCardFieldRich(i18n.projectDescription + ":", renderUrl(pr.description)) : null,
+        pr.image ? renderMediaBlob(pr.image) : null,
+        renderMapEmbedWithZoom(params.mapData, pr.mapUrl, `/projects/${encodeURIComponent(pr.id || pr.key)}`, params.zoom),
+        div({ class: "project-goal-highlight" }, renderCardField(i18n.projectGoal + ":", `${pr.goal} ECO`)),
+        renderBackers(pr, f),
         renderCardField(i18n.projectStatus + ":", i18n["projectStatus" + statusUpper] || statusUpper),
+        br(),
         renderProgressBlock(i18n.projectProgress + ":", `${pct}%`, pct, 100),
-        renderCardField(i18n.projectGoal + ":", `${pr.goal} ECO`),
-        renderCardField(i18n.projectPledged + ":", `${pr.pledged || 0} ECO`),
         renderProgressBlock(i18n.projectFunding + ":", `${fundingPct}%`, fundingPct, 100),
-        div(
-          { class: "social-stats" },
-          renderCardField(i18n.projectFollowers + ":", String(followersCount(pr))),
-          renderCardField(i18n.projectBackers + ":", `${backersCount(pr)} · ${backersTotal(pr)} ECO`)
-        ),
         renderBudget(pr),
         renderMilestonesAndBounties(pr, f, isAuthor),
         renderFollowers(pr),
-        br(),
-        renderBackers(pr, f),
         renderPledgeBox(pr, f, isAuthor),
         div(
           { class: "card-footer" },
           span({ class: "date-link" }, `${moment(pr.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
           a({ href: `/author/${encodeURIComponent(pr.author)}`, class: "user-link" }, pr.author)
         )
-      )
+      ),
+      div(
+        { class: "comment-form-wrapper" },
+        h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
+        form(
+          { method: "POST", action: `/projects/${encodeURIComponent(pr.id || pr.key)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
+          textarea({ id: "comment-text", name: "text", rows: 4, class: "comment-textarea", placeholder: i18n.voteNewCommentPlaceholder }),
+          div({ class: "comment-file-upload" }, label(i18n.uploadMedia), br(),
+          input({ type: "file", name: "blob" })),
+          br(),
+          button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
+        )
+      ),
+      comments && comments.length
+        ? div(
+            { class: "comments-list" },
+            comments.map((c) => {
+              const author = c?.value?.author || ""
+              const ts = c?.value?.timestamp || c?.timestamp
+              const absDate = ts ? moment(ts).format("YYYY/MM/DD HH:mm:ss") : ""
+              const relDate = ts ? moment(ts).fromNow() : ""
+              return div(
+                { class: "comment-card" },
+                div({ class: "comment-header" }, a({ href: `/author/${encodeURIComponent(author)}`, class: "user-link" }, author)),
+                div({ class: "comment-date" }, span({ title: absDate }, relDate)),
+                div({ class: "comment-body" }, ...renderUrl(c?.value?.content?.text || ""))
+              )
+            })
+          )
+       : p({ class: "votations-no-comments" }, i18n.voteNoCommentsYet)
     )
   )
 }

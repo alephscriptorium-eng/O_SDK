@@ -3,6 +3,22 @@ const { template, i18n } = require('./main_views');
 const moment = require("../server/node_modules/moment");
 const { renderTextWithStyles } = require('../backend/renderTextWithStyles');
 const { renderUrl } = require('../backend/renderUrl');
+const { sanitizeHtml } = require('../backend/sanitizeHtml');
+const { config } = require("../server/SSB_server.js");
+const userId = config.keys.id;
+
+const decodeMaybe = (s) => {
+  try { return decodeURIComponent(String(s || '')); } catch { return String(s || ''); }
+};
+
+const rewriteHashtagLinks = (html) => {
+  const s = String(html || '');
+  return s.replace(/href=(["'])(?:https?:\/\/[^"']+)?\/hashtag\/([^"'?#]+)([^"']*)\1/g, (m, q, tag, rest) => {
+    const t = decodeMaybe(tag).replace(/^#/, '').trim().toLowerCase();
+    const href = `/search?query=%23${encodeURIComponent(t)}`;
+    return `href=${q}${href}${q}`;
+  });
+};
 
 const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = [], hashtag = null, results = {}, resultCount = "10" }) => {
   const searchInput = input({
@@ -16,8 +32,8 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
 
   const contentTypes = [
     "post", "about", "curriculum", "tribe", "market", "transfer", "feed", "votes",
-    "report", "task", "event", "bookmark", "image", "audio", "video", "document",
-    "bankWallet", "bankClaim", "project", "job", "forum", "vote", "contact", "pub", "all"
+    "report", "task", "event", "bookmark", "image", "audio", "video", "document", "torrent",
+    "bankWallet", "bankClaim", "project", "job", "forum", "vote", "contact", "pub", "map", "shop", "shopProduct", "chat", "pad", "all"
   ];
 
   const filterSelect = select(
@@ -53,7 +69,8 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
       case 'votes': return `/votes/${encodeURIComponent(contentId)}`;
       case 'transfer': return `/transfers/${encodeURIComponent(contentId)}`;
       case 'tribe': return `/tribe/${encodeURIComponent(contentId)}`;
-      case 'curriculum': return `/inhabitant/${encodeURIComponent(contentId)}`;
+      case 'about': return content && (content.about || content.author) ? `/inhabitant/${encodeURIComponent(content.about || content.author)}` : '#';
+      case 'curriculum': return content && content.author ? `/inhabitant/${encodeURIComponent(content.author)}` : '#';
       case 'image': return `/images/${encodeURIComponent(contentId)}`;
       case 'audio': return `/audios/${encodeURIComponent(contentId)}`;
       case 'video': return `/videos/${encodeURIComponent(contentId)}`;
@@ -72,18 +89,33 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
       case 'pub': return '#';
       case 'bankWallet': return `/banking`;
       case 'bankClaim': return `/banking`;
+      case 'map': return `/maps/${encodeURIComponent(contentId)}`;
+      case 'shop': return `/shops/${encodeURIComponent(contentId)}`;
+      case 'shopProduct': return `/shops/product/${encodeURIComponent(contentId)}`;
+      case 'chat': return `/chats/${encodeURIComponent(contentId)}`;
+      case 'pad': return `/pads/${encodeURIComponent(contentId)}`;
+      case 'torrent': return `/torrents/${encodeURIComponent(contentId)}`;
+      case 'gameScore': return content && content.game ? `/games/${encodeURIComponent(content.game)}` : '/games';
       default: return '#';
     }
   };
 
   let hasDocument = false;
 
+  const blobImg = (value) => {
+    if (!value) return null;
+    const s = String(value).trim().replace(/&amp;/g, '&');
+    const m = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/);
+    const src = m ? m[1] : s;
+    return src.startsWith('&') ? img({ src: `/blob/${encodeURIComponent(src)}`, class: 'search-result-image' }) : null;
+  };
+
   const renderContentHtml = (content) => {
     switch (content.type) {
       case 'post':
         return div({ class: 'search-post' },
           content.contentWarning ? h2({ class: 'card-field' }, span({ class: 'card-value' }, content.contentWarning)) : null,
-          content.text ? div({ class: 'card-field' }, span({ class: 'card-value', innerHTML: content.text })) : null
+          content.text ? div({ class: 'card-field' }, span({ class: 'card-value', innerHTML: sanitizeHtml(content.text) })) : null
         );
       case 'about':
         return div({ class: 'search-about' },
@@ -91,15 +123,28 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.description + ':'), span({ class: 'card-value' }, content.description)) : null,
           content.image ? img({ src: `/image/64/${encodeURIComponent(content.image)}` }) : null
         );
-      case 'feed':
+      case 'feed': {
+        const rawText = typeof content.text === 'string' ? content.text.trim() : '';
+        const htmlText = rawText ? rewriteHashtagLinks(renderTextWithStyles(rawText)) : '';
+        const refeedsNum = Number(content.refeeds || 0) || 0;
         return div({ class: 'search-feed' },
-          content.text ? h2({ class: 'card-field' }, span({ class: 'card-value' }, content.text)) : null,
-          h2({ class: 'card-field' }, span({ class: 'card-label' }, i18n.tribeFeedRefeeds + ':'), span({ class: 'card-value' }, content.refeeds))
+          rawText ? div({ class: 'card-field' }, span({ class: 'card-value', innerHTML: sanitizeHtml(htmlText) })) : null,
+          refeedsNum > 0
+            ? h2({ class: 'card-field' },
+                span({ class: 'card-label' }, i18n.tribeFeedRefeeds + ':'),
+                span({ class: 'card-value' }, String(refeedsNum))
+              )
+            : null
         );
-      case 'event':
+      }
+      case 'event': {
+        const rawEvDesc = content.description || '';
+        const blobInEvDesc = rawEvDesc.match(/!\[[^\]]*\]\((&[^)\s]+\.sha256)\)/)?.[1] || null;
+        const cleanEvDesc = rawEvDesc.replace(/!\[[^\]]*\]\(&[^)]+\.sha256\)/g, '').trim();
         return div({ class: 'search-event' },
           content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventTitleLabel + ':'), span({ class: 'card-value' }, content.title)) : null,
-          content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchDescription + ':'), span({ class: 'card-value' }, content.description)) : null,
+          cleanEvDesc ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchDescription + ':'), span({ class: 'card-value' }, cleanEvDesc)) : null,
+          blobImg(content.image || blobInEvDesc),
           content.date ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventDate + ':'), span({ class: 'card-value' }, new Date(content.date).toLocaleString())) : null,
           content.location ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventLocation + ':'), span({ class: 'card-value' }, content.location)) : null,
           content.isPublic ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventPrivacyLabel + ':'), span({ class: 'card-value' }, content.isPublic)) : null,
@@ -112,12 +157,13 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
             ))
             : null
         );
+      }
       case 'votes':
         const votesList = content.votes && typeof content.votes === 'object'
           ? Object.entries(content.votes).map(([option, count]) => ({ option, count }))
           : [];
         return div({ class: 'search-vote' },
-          br,
+          br(),
           content.question ? div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.voteQuestionLabel + ':' ),
             span({ class: 'card-value' }, content.question)
@@ -134,7 +180,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
             span({ class: 'card-label' }, i18n.voteTotalVotes + ':' ),
             span({ class: 'card-value' }, content.totalVotes !== undefined ? content.totalVotes : '0')
           ),
-          br,
+          br(),
           votesList.length > 0 ? div({ class: 'card-votes' },
             table(
               tr(...votesList.map(({ option }) => th(i18n[option] || option))),
@@ -145,10 +191,10 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
     case 'tribe':
       return div({ class: 'search-tribe' },
         content.title ? h2(content.title) : null,
-        content.image ? img({ src: `/blob/${encodeURIComponent(content.image)}`, class: 'feed-image' }) : img({ src: '/assets/images/default-tribe.png', class: 'feed-image' }),
-        br,
+        (() => { const s = String(content.image || '').trim().replace(/&amp;/g, '&'); const m = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/); const src = m ? m[1] : s; return src.startsWith('&') ? img({ src: `/blob/${encodeURIComponent(src)}`, class: 'feed-image' }) : img({ src: '/assets/images/default-tribe.png', class: 'feed-image' }); })(),
+        br(),
         content.description ? content.description : null,
-        br,br,
+        br(),br(),
         div({ style: 'display:flex; gap:.6em; flex-wrap:wrap;' },
           content.location ? p({ style: 'color:#9aa3b2;' }, `${i18n.tribeLocationLabel.toUpperCase()}: `, ...renderUrl(content.location)) : null,
           p({ style: 'color:#9aa3b2;' }, `${i18n.tribeIsAnonymousLabel}: ${content.isAnonymous ? i18n.tribePrivate : i18n.tribePublic}`),
@@ -172,9 +218,9 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         return content.url ? div({ class: 'search-audio' },
           content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.audioTitleLabel + ':'), span({ class: 'card-value' }, content.title)) : null,
           content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.audioDescriptionLabel + ':'), span({ class: 'card-value' }, content.description)) : null,
-          br,
+          br(),
           audioHyperaxe({ controls: true, src: `/blob/${encodeURIComponent(content.url)}`, type: content.mimeType, preload: 'metadata' }),
-          br,
+          br(),
           content.tags && content.tags.length
             ? div({ class: 'card-tags' }, content.tags.map(tag =>
               a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)
@@ -186,9 +232,9 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.imageTitleLabel + ':'), span({ class: 'card-value' }, content.title)) : null,
           content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.imageDescriptionLabel + ':'), span({ class: 'card-value' }, content.description)) : null,
           content.meme ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.trendingCategory + ':'), span({ class: 'card-value' }, i18n.meme)) : null,
-          br,
+          br(),
           img({ src: `/blob/${encodeURIComponent(content.url)}` }),
-          br,
+          br(),
           content.tags && content.tags.length
             ? div({ class: 'card-tags' }, content.tags.map(tag =>
               a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)
@@ -199,9 +245,9 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         return content.url ? div({ class: 'search-video' },
           content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.videoTitleLabel + ':'), span({ class: 'card-value' }, content.title)) : null,
           content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.videoDescriptionLabel + ':'), span({ class: 'card-value' }, content.description)) : null,
-          br,
+          br(),
           videoHyperaxe({ controls: true, src: `/blob/${encodeURIComponent(content.url)}`, type: content.mimeType || 'video/mp4', width: '640', height: '360' }),
-          br,
+          br(),
           content.tags && content.tags.length
             ? div({ class: 'card-tags' }, content.tags.map(tag =>
               a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)
@@ -211,15 +257,25 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
       case 'document':
         return div({ class: 'search-document' },
           content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.documentTitleLabel + ':'), span({ class: 'card-value' }, content.title)) : null,
-          br,
+          br(),
           content.description ? div({ class: 'card-field' }, span({ class: 'card-value' }, content.description)) : null,
-          br,
+          br(),
           div({
             id: `pdf-container-${content.key || content.url}`,
             class: 'pdf-viewer-container',
             'data-pdf-url': `/blob/${encodeURIComponent(content.url)}`
           }),
-          br,
+          br(),
+          content.tags && content.tags.length
+            ? div({ class: 'card-tags' }, content.tags.map(tag =>
+              a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)
+            ))
+            : null
+        );
+      case 'torrent':
+        return div({ class: 'search-torrent' },
+          content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.torrentTitleLabel || 'Title') + ':'), span({ class: 'card-value' }, content.title)) : null,
+          content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.torrentDescriptionLabel || 'Description') + ':'), span({ class: 'card-value' }, content.description)) : null,
           content.tags && content.tags.length
             ? div({ class: 'card-tags' }, content.tags.map(tag =>
               a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)
@@ -233,9 +289,9 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.item_type ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemType + ':'), span({ class: 'card-value' }, content.item_type.toUpperCase())) : null,
           content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemCondition + ':'), span({ class: 'card-value' }, content.status)) : null,
           content.deadline ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemDeadline + ':'), span({ class: 'card-value' }, new Date(content.deadline).toLocaleString())) : null,
-          br,
-          content.image ? img({ src: `/blob/${encodeURIComponent(content.image)}`, class: 'market-image' }) : null,
-          br,
+          br(),
+          blobImg(content.image),
+          br(),
           content.seller ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemSeller + ':'), span({ class: 'card-value' }, a({ class: "user-link", href: `/author/${encodeURIComponent(content.seller)}` }, content.seller))) : null,
           content.stock ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemStock + ':'), span({ class: 'card-value' }, content.stock || 'N/A')) : null,
           content.price ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchPriceLabel + ':'), span({ class: 'card-value' }, `${content.price} ECO`)) : null,
@@ -282,7 +338,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
       case 'task':
         return div({ class: 'search-task' },
           content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.taskTitleLabel + ':'), span({ class: 'card-value' }, content.title)) : null,
-          content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchDescription + ':'), span({ class: 'card-value' }, content.description)) : null,
+          content.description ? div({ class: 'card-field', style: 'display:flex;flex-direction:column;' }, span({ class: 'card-label' }, i18n.searchDescription + ':'), p({ class: 'card-value', style: 'white-space:pre-wrap;margin-top:4px;' }, content.description)) : null,
           content.location ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchLocationLabel + ':'), span({ class: 'card-value' }, content.location)) : null,
           content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchStatusLabel + ':'), span({ class: 'card-value' }, content.status)) : null,
           content.priority ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchPriorityLabel + ':'), span({ class: 'card-value' }, content.priority)) : null,
@@ -303,9 +359,9 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.severity ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.reportsSeverity + ':'), span({ class: 'card-value' }, content.severity)) : null,
           content.category ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchCategoryLabel + ':'), span({ class: 'card-value' }, content.category)) : null,
           content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchDescription + ':'), span({ class: 'card-value' }, content.description)) : null,
-          br,
+          br(),
           content.image ? img({ src: `/blob/${encodeURIComponent(content.image)}` }) : null,
-          br,
+          br(),
           typeof content.confirmations === 'number' ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.reportsConfirmations + ':'), span({ class: 'card-value' }, content.confirmations)) : null,
           content.tags && content.tags.length
             ? div({ class: 'card-tags' }, content.tags.map(tag =>
@@ -319,10 +375,10 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.deadline ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.transfersDeadline + ':'), span({ class: 'card-value' }, content.deadline)) : null,
           content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.transfersStatus + ':'), span({ class: 'card-value' }, content.status)) : null,
           content.amount ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.transfersAmount + ':'), span({ class: 'card-value' }, content.amount)) : null,
-          br,
+          br(),
           content.from ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.transfersFrom + ':'), span({ class: 'card-value' }, a({ class: "user-link", href: `/author/${encodeURIComponent(content.from)}` }, content.from))) : null,
           content.to ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.transfersTo + ':'), span({ class: 'card-value' }, a({ class: "user-link", href: `/author/${encodeURIComponent(content.to)}` }, content.to))) : null,
-          br,
+          br(),
           content.confirmedBy && content.confirmedBy.length
             ? h2({ class: 'card-field' }, span({ class: 'card-label' }, i18n.transfersConfirmations + ':'), span({ class: 'card-value' }, content.confirmedBy.length))
             : null,
@@ -416,8 +472,85 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         return div({ class: 'search-pub' },
           content.address && content.address.key ? p(a({ href: `/author/${encodeURIComponent(content.address.key)}`, class: 'activitySpreadInhabitant2' }, content.address.key)) : null
         );
+      case 'shop':
+        return div({ class: 'search-shop' },
+          content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.title + ':'), span({ class: 'card-value' }, content.title)) : null,
+          blobImg(content.image),
+          content.shortDescription ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchDescription + ':'), span({ class: 'card-value' }, content.shortDescription)) : null,
+          content.visibility ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopStatus || 'STATUS') + ':'), span({ class: 'card-value' }, content.visibility)) : null,
+          content.location ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.searchLocationLabel || 'LOCATION') + ':'), span({ class: 'card-value' }, content.location)) : null,
+          content.tags && content.tags.length
+            ? div({ class: 'card-tags' }, content.tags.map(tag => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)))
+            : null
+        );
+      case 'shopProduct':
+        return div({ class: 'search-shop-product' },
+          content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.title + ':'), span({ class: 'card-value' }, content.title)) : null,
+          blobImg(content.image),
+          content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchDescription + ':'), span({ class: 'card-value' }, content.description)) : null,
+          content.price ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.searchPriceLabel || 'PRICE') + ':'), span({ class: 'card-value' }, `${content.price} ECO`)) : null,
+          content.stock !== undefined ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemStock + ':'), span({ class: 'card-value' }, content.stock)) : null
+        );
+      case 'chat': {
+        const chatInviteOnly = content.status === 'INVITE-ONLY' && content.author !== userId && !(Array.isArray(content.members) && content.members.includes(userId));
+        if (chatInviteOnly) return div({ class: 'search-chat' },
+          content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.chatsTitle || 'Chat') + ':'), span({ class: 'card-value' }, content.title)) : null,
+          div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.chatStatus || 'STATUS') + ':'), span({ class: 'card-value' }, i18n.chatStatusInviteOnly || 'INVITE-ONLY'))
+        );
+        return div({ class: 'search-chat' },
+          content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.chatsTitle || 'Chat') + ':'), span({ class: 'card-value' }, content.title)) : null,
+          content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.chatDescription || 'Description') + ':'), span({ class: 'card-value' }, content.description)) : null,
+          content.category ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.chatCategoryLabel || 'Category') + ':'), span({ class: 'card-value' }, content.category)) : null,
+          content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.chatStatus || 'STATUS') + ':'), span({ class: 'card-value' }, content.status)) : null
+        );
+      }
+      case 'pad': {
+        const padInviteOnly = content.status === 'INVITE-ONLY' && content.author !== userId && !(Array.isArray(content.members) && content.members.includes(userId));
+        if (padInviteOnly) return div({ class: 'search-pad' },
+          content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.padTitle || 'Pad') + ':'), span({ class: 'card-value' }, content.title)) : null,
+          div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.padStatusLabel || 'Status') + ':'), span({ class: 'card-value' }, i18n.padStatusInviteOnly || 'INVITE-ONLY'))
+        );
+        return div({ class: 'search-pad' },
+          content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.padTitle || 'Pad') + ':'), span({ class: 'card-value' }, content.title)) : null,
+          content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.padStatusLabel || 'Status') + ':'), span({ class: 'card-value' }, content.status)) : null,
+          content.deadline ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.padDeadlineLabel || 'Deadline') + ':'), span({ class: 'card-value' }, content.deadline)) : null
+        );
+      }
+      case 'gameScore':
+        return div({ class: 'search-game' },
+          content.game ? div({ class: 'game-row' },
+            img({ src: `/game-assets/${content.game}/thumbnail.svg`, alt: content.game, class: 'game-scoring-thumb', loading: 'lazy' }),
+            div({ class: 'game-row-body' },
+              h2({ class: 'game-card-title' }, content.game.charAt(0).toUpperCase() + content.game.slice(1)),
+              content.score !== undefined ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.gamesHallScore || 'Score') + ':'), span({ class: 'card-value' }, String(content.score))) : null,
+              a({ href: `/games/${encodeURIComponent(content.game)}`, class: 'filter-btn' }, i18n.gamesPlayButton || 'PLAY!')
+            )
+          ) : null
+        );
+      case 'torrent':
+        return div({ class: 'search-torrent' },
+          content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.torrentTitleLabel || 'Title') + ':'), span({ class: 'card-value' }, content.title)) : null,
+          content.size ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.torrentSizeLabel || 'Size') + ':'), span({ class: 'card-value' }, String(content.size))) : null,
+          content.tags && content.tags.length
+            ? div({ class: 'card-tags' }, content.tags.map(tag =>
+              a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)
+            ))
+            : null
+        );
+      case 'map':
+        return div({ class: 'search-map' },
+          content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.title + ':'), span({ class: 'card-value' }, content.title)) : null,
+          content.description ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.mapDescriptionLabel + ':'), span({ class: 'card-value' }, content.description)) : null,
+          content.lat && content.lng ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.mapLocationTitle + ':'), span({ class: 'card-value' }, `${content.lat}, ${content.lng}`)) : null,
+          content.mapType ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.mapTypeLabel + ':'), span({ class: 'card-value' }, content.mapType)) : null,
+          content.tags && content.tags.length
+            ? div({ class: 'card-tags' }, content.tags.map(tag =>
+              a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)
+            ))
+            : null
+        );
       default:
-        return div({ class: 'styled-text', innerHTML: renderTextWithStyles(content.text || content.description || content.title || '[no content]') });
+        return div({ class: 'styled-text', innerHTML: sanitizeHtml(renderTextWithStyles(content.text || content.description || content.title || '[no content]')) });
     }
   };
 
@@ -425,7 +558,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
     ? Object.entries(results).map(([key, msgs]) =>
       div(
         { class: "search-result-group" },
-        h2(i18n[key + "Label"] || key),
+        h2(i18n[key + "Label"] || key.toUpperCase()),
         ...msgs.map((msg) => {
           const content = msg.value.content || {};
           const created = new Date(msg.timestamp).toLocaleString();
@@ -451,6 +584,9 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           } else if (content.type === 'votes') {
             author = content.createdBy || i18n.anonymous || "Anonymous";
             authorUrl = `/author/${encodeURIComponent(content.createdBy || 'Anonymous')}`;
+          } else if (content.type === 'shop' || content.type === 'shopProduct' || content.type === 'chat' || content.type === 'gameScore') {
+            author = content.author || content.player || msg.value.author || i18n.anonymous || "Anonymous";
+            authorUrl = `/author/${encodeURIComponent(content.author || content.player || msg.value.author || 'Anonymous')}`;
           } else {
             author = content.author;
             authorUrl = `/author/${encodeURIComponent(content.author || 'Anonymous')}`;
@@ -463,7 +599,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
 
           return div({ class: 'result-item' }, [
             detailsButton,
-            br,
+            br(),
             contentHtml,
             author
               ? p({ class: 'card-footer' },

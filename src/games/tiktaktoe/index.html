@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TikTakToe</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { overflow: hidden; }
+body { background: #000; color: #eee; font-family: monospace; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+#topbar { width: 100%; padding: 8px 16px; display: flex; align-items: center; gap: 16px; background: #111; border-bottom: 1px solid #333; }
+#topbar a { color: #FFA500; text-decoration: none; font-size: 14px; }
+#topbar a:hover { text-decoration: underline; }
+h1 { color: #FFA500; font-size: 1.4rem; margin: 18px 0 6px; }
+#score-bar { display: flex; gap: 32px; font-size: 15px; color: #aaa; margin-bottom: 14px; }
+#score-bar span b { color: #FFA500; }
+#board { display: grid; grid-template-columns: repeat(3, 90px); grid-template-rows: repeat(3, 90px); gap: 6px; margin: 10px 0; }
+.cell { width: 90px; height: 90px; background: #111; border: 2px solid #333; border-radius: 8px; font-size: 2.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.cell:hover:not(.taken) { border-color: #FFA500; background: #1a1a00; }
+.cell.x { color: #FFA500; cursor: default; }
+.cell.o { color: #4CAF50; cursor: default; }
+.cell.taken { cursor: default; }
+.cell.win-cell { border-color: #FFA500; background: #1a1200; }
+#status { font-size: 1.2rem; min-height: 32px; text-align: center; margin: 8px 0; }
+.win { color: #4CAF50; } .lose { color: #e74c3c; } .draw { color: #FFA500; } .thinking { color: #555; }
+#new-btn { margin-top: 10px; padding: 10px 32px; font-family: monospace; font-size: 1rem; background: #FFA500; color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+#new-btn:hover { background: #ffb700; }
+#scoreSubmit { display: none; text-align: center; margin: 8px; }
+#scoreSubmit form button { background: #1a3a1a; border: 1px solid #FFA500; color: #FFA500; padding: 6px 16px; cursor: pointer; font-family: monospace; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="topbar">
+  <a href="/games" target="_top">&#8592; Back to Games</a>
+  <span style="color:#FFA500;font-weight:bold">TIKTAKTOE</span>
+</div>
+<h1>Tic &middot; Tac &middot; Toe</h1>
+<div id="score-bar">
+  <span>YOU (X): <b id="winsEl">0</b></span>
+  <span>AI (O): <b id="lossesEl">0</b></span>
+  <span>DRAWS: <b id="drawsEl">0</b></span>
+</div>
+<div id="board"></div>
+<div id="status">&nbsp;</div>
+<button id="new-btn">New Game</button>
+<div id="scoreSubmit">
+  <form method="POST" action="/games/submit-score" target="_top">
+    <input type="hidden" name="game" value="tiktaktoe">
+    <input type="hidden" id="scoreInput" name="score" value="0">
+    <button type="submit">Submit Score to Hall of Fame</button>
+  </form>
+</div>
+<script>
+const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+let board, gameOver, wins, losses, draws;
+
+function init() {
+  wins = 0; losses = 0; draws = 0;
+  newGame();
+}
+
+function newGame() {
+  board = Array(9).fill(null);
+  gameOver = false;
+  document.getElementById('scoreSubmit').style.display = 'none';
+  setStatus('\u00a0', '');
+  renderBoard();
+}
+
+function renderBoard() {
+  const el = document.getElementById('board');
+  while (el.firstChild) el.removeChild(el.firstChild);
+  const winner = checkWinner(board);
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell' + (board[i] ? ' taken ' + board[i] : '');
+    if (winner && winner.line.includes(i)) cell.className += ' win-cell';
+    if (board[i]) {
+      const t = document.createTextNode(board[i] === 'x' ? 'X' : 'O');
+      cell.appendChild(t);
+    }
+    const idx = i;
+    cell.addEventListener('click', () => playerMove(idx));
+    el.appendChild(cell);
+  }
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('status');
+  el.className = cls;
+  el.textContent = msg;
+}
+
+function checkWinner(b) {
+  for (const [a, c, d] of LINES) {
+    if (b[a] && b[a] === b[c] && b[a] === b[d]) return { winner: b[a], line: [a, c, d] };
+  }
+  return null;
+}
+
+function playerMove(idx) {
+  if (gameOver || board[idx]) return;
+  board[idx] = 'x';
+  renderBoard();
+  const res = checkWinner(board);
+  if (res) { endGame('win'); return; }
+  if (board.every(c => c)) { endGame('draw'); return; }
+  setStatus('Thinking...', 'thinking');
+  setTimeout(aiMove, 200);
+}
+
+function aiMove() {
+  const move = bestMove(board);
+  if (move === -1) { endGame('draw'); return; }
+  board[move] = 'o';
+  renderBoard();
+  const res = checkWinner(board);
+  if (res) { endGame('lose'); return; }
+  if (board.every(c => c)) { endGame('draw'); return; }
+  setStatus('\u00a0', '');
+}
+
+function endGame(outcome) {
+  gameOver = true;
+  if (outcome === 'win') {
+    wins++;
+    document.getElementById('winsEl').textContent = wins;
+    setStatus('You win!', 'win');
+    document.getElementById('scoreInput').value = wins;
+    document.getElementById('scoreSubmit').style.display = 'block';
+  } else if (outcome === 'lose') {
+    losses++;
+    document.getElementById('lossesEl').textContent = losses;
+    setStatus('AI wins!', 'lose');
+  } else {
+    draws++;
+    document.getElementById('drawsEl').textContent = draws;
+    setStatus("It's a draw!", 'draw');
+  }
+}
+
+function minimax(b, isMax, alpha, beta) {
+  const res = checkWinner(b);
+  if (res) return res.winner === 'o' ? 10 : -10;
+  if (b.every(c => c)) return 0;
+  if (isMax) {
+    let best = -Infinity;
+    for (let i = 0; i < 9; i++) {
+      if (!b[i]) {
+        b[i] = 'o';
+        best = Math.max(best, minimax(b, false, alpha, beta));
+        b[i] = null;
+        alpha = Math.max(alpha, best);
+        if (beta <= alpha) break;
+      }
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (let i = 0; i < 9; i++) {
+      if (!b[i]) {
+        b[i] = 'x';
+        best = Math.min(best, minimax(b, true, alpha, beta));
+        b[i] = null;
+        beta = Math.min(beta, best);
+        if (beta <= alpha) break;
+      }
+    }
+    return best;
+  }
+}
+
+function bestMove(b) {
+  let best = -Infinity, move = -1;
+  for (let i = 0; i < 9; i++) {
+    if (!b[i]) {
+      b[i] = 'o';
+      const score = minimax(b, false, -Infinity, Infinity);
+      b[i] = null;
+      if (score > best) { best = score; move = i; }
+    }
+  }
+  return move;
+}
+
+document.getElementById('new-btn').addEventListener('click', newGame);
+init();
+</script>
+</body>
+</html>

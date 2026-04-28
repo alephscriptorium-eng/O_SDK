@@ -4,7 +4,8 @@ const { form, button, div, h2, p, section, input, label, br, a, img, span, texta
 const moment = require("../server/node_modules/moment");
 const { template, i18n } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
-const { renderUrl } = require("../backend/renderUrl");
+const { renderUrl } = require("../backend/renderUrl")
+const { renderMapLocationVisitLabel } = require("./maps_view");
 const opinionCategories = require("../backend/opinion_categories");
 
 const userId = config.keys.id;
@@ -134,8 +135,6 @@ const renderImageList = (images, filter, params = {}) => {
           ),
           title ? h2(title) : null,
           renderImageMedia(imgObj, filter, params),
-          safeText(imgObj.description) ? p(...renderUrl(imgObj.description)) : null,
-          renderTags(imgObj.tags),
           div(
             { class: "card-comments-summary" },
             span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
@@ -151,6 +150,7 @@ const renderImageList = (images, filter, params = {}) => {
               button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
             )
           ),
+          renderMapLocationVisitLabel(imgObj.mapUrl),
           br(),
           (() => {
             const createdTs = imgObj.createdAt ? new Date(imgObj.createdAt).getTime() : NaN;
@@ -168,22 +168,7 @@ const renderImageList = (images, filter, params = {}) => {
                   )
                 : null
             );
-          })(),
-          div(
-            { class: "voting-buttons" },
-            opinionCategories.map((category) =>
-              form(
-                { method: "POST", action: `/images/opinions/${encodeURIComponent(imgObj.key)}/${category}` },
-                input({ type: "hidden", name: "returnTo", value: returnTo }),
-                button(
-                  { class: "vote-btn" },
-                  `${i18n[`vote${category.charAt(0).toUpperCase() + category.slice(1)}`] || category} [${
-                    imgObj.opinions?.[category] || 0
-                  }]`
-                )
-              )
-            )
-          )
+          })()
         );
       })
     : p(params.q ? i18n.imageNoMatch : i18n.noImages);
@@ -211,25 +196,24 @@ const renderImageForm = (filter, imageId, imageToEdit, params = {}) => {
       imageToEdit?.url
         ? img({ src: `/blob/${encodeURIComponent(imageToEdit.url)}`, class: "media-preview", alt: imageToEdit?.title || "" })
         : null,
-      br(),
-      label(i18n.imageTagsLabel),
-      br(),
-      input({ type: "text", name: "tags", placeholder: i18n.imageTagsPlaceholder, value: tagsValue }),
-      br(),
-      br(),
       label(i18n.imageTitleLabel),
       br(),
       input({ type: "text", name: "title", placeholder: i18n.imageTitlePlaceholder, value: imageToEdit?.title || "" }),
-      br(),
       br(),
       label(i18n.imageDescriptionLabel),
       br(),
       textarea({ name: "description", placeholder: i18n.imageDescriptionPlaceholder, rows: "4" }, imageToEdit?.description || ""),
       br(),
+      label(i18n.mapLocationTitle || "Map Location"),
+      br(),
+      input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: imageToEdit?.mapUrl || "" }),
       br(),
       input({ type: "hidden", name: "meme", value: "0" }),
-      label(i18n.imageMemeLabel),
+      label(i18n.imageTagsLabel),
       br(),
+      input({ type: "text", name: "tags", placeholder: i18n.imageTagsPlaceholder, value: tagsValue }),
+      br(),
+      label(i18n.imageMemeLabel),
       input({
         id: "meme-checkbox",
         type: "checkbox",
@@ -285,16 +269,16 @@ const renderImageCommentsSection = (imageKey, comments = [], returnTo = null) =>
       { class: "comment-form-wrapper" },
       h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
       form(
-        { method: "POST", action: `/images/${encodeURIComponent(imageKey)}/comments`, class: "comment-form" },
+        { method: "POST", action: `/images/${encodeURIComponent(imageKey)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
         returnTo ? input({ type: "hidden", name: "returnTo", value: returnTo }) : null,
         textarea({
           id: "comment-text",
           name: "text",
-          required: true,
           rows: 4,
           class: "comment-textarea",
           placeholder: i18n.voteNewCommentPlaceholder
         }),
+        div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
         br(),
         button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
       )
@@ -480,6 +464,8 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
           : p(i18n.imageNoFile),
         safeText(imageObj.description) ? p(...renderUrl(imageObj.description)) : null,
         renderTags(imageObj.tags),
+        br(),
+        renderMapLocationVisitLabel(imageObj.mapUrl),
         br(),
         (() => {
           const createdTs = imageObj.createdAt ? new Date(imageObj.createdAt).getTime() : NaN;

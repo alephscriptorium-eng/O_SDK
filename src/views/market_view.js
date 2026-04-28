@@ -1,8 +1,23 @@
-const { div, h2, p, section, button, form, a, span, textarea, br, input, label, select, option, img, table, tr, th, td, progress } = require("../server/node_modules/hyperaxe")
+const { div, h2, p, section, button, form, a, span, textarea, br, input, label, select, option, img, table, tr, th, td, progress, video, audio } = require("../server/node_modules/hyperaxe")
 const { template, i18n } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderUrl } = require("../backend/renderUrl")
+const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel, renderMapEmbedWithZoom } = require("./maps_view")
+
+const renderMediaBlob = (value, fallbackSrc = null) => {
+  if (!value) return fallbackSrc ? img({ src: fallbackSrc }) : null
+  const s = String(value).trim()
+  if (!s) return fallbackSrc ? img({ src: fallbackSrc }) : null
+  if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}` })
+  const mVideo = s.match(/\[video:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
+  if (mVideo) return video({ controls: true, class: 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}` })
+  const mAudio = s.match(/\[audio:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
+  if (mAudio) return audio({ controls: true, class: 'post-audio', src: `/blob/${encodeURIComponent(mAudio[1])}` })
+  const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
+  if (mImg) return img({ src: `/blob/${encodeURIComponent(mImg[1])}`, class: 'post-image' })
+  return fallbackSrc ? img({ src: fallbackSrc }) : null
+}
 
 const userId = config.keys.id
 
@@ -115,9 +130,10 @@ const renderMarketCommentsSection = (itemId, returnTo, comments = []) => {
       { class: "comment-form-wrapper" },
       h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
       form(
-        { method: "POST", action: `/market/${encodeURIComponent(itemId)}/comments`, class: "comment-form" },
+        { method: "POST", action: `/market/${encodeURIComponent(itemId)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
         input({ type: "hidden", name: "returnTo", value: returnTo }),
-        textarea({ id: "comment-text", name: "text", required: true, rows: 4, class: "comment-textarea", placeholder: i18n.voteNewCommentPlaceholder }),
+        textarea({ id: "comment-text", name: "text", rows: 4, class: "comment-textarea", placeholder: i18n.voteNewCommentPlaceholder }),
+        div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
         br(),
         button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
       )
@@ -410,7 +426,7 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
               br(),
               label(i18n.marketCreateFormImageLabel),
               br(),
-              input({ type: "file", name: "image", id: "image", accept: "image/*" }),
+              input({ type: "file", name: "image", id: "image" }),
               br(),
               br(),
               label(i18n.marketItemStatus),
@@ -426,6 +442,11 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
               label(i18n.marketItemStock),
               br(),
               input({ type: "number", name: "stock", id: "stock", value: (itemEdit && itemEdit.stock) || 1, required: true, min: "1", step: "1" }),
+              br(),
+              br(),
+              label(i18n.mapLocationTitle || "Map Location"),
+              br(),
+              input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: itemEdit?.mapUrl || "" }),
               br(),
               br(),
               label(i18n.marketItemPrice),
@@ -461,8 +482,7 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
                 class: "meme-checkbox",
                 ...(itemEdit && itemEdit.includesShipping ? { checked: true } : {})
               }),
-              br(),
-              br(),
+              br(),br(),
               button({ type: "submit" }, filter === "edit" ? i18n.marketUpdateButton : i18n.marketCreateButton)
             )
           )
@@ -500,25 +520,12 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
                       ].filter(Boolean)
 
                   const actionNodes = Array.isArray(actionNodesRaw) ? actionNodesRaw.filter(Boolean) : []
-                  const buttonsBlock =
-                    actionNodes.length > 0
-                      ? div(
-                          { class: "market-card buttons" },
-                          div({ style: "display:flex;gap:8px;flex-wrap:wrap;align-items:center;" }, ...actionNodes)
-                        )
-                      : stockLeft <= 0
-                        ? div(
-                            { class: "market-card buttons" },
-                            div({ class: "card-field" }, span({ class: "card-value" }, i18n.marketOutOfStock))
-                          )
-                        : null
-
                   return div(
                     { class: "market-item" },
                     div(
                       { class: "market-card left-col" },
                       div(
-                        { style: "display:flex;gap:8px;flex-wrap:wrap;align-items:center;" },
+                        { class: "market-owner-actions-inline" },
                         form(
                           { method: "GET", action: `/market/${encodeURIComponent(item.id)}` },
                           input({ type: "hidden", name: "returnTo", value: returnTo }),
@@ -534,6 +541,9 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
                       ),
                       h2({ class: "market-card type" }, `${i18n.marketItemType}: ${String(item.item_type || "").toUpperCase()}`),
                       h2(item.title),
+                      item.shopId && item.shopTitle
+                        ? div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.marketShopLabel || "Shop"}:`), span({ class: "card-value" }, a({ href: `/shops/${encodeURIComponent(item.shopId)}`, class: "user-link" }, item.shopTitle)))
+                        : null,
                       renderCardField(`${i18n.marketItemStatus}:`, item.status),
                       renderCountdownField(item),
                       item.deadline ? renderCardField(`${i18n.marketItemAvailable}:`, moment(item.deadline).format("YYYY/MM/DD HH:mm:ss")) : null,
@@ -541,23 +551,16 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
                       br(),
                       div(
                         { class: "market-card image" },
-                        item.image ? img({ src: `/blob/${encodeURIComponent(item.image)}` }) : img({ src: "/assets/images/default-market.png", alt: item.title })
+                        renderMediaBlob(item.image, "/assets/images/default-market.png")
                       ),
-                      p(...renderUrl(item.description)),
-                      item.tags && item.tags.filter(Boolean).length
-                        ? div(
-                            { class: "card-tags" },
-                            item.tags
-                              .filter(Boolean)
-                              .map((tag) => a({ class: "tag-link", href: `/search?query=%23${encodeURIComponent(tag)}` }, `#${tag}`))
-                          )
-                        : null
+                      p(...renderUrl(item.description))
                     ),
                     div(
                       { class: "market-card right-col" },
                       div({ class: "market-card price" }, renderCardField(`${i18n.marketItemPrice}:`, `${item.price} ECO`)),
                       renderCardField(`${i18n.marketItemCondition}:`, item.item_status),
                       renderCardField(`${i18n.marketItemIncludesShipping}:`, item.includesShipping ? i18n.YESLabel : i18n.NOLabel),
+                      renderMapLocationVisitLabel(item.mapUrl),
                       br(),
                       renderStockBar(item.stock, maxStock),
                       item.item_type === "auction" && parsedBids.length > 0
@@ -596,7 +599,6 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
                           button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
                         )
                       ),
-                      buttonsBlock
                     )
                   )
                 })
@@ -650,13 +652,16 @@ exports.singleMarketView = async (item, filter, comments = [], params = {}) => {
         topbar ? topbar : null,
         h2(item.title),
         renderCardField(`${i18n.marketItemType}:`, `${String(item.item_type || "").toUpperCase()}`),
+        item.shopId && item.shopTitle
+          ? div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.marketShopLabel || "Shop"}:`), span({ class: "card-value" }, a({ href: `/shops/${encodeURIComponent(item.shopId)}`, class: "user-link" }, item.shopTitle)))
+          : null,
         renderCardField(`${i18n.marketItemStatus}:`, item.status),
         renderCountdownField(item),
         renderCardField(`${i18n.marketItemCondition}:`, item.item_status),
         br(),
         div(
           { class: "market-item image" },
-          item.image ? img({ src: `/blob/${encodeURIComponent(item.image)}` }) : img({ src: "/assets/images/default-market.png", alt: item.title })
+          renderMediaBlob(item.image, "/assets/images/default-market.png")
         ),
         renderCardField(`${i18n.marketItemDescription}:`, ""),
         p(...renderUrl(item.description)),
@@ -671,6 +676,7 @@ exports.singleMarketView = async (item, filter, comments = [], params = {}) => {
         renderStockBar(item.stock, maxStock),
         br(),
         renderCardField(`${i18n.marketItemIncludesShipping}:`, `${item.includesShipping ? i18n.YESLabel : i18n.NOLabel}`),
+        renderMapEmbedWithZoom(params.mapData, item.mapUrl, `/market/${encodeURIComponent(item.id)}`, params.zoom),
         item.deadline ? renderCardField(`${i18n.marketItemAvailable}:`, `${moment(item.deadline).format("YYYY/MM/DD HH:mm:ss")}`) : null,
         renderCardFieldRich(`${i18n.marketItemSeller}:`, [a({ class: "user-link", href: `/author/${encodeURIComponent(item.seller)}` }, item.seller)])
       ),

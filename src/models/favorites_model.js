@@ -15,7 +15,7 @@ const toTs = (d) => {
   return Number.isFinite(t) ? t : 0;
 };
 
-module.exports = ({ audiosModel, bookmarksModel, documentsModel, imagesModel, videosModel }) => {
+module.exports = ({ audiosModel, bookmarksModel, documentsModel, imagesModel, videosModel, mapsModel, padsModel, chatsModel, calendarsModel, torrentsModel }) => {
   const kindConfig = {
     audios: {
       base: "/audios/",
@@ -33,13 +33,33 @@ module.exports = ({ audiosModel, bookmarksModel, documentsModel, imagesModel, vi
       base: "/images/",
       getById: getFn(imagesModel, ["getImageById", "getById"])
     },
+    maps: {
+      base: "/maps/",
+      getById: getFn(mapsModel, ["getMapById", "getById"])
+    },
     videos: {
       base: "/videos/",
       getById: getFn(videosModel, ["getVideoById", "getById"])
+    },
+    pads: {
+      base: "/pads/",
+      getById: getFn(padsModel, ["getPadById", "getById"])
+    },
+    chats: {
+      base: "/chats/",
+      getById: getFn(chatsModel, ["getChatById", "getById"])
+    },
+    calendars: {
+      base: "/calendars/",
+      getById: getFn(calendarsModel, ["getCalendarById", "getById"])
+    },
+    torrents: {
+      base: "/torrents/",
+      getById: getFn(torrentsModel, ["getTorrentById", "getById"])
     }
   };
 
-  const kindOrder = ["audios", "bookmarks", "documents", "images", "videos"];
+  const kindOrder = ["audios", "bookmarks", "calendars", "chats", "documents", "images", "maps", "pads", "torrents", "videos"];
 
   const hydrateKind = async (kind, ids) => {
     const cfg = kindConfig[kind];
@@ -93,8 +113,13 @@ module.exports = ({ audiosModel, bookmarksModel, documentsModel, imagesModel, vi
     const counts = {
       audios: byKind.audios.length,
       bookmarks: byKind.bookmarks.length,
+      calendars: byKind.calendars.length,
+      chats: byKind.chats.length,
       documents: byKind.documents.length,
       images: byKind.images.length,
+      maps: byKind.maps.length,
+      pads: byKind.pads.length,
+      torrents: byKind.torrents.length,
       videos: byKind.videos.length,
       all: flat.length
     };

@@ -3,6 +3,21 @@ const { template, i18n } = require('./main_views');
 const moment = require("../server/node_modules/moment");
 const { renderUrl } = require('../backend/renderUrl');
 const { getConfig } = require("../configs/config-manager.js");
+const { sanitizeHtml } = require('../backend/sanitizeHtml');
+
+const renderMediaBlob = (value, fallbackSrc = null) => {
+  if (!value) return fallbackSrc ? img({ src: fallbackSrc }) : null
+  const s = String(value).trim()
+  if (!s) return fallbackSrc ? img({ src: fallbackSrc }) : null
+  if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}` })
+  const mVideo = s.match(/\[video:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
+  if (mVideo) return videoHyperaxe({ controls: true, class: 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}` })
+  const mAudio = s.match(/\[audio:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
+  if (mAudio) return audioHyperaxe({ controls: true, class: 'post-audio', src: `/blob/${encodeURIComponent(mAudio[1])}` })
+  const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
+  if (mImg) return img({ src: `/blob/${encodeURIComponent(mImg[1])}`, class: 'post-image' })
+  return fallbackSrc ? img({ src: fallbackSrc }) : null
+}
 
 const FEED_TEXT_MIN = Number(getConfig().feed?.minLength ?? 1);
 const FEED_TEXT_MAX = Number(getConfig().feed?.maxLength ?? 280);
@@ -58,6 +73,11 @@ function safeMsgId(x) {
   return '';
 }
 
+function normalizeSpreadLink(x) {
+  const s = safeMsgId(x);
+  return typeof s === 'string' && s.startsWith('thread:') ? s.slice(7) : s;
+}
+
 function stripHtml(s) {
   return String(s || '')
     .replace(/<[^>]*>/g, ' ')
@@ -66,16 +86,40 @@ function stripHtml(s) {
 }
 
 function excerptPostText(content, max = 220) {
-  const raw = stripHtml(content?.text || '');
+  const raw = stripHtml(content?.text || content?.description || content?.title || '');
   if (!raw) return '';
   return raw.length > max ? raw.slice(0, max - 1) + '…' : raw;
+}
+
+const decodeMaybe = (s) => {
+    try { return decodeURIComponent(String(s || '')); } catch { return String(s || ''); }
+};
+
+const rewriteHashtagLinks = (html) => {
+    const s = String(html || '');
+    return s.replace(/href=(["'])(?:https?:\/\/[^"']+)?\/hashtag\/([^"'?#]+)([^"']*)\1/g, (m, q, tag, rest) => {
+        const t = decodeMaybe(tag).replace(/^#/, '').trim().toLowerCase();
+        const href = `/search?query=%23${encodeURIComponent(t)}`;
+        return `href=${q}${href}${q}`;
+    });
+};
+
+function renderUrlPreserveNewlines(text) {
+  const s = String(text || '');
+  const lines = s.split(/\r\n|\r|\n/);
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (i) out.push(br());
+    out.push(...renderUrl(lines[i]));
+  }
+  return out;
 }
 
 function getThreadIdFromPost(action) {
   const c = action.value?.content || action.content || {};
   const fork = safeMsgId(c.fork);
   const root = safeMsgId(c.root);
-  return fork || root || action.id;
+  return fork || root || safeMsgId(action);
 }
 
 function getReplyToIdFromPost(action, byId) {
@@ -93,8 +137,14 @@ function getReplyToIdFromPost(action, byId) {
 
 function buildActivityItemsWithPostThreads(deduped, allActions) {
   const byId = new Map();
-  for (const a of allActions) if (a?.id) byId.set(a.id, a);
-  for (const a of deduped) if (a?.id) byId.set(a.id, a);
+  for (const a of allActions) {
+    const id = safeMsgId(a);
+    if (id) byId.set(id, a);
+  }
+  for (const a of deduped) {
+    const id = safeMsgId(a);
+    if (id) byId.set(id, a);
+  }
 
   const groups = new Map();
   const out = [];
@@ -111,7 +161,7 @@ function buildActivityItemsWithPostThreads(deduped, allActions) {
 
   for (const [threadId, posts] of groups.entries()) {
     const sortedDesc = posts.slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
-    const hasReplies = sortedDesc.some(p => getThreadIdFromPost(p) !== p.id) || sortedDesc.length > 1;
+    const hasReplies = sortedDesc.some(p => getThreadIdFromPost(p) !== safeMsgId(p)) || sortedDesc.length > 1;
 
     if (!hasReplies || sortedDesc.length === 1) {
       out.push(sortedDesc[0]);
@@ -119,9 +169,19 @@ function buildActivityItemsWithPostThreads(deduped, allActions) {
     }
 
     const latest = sortedDesc[0];
-    const rootAction = byId.get(threadId);
+    let rootAction = byId.get(threadId);
+    let rootId = threadId;
+
+    if (!rootAction) {
+      const asc = posts.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      rootAction = asc[0] || null;
+      rootId = safeMsgId(rootAction) || threadId;
+    } else {
+      rootId = safeMsgId(rootAction) || threadId;
+    }
+
     const replies = sortedDesc
-      .filter(p => p.id !== threadId)
+      .filter(p => safeMsgId(p) !== rootId)
       .slice()
       .sort((a, b) => (a.ts || 0) - (b.ts || 0));
 
@@ -134,13 +194,13 @@ function buildActivityItemsWithPostThreads(deduped, allActions) {
         threadId,
         root: rootAction
           ? {
-              id: rootAction.id,
+              id: safeMsgId(rootAction),
               author: rootAction.author,
               text: excerptPostText(rootAction.value?.content || rootAction.content || {}, 240)
             }
           : null,
         replies: replies.map(p => ({
-          id: p.id,
+          id: safeMsgId(p),
           author: p.author,
           ts: p.ts,
           text: excerptPostText(p.value?.content || p.content || {}, 200)
@@ -153,15 +213,42 @@ function buildActivityItemsWithPostThreads(deduped, allActions) {
   return out;
 }
 
-function renderActionCards(actions, userId) {
+function renderActionCards(actions, userId, allActions) {
+  const all = Array.isArray(allActions) ? allActions : actions;
+  const byIdAll = new Map();
+  for (const a0 of all) {
+    const id0 = safeMsgId(a0);
+    if (id0) byIdAll.set(id0, a0);
+  }
+  const profileById = new Map();
+  for (const a0 of all) {
+    if (!a0 || a0.type !== 'about') continue;
+    const c0 = a0.value?.content || a0.content || {};
+    const id0 = c0.about || a0.author || '';
+    if (!id0) continue;
+    const name0 = (typeof c0.name === 'string' && c0.name.trim()) ? c0.name.trim() : id0;
+    const image0 = (typeof c0.image === 'string' && c0.image.trim()) ? c0.image.trim() : '';
+    const ts0 = a0.ts || 0;
+    const prev = profileById.get(id0);
+    if (!prev) {
+      profileById.set(id0, { id: id0, name: name0, image: image0, ts: ts0 });
+      continue;
+    }
+    const prevHasImg = !!prev.image;
+    const newHasImg = !!image0;
+    if (!prevHasImg && newHasImg) profileById.set(id0, { id: id0, name: name0, image: image0, ts: ts0 });
+    else if (prevHasImg === newHasImg && ts0 > (prev.ts || 0)) profileById.set(id0, { id: id0, name: name0, image: image0, ts: ts0 });
+  }
+  const getProfile = (id) => {
+    const p0 = profileById.get(id);
+    return p0 ? { id: p0.id, name: p0.name, image: p0.image } : { id, name: id, image: '' };
+  };
   const validActions = actions
     .filter(action => {
       const content = action.value?.content || action.content;
       if (!content || typeof content !== 'object') return false;
       if (content.type === 'tombstone') return false;
       if (content.type === 'post' && content.private === true) return false;
-      if (content.type === 'tribe' && content.isAnonymous === true) return false;
-      if (typeof content.type === 'string' && content.type.startsWith('tribe') && content.isAnonymous === true) return false;
       if (content.type === 'task' && content.isPublic === "PRIVATE") return false;
       if (content.type === 'event' && content.isPublic === "private") return false;
       if ((content.type === 'feed' || action.type === 'feed') && !isValidFeedText(content.text)) return false;
@@ -186,7 +273,39 @@ function renderActionCards(actions, userId) {
   }
 
   const seenDocumentTitles = new Set();
-  const items = buildActivityItemsWithPostThreads(deduped, actions);
+  const items = buildActivityItemsWithPostThreads(deduped, all);
+
+  const spreadOrdinalById = new Map();
+  const spreadsByLink = new Map();
+
+  for (const a of all) {
+    if (!a || a.type !== 'spread') continue;
+    const c = a.value?.content || a.content || {};
+    const link = normalizeSpreadLink(c.spreadTargetId || c.vote?.link || '');
+    const aId = safeMsgId(a);
+    if (!link || !aId) continue;
+    if (!spreadsByLink.has(link)) spreadsByLink.set(link, []);
+    spreadsByLink.get(link).push(a);
+  }
+
+  for (const list of spreadsByLink.values()) {
+    list.sort((a, b) => (a.ts || 0) - (b.ts || 0) || String(safeMsgId(a) || '').localeCompare(String(safeMsgId(b) || '')));
+    for (let i = 0; i < list.length; i++) {
+      spreadOrdinalById.set(safeMsgId(list[i]), i + 1);
+    }
+  }
+
+  const shopTitleById = new Map();
+  for (const a of all) {
+    if (!a || a.type !== 'shop') continue;
+    const c = a.value?.content || a.content || {};
+    const id = a.id || a.key || '';
+    if (id && c.title) {
+      shopTitleById.set(id, c.title);
+      if (a.rootId) shopTitleById.set(a.rootId, c.title);
+    }
+  }
+
   const cards = items.map(action => {
     const date = action.ts ? new Date(action.ts).toLocaleString() : "";
     const userLink = action.author
@@ -208,14 +327,16 @@ function renderActionCards(actions, userId) {
       headerText = `[COURTS · ${finalSub.toUpperCase()}]`;
     } else if (type === 'taskAssignment') {
       headerText = `[${String(i18n.typeTask || 'TASK').toUpperCase()} · ASSIGNMENT]`;
-    } else if (type === 'tribeJoin') {
-      headerText = `[TRIBE · ${String(i18n.tribeActivityJoined || 'JOIN').toUpperCase()}]`;
-    } else if (type === 'tribeLeave') {
-      headerText = `[TRIBE · ${String(i18n.tribeActivityLeft || 'LEAVE').toUpperCase()}]`;
-    } else if (type === 'tribeFeedPost') {
-      headerText = `[TRIBE · FEED]`;
-    } else if (type === 'tribeFeedRefeed') {
-      headerText = `[TRIBE · REFEED]`;
+    } else if (type === 'shopProduct') {
+      headerText = `[SHOP · PRODUCT]`;
+    } else if (type === 'chat') {
+      headerText = `[CHAT \u00b7 NEW]`;
+    } else if (type === 'pad') {
+      headerText = `[PAD · ${String(i18n.padNew || 'NEW').toUpperCase()}]`;
+    } else if (type === 'ubiClaim') {
+      headerText = `[UBI · CLAIM]`;
+    } else if (type === 'ubiclaimresult') {
+      headerText = `[UBI · RESULT]`;
     } else {
       const typeLabel = i18n[`type${capitalize(type)}`] || type;
       headerText = `[${String(typeLabel).toUpperCase()}]`;
@@ -314,6 +435,66 @@ function renderActionCards(actions, userId) {
       );
     }
 
+    if (type === 'ubiClaim') {
+      const { pubId, amount, epochId, claimedAt } = content;
+      const amt = Number(amount || 0);
+      const inhabitantId = action.author || '';
+      cardBody.push(
+        div({ class: 'card-section banking-ubi' },
+          div({ class: 'card-field' },
+            span({ class: 'card-label' }, i18n.bankUbiInhabitant + ':'),
+            span({ class: 'card-value' }, a({ href: `/author/${encodeURIComponent(inhabitantId)}`, class: 'user-link' }, inhabitantId))
+          ),
+          pubId ? div({ class: 'card-field' },
+            span({ class: 'card-label' }, i18n.bankUbiPub + ':'),
+            span({ class: 'card-value' }, a({ href: `/author/${encodeURIComponent(pubId)}`, class: 'user-link' }, pubId))
+          ) : "",
+          div({ class: 'card-field' },
+            span({ class: 'card-label' }, i18n.bankUbiClaimedAmount + ':'),
+            span({ class: 'card-value' }, `${amt.toFixed(6)} ECO`)
+          ),
+          epochId ? div({ class: 'card-field' },
+            span({ class: 'card-label' }, i18n.bankEpochShort + ':'),
+            span({ class: 'card-value' }, epochId)
+          ) : "",
+          div({ class: 'card-field' },
+            span({ class: 'card-label' }, i18n.status + ':'),
+            span({ class: 'card-value' }, 'UNCONFIRMED')
+          ),
+          claimedAt ? div({ class: 'card-field' },
+            span({ class: 'card-label' }, i18n.date + ':'),
+            span({ class: 'card-value' }, moment(claimedAt).format('YYYY-MM-DD HH:mm:ss'))
+          ) : ""
+        )
+      );
+    }
+
+    if (type === 'ubiclaimresult') {
+      const { txid, userId: inhabitantId, amount, epochId } = content;
+      const pubAuthor = action.author || action.value?.author || '';
+      const amt = Number(amount || 0);
+      cardBody.push(
+        div({ class: 'card-section banking-ubi' },
+          div({ class: 'card-field' },
+            span({ class: 'card-label' }, i18n.bankUbiPub + ':'),
+            span({ class: 'card-value' }, pubAuthor)
+          ),
+          div({ class: 'card-field' },
+            span({ class: 'card-label' }, i18n.bankUbiInhabitant + ':'),
+            span({ class: 'card-value' }, inhabitantId || '')
+          ),
+          div({ class: 'card-field' },
+            span({ class: 'card-label' }, i18n.bankUbiClaimedAmount + ':'),
+            span({ class: 'card-value' }, `${amt.toFixed(6)} ECO`)
+          ),
+          txid ? div({ class: 'card-field' },
+            span({ class: 'card-label' }, i18n.bankTx + ':'),
+            a({ href: `https://ecoin.03c8.net/blockexplorer/search?q=${txid}`, target: '_blank' }, txid)
+          ) : ""
+        )
+      );
+    }
+
     if (type === 'pixelia') {
       const { author } = content;
       cardBody.push(
@@ -341,7 +522,7 @@ function renderActionCards(actions, userId) {
          ), 
           Array.isArray(members) ? h2(`${i18n.tribeMembersCount}: ${members.length}`) : "",
           image  
-            ? img({ src: `/blob/${encodeURIComponent(image)}`, class: 'feed-image tribe-image' })
+            ? renderMediaBlob(image, '/assets/images/default-tribe.png')
             : img({ src: '/assets/images/default-tribe.png', class: 'feed-image tribe-image' }),
           p({ class: 'tribe-description' }, ...renderUrl(description || '')),
           validTags.length
@@ -351,41 +532,6 @@ function renderActionCards(actions, userId) {
         )
       );
     }
-    if (type === 'tribeJoin' || type === 'tribeLeave') {
-      const { tribeId, tribeTitle } = content || {};
-      cardBody.push(
-        div({ class: 'card-section tribe' },
-          h2({ class: 'tribe-title' },
-            a({ href: `/tribe/${encodeURIComponent(tribeId || '')}`, class: 'user-link' }, tribeTitle || tribeId || '')
-          )
-        )
-      );
-    }
-
-    if (type === 'tribeFeedPost') {
-      const { tribeId, tribeTitle, text } = content || {};
-      cardBody.push(
-        div({ class: 'card-section tribe' },
-          h2({ class: 'tribe-title' },
-            a({ href: `/tribe/${encodeURIComponent(tribeId || '')}`, class: 'user-link' }, tribeTitle || tribeId || '')
-          ),
-          text ? p({ class: 'post-text' }, ...renderUrl(text)) : ''
-        )
-      );
-    }
-
-    if (type === 'tribeFeedRefeed') {
-      const { tribeId, tribeTitle, text } = content || {};
-      cardBody.push(
-        div({ class: 'card-section tribe' },
-          h2({ class: 'tribe-title' },
-            a({ href: `/tribe/${encodeURIComponent(tribeId || '')}`, class: 'user-link' }, tribeTitle || tribeId || '')
-          ),
-          text ? p({ class: 'post-text' }, ...renderUrl(text)) : ''
-        )
-      );
-    }
-
     if (type === 'curriculum') {
       const { author, name, description, photo, personalSkills, oasisSkills, educationalSkills, languages, professionalSkills, status, preferences, createdAt, updatedAt} = content;
       cardBody.push(
@@ -443,7 +589,31 @@ function renderActionCards(actions, userId) {
       const { url } = content;
       cardBody.push(
         div({ class: 'card-section image' },
-          img({ src: `/blob/${encodeURIComponent(url)}`, class: 'feed-image img-content' })
+          img({ src: `/blob/${encodeURIComponent(url)}`, class: 'post-image' })
+        )
+      );
+    }
+
+    if (type === 'map') {
+      const { lat, lng, mapType } = content;
+      cardBody.push(
+        div({ class: 'card-section map' },
+          div({ class: 'map-card-info' },
+            span({ class: 'map-type-badge' }, mapType || 'SINGLE'),
+            span({ class: 'map-coords' }, `${(parseFloat(lat) || 0).toFixed(4)}, ${(parseFloat(lng) || 0).toFixed(4)}`)
+          ),
+          content.description ? p({ class: 'map-description' }, content.description) : ""
+        )
+      );
+    }
+
+    if (type === 'mapMarker') {
+      const { lat, lng, label, mapId } = content;
+      cardBody.push(
+        div({ class: 'card-section map' },
+          span({ class: 'map-marker-dot' }, "●"),
+          span(label || i18n.mapMarkerDefault || 'Marker'),
+          span({ class: 'map-marker-coords' }, ` (${(parseFloat(lat) || 0).toFixed(2)}, ${(parseFloat(lng) || 0).toFixed(2)})`)
         )
       );
     }
@@ -483,6 +653,18 @@ function renderActionCards(actions, userId) {
                 })
               )
             : p(i18n.videoNoFile)
+        )
+      );
+    }
+
+    if (type === 'torrent') {
+      const { title } = content;
+      cardBody.push(
+        div({ class: 'card-section' },
+          title ? div({ class: 'card-field' },
+            span({ class: 'card-label' }, (i18n.torrentTitleLabel || 'Title') + ':'),
+            span({ class: 'card-value' }, title)
+          ) : null
         )
       );
     }
@@ -576,44 +758,70 @@ function renderActionCards(actions, userId) {
       const { text, refeeds } = content;
       if (!isValidFeedText(text)) return null;
       const safeText = cleanFeedText(text);
+      const htmlText = safeText ? rewriteHashtagLinks(renderTextWithStyles(safeText)) : '';
+      const refeedsNum = Number(refeeds || 0) || 0;
       cardBody.push(
         div({ class: 'card-section feed' },
-          div({ class: 'feed-text', innerHTML: renderTextWithStyles(safeText) }),
-          h2({ class: 'card-field' }, span({ class: 'card-label' }, i18n.tribeFeedRefeeds + ': '), span({ class: 'card-label' }, refeeds))
+          div({ class: 'feed-text', innerHTML: sanitizeHtml(htmlText) }),
+          refeedsNum > 0
+            ? h2({ class: 'card-field' },
+                span({ class: 'card-label' }, i18n.tribeFeedRefeeds + ': '),
+                span({ class: 'card-label' }, String(refeedsNum))
+              )
+            : null
         )
       );
     }
 
-    if (type === 'post') {
+  if (type === 'post') {
       const { contentWarning, text } = content || {};
       const rawText = text || '';
-      const isHtml = typeof rawText === 'string' && /<\/?[a-z][\s\S]*>/i.test(rawText);
+      const POST_TRUNCATE_LEN = 300;
+      const isTruncated = rawText.length > POST_TRUNCATE_LEN;
+      const displayText = isTruncated ? rawText.slice(0, POST_TRUNCATE_LEN) + '…' : rawText;
+      const isHtml = typeof displayText === 'string' && /<\/?[a-z][\s\S]*>/i.test(displayText);
       let bodyNode;
       if (isHtml) {
-        const hasAnchor = /<a\b[^>]*>/i.test(rawText);
+        const hasAnchor = /<a\b[^>]*>/i.test(displayText);
         const linkified = hasAnchor
-          ? rawText
-          : rawText.replace(
+          ? displayText
+          : displayText.replace(
               /(https?:\/\/[^\s<]+)/g,
               (url) =>
                 `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
             );
-        bodyNode = div({ class: 'post-text', innerHTML: linkified });
+       bodyNode = div({ class: 'post-text', style: 'max-height:180px;overflow:hidden;', innerHTML: sanitizeHtml(linkified) });
       } else {
-        bodyNode = p({ class: 'post-text' }, ...renderUrl(rawText));
+        bodyNode = p({ class: 'post-text post-text-pre', style: 'max-height:180px;overflow:hidden;' }, ...renderUrlPreserveNewlines(displayText));
       }
-      const byId = new Map(actions.map(a => [a.id, a]));
       const threadId = getThreadIdFromPost(action);
-      const replyToId = getReplyToIdFromPost(action, byId);
-      if (threadId && threadId !== action.id) {
-        const ctxHref = `/thread/${encodeURIComponent(threadId)}#${encodeURIComponent(replyToId || threadId)}`;
-        const parent = byId.get(replyToId) || byId.get(threadId);
-        const parentAuthor = parent?.author;
-      }
+      const replyToId = getReplyToIdFromPost(action, byIdAll);
+      const isReply = !!(threadId && threadId !== action.id);
+      const ctxHref = isReply ? `/thread/${encodeURIComponent(threadId)}#${encodeURIComponent(replyToId || threadId)}` : '';
+      const parent = isReply ? (byIdAll.get(replyToId) || byIdAll.get(threadId)) : null;
+      const parentContent = parent ? (parent.value?.content || parent.content || {}) : {};
+      const parentAuthor = parent?.author || '';
+      const parentName = parent?.authorName || parentAuthor;
+      const parentText = parent ? excerptPostText(parentContent, 220) : '';
       cardBody.push(
         div({ class: 'card-section post' },
+          isReply
+            ? div(
+                { class: 'reply-context', style: 'border-left:3px solid #666;padding-left:10px;margin-bottom:8px;opacity:0.85;' },
+                span({ style: 'font-size:0.85em;' },
+                  a({ href: ctxHref, class: 'tag-link' }, i18n.inReplyTo || 'IN REPLY TO'),
+                  parentAuthor ? span(' ', a({ href: `/author/${encodeURIComponent(parentAuthor)}`, class: 'user-link', style: 'font-weight:bold;' }, parentName)) : ''
+                ),
+                parentText ? p({ class: 'post-text reply-context-text post-text-pre', style: 'font-size:0.85em;max-height:80px;overflow:hidden;margin-top:4px;' }, ...renderUrlPreserveNewlines(parentText)) : ''
+              )
+            : '',
           contentWarning ? h2({ class: 'content-warning' }, contentWarning) : '',
-          bodyNode
+          bodyNode,
+          isTruncated && threadId
+            ? div({ style: 'margin-top:6px;' },
+                a({ href: `/thread/${encodeURIComponent(threadId)}#${encodeURIComponent(action.id || threadId)}`, class: 'filter-btn' }, i18n.keepReading || 'Keep reading...')
+              )
+            : ''
         )
       );
     }
@@ -638,18 +846,18 @@ function renderActionCards(actions, userId) {
                 )
             ),
             div({ class: 'card-body' },
-                root && root.text
-                    ? div({ class: 'card-section' },
-                        p({ class: 'post-text' }, ...renderUrl(root.text))
-                    )
-                    : '',
-                div({ class: 'card-section' },
+		root && root.text
+		    ? div({ class: 'card-section' },
+			p({ class: 'post-text', style: 'white-space:pre-wrap;' }, ...renderUrlPreserveNewlines(root.text))
+		    )
+		    : '',
+		div({ class: 'card-section' },
 		show.map(r => {
 		    const commentHref = `/thread/${encodeURIComponent(threadId)}#${encodeURIComponent(r.id)}`;
 		    const rDate = r.ts ? new Date(r.ts).toLocaleString() : '';
 		    return div({ class: 'thread-reply-item' },
 			div({ class: 'thread-reply' },
-			    r.text ? p({ class: 'post-text' }, ...renderUrl(r.text)) : ''
+			    r.text ? p({ class: 'post-text', style: 'white-space:pre-wrap;' }, ...renderUrlPreserveNewlines(r.text)) : ''
 			),
 			div({ class: 'card-footer thread-reply-footer' },
 			    span({ class: 'date-link' }, rDate),
@@ -660,11 +868,6 @@ function renderActionCards(actions, userId) {
 			)
 		    );
 		}),
-                overflow
-                    ? div({ style: 'display:flex; justify-content:center; margin-top:12px;' },
-                        a({ class: 'filter-btn', href: viewMoreHref }, i18n.continueReading)
-                    )
-                    : ''
             )
         ),
         p({ class: 'card-footer' },
@@ -678,7 +881,7 @@ function renderActionCards(actions, userId) {
       const { root, category, title, text, key, rootTitle, rootKey } = content;
       if (!root) {
         const linkKey = key || action.id;
-        const linkText = (title && String(title).trim()) ? title : '(sin título)';
+        const linkText = (title && String(title).trim()) ? title : '';
         cardBody.push(
           div({ class: 'card-section forum' },
             div({ class: 'card-field', style: "font-size:1.12em; margin-bottom:5px;" },
@@ -689,16 +892,22 @@ function renderActionCards(actions, userId) {
         );
       } else {
         const rootId = typeof root === 'string' ? root : (root?.key || root?.id || '');
-        const parentForum = actions.find(a => a.type === 'forum' && !a.content?.root && (a.id === rootId || a.content?.key === rootId));
-        const parentTitle = (parentForum?.content?.title && String(parentForum.content.title).trim()) ? parentForum.content.title : ((rootTitle && String(rootTitle).trim()) ? rootTitle : '(sin título)');
+        const parentForum = byIdAll.get(rootId) || actions.find(a => a.type === 'forum' && !a.content?.root && (a.id === rootId || a.content?.key === rootId));
+        const parentContent = parentForum ? (parentForum.value?.content || parentForum.content || {}) : {};
+        const parentTitle = (parentContent?.title && String(parentContent.title).trim()) ? parentContent.title : ((rootTitle && String(rootTitle).trim()) ? rootTitle : '');
+        const parentAuthor = parentForum?.author || '';
+        const parentName = parentForum?.authorName || parentAuthor;
         const hrefKey = rootKey || rootId;
         cardBody.push(
           div({ class: 'card-section forum' },
-            div({ class: 'card-field', style: "font-size:1.12em; margin-bottom:5px;" },
-              span({ class: 'card-label', style: "font-weight:800;color:#ff9800;" }, i18n.title + ': '),
-              a({ href: `/forum/${encodeURIComponent(hrefKey)}`, style: "font-weight:800;color:#4fc3f7;" }, parentTitle)
+            div(
+              { class: 'reply-context', style: 'border-left:3px solid #666;padding-left:10px;margin-bottom:8px;opacity:0.85;' },
+              span({ style: 'font-size:0.85em;' },
+                a({ href: `/forum/${encodeURIComponent(hrefKey)}`, class: 'tag-link' }, i18n.inReplyTo || 'IN REPLY TO'),
+                parentAuthor ? span(' ', a({ href: `/author/${encodeURIComponent(parentAuthor)}`, class: 'user-link', style: 'font-weight:bold;' }, parentName)) : ''
+              ),
+              parentTitle ? p({ class: 'post-text reply-context-text', style: 'font-size:0.85em;max-height:60px;overflow:hidden;margin-top:4px;font-weight:bold;color:#4fc3f7;' }, parentTitle) : ''
             ),
-            br(),
             div({ class: 'card-field', style: 'margin-bottom:12px;' },
               p({ style: "margin:0 0 8px 0; word-break:break-all;" }, ...renderUrl(text))
             )
@@ -706,6 +915,65 @@ function renderActionCards(actions, userId) {
         );
       }
     }
+
+ if (type === 'spread') {
+  const link = normalizeSpreadLink(content?.spreadTargetId || content?.vote?.link || '');
+  const target = link ? (byIdAll.get(link) || byIdAll.get(decodeMaybe(link)) || byIdAll.get(encodeURIComponent(link))) : null;
+  const tContent = target ? (target.value?.content || target.content || {}) : {};
+  const spreadTitle =
+    (typeof content?.spreadTitle === 'string' && content.spreadTitle.trim())
+      ? content.spreadTitle.trim()
+      : (typeof tContent?.title === 'string' && tContent.title.trim())
+        ? tContent.title.trim()
+        : (typeof tContent?.name === 'string' && tContent.name.trim())
+          ? tContent.name.trim()
+          : '';
+  const spreadContentWarning =
+    (typeof content?.spreadContentWarning === 'string' && content.spreadContentWarning.trim())
+      ? content.spreadContentWarning.trim()
+      : (typeof tContent?.contentWarning === 'string' && tContent.contentWarning.trim())
+        ? tContent.contentWarning.trim()
+        : '';
+  const spreadText =
+    (typeof content?.spreadText === 'string' && content.spreadText.trim())
+      ? content.spreadText.trim()
+      : excerptPostText(tContent, 700);
+  const spreadOriginalAuthor =
+    (typeof content?.spreadOriginalAuthor === 'string' && content.spreadOriginalAuthor.trim())
+      ? content.spreadOriginalAuthor.trim()
+      : (target?.author || '');
+  const ord = spreadOrdinalById.get(safeMsgId(action)) || 0;
+  const totalChron = link && spreadsByLink.has(link) ? spreadsByLink.get(link).length : 0;
+  const label = (i18n.spreadChron || 'Spread') + ':';
+  const value = ord && totalChron ? `${ord}/${totalChron}` : (ord ? String(ord) : '');
+  const spreadExcerpt = spreadText || excerptPostText(content, 300);
+  cardBody.push(
+    div({ class: 'card-section vote' },
+      spreadTitle ? h2({ class: 'post-title activity-spread-title' }, spreadTitle) : '',
+      spreadContentWarning ? h2({ class: 'content-warning' }, spreadContentWarning) : '',
+      spreadExcerpt
+        ? div({ class: 'post-text activity-spread-text post-text-pre', style: 'max-height:200px;overflow:hidden;' }, ...renderUrlPreserveNewlines(spreadExcerpt))
+        : div({ class: 'post-text activity-spread-text', style: 'opacity:0.6;font-style:italic;' }, i18n.spreadContentUnavailable || 'Content not yet available (pending replication)'),
+      spreadOriginalAuthor
+        ? div({ class: 'card-field' },
+            span({ class: 'card-label' }, (i18n.spreadBy || 'By') + ': '),
+            span({ class: 'card-value' }, a({ href: `/author/${encodeURIComponent(spreadOriginalAuthor)}`, class: 'user-link' }, spreadOriginalAuthor))
+          )
+        : '',
+      value
+        ? div({ class: 'card-field' },
+            span({ class: 'card-label' }, label),
+            span({ class: 'card-value' }, value)
+          )
+        : '',
+      link
+        ? div({ style: 'margin-top:6px;' },
+            a({ href: `/thread/${encodeURIComponent(link)}#${encodeURIComponent(link)}`, class: 'filter-btn' }, i18n.viewDetails || 'View details')
+          )
+        : ''
+    )
+  );
+}
 
     if (type === 'vote') {
       const { vote } = content;
@@ -724,33 +992,48 @@ function renderActionCards(actions, userId) {
         div({ class: 'card-section about' },
           h2(a({ href: `/author/${encodeURIComponent(about)}`, class: "user-link" }, `@`, name)),
           image
-            ? img({ src: `/blob/${encodeURIComponent(image)}` })
-            : img({ src: '/assets/images/default-avatar.png', alt: name })
+            ? img({ src: `/blob/${encodeURIComponent(image)}`, alt: name, class: 'activity-avatar' })
+            : img({ src: '/assets/images/default-avatar.png', alt: name, class: 'activity-avatar' })
         )
       );
     }
 
     if (type === 'contact') {
-      const { contact } = content;
+      const { contact } = content || {};
+      const aId = action.author || '';
+      const bId = contact || '';
+      const pa = getProfile(aId);
+      const pb = getProfile(bId);
+      const srcA = pa.image ? `/blob/${encodeURIComponent(pa.image)}` : '/assets/images/default-avatar.png';
+      const srcB = pb.image ? `/blob/${encodeURIComponent(pb.image)}` : '/assets/images/default-avatar.png';
       cardBody.push(
         div({ class: 'card-section contact' },
-          p({ class: 'card-field' },
-            a({ href: `/author/${encodeURIComponent(contact)}`, class: "user-link"}, contact)
+          div({ class: 'activity-contact' },
+            a({ href: `/author/${encodeURIComponent(aId)}`, class: 'activity-contact-avatar-link' },
+              img({ src: srcA, alt: pa.name || pa.id, class: 'activity-contact-avatar' })
+            ),
+            span({ class: 'activity-contact-arrow' }, ''),
+            a({ href: `/author/${encodeURIComponent(bId)}`, class: 'activity-contact-avatar-link' },
+              img({ src: srcB, alt: pb.name || pb.id, class: 'activity-contact-avatar' })
+            )
           )
         )
       );
     }
 
     if (type === 'pub') {
-      const { address } = content;
-      const { host, key } = address || {};
+      const { address } = content || {};
+      const { key } = address || {};
+      const pr = getProfile(key || '');
+      const src = pr.image ? `/blob/${encodeURIComponent(pr.image)}` : '/assets/images/default-avatar.png';
       cardBody.push(
-        div({ class: 'card-section pub' },
-          p({ class: 'card-field' },
-            a({ href: `/author/${encodeURIComponent(key || '')}`, class: "user-link" }, key || '')
-          )
+        div({ class: 'card-section pub activity-pub' },
+          br(),
+          a({ href: `/author/${encodeURIComponent(pr.id)}`, class: 'user-link' }, pr.name || pr.id),
+          br(),
+          img({ src, alt: pr.name || pr.id, class: 'activity-avatar' })
         )
-      );
+     );
     }
 
     if (type === 'market') {
@@ -765,7 +1048,7 @@ function renderActionCards(actions, userId) {
           div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemStock + ':'), span({ class: 'card-value' }, stock)),
           br(),
           image
-            ? img({ src: `/blob/${encodeURIComponent(image)}` })
+            ? renderMediaBlob(image, '/assets/images/default-market.png')
             : img({ src: '/assets/images/default-market.png', alt: title }),
           br(),
           div({ class: "market-card price" },
@@ -801,6 +1084,73 @@ function renderActionCards(actions, userId) {
             ? form({ method: "POST", action: `/market/buy/${encodeURIComponent(action.id)}` },
                 button({ class: "buy-btn", type: "submit" }, i18n.marketActionsBuy)
               ) : ""
+        )
+      );
+    }
+
+    if (type === 'shop') {
+      const { title, shortDescription, description, visibility, location } = content;
+      const shopKey = action.id || action.key || '';
+      const displayDesc = shortDescription || (description ? (description.length > 140 ? description.slice(0, 140) + "\u2026" : description) : "");
+      cardBody.push(
+        div({ class: 'card-section shop' },
+          div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopTitle || 'Shop') + ':'), span({ class: 'card-value' }, shopKey ? a({ href: `/shops/${encodeURIComponent(shopKey)}`, class: 'user-link' }, title || shopKey) : (title || ''))),
+          displayDesc ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.description || 'Description') + ':'), span({ class: 'card-value' }, displayDesc)) : "",
+          visibility ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopVisibility || 'Visibility') + ':'), span({ class: 'card-value' }, visibility)) : "",
+          location ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopLocation || 'Location') + ':'), span({ class: 'card-value' }, location)) : ""
+        )
+      );
+    }
+
+    if (type === 'shopProduct') {
+      const { title, price, stock, shopId, image: prodImage } = content;
+      const resolvedShopTitle = shopId ? (shopTitleById.get(shopId) || null) : null;
+      const shopLabel = resolvedShopTitle || (shopId ? shopId.slice(0, 10) + '...' : '');
+      const prodImageNode = renderMediaBlob(prodImage);
+      cardBody.push(
+        div({ class: 'card-section shop' },
+          shopId ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopTitle || 'Shop') + ':'), span({ class: 'card-value' }, a({ href: `/shops/${encodeURIComponent(shopId)}`, class: 'user-link' }, shopLabel))) : '',
+          div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopProductTitle || 'Product') + ':'), span({ class: 'card-value' }, title || '')),
+          prodImageNode ? div({ class: 'card-field' }, prodImageNode) : '',
+          div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopProductPrice || 'Price') + ':'), span({ class: 'card-value' }, `${Number(price || 0).toFixed(6)} ECO`)),
+          div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopProductStock || 'Stock') + ':'), span({ class: 'card-value' }, String(stock || 0)))
+        )
+      );
+    }
+
+    if (type === 'chat') {
+      const { title, description, image, category, status } = content;
+      const chatKey = action.id || action.key || '';
+      const displayDesc = description ? (description.length > 140 ? description.slice(0, 140) + "\u2026" : description) : "";
+      const chatImageNode = renderMediaBlob(image);
+      cardBody.push(
+        div({ class: 'card-section chat' },
+          div({ class: 'card-field' }, span({ class: 'card-label' }, 'Chat:'), span({ class: 'card-value' }, chatKey ? a({ href: `/chats/${encodeURIComponent(chatKey)}`, class: 'user-link' }, title || chatKey) : (title || ''))),
+          displayDesc ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.chatDescription || 'Description') + ':'), span({ class: 'card-value' }, displayDesc)) : '',
+          category ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.chatCategoryLabel || 'Category') + ':'), span({ class: 'card-value' }, category)) : '',
+          status ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.chatStatus || 'Status') + ':'), span({ class: 'card-value' }, status)) : ''
+        )
+      );
+    }
+
+    if (type === 'pad') {
+      const padKey = action.id || action.key || '';
+      const padTitle = content.title || action.title || '';
+      cardBody.push(
+        div({ class: 'card-section' },
+          div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.padTitle || 'Pad') + ':'), span({ class: 'card-value' }, padKey ? a({ href: `/pads/${encodeURIComponent(padKey)}`, class: 'user-link' }, padTitle || padKey) : '')),
+          content.deadline ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.padDeadlineLabel || 'Deadline') + ':'), span({ class: 'card-value' }, content.deadline)) : ''
+        )
+      );
+    }
+
+    if (type === 'calendar') {
+      const calKey = action.id || action.key || '';
+      const calTitle = content.title || action.title || '';
+      cardBody.push(
+        div({ class: 'card-section' },
+          div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.calendarTitle || 'Calendar') + ':'), span({ class: 'card-value' }, calKey ? a({ href: `/calendars/${encodeURIComponent(calKey)}`, class: 'user-link' }, calTitle || calKey) : '')),
+          content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.calendarStatusLabel || 'Status') + ':'), span({ class: 'card-value' }, content.status)) : ''
         )
       );
     }
@@ -864,7 +1214,7 @@ function renderActionCards(actions, userId) {
             )
           ),
           div(
-            p({ innerHTML: msgHtml })
+            p({ innerHTML: sanitizeHtml(msgHtml) })
           ),
           p({ class: 'card-footer' },
             span({ class: 'date-link' }, `${action.ts ? new Date(action.ts).toLocaleString() : ''} ${i18n.performed} `),
@@ -941,6 +1291,22 @@ function renderActionCards(actions, userId) {
           div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.bankingUserEngagementScore + ':'),
             span({ class: 'card-value' }, karmaScore)
+          )
+        )
+      );
+    }
+
+    if (type === 'gameScore') {
+      const { game, score } = content;
+      cardBody.push(
+        div({ class: 'card-section ai-exchange' },
+          game ? div({ class: 'card-field' },
+            span({ class: 'card-label' }, (i18n.gamesTitle || 'Game') + ':'),
+            span({ class: 'card-value' }, String(game).toUpperCase())
+          ) : null,
+          div({ class: 'card-field' },
+            span({ class: 'card-label' }, (i18n.gamesHallScore || 'Score') + ':'),
+            span({ class: 'card-value' }, String(score || 0))
           )
         )
       );
@@ -1183,7 +1549,7 @@ function renderActionCards(actions, userId) {
 }
 
 function getViewDetailsAction(type, action) {
-  const id = encodeURIComponent(action.tipId || action.id);
+  const id = encodeURIComponent(safeMsgId(action.tipId || action.id || action.key || action));
   switch (type) {
     case 'parliamentCandidature':   return `/parliament?filter=candidatures`;
     case 'parliamentTerm':          return `/parliament?filter=government`;
@@ -1199,20 +1565,24 @@ function getViewDetailsAction(type, action) {
     case 'courtsSettlementAccepted':return `/courts?filter=actions`;
     case 'courtsNomination':        return `/courts?filter=judges`;
     case 'courtsNominationVote':    return `/courts?filter=judges`;
-    case 'tribeJoin':
-    case 'tribeLeave':
-    case 'tribeFeedPost':
-    case 'tribeFeedRefeed':
-    return `/tribe/${encodeURIComponent(action.content?.tribeId || '')}`;
+    case 'spread': {
+      const link = normalizeSpreadLink(action.content?.spreadTargetId || action.content?.vote?.link || '');
+      return link ? `/thread/${encodeURIComponent(link)}#${encodeURIComponent(link)}` : `/activity`;
+    }
+    case 'post':       return `/thread/${id}#${id}`;
+    case 'vote':       return `/thread/${encodeURIComponent(action.content.vote.link)}#${encodeURIComponent(action.content.vote.link)}`;
     case 'votes':      return `/votes/${id}`;
     case 'transfer':   return `/transfers/${id}`;
     case 'pixelia':    return `/pixelia`;
     case 'tribe':      return `/tribe/${id}`;
     case 'curriculum': return `/inhabitant/${encodeURIComponent(action.author)}`;
     case 'karmaScore': return `/author/${encodeURIComponent(action.author)}`;
+    case 'map':        return `/maps/${id}`;
+    case 'mapMarker':  return `/maps/${encodeURIComponent(action.content?.mapId || id)}`;
     case 'image':      return `/images/${id}`;
     case 'audio':      return `/audios/${id}`;
     case 'video':      return `/videos/${id}`;
+    case 'torrent':    return `/torrents/${id}`;
     case 'forum':      return `/forum/${encodeURIComponent(action.content?.key || action.tipId || action.id)}`;
     case 'document':   return `/documents/${id}`;
     case 'bookmark':   return `/bookmarks/${id}`;
@@ -1220,21 +1590,26 @@ function getViewDetailsAction(type, action) {
     case 'task':       return `/tasks/${id}`;
     case 'taskAssignment': return `/tasks/${encodeURIComponent(action.content?.taskId || action.tipId || action.id)}`;
     case 'about':      return `/author/${encodeURIComponent(action.author)}`;
-    case 'post':       return `/thread/${id}#${id}`;
-    case 'vote':       return `/thread/${encodeURIComponent(action.content.vote.link)}#${encodeURIComponent(action.content.vote.link)}`;
     case 'contact':    return `/inhabitants`;
     case 'pub':        return `/invites`;
     case 'market':     return `/market/${id}`;
+    case 'shop':       return `/shops/${id}`;
+    case 'shopProduct': return `/shops/product/${id}`;
+    case 'chat':       return `/chats/${id}`;
+    case 'pad':        return `/pads/${id}`;
+    case 'calendar':   return `/calendars/${id}`;
     case 'job':        return `/jobs/${id}`;
     case 'project':    return `/projects/${id}`;
     case 'report':     return `/reports/${id}`;
     case 'bankWallet': return `/wallet`;
     case 'bankClaim':  return `/banking${action.content?.epochId ? `/epoch/${encodeURIComponent(action.content.epochId)}` : ''}`;
+    case 'ubiClaim':   return action.content?.transferId ? `/transfers/${encodeURIComponent(action.content.transferId)}` : `/transfers?filter=ubi`;
+    case 'gameScore':  return `/games?filter=scoring`;
     default:           return `/activity`;
   }
 }
 
-exports.activityView = (actions, filter, userId) => {
+exports.activityView = (actions, filter, userId, q = '') => {
   const title = filter === 'mine' ? i18n.yourActivity : i18n.globalActivity;
   const desc = i18n.activityDesc;
 
@@ -1242,31 +1617,39 @@ exports.activityView = (actions, filter, userId) => {
     { type: 'recent',    label: i18n.typeRecent },
     { type: 'all',       label: i18n.allButton },
     { type: 'mine',      label: i18n.mineButton },
-    { type: 'banking',   label: i18n.typeBanking },
-    { type: 'market',    label: i18n.typeMarket },
-    { type: 'project',   label: i18n.typeProject },
-    { type: 'job',       label: i18n.typeJob },
-    { type: 'transfer',  label: i18n.typeTransfer },
+    { type: 'report',    label: i18n.typeReport },
+    { type: 'karmaScore',label: i18n.typeKarmaScore },
+    { type: 'about',     label: i18n.typeAbout },
+    { type: 'tribe',     label: i18n.typeTribe },
     { type: 'parliament',label: i18n.typeParliament },
     { type: 'courts',    label: i18n.typeCourts },
     { type: 'votes',     label: i18n.typeVotes },
+    { type: 'calendar',  label: i18n.typeCalendar || 'Calendar' },
     { type: 'event',     label: i18n.typeEvent },
     { type: 'task',      label: i18n.typeTask },
-    { type: 'report',    label: i18n.typeReport },
-    { type: 'tribe',     label: i18n.typeTribe },
-    { type: 'about',     label: i18n.typeAbout },
-    { type: 'curriculum',label: i18n.typeCurriculum },
-    { type: 'karmaScore',label: i18n.typeKarmaScore },
     { type: 'feed',      label: i18n.typeFeed },
-    { type: 'aiExchange',label: i18n.typeAiExchange },
     { type: 'post',      label: i18n.typePost },
-    { type: 'pixelia',   label: i18n.typePixelia },
+    { type: 'spread',    label: i18n.typeSpread },
+    { type: 'chat',      label: i18n.typeChat },
+    { type: 'pad',       label: i18n.typePad },
     { type: 'forum',     label: i18n.typeForum },
+    { type: 'map',       label: i18n.typeMap },
+    { type: 'banking',   label: i18n.typeBanking },
+    { type: 'market',    label: i18n.typeMarket },
+    { type: 'shop',      label: i18n.typeShop },
+    { type: 'project',   label: i18n.typeProject },
+    { type: 'job',       label: i18n.typeJob },
+    { type: 'curriculum',label: i18n.typeCurriculum },
+    { type: 'transfer',  label: i18n.typeTransfer },
+    { type: 'aiExchange',label: i18n.typeAiExchange },
+    { type: 'gameScore', label: i18n.typeGameScore },
+    { type: 'pixelia',   label: i18n.typePixelia },
+    { type: 'audio',     label: i18n.typeAudio },
     { type: 'bookmark',  label: i18n.typeBookmark },
     { type: 'image',     label: i18n.typeImage },
+    { type: 'document',  label: i18n.typeDocument },
     { type: 'video',     label: i18n.typeVideo },
-    { type: 'audio',     label: i18n.typeAudio },
-    { type: 'document',  label: i18n.typeDocument }
+    { type: 'torrent',   label: i18n.typeTorrent }
   ];
 
   let filteredActions;
@@ -1276,13 +1659,9 @@ exports.activityView = (actions, filter, userId) => {
     const now = Date.now();
     filteredActions = actions.filter(action => action.type !== 'tombstone' && action.ts && now - action.ts < 24 * 60 * 60 * 1000);
   } else if (filter === 'banking') {
-    filteredActions = actions.filter(action => action.type !== 'tombstone' && (action.type === 'bankWallet' || action.type === 'bankClaim'));
+    filteredActions = actions.filter(action => action.type !== 'tombstone' && (action.type === 'bankWallet' || action.type === 'bankClaim' || action.type === 'ubiClaim' || action.type === 'ubiclaimresult'));
   } else if (filter === 'tribe') {
-    filteredActions = actions.filter(action =>
-      action.type !== 'tombstone' &&
-      String(action.type || '').startsWith('tribe') &&
-      action.type !== 'tribe'
-    );
+    filteredActions = actions.filter(action => action.type === 'tribe');
   } else if (filter === 'parliament') {
     filteredActions = actions.filter(action => ['parliamentCandidature','parliamentTerm','parliamentProposal','parliamentRevocation','parliamentLaw'].includes(action.type));
   } else if (filter === 'courts') {
@@ -1292,8 +1671,34 @@ exports.activityView = (actions, filter, userId) => {
     });
   } else if (filter === 'task') {
     filteredActions = actions.filter(action => action.type !== 'tombstone' && (action.type === 'task' || action.type === 'taskAssignment'));
+  } else if (filter === 'spread') {
+    filteredActions = actions.filter(action => action.type === 'spread');
+  } else if (filter === 'gameScore') {
+    filteredActions = actions.filter(action => action.type === 'gameScore');
+  } else if (filter === 'torrent') {
+    filteredActions = actions.filter(action => action.type === 'torrent');
   } else {
-    filteredActions = actions.filter(action => (action.type === filter || filter === 'all') && action.type !== 'tombstone');
+    filteredActions = actions.filter(action => (action.type === filter || filter === 'all' || (filter === 'shop' && action.type === 'shopProduct')) && action.type !== 'tombstone');
+  }
+
+  const qs = String(q || '').trim();
+  if (qs) {
+    const qn = qs.toLowerCase();
+    filteredActions = filteredActions.filter(a0 => {
+      const t = String(a0.type || '').toLowerCase();
+      const author = String(a0.author || '').toLowerCase();
+      const id0 = String(a0.id || '').toLowerCase();
+      const c0 = a0.value?.content || a0.content || {};
+      const blob = [
+        t, author, id0,
+        c0.text, c0.title, c0.name, c0.description, c0.contentWarning,
+        c0.about, c0.contact,
+        c0.spreadTitle, c0.spreadText, c0.spreadOriginalAuthor,
+        c0.vote?.link,
+        c0.address?.host, c0.address?.key
+      ].filter(Boolean).join(' ').toLowerCase();
+      return blob.includes(qn);
+    });
   }
 
   let html = template(
@@ -1303,50 +1708,17 @@ exports.activityView = (actions, filter, userId) => {
         h2(i18n.activityList),
         p(desc)
       ),
-      form({ method: 'GET', action: '/activity' },
-        div({ class: 'mode-buttons', style: 'display:grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-bottom: 24px;' },
-          div({ style: 'display: flex; flex-direction: column; gap: 8px;' },
-            activityTypes.slice(0, 3).map(({ type, label }) =>
-              form({ method: 'GET', action: '/activity' },
-                input({ type: 'hidden', name: 'filter', value: type }),
-                button({ type: 'submit', class: filter === type ? 'filter-btn active' : 'filter-btn' }, label)
-              )
-            )
-          ),
-          div({ style: 'display: flex; flex-direction: column; gap: 8px;' },
-            activityTypes.slice(3, 8).map(({ type, label }) =>
-              form({ method: 'GET', action: '/activity' },
-                input({ type: 'hidden', name: 'filter', value: type }),
-                button({ type: 'submit', class: filter === type ? 'filter-btn active' : 'filter-btn' }, label)
-              )
-            )
-          ),
-          div({ style: 'display: flex; flex-direction: column; gap: 8px;' },
-            activityTypes.slice(8, 12).map(({ type, label }) =>
-              form({ method: 'GET', action: '/activity' },
-                input({ type: 'hidden', name: 'filter', value: type }),
-                button({ type: 'submit', class: filter === type ? 'filter-btn active' : 'filter-btn' }, label)
-              )
-            )
-          ),
-          div({ style: 'display: flex; flex-direction: column; gap: 8px;' },
-            activityTypes.slice(12, 17).map(({ type, label }) =>
-              form({ method: 'GET', action: '/activity' },
-                input({ type: 'hidden', name: 'filter', value: type }),
-                button({ type: 'submit', class: filter === type ? 'filter-btn active' : 'filter-btn' }, label)
-              )
-            )
-          ),
-          div({ style: 'display: flex; flex-direction: column; gap: 8px;' },
-            activityTypes.slice(17, 21).map(({ type, label }) =>
-              form({ method: 'GET', action: '/activity' },
-                input({ type: 'hidden', name: 'filter', value: type }),
-                button({ type: 'submit', class: filter === type ? 'filter-btn active' : 'filter-btn' }, label)
-              )
-            )
-          ),
-          div({ style: 'display: flex; flex-direction: column; gap: 8px;' },
-            activityTypes.slice(21, 26).map(({ type, label }) =>
+      div({ class: 'activity-filter-grid' },
+        ...[
+          activityTypes.slice(0, 4),
+          activityTypes.slice(4, 12),
+          activityTypes.slice(12, 19),
+          activityTypes.slice(19, 26),
+          activityTypes.slice(26, 29),
+          activityTypes.slice(29)
+        ].map(col =>
+          div({ class: 'activity-filter-col' },
+            col.map(({ type, label }) =>
               form({ method: 'GET', action: '/activity' },
                 input({ type: 'hidden', name: 'filter', value: type }),
                 button({ type: 'submit', class: filter === type ? 'filter-btn active' : 'filter-btn' }, label)
@@ -1355,7 +1727,7 @@ exports.activityView = (actions, filter, userId) => {
           )
         )
       ),
-      section({ class: 'feed-container' }, renderActionCards(filteredActions, userId))
+    section({ class: 'feed-container' }, renderActionCards(filteredActions, userId, actions))
     )
   );
 

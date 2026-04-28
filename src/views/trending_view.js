@@ -4,6 +4,7 @@ const { renderTextWithStyles } = require('../backend/renderTextWithStyles');
 const { config } = require('../server/SSB_server.js');
 const { renderUrl } = require('../backend/renderUrl');
 const opinionCategories = require('../backend/opinion_categories');
+const { sanitizeHtml } = require('../backend/sanitizeHtml');
 
 const userId = config.keys.id;
 
@@ -36,12 +37,12 @@ const renderTrendingCard = (item, votes, categories, seenTitles) => {
         form({ method: "GET", action: `/bookmarks/${encodeURIComponent(item.key)}` },
           button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
         ),
-        br,
+        br(),
         url ? h2(p(a({ href: url, target: '_blank', class: "bookmark-url" }, url))) : "",
         lastVisit
           ? div(
               { class: 'card-field' },
-              span({ class: 'card-label' }, i18n.bookmarkLastVisit + ':'),
+              span({ class: 'card-label' }, i18n.bookmarkLastVisitLabel + ':'),
               span({ class: 'card-value' }, new Date(lastVisit).toLocaleString())
             )
           : "",
@@ -55,7 +56,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles) => {
         form({ method: "GET", action: `/images/${encodeURIComponent(item.key)}` },
           button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
         ),
-        br,
+        br(),
         title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.imageTitleLabel + ':'), span({ class: 'card-value' }, title)) : "",
         description ? [span({ class: 'card-label' }, i18n.imageDescriptionLabel + ":"), p(...renderUrl(description))] : null,
         meme ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.trendingCategory + ':'), span({ class: 'card-value' }, i18n.meme)) : "",
@@ -69,7 +70,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles) => {
         form({ method: "GET", action: `/audios/${encodeURIComponent(item.key)}` },
           button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
         ),
-        br,
+        br(),
         title?.trim() ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.audioTitleLabel + ':'), span({ class: 'card-value' }, title)) : "",
         description ? [span({ class: 'card-label' }, i18n.audioDescriptionLabel + ":"), p(...renderUrl(description))] : null,
         url
@@ -84,13 +85,28 @@ const renderTrendingCard = (item, votes, categories, seenTitles) => {
         form({ method: "GET", action: `/videos/${encodeURIComponent(item.key)}` },
           button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
         ),
-        br,
+        br(),
         title?.trim() ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.videoTitleLabel + ':'), span({ class: 'card-value' }, title)) : "",
         description ? [span({ class: 'card-label' }, i18n.videoDescriptionLabel + ":"), p(...renderUrl(description))] : null,
-        br,
+        br(),
         url
           ? div({ class: 'card-field video-container' }, videoHyperaxe({ controls: true, src: `/blob/${encodeURIComponent(url)}`, type: mimeType, preload: 'metadata', width: '640', height: '360' }))
           : div({ class: 'card-field' }, p(i18n.videoNoFile))
+      )
+    );
+  } else if (c.type === 'torrent') {
+    const { url, title, description } = c;
+    contentHtml = div({ class: 'trending-torrent' },
+      div({ class: 'card-section torrent' },
+        form({ method: "GET", action: `/torrents/${encodeURIComponent(item.key)}` },
+          button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
+        ),
+        br(),
+        title?.trim() ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.torrentTitleLabel || 'Title') + ':'), span({ class: 'card-value' }, title)) : "",
+        description ? [span({ class: 'card-label' }, (i18n.torrentDescriptionLabel || 'Description') + ":"), p(...renderUrl(description))] : null,
+        url && url.startsWith("&")
+          ? div({ class: 'card-field' }, a({ href: `/blob/${encodeURIComponent(url)}`, class: 'filter-btn' }, i18n.torrentDownload || 'Download'))
+          : div({ class: 'card-field' }, p(i18n.torrentNoFile || 'No file'))
       )
     );
   } else if (c.type === 'document') {
@@ -104,7 +120,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles) => {
         form({ method: "GET", action: `/documents/${encodeURIComponent(item.key)}` },
           button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
         ),
-        br,
+        br(),
         t ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.documentTitleLabel + ':'), span({ class: 'card-value' }, t)) : "",
         description ? [span({ class: 'card-label' }, i18n.documentDescriptionLabel + ":"), p(...renderUrl(description))] : null,
         div({ id: `pdf-container-${item.key}`, class: 'pdf-viewer-container', 'data-pdf-url': `/blob/${encodeURIComponent(url)}` })
@@ -114,8 +130,14 @@ const renderTrendingCard = (item, votes, categories, seenTitles) => {
     const { text, refeeds } = c;
     contentHtml = div({ class: 'trending-feed' },
       div({ class: 'card-section feed' },
-        div({ class: 'feed-text', innerHTML: renderTextWithStyles(text) }),
-        h2({ class: 'card-field' }, span({ class: 'card-label' }, i18n.tribeFeedRefeeds + ': '), span({ class: 'card-value' }, refeeds))
+        form({ method: "GET", action: `/feed/${encodeURIComponent(item.key)}` },
+          button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
+        ),
+        br,
+        div({ class: 'feed-text', innerHTML: sanitizeHtml(renderTextWithStyles(text)) }),
+        refeeds
+            ? h2({ class: 'card-field' }, span({ class: 'card-label' }, i18n.tribeFeedRefeeds + ': '), span({ class: 'card-value' }, refeeds))
+            : ""
       )
     );
   } else if (c.type === 'votes') {
@@ -144,7 +166,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles) => {
         form({ method: "GET", action: `/transfers/${encodeURIComponent(item.key)}` },
           button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
         ),
-        br,
+        br(),
         div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.concept + ':'), span({ class: 'card-value' }, concept)),
         div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.deadline + ':'), span({ class: 'card-value' }, deadline ? new Date(deadline).toLocaleString() : '')),
         div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.status + ':'), span({ class: 'card-value' }, status)),
@@ -159,8 +181,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles) => {
       div({ class: 'card-section styled-text-content' },
         div(
           { class: 'card-field' },
-          span({ class: 'card-label' }, i18n.textContentLabel + ':'),
-          span({ class: 'card-value', innerHTML: renderTextWithStyles(c.text || c.description || c.title || '[no content]') })
+          span({ class: 'card-value', innerHTML: sanitizeHtml(renderTextWithStyles(c.text || c.description || c.title || '[no content]')) })
         )
       )
     );
@@ -174,7 +195,24 @@ const renderTrendingCard = (item, votes, categories, seenTitles) => {
       span({ class: 'date-link' }, `${created} ${i18n.performed} `),
       a({ href: `/author/${encodeURIComponent(item.value.author)}`, class: 'user-link' }, item.value.author)
     ),
-    h2(`${i18n.trendingTotalOpinions || i18n.trendingTotalCount}: ${votes}`),
+    (() => {
+      const ops = c.opinions || {};
+      const entries = Object.entries(ops).filter(([, v]) => v > 0);
+      const dominantPart = (() => {
+        if (!entries.length) return null;
+        const maxVal = Math.max(...entries.map(([, v]) => v));
+        const dominant = entries.filter(([, v]) => v === maxVal).map(([k]) => voteLabelFor(k));
+        return [
+          span({ style: 'margin:0 8px;opacity:0.5;' }, '|'),
+          span({ style: 'font-weight:700;' }, `${i18n.moreVoted || 'More Voted'}: ${dominant.join(' + ')}`)
+        ];
+      })();
+      return h2(
+        `${i18n.trendingTotalOpinions || i18n.trendingTotalCount}: `,
+        span({ style: 'font-weight:700;' }, String(votes)),
+        ...(dominantPart || [])
+      );
+    })(),
     div(
       { class: 'voting-buttons' },
       categories.map(cat =>
@@ -196,7 +234,7 @@ exports.trendingView = (items, filter, categories = opinionCategories) => {
   const baseFilters = ['RECENT', 'ALL', 'MINE', 'TOP'];
   const contentFilters = [
     ['votes', 'feed', 'transfer'],
-    ['bookmark', 'image', 'video', 'audio', 'document']
+    ['bookmark', 'image', 'video', 'audio', 'document', 'torrent']
   ];
 
   let filteredItems = items.filter(item => {
@@ -221,7 +259,9 @@ exports.trendingView = (items, filter, categories = opinionCategories) => {
     filteredItems = filteredItems.filter(item => (item.value.content.opinions_inhabitants || []).length > 0);
   }
 
-  filteredItems.sort((a, b) => b.value.timestamp - a.value.timestamp);
+  if (filter !== 'TOP') {
+    filteredItems.sort((a, b) => b.value.timestamp - a.value.timestamp);
+  }
 
   const header = div({ class: 'tags-header' }, h2(title), p(i18n.exploreTrending));
   const cards = filteredItems

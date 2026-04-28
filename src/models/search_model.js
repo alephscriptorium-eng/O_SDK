@@ -3,7 +3,7 @@ const moment = require('../server/node_modules/moment');
 const { getConfig } = require('../configs/config-manager.js');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 
-module.exports = ({ cooler }) => {
+module.exports = ({ cooler, padsModel }) => {
   let ssb;
   const openSsb = async () => {
     if (!ssb) ssb = await cooler.open();
@@ -13,8 +13,8 @@ module.exports = ({ cooler }) => {
   const searchableTypes = [
     'post', 'about', 'curriculum', 'tribe', 'transfer', 'feed',
     'votes', 'report', 'task', 'event', 'bookmark', 'document',
-    'image', 'audio', 'video', 'market', 'bankWallet', 'bankClaim',
-    'project', 'job', 'forum', 'vote', 'contact', 'pub'
+    'image', 'audio', 'video', 'torrent', 'market', 'bankWallet', 'bankClaim',
+    'project', 'job', 'forum', 'vote', 'contact', 'pub', 'map', 'shop', 'shopProduct', 'chat', 'pad'
   ];
 
   const getRelevantFields = (type, content) => {
@@ -39,6 +39,8 @@ module.exports = ({ cooler }) => {
         return [content?.url, content?.mimeType, content?.title, content?.description, ...(content?.tags || [])];
       case 'document':
         return [content?.url, content?.title, content?.description, ...(content?.tags || []), content?.key];
+      case 'torrent':
+        return [content?.title, content?.description, ...(content?.tags || []), content?.url];
       case 'market':
         return [content?.item_type, content?.title, content?.description, content?.price, ...(content?.tags || []), content?.status, content?.item_status, content?.deadline, content?.includesShipping, content?.seller, content?.image, content?.auctions_poll, content?.stock];
       case 'bookmark':
@@ -67,6 +69,18 @@ module.exports = ({ cooler }) => {
         return [content?.contact];
       case 'pub':
         return [content?.address?.host, content?.address?.key];
+      case 'map':
+        return [content?.title, content?.description, content?.mapType, ...(content?.tags || []), content?.lat, content?.lng];
+      case 'shop':
+        return [content?.title, content?.shortDescription, content?.description, content?.location, ...(content?.tags || []), content?.visibility, content?.url];
+      case 'shopProduct':
+        return [content?.title, content?.description, content?.price, ...(content?.tags || []), content?.shopId];
+      case 'chat':
+        return [content?.title, content?.description, content?.category, ...(content?.tags || []), content?.status, content?.author];
+      case 'pad':
+        return [content?.title, content?.status, content?.deadline, ...(content?.tags || []), content?.author];
+      case 'gameScore':
+        return [content?.game, content?.player];
       default:
         return [];
     }
@@ -93,6 +107,7 @@ module.exports = ({ cooler }) => {
     if (t === 'image') return `image:${c.url || `${author}|${norm(c.title)}|${norm(c.description)}` || msg.key}`;
     if (t === 'audio') return `audio:${c.url || `${author}|${norm(c.title)}|${norm(c.description)}` || msg.key}`;
     if (t === 'video') return `video:${c.url || `${author}|${norm(c.title)}|${norm(c.description)}` || msg.key}`;
+    if (t === 'torrent') return `torrent:${c.url || `${author}|${norm(c.title)}|${norm(c.description)}` || msg.key}`;
     if (t === 'bookmark') return `bookmark:${author}|${c.url || norm(c.description) || msg.key}`;
 
     if (t === 'tribe') {
@@ -202,6 +217,22 @@ module.exports = ({ cooler }) => {
       return `forum:${c.key || c.root || `${author}|${norm(c.title)}` || msg.key}`;
     }
 
+    if (t === 'map') {
+      return ['map', author, norm(c.title), norm(c.description), norm(c.lat), norm(c.lng)].join('|');
+    }
+
+    if (t === 'shop') {
+      return ['shop', author, norm(c.title), norm(c.location)].join('|');
+    }
+
+    if (t === 'shopProduct') {
+      return ['shopProduct', author, norm(c.title), norm(c.shopId)].join('|');
+    }
+
+    if (t === 'pad') {
+      return ['pad', author, norm(c.title), norm(c.deadline)].join('|');
+    }
+
     return `${t}:${msg.key}`;
   };
 
@@ -246,6 +277,23 @@ module.exports = ({ cooler }) => {
       latestByKey.delete(oldId);
     }
 
+    if (padsModel) {
+      for (const msg of latestByKey.values()) {
+        const c = msg?.value?.content;
+        if (c?.type === 'pad') {
+          const rootId = c.replaces ? msg.key : msg.key;
+          try {
+            const decrypted = await padsModel.decryptContent(c, rootId);
+            if (decrypted && typeof decrypted === 'object') {
+              if (decrypted.title) c.title = decrypted.title;
+              if (decrypted.deadline) c.deadline = decrypted.deadline;
+              if (Array.isArray(decrypted.tags) && decrypted.tags.length) c.tags = decrypted.tags;
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
     let filtered = Array.from(latestByKey.values()).filter(msg => {
       const c = msg?.value?.content;
       const t = c?.type;
@@ -258,7 +306,8 @@ module.exports = ({ cooler }) => {
       const fields = getRelevantFields(t, c);
       if (queryLower.startsWith('#') && queryLower.length > 1) {
         const tag = queryLower.substring(1);
-        return (c?.tags || []).some(x => String(x).toLowerCase() === tag);
+        const tagArr = Array.isArray(c?.tags) ? c.tags : (typeof c?.tags === 'string' ? c.tags.split(',').map(s => s.trim()).filter(Boolean) : []);
+        return tagArr.some(x => String(x).toLowerCase() === tag);
       }
       return fields.filter(Boolean).map(String).some(field => field.toLowerCase().includes(queryLower));
     });
