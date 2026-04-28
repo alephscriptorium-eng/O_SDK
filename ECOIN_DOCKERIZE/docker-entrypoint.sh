@@ -9,6 +9,7 @@ set -e
 
 ECOIN_DIR="/home/ecoin/.ecoin"
 ECOIN_CONF="${ECOIN_DIR}/ecoin.conf"
+PACKAGE_BOOTSTRAP="/usr/share/ecoin/tools/bootstrap.dat"
 
 echo "============================================="
 echo "   ECOin Wallet Docker Container"
@@ -80,6 +81,10 @@ if [ -f "${ECOIN_DIR}/blkindex.dat" ]; then
     echo "⛓️  Blockchain data encontrada"
 else
     echo "⛓️  Primera ejecución - sincronización inicial puede tardar"
+    if [ ! -f "${ECOIN_DIR}/bootstrap.dat" ] && [ -f "${PACKAGE_BOOTSTRAP}" ]; then
+        echo "📦 Copiando bootstrap.dat incluido en el paquete ECOin..."
+        cp "${PACKAGE_BOOTSTRAP}" "${ECOIN_DIR}/bootstrap.dat"
+    fi
     if [ -f "${ECOIN_DIR}/bootstrap.dat" ]; then
         echo "📦 bootstrap.dat encontrado - acelerará sincronización"
     fi

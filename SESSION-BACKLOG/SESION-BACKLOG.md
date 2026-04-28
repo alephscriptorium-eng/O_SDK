@@ -3,6 +3,22 @@
 **Fecha**: 2025-12-25  
 **Objetivo**: Levantar Oasis en Docker, crear cuenta, poner avatar, usar invitación PUB, backup USB
 
+**Última actualización**: 2026-04-28  
+**Estado actual**: Oasis Docker actualizado a `0.7.4` en rama `upgrade/oasis-0.7.4`
+
+---
+
+## 🆕 ACTUALIZACIÓN DE SESIÓN · 2026-04-28
+
+- Oasis Docker ha pasado de `0.6.3` a `0.7.4` y quedó verificado en estado `healthy`.
+- El protocolo completo de upgrade y el índice de sesión viven ahora en:
+  - `SESSION-BACKLOG/README.md`
+- El handoff técnico de ECOin quedó consolidado en:
+  - `SESSION-BACKLOG/ECOIN_DOCKER_HANDOFF_REPORT_2026-04-28.md`
+- El informe para discutir la integración de la `42` con Scriptorium quedó consolidado en:
+  - `SESSION-BACKLOG/SCRIPTORIUM_INTEGRATION_OPPORTUNITIES.md`
+- La carpeta `docs/` no debe usarse para esta sesión porque forma parte de `gh-pages`; la documentación viva de esta iteración queda en `SESSION-BACKLOG/`.
+
 ---
 
 ## 🤖 INSTRUCCIONES PARA AGENTES
@@ -29,9 +45,12 @@
 | 0 | ✅ COMPLETADO | **Análisis profundo del repositorio** | Ver hallazgos abajo |
 | 0.1 | ✅ COMPLETADO | **Pre-Hackaton: Requisitos sistema** | VS Code, git, gh CLI ✅ |
 | 0.5 | ✅ COMPLETADO | **Pre-Sprint: Actualización Oasis** | 0.4.9 → 0.6.3 ✅ |
+| 0.6 | ✅ COMPLETADO | **Upgrade Oasis Docker** | 0.6.3 → 0.7.4 ✅ |
+| 0.7 | ✅ COMPLETADO | **Handoff ECOin Docker** | Ver `SESSION-BACKLOG/ECOIN_DOCKER_HANDOFF_REPORT_2026-04-28.md` |
+| 0.8 | ⏳ SIGUIENTE | **Discusión 42 / Scriptorium** | Ver `SESSION-BACKLOG/SCRIPTORIUM_INTEGRATION_OPPORTUNITIES.md` |
 | 1 | ✅ COMPLETADO | Preparar entorno (volúmenes, configs) | volumes-dev/ listo |
 | 2 | ✅ COMPLETADO | Build imagen Docker | 208s ✅ |
-| 3 | ✅ COMPLETADO | Levantar contenedor | v0.6.3 funcionando ✅ |
+| 3 | ✅ COMPLETADO | Levantar contenedor | histórico v0.6.3; estado actual: `0.7.4 healthy` ✅ |
 | 4 | ✅ COMPLETADO | Verificar acceso web localhost:3000 | Playwright verificado ✅ |
 | 5 | ✅ COMPLETADO | Crear identidad / perfil / avatar | AlephLucas ✅ |
 | 6 | ✅ COMPLETADO | **BACKUP credenciales USB** | Backup completo en ALEPHLUCAS_WALLET_OASIS |
@@ -475,6 +494,52 @@ Versión: 0.6.3 (antes 0.4.9)
 ### Conflicto resuelto:
 - `src/AI/ai_service.mjs` - aceptado versión upstream
 
+> ℹ️ **Nota histórica**: este checkpoint queda supersedido por el upgrade del 2026-04-28 a `0.7.4`. Ver `SESSION-BACKLOG/README.md`.
+
+---
+
+## 🔄 PROTOCOLO DE UPGRADE OASIS DOCKER → 0.7.4 (0.6) ✅ COMPLETADO
+
+**Rama de trabajo**: `upgrade/oasis-0.7.4`
+
+### Resumen del protocolo aplicado
+
+1. Crear rama de upgrade aislada.
+2. Traer upstream oficial de Oasis y mergear preferencia upstream para app files.
+3. Reaplicar personalizaciones Docker imprescindibles:
+  - `.dockerignore`
+  - desactivación del auto-update destructivo en UI
+  - reutilización del modelo `42` desde volumen persistente
+  - enlace de compatibilidad al path legacy del modelo
+4. Reconstruir la imagen de `oasis-dev`.
+5. Limpiar residuos de Docker Compose si aparecían:
+  - red `oasis-network-dev` con label antigua
+  - contenedor viejo muerto
+6. Recrear el contenedor desde la imagen nueva.
+7. Verificar en runtime:
+  - `version = 0.7.4`
+  - contenedor `healthy`
+  - modelo `42` reutilizado sin redescarga
+
+### Resultado verificado
+
+- Contenedor nuevo de `oasis-dev` arriba y `healthy`
+- Logs con `@krakenslab/oasis [Version: 0.7.4]`
+- Modelo reutilizado desde `volumes-dev/ai-models`
+- Auto-update de UI convertido en aviso informativo para Docker
+
+### Ficheros relevantes tocados en el upgrade
+
+- `.dockerignore`
+- `docker-entrypoint.sh`
+- `src/backend/backend.js`
+- `src/backend/updater.js`
+- `src/views/settings_view.js`
+
+### Documentación detallada
+
+- `SESSION-BACKLOG/README.md`
+
 ---
 
 ## 📝 ANÁLISIS COMPLETO DEL REPOSITORIO
@@ -638,13 +703,15 @@ Ubicación temporal: C:\Users\aleph\OASIS\ALEPHLUCAS_WALLET_OASIS\backup-complet
 1. **Protocolo de Backup SSB** (7 pasos) - Sección "PROCESO DE BACKUP"
 2. **Protocolo de Conexión a PUB** (7 pasos) - Sección "PROTOCOLO DE CONEXIÓN A PUB"
 
-### Próximos pasos sugeridos:
+### Próximos pasos sugeridos (actualizado 2026-04-28):
 
-- 📀 **URGENTE**: Copiar backup a USB externo
-- 🔗 Explorar módulos de Oasis (Feed, Market, Banking, etc.)
-- 💰 Configurar ECOin wallet (ver SESION-BACKLOG-EXPANSION.md)
-- 🌐 Consultar posibilidades en [solarnethub.com](https://solarnethub.com)
-- 🔧 Kit físico con paneles solares para minería
+- 🧠 **PRIORIDAD 1**: Discutir el informe de la `42` y decidir la estrategia con Scriptorium:
+  - `SESSION-BACKLOG/SCRIPTORIUM_INTEGRATION_OPPORTUNITIES.md`
+- 🔀 Revisar el delta exacto de la rama externa `integration/beta/scriptorium` y decidir si debe pasar a `main` o seguir como rama de integración.
+- 💰 Cerrar validaciones residuales del módulo ECOin:
+  - `SESSION-BACKLOG/ECOIN_DOCKER_HANDOFF_REPORT_2026-04-28.md`
+- 📀 Mantener la recomendación histórica: copiar el backup SSB a USB externo.
+- 🌐 Continuar exploración funcional de Oasis ya sobre `0.7.4`.
 
 ---
 

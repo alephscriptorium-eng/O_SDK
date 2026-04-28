@@ -4,6 +4,26 @@
 **Prerequisito**: Completar SESION-BACKLOG.md (hackathon principal)  
 **Objetivo**: Levantar ECOin wallet en Docker, vincular con Oasis, backup credenciales
 
+**Última actualización**: 2026-04-28  
+**Estado actual**: infraestructura ECOin Docker operativa; faltan solo validaciones residuales de integración/UI
+
+---
+
+## 🆕 ACTUALIZACIÓN DE SESIÓN · 2026-04-28
+
+El módulo ECOin quedó **cerrado a nivel de handoff técnico** por otro agente. El detalle verificable vive ahora en:
+
+- `SESSION-BACKLOG/ECOIN_DOCKER_HANDOFF_REPORT_2026-04-28.md`
+
+Resumen corto del estado:
+
+- `ecoin-wallet` construye correctamente
+- `ecoin-wallet` arranca correctamente
+- el contenedor queda `healthy`
+- el RPC responde vía `getinfo`
+- Oasis ya dispone de defaults de wallet compatibles con Docker
+- quedan pendientes solo validaciones de producto/integración final, no de infraestructura base
+
 ---
 
 ## 🏗️ ARQUITECTURA DEL SISTEMA
@@ -21,8 +41,8 @@
 │  │  │   │   ─────────────────│       │   ─────────────────│            ││ │
 │  │  │   │   Debian bookworm   │       │   Debian bookworm   │            ││ │
 │  │  │   │   Node.js 20.x      │       │   ecoind + ecoin-qt │            ││ │
-│  │  │   │   Oasis v0.6.3      │◄─────►│   RPC :7474         │            ││ │
-│  │  │   │   :3000 (web)       │  RPC  │   P2P :12000        │            ││ │
+│  │  │   │   Oasis v0.7.4      │◄─────►│   RPC :7474         │            ││ │
+│  │  │   │   :3000 (web)       │  RPC  │   P2P :12000*       │            ││ │
 │  │  │   │   :8008 (SSB)       │       │   ~/.ecoin/         │            ││ │
 │  │  │   └─────────────────────┘       └─────────────────────┘            ││ │
 │  │  │            │                              │                         ││ │
@@ -39,12 +59,14 @@
 │    ┌────────────────────────────────────────────────────────────────────┐   │
 │    │                    volumes-dev/ (bind mounts)                       │   │
 │    │  ├── ssb-data/     → /home/oasis/.ssb       (Oasis identidad)      │   │
-│    │  ├── ai-models/    → /app/models            (AI LLM)               │   │
+│    │  ├── ai-models/    → /app/src/AI/models     (AI LLM)               │   │
 │    │  ├── ecoin-data/   → /home/ecoin/.ecoin     (ECOin wallet)         │   │
 │    │  └── logs/         → /var/log/oasis         (logs)                  │   │
 │    └────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+\* `12000` es el puerto publicado actualmente por Compose; el daemon ha mostrado bind interno en `7408` y queda pendiente validación final.
 
 ---
 
@@ -56,7 +78,7 @@
 | Host → Oasis | localhost:3000 | 3000 | HTTP | UI Web Oasis |
 | Host → Oasis | localhost:8008 | 8008 | SSB | Protocolo Scuttlebutt |
 | Host → ECOin | localhost:7474 | 7474 | JSON-RPC | Debug wallet RPC |
-| ECOin → Internet | 46.163.118.220 | 12000 | P2P | Red ECOin (peers) |
+| ECOin → Internet | 46.163.118.220 | `12000` publicado / `7408` observado en daemon | P2P | Red ECOin (validación final pendiente) |
 
 ### Configuración de red Docker:
 
@@ -108,52 +130,68 @@ services:
 | E3 | ✅ COMPLETADO | Crear volumen ecoin-data | volumes-dev/ecoin-data/ creado |
 | E4 | ✅ COMPLETADO | Actualizar docker-compose.yml | Servicio ecoin-wallet añadido |
 | E5 | ✅ COMPLETADO | Configurar docker network | oasis-network bridge configurada |
-| E6 | ⏳ PENDIENTE | Build y deploy ECOin | **⚠️ REQUIERE TIEMPO** |
-| E7 | ⏳ PENDIENTE | Sincronizar blockchain | bootstrap.dat + peers |
-| E8 | ⏳ PENDIENTE | Generar wallet address | Primera dirección ECOin |
-| E9 | ⏳ PENDIENTE | Configurar Oasis → ECOin | Settings → Wallet |
-| E10 | ⏳ PENDIENTE | Backup credenciales ECOin | wallet.dat + ecoin.conf |
-| E11 | ⏳ PENDIENTE | Verificar integración | Balance en Oasis UI |
+| E6 | ✅ COMPLETADO | Build y deploy ECOin | Imagen y contenedor verificados |
+| E7 | ✅ COMPLETADO | Sync base + RPC healthy | `getinfo` OK, conexiones activas |
+| E8 | ✅ COMPLETADO | Generar wallet address operativa | `npm run ecoin:address` → `EY96LywBi9KC6U488STFexJa3snraeLkTw` |
+| E9 | 🟡 PARCIAL | Configurar Oasis → ECOin | defaults Docker implementados; falta validar UI |
+| E10 | ⏳ PENDIENTE | Backup credenciales ECOin | `wallet.dat` + política de backup |
+| E11 | ⏳ PENDIENTE | Verificar integración completa | Wallet UI / puerto P2P / política `.deb` |
 
 ---
 
-## ⚠️ ADVERTENCIA: BUILD LARGO
+## ⚠️ NOTA HISTÓRICA SOBRE EL BUILD
 
-> **🕐 TIEMPO ESTIMADO DE BUILD: 15-30 minutos**
+> **Esta sección quedó supersedida por el handoff 2026-04-28.**
 >
-> La compilación de ECOin desde fuente incluye:
-> 1. Descarga del repositorio (~50MB)
-> 2. Compilación de Boost 1.68 (5-10 min)
-> 3. Compilación de LevelDB (1-2 min)
-> 4. Compilación de ecoind (5-15 min)
+> ECOin ya no sigue el flujo principal de compilación desde fuente dentro de Docker.
+> El build operativo actual usa el paquete precompilado:
+> `ECOIN_DOCKERIZE/ecoin_0.0.4-1_amd64.deb`
 >
-> **Recomendación**: Ejecutar build en background y continuar con otras tareas.
+> Detalle técnico completo:
+> `SESSION-BACKLOG/ECOIN_DOCKER_HANDOFF_REPORT_2026-04-28.md`
 
 ### Comando para build:
 
 ```bash
-# Build en foreground (ver progreso)
-docker-compose build ecoin-wallet
+# Build actual del módulo ECOin
+npm run ecoin:build
 
-# Build en background
-docker-compose build ecoin-wallet &
+# Levantar servicio
+npm run ecoin:up
 
-# Ver logs del build
-docker-compose logs -f ecoin-wallet
+# Estado / RPC
+npm run ecoin:status
+npm run ecoin:info
 ```
 
 ---
 
-## 📝 ESTADO ACTUAL (Checkpoint)
+## 📝 ESTADO ACTUAL (actualizado 2026-04-28)
 
-**Fecha**: 2025-12-25  
-**Commit pendiente**: `feat: add ECOin wallet Docker infrastructure`
+**Infra cerrada**: sí  
+**Handoff técnico**: `SESSION-BACKLOG/ECOIN_DOCKER_HANDOFF_REPORT_2026-04-28.md`
 
-### ✅ COMPLETADO EN ESTA SESIÓN:
+### ✅ COMPLETADO EN EL HANDOFF 2026-04-28:
+
+1. Build de `ecoin-wallet` funcionando con paquete `.deb` precompilado
+2. Arranque correcto del contenedor en estado `healthy`
+3. Respuesta RPC verificada con `npm run ecoin:info`
+4. Scripts npm específicos añadidos para operación ECOin
+5. Defaults de wallet en Oasis resueltos desde variables de entorno Docker
+6. Bootstrap inicial automatizado desde el paquete ECOin
+
+### ⚠️ VALIDACIONES QUE QUEDAN PARA PRÓXIMA SESIÓN:
+
+1. Confirmar si el puerto P2P publicado debe ser `7408:7408` en vez de `12000:12000`
+2. Validar desde la UI de Oasis que Wallet/Banking operan con la config efectiva
+3. Decidir política del binario versionado `ECOIN_DOCKERIZE/ecoin_0.0.4-1_amd64.deb`
+4. Ejecutar backup explícito de `wallet.dat` cuando se quiera pasar a uso real
+
+### ✅ COMPLETADO EN LA SESIÓN ORIGINAL (2025-12-25):
 
 1. **SESION-BACKLOG.md** - Cerrado con resumen final del hackathon
 2. **SESION-BACKLOG-EXPANSION.md** - Creado con plan de arquitectura
-3. **ECOIN_DOCKERIZE/Dockerfile** - Dockerfile completo para compilar ecoind
+3. **ECOIN_DOCKERIZE/Dockerfile** - Dockerfile inicial del módulo (posteriormente sustituido por flujo `.deb` en 2026-04-28)
 4. **ECOIN_DOCKERIZE/ecoin.conf** - Configuración RPC para comunicación con Oasis
 5. **ECOIN_DOCKERIZE/docker-entrypoint.sh** - Script de inicialización
 6. **docker-compose.yml** - Actualizado con servicio ecoin-wallet y red compartida
@@ -161,13 +199,10 @@ docker-compose logs -f ecoin-wallet
 
 ### ⏳ PENDIENTE PARA PRÓXIMA SESIÓN:
 
-1. Ejecutar `docker-compose build ecoin-wallet` (15-30 min)
-2. Levantar contenedor ECOin
-3. Esperar sincronización blockchain (puede tardar horas)
-4. Generar primera dirección wallet
-5. Configurar Oasis → ECOin en Settings → Wallet
-6. Backup de wallet.dat
-7. Verificar integración completa
+1. Validar Wallet/Banking desde Oasis UI
+2. Revisar mapeo del puerto P2P real de ECOin
+3. Decidir si el `.deb` se mantiene en Git o pasa a descarga reproducible
+4. Registrar la dirección generada y ejecutar backup de `wallet.dat` si ya se quiere uso funcional
 
 ### 🔧 ARCHIVOS CREADOS/MODIFICADOS:
 
@@ -177,7 +212,7 @@ alephscript-network-sdk/
 ├── SESION-BACKLOG-EXPANSION.md # 🆕 Creado
 ├── docker-compose.yml          # ✏️ Actualizado (+ecoin-wallet)
 ├── ECOIN_DOCKERIZE/            # 🆕 Carpeta nueva
-│   ├── Dockerfile              # 🆕 Build ecoind desde fuente
+│   ├── Dockerfile              # ✏️ Runtime ECOin desde paquete `.deb` precompilado
 │   ├── ecoin.conf              # 🆕 Config RPC
 │   └── docker-entrypoint.sh    # 🆕 Entrypoint script
 └── volumes-dev/
@@ -188,86 +223,25 @@ alephscript-network-sdk/
 
 ## 🐳 E2: DOCKERFILE PARA ECOIN
 
-### Análisis de dependencias (de ecoin.md):
+### Estrategia actual del Dockerfile
 
-```bash
-# Dependencias build
-sudo apt-get install build-essential libssl-dev libssl3 \
-    libdb5.3-dev libdb5.3++-dev libleveldb-dev \
-    miniupnpc libminiupnpc-dev
+El flujo actual ya no compila `ecoind` desde fuente. El Dockerfile vigente:
 
-# Dependencias Qt5 (para ecoin-qt GUI - opcional en Docker)
-sudo apt-get install qt5-qmake qtbase5-dev
+- instala `ecoind` desde `ecoin_0.0.4-1_amd64.deb`
+- evita la fragilidad de Boost/toolchain en build
+- copia `bootstrap.dat` desde el paquete si procede
+- normaliza `CRLF` para Debian en `ecoin.conf` y `docker-entrypoint.sh`
+- deja scripts npm operativos para build/arranque/RPC
 
-# Boost viene incluido en src/boost_1_68_0
-```
+Ficheros clave del flujo vigente:
 
-### Dockerfile propuesto:
+- `ECOIN_DOCKERIZE/Dockerfile`
+- `ECOIN_DOCKERIZE/docker-entrypoint.sh`
+- `ECOIN_DOCKERIZE/ecoin_0.0.4-1_amd64.deb`
 
-```dockerfile
-# ECOIN_DOCKERIZE/Dockerfile
-FROM debian:bookworm-slim
+Detalle técnico y motivación del cambio:
 
-LABEL maintainer="alephscript"
-LABEL description="ECOin P2P Cryptocurrency Wallet"
-LABEL version="0.3"
-
-# Instalar dependencias de compilación
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libssl-dev \
-    libssl3 \
-    libdb5.3-dev \
-    libdb5.3++-dev \
-    libleveldb-dev \
-    miniupnpc \
-    libminiupnpc-dev \
-    git \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Crear usuario ecoin
-RUN useradd -m -s /bin/bash ecoin
-
-# Clonar repositorio
-WORKDIR /build
-RUN git clone --depth 1 https://github.com/epsylon/ecoin.git
-
-# Compilar ecoind (servidor/daemon)
-WORKDIR /build/ecoin/ecoin/src
-RUN make -f makefile.linux USE_UPNP=- USE_IPV6=- -j$(nproc) \
-    && strip ecoind \
-    && mv ecoind /usr/local/bin/
-
-# Limpiar build
-WORKDIR /
-RUN rm -rf /build
-
-# Crear directorios
-RUN mkdir -p /home/ecoin/.ecoin \
-    && chown -R ecoin:ecoin /home/ecoin
-
-# Copiar configuración base
-COPY ecoin.conf /home/ecoin/.ecoin/ecoin.conf
-RUN chown ecoin:ecoin /home/ecoin/.ecoin/ecoin.conf
-
-# Cambiar a usuario ecoin
-USER ecoin
-WORKDIR /home/ecoin
-
-# Puerto RPC y P2P
-EXPOSE 7474 12000
-
-# Volumen para datos persistentes
-VOLUME ["/home/ecoin/.ecoin"]
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
-    CMD ecoind getinfo || exit 1
-
-# Comando por defecto
-CMD ["ecoind", "-printtoconsole"]
-```
+- `SESSION-BACKLOG/ECOIN_DOCKER_HANDOFF_REPORT_2026-04-28.md`
 
 ### ecoin.conf para Docker:
 
@@ -331,7 +305,7 @@ services:
       - oasis-network
     ports:
       - "7474:7474"    # RPC (para debug desde host)
-      - "12000:12000"  # P2P ECOin network
+      - "12000:12000"  # P2P publicado actualmente; validar si debe migrar a 7408
     volumes:
       - ./volumes-dev/ecoin-data:/home/ecoin/.ecoin
     healthcheck:
@@ -451,11 +425,11 @@ docker exec ecoin-wallet ecoind getbalance
 | Componente | Estado |
 |------------|--------|
 | Plan arquitectura | ✅ Documentado |
-| Dockerfile ECOin | ✅ Creado |
+| Dockerfile ECOin | ✅ Actualizado a flujo `.deb` precompilado |
 | docker-compose actualizado | ✅ Modificado |
 | Red oasis-network | ✅ Configurada |
-| ECOin corriendo | ⏳ Pendiente build |
-| Integración Oasis | ⏳ Pendiente |
+| ECOin corriendo | ✅ Healthy |
+| Integración Oasis | 🟡 Defaults listos; falta validación UI |
 | Backup ECOin | ⏳ Pendiente |
 
 ---
@@ -463,27 +437,23 @@ docker exec ecoin-wallet ecoind getbalance
 ## 🔄 PRÓXIMOS PASOS (Siguiente sesión)
 
 ```bash
-# 1. Build de ECOin (15-30 min)
+# 1. Ver estado y logs
 cd /c/Users/aleph/OASIS/alephscript-network-sdk
-docker-compose build ecoin-wallet
+npm run ecoin:status
+npm run ecoin:info
 
-# 2. Levantar contenedor
-docker-compose up -d ecoin-wallet
+# 2. Si hace falta dirección operativa
+npm run ecoin:address
 
-# 3. Verificar logs (sincronización blockchain)
-docker logs -f ecoin-wallet
-
-# 4. Obtener dirección wallet
-docker exec ecoin-wallet ecoind getnewaddress ""
-
-# 5. Configurar en Oasis UI
+# 3. Validar desde Oasis UI
 # → http://localhost:3000/settings
 # → Wallet section
-# → URL: http://ecoin-wallet:7474
-# → User: ecoinrpc
-# → Pass: ecoinrpc
+# → comprobar URL/credenciales efectivas
+
+# 4. Revisar puerto P2P real observado en logs
+# → confirmar 7408 vs 12000 antes de cerrar integración
 ```
 
 ---
 
-**SIGUIENTE PASO**: Ejecutar build y continuar con E6-E11
+**SIGUIENTE PASO**: Validación final UI/puertos/política del `.deb`; la infraestructura base ya está resuelta

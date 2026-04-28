@@ -4,3 +4,4 @@ node_modules/
 packages/
 cache/
 volumes-dev
+ECOIN_DOCKERIZE/ecoin.conf
