@@ -110,6 +110,81 @@ Ese script comprueba:
 - que `127.0.0.1:8787` no quede expuesto públicamente
 - configuración SSH efectiva
 
+### 6. Crear un backup local del pub remoto
+
+Para traer a tu máquina operadora un backup del pub del VPS dentro de esta carpeta segura:
+
+```bash
+bash GANDI_DEVOPS_FOLDER/scripts/backup-oasis-pub.sh
+```
+
+Por defecto crea una carpeta con timestamp en:
+
+- `GANDI_DEVOPS_FOLDER/backups/oasis-pub/<timestamp>/`
+
+Contenido por defecto:
+
+- `identity/secret`
+- `identity/config`
+- `identity/gossip.json`
+- `identity/gossip_unfollowed.json`
+- `identity/manifest.json`
+- `ssb-data-<timestamp>.tar.gz`
+- `SHA256SUMS.txt`
+- `BACKUP_METADATA.json`
+- `RESTORE.txt`
+
+Si solo quieres copia mínima de identidad y configuración, sin tarball completo:
+
+```bash
+bash GANDI_DEVOPS_FOLDER/scripts/backup-oasis-pub.sh --identity-only
+```
+
+Importante:
+
+- el backup queda **ignorado por git** por el `.gitignore` deny-by-default de esta carpeta;
+- aun así contiene secretos en claro, así que debes moverlo a almacenamiento cifrado externo cuanto antes;
+- el archivo más crítico es `secret`: quien lo tenga puede suplantar la identidad del pub.
+
+### 7. Levantar una UI temporal de mantenimiento del pub
+
+El servicio `oasis-pub-scriptorium` del VPS corre en modo `server`, así que no expone la UI completa de Oasis para editar el avatar o entrar en `/legacy`.
+
+Para tareas de mantenimiento de perfil (por ejemplo cambiar avatar, nombre o descripción del pub), usa el contenedor temporal de UI:
+
+```bash
+bash GANDI_DEVOPS_FOLDER/scripts/pub-maint-ui.sh up --stop-pub
+```
+
+Eso:
+
+- detiene el contenedor del pub si sigue activo;
+- levanta una UI temporal solo en `127.0.0.1:3000` del VPS;
+- reutiliza la misma identidad y el mismo volumen `ssb-data` del pub.
+
+Después abre el túnel SSH sugerido por el script o imprímelo explícitamente con:
+
+```bash
+bash GANDI_DEVOPS_FOLDER/scripts/pub-maint-ui.sh tunnel
+```
+
+Y entra localmente en:
+
+- `http://localhost:3000/profile/edit`
+- `http://localhost:3000/legacy`
+
+Cuando termines, baja la UI temporal y vuelve a arrancar el pub:
+
+```bash
+bash GANDI_DEVOPS_FOLDER/scripts/pub-maint-ui.sh down --restart-pub
+```
+
+Notas de seguridad y consistencia:
+
+- la UI temporal se publica solo en loopback del VPS (`127.0.0.1`), no en Internet;
+- no debes dejar el pub normal y la UI temporal escribiendo al mismo `.ssb` a la vez;
+- por eso el script exige `--stop-pub` para el arranque de mantenimiento.
+
 ## Por qué una carpeta separada
 
 - Mantiene las claves del VPS fuera de `~/.ssh/` global, así no se mezclan con otras identidades personales.
