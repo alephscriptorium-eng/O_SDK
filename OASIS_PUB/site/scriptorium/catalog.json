@@ -1,0 +1,486 @@
+{
+  "meta": {
+    "catalog": "Hackería Scriptorium",
+    "description": "Catálogo de utilidades, módulos y servicios del Aleph Scriptorium. Un taller de herramientas para escritura asistida por IA a largo aliento.",
+    "version": "1.0.0-beta.1",
+    "generated": "2026-05-01",
+    "sources": {
+      "plugins": ".github/plugins/registry.json",
+      "submodules": ".gitmodules",
+      "agents": "ARCHIVO/DEVOPS/Funcional.md",
+      "meta": "package.json"
+    },
+    "maintainer": "Editar catalog.json para añadir/actualizar items. Fuentes canónicas: registry.json y .gitmodules.",
+    "repo": "https://github.com/escrivivir-co/aleph-scriptorium",
+    "url": "https://pub.escrivivir.co/scriptorium/"
+  },
+  "stats": [
+    { "val": "27", "lbl": "Plugins" },
+    { "val": "23", "lbl": "SDKs" },
+    { "val": "35+", "lbl": "Agentes" },
+    { "val": "8", "lbl": "Servidores MCP" },
+    { "val": "v1.0", "lbl": "Beta" }
+  ],
+  "categories": [
+    {
+      "id": "mostrador",
+      "label": "Mostrador",
+      "icon": "⬛",
+      "description": "Infraestructura del taller: gestión, contexto, contratos y notebooks. El primer mostrador de cualquier sesión.",
+      "items": [
+        {
+          "id": "scriptorium-pack",
+          "sku": "PLG-CORE-01",
+          "name": "ScriptoriumPack",
+          "short": "Instrucciones core con activación selectiva. Reduce context bloat hasta ~70k tokens por sesión.",
+          "useCase": "Cargar solo el contexto relevante por tipo de tarea",
+          "status": "ready",
+          "tags": ["context", "instrucciones", "core"],
+          "agent": "@scriptorium-pack",
+          "links": { "source": ".github/plugins/scriptorium-pack/" }
+        },
+        {
+          "id": "scrum",
+          "sku": "PLG-CORE-02",
+          "name": "Scrum / Backlog",
+          "short": "Gestión ágil de sprints: planificación, borradores, tracking y retrospectiva. Ciclo PO-SM-DevOps.",
+          "useCase": "Organizar el trabajo en sprints con roles definidos",
+          "status": "ready",
+          "tags": ["scrum", "backlog", "sprint"],
+          "agent": "@scrum",
+          "links": { "source": ".github/plugins/scrum/", "data": "ARCHIVO/PLUGINS/SCRUM/" }
+        },
+        {
+          "id": "mcp-presets",
+          "sku": "PLG-CORE-03",
+          "name": "MCP Presets",
+          "short": "Gestión de packs de herramientas MCP: importar, exportar y asignar presets a agentes.",
+          "useCase": "Distribuir paquetes de tools/prompts a agentes especializados",
+          "status": "ready",
+          "tags": ["mcp", "presets", "tools"],
+          "agent": "@mcp-presets",
+          "links": { "source": ".github/plugins/mcp-presets/", "data": "ARCHIVO/PLUGINS/MCP_PRESETS/" }
+        },
+        {
+          "id": "openasyncapi-editor",
+          "sku": "PLG-CORE-04",
+          "name": "OpenAsyncAPI Editor",
+          "short": "Catálogo de specs OpenAPI, AsyncAPI y MCPSpec. Generación de clientes y stubs de servidor.",
+          "useCase": "Documentar, validar y generar código desde especificaciones API",
+          "status": "ready",
+          "tags": ["openapi", "asyncapi", "specs", "codegen"],
+          "agent": "@openasyncapi-editor",
+          "links": { "source": ".github/plugins/openasyncapi-editor/", "data": "ARCHIVO/PLUGINS/OPENASYNCAPI_EDITOR/" }
+        },
+        {
+          "id": "nodejs-notebooks",
+          "sku": "PLG-CORE-05",
+          "name": "Node.js Notebooks",
+          "short": "Notebooks .nnb interactivos para diagnóstico, demos MCP y panel de control de tasks.",
+          "useCase": "Ejecutar código Node/TS interactivo como cuadernos de trabajo",
+          "status": "ready",
+          "tags": ["notebooks", "repl", "diagnóstico", "typescript"],
+          "agent": "@nodejs-notebooks",
+          "links": { "source": ".github/plugins/nodejs-notebooks/", "data": "ARCHIVO/PLUGINS/NODEJS_NOTEBOOKS/" }
+        }
+      ]
+    },
+    {
+      "id": "autoria",
+      "label": "Banco de Autoría",
+      "icon": "✍️",
+      "description": "Herramientas de producción narrativa, editorial e intelectual para textos de largo aliento.",
+      "items": [
+        {
+          "id": "novelist",
+          "sku": "PLG-AUT-01",
+          "name": "Novelist MCP",
+          "short": "Editor de narrativas con memoria a largo plazo via servidor MCP. Puerto 3066.",
+          "useCase": "Editar obras, capítulos y personajes con coherencia persistente entre sesiones",
+          "status": "ready",
+          "tags": ["narrativa", "mcp", "obras", "memoria"],
+          "agent": "@novelist",
+          "links": { "source": "NovelistEditor/", "data": "ARCHIVO/PLUGINS/NOVELIST/" }
+        },
+        {
+          "id": "teatro",
+          "sku": "PLG-AUT-02",
+          "name": "Teatro Interactivo",
+          "short": "Sistema transmedia: ARG + agentes + publicación 3D con impress.js. 12 estadios (monomito).",
+          "useCase": "Crear experiencias de teatro interactivo con personajes IA y narrativa ramificada",
+          "status": "ready",
+          "tags": ["teatro", "transmedia", "arg", "impress.js", "personajes"],
+          "agent": "@teatro",
+          "links": { "source": ".github/plugins/teatro/", "data": "ARCHIVO/PLUGINS/TEATRO/" }
+        },
+        {
+          "id": "consejo-asesor",
+          "sku": "PLG-AUT-03",
+          "name": "Consejo Asesor ONFALO",
+          "short": "14 agentes intelectuales, 7 modos dialécticos, pipeline de meta-relato desde materiales brutos.",
+          "useCase": "Debate, auditoría, producción periodística y síntesis relatorial",
+          "status": "ready",
+          "tags": ["consejo", "debate", "dialéctica", "meta-relato", "producción"],
+          "agent": "@consejo-asesor",
+          "links": { "source": "onfalo-asesor-sdk/", "data": "ARCHIVO/PLUGINS/CONSEJO_ASESOR/" }
+        },
+        {
+          "id": "lore-sdk",
+          "sku": "PLG-AUT-04",
+          "name": "LoreSDK Editorial",
+          "short": "SDK documental para corrientes ideológicas: feed, diff, merge, design, status.",
+          "useCase": "Análisis y síntesis de corpus ideológicos en formato editorial estructurado",
+          "status": "ready",
+          "tags": ["editorial", "corpus", "lore", "sdk", "ideología"],
+          "agent": "@lore-sdk",
+          "links": { "source": "DocumentMachineSDK/", "data": "ARCHIVO/PLUGINS/LORE_SDK/" }
+        },
+        {
+          "id": "enciclopedia",
+          "sku": "PLG-AUT-05",
+          "name": "Enciclopedia",
+          "short": "Motor de consulta de tomos enciclopédicos. Incluye Historia de la Filosofía (61 capítulos).",
+          "useCase": "Consultar fuentes filosóficas e históricas durante la producción de texto",
+          "status": "ready",
+          "tags": ["enciclopedia", "filosofía", "tomos", "consulta"],
+          "agent": "@enciclopedia",
+          "links": { "source": ".github/plugins/enciclopedia/", "data": "ARCHIVO/PLUGINS/ENCICLOPEDIA/" }
+        },
+        {
+          "id": "foro-scraper",
+          "sku": "PLG-AUT-06",
+          "name": "Foro Scraper",
+          "short": "Scraping pausable/reanudable de foros y blogs con MCP Playwright. vBulletin, WordPress…",
+          "useCase": "Extraer y archivar conversaciones de foros para análisis editorial",
+          "status": "ready",
+          "tags": ["scraping", "playwright", "foros", "blogs", "pausable"],
+          "agent": "@foro-scraper",
+          "links": { "source": ".github/plugins/foro-scraper/", "data": "ARCHIVO/PLUGINS/FORO_SCRAPER/" }
+        }
+      ]
+    },
+    {
+      "id": "agentes",
+      "label": "Taller de Agentes",
+      "icon": "🤖",
+      "description": "Construcción, despliegue y operación de agentes de IA autónomos bajo distintos paradigmas.",
+      "items": [
+        {
+          "id": "agent-creator",
+          "sku": "PLG-AGT-01",
+          "name": "AgentCreator",
+          "short": "Crea, edita e instala agentes personalizados combinando bases con fuentes del ARCHIVO/DISCO.",
+          "useCase": "Diseñar agentes especializados para teatro, investigación o tareas recurrentes",
+          "status": "ready",
+          "tags": ["agentes", "creador", "personalización", "despliegue"],
+          "agent": "@agent-creator",
+          "links": { "source": ".github/plugins/agent-creator/", "data": "ARCHIVO/PLUGINS/AGENT_CREATOR/" }
+        },
+        {
+          "id": "arg-board",
+          "sku": "PLG-AGT-02",
+          "name": "ARG Board",
+          "short": "Motor conversacional para ARGs transmedia. 8 agentes internos (Arrakis, BOE, Decoherence…).",
+          "useCase": "Diseñar y ejecutar juegos de realidad alternativa sobre tableros interactivos",
+          "status": "ready",
+          "tags": ["arg", "transmedia", "juegos", "tablero"],
+          "agent": "@arg-board",
+          "links": { "source": ".github/plugins/arg-board/", "data": "ARCHIVO/PLUGINS/ARG_BOARD/" }
+        },
+        {
+          "id": "aaia-editor",
+          "sku": "PLG-AGT-03",
+          "name": "AAIA Editor",
+          "short": "Runtime de FIAs (Formas de IA): 10 paradigmas, sesiones y mundos. MCP puerto 3007.",
+          "useCase": "Operar agentes autónomos bajo paradigmas lógico, conexionista, simbólico, SBR…",
+          "status": "beta",
+          "tags": ["aaia", "fia", "paradigmas", "mcp", "runtime"],
+          "agent": "@aaia-editor",
+          "links": { "source": "AAIAGallery/as-core/", "data": "ARCHIVO/PLUGINS/AAIA_EDITOR/" }
+        },
+        {
+          "id": "bot-hub-sdk",
+          "sku": "PLG-AGT-04",
+          "name": "BotHub SDK",
+          "short": "Bots Telegram plugin-based con protocolo IACM inter-agente sobre grammY + Bun.",
+          "useCase": "Crear bots composables con comunicación estructurada entre agentes en Telegram",
+          "status": "beta",
+          "tags": ["telegram", "bots", "iacm", "grammy", "bun"],
+          "agent": "@bot-hub-sdk",
+          "links": { "source": "BotHubSDK/", "data": "ARCHIVO/PLUGINS/BOT_HUB_SDK/" }
+        },
+        {
+          "id": "arg-board-app",
+          "sku": "PLG-AGT-05",
+          "name": "ArgBoardApp",
+          "short": "Wiki-racer como máquina de estados para obras del Teatro ARG. Navegación interactiva.",
+          "useCase": "Implementar juegos de navegación sobre mapas de enlaces del Teatro",
+          "status": "beta",
+          "tags": ["wiki-racer", "estados", "teatro", "navegación"],
+          "agent": "@arg-board-app",
+          "links": { "source": ".github/plugins/arg-board-app/", "data": "ARCHIVO/PLUGINS/ARG_BOARD_APP/" }
+        }
+      ]
+    },
+    {
+      "id": "logica",
+      "label": "Herramientas de Lógica",
+      "icon": "🧠",
+      "description": "Programación declarativa, visual y ontológica para agentes, sistemas y contratos de comunicación.",
+      "items": [
+        {
+          "id": "prolog-editor",
+          "sku": "PLG-LOG-01",
+          "name": "Prolog Editor MCP",
+          "short": "Stack MCP Prolog completo: 12 tools, 6 resources, 8 prompts. SWI-Prolog 9.x. Puerto 3006.",
+          "useCase": "Diseñar cerebros lógicos para personajes del Teatro y agentes IoT/SBR",
+          "status": "ready",
+          "tags": ["prolog", "swi-prolog", "mcp", "lógica", "iot", "sbr"],
+          "agent": "@prolog-editor",
+          "links": { "source": "PrologEditor/", "data": "ARCHIVO/PLUGINS/PROLOG_EDITOR/" }
+        },
+        {
+          "id": "blockly-editor",
+          "sku": "PLG-LOG-02",
+          "name": "Blockly Editor",
+          "short": "Programación visual con Google Blockly. Genera JavaScript ejecutable para el Teatro.",
+          "useCase": "Diseñar lógica de personajes IA sin escribir código directamente",
+          "status": "ready",
+          "tags": ["blockly", "visual", "codegen", "teatro", "javascript"],
+          "agent": "@blockly-editor",
+          "links": { "source": "BlocklyEditor/", "data": "ARCHIVO/PLUGINS/BLOCKLY_EDITOR/" }
+        },
+        {
+          "id": "typed-prompting",
+          "sku": "PLG-LOG-03",
+          "name": "TypedPrompting",
+          "short": "Ontologías NL↔JSON. Valida mensajes LLM contra schemas. 7 tools MCP. Puerto 3019/3020.",
+          "useCase": "Definir contratos de comunicación entre agentes con JSON Schema / Zod",
+          "status": "ready",
+          "tags": ["schemas", "validación", "ontología", "mcp", "llm"],
+          "agent": "@typed-prompting",
+          "links": { "source": "TypedPromptsEditor/", "data": "ARCHIVO/PLUGINS/TYPED_PROMPTING/" }
+        },
+        {
+          "id": "n8n-editor",
+          "sku": "PLG-LOG-04",
+          "name": "N8N Editor",
+          "short": "Diseño visual de workflows estilo n8n. Conector — no reemplazo. Angular 18 + D3.js.",
+          "useCase": "Diseñar y exportar workflows para ejecutar en n8n real",
+          "status": "ready",
+          "tags": ["n8n", "workflows", "visual", "angular", "d3"],
+          "agent": "@n8n-editor",
+          "links": { "source": "WorkflowEditor/", "data": "ARCHIVO/PLUGINS/N8N_EDITOR/" }
+        },
+        {
+          "id": "hypergraph-editor",
+          "sku": "PLG-LOG-05",
+          "name": "HyperGraph Editor",
+          "short": "Visualiza y navega grafos hipervinculados con fuentes abstractas. Preset MediaWiki.",
+          "useCase": "Explorar relaciones entre conceptos en mapas de enlaces y wikis",
+          "status": "beta",
+          "tags": ["grafo", "hipervínculos", "wiki", "visualización", "mediawiki"],
+          "agent": "@hypergraph-editor",
+          "links": { "source": "WiringAppHypergraphEditor/", "data": "ARCHIVO/PLUGINS/HYPERGRAPH_EDITOR/" }
+        }
+      ]
+    },
+    {
+      "id": "wiring",
+      "label": "Flujos y Wiring",
+      "icon": "⚡",
+      "description": "Automatización de datos, transcripción de audio, flujos de juego y redes P2P asíncronas.",
+      "items": [
+        {
+          "id": "wire-editor",
+          "sku": "PLG-WIR-01",
+          "name": "Wire Editor (Node-RED)",
+          "short": "20 nodos custom para Node-RED: bots, canales, formato, dashboard y Escribiente.",
+          "useCase": "Diseñar flujos de datos asíncronos con nodos AlephScript en Node-RED",
+          "status": "ready",
+          "tags": ["node-red", "flujos", "nodos", "sdk", "alephscript"],
+          "agent": "@wire-editor",
+          "links": { "source": "WiringEditor/", "data": "ARCHIVO/DISCO/WIRING/" }
+        },
+        {
+          "id": "escribiente",
+          "sku": "PLG-WIR-02",
+          "name": "Escribiente",
+          "short": "Transcripción por sesiones: Audio → faster-whisper via Node-RED. Colas INBOX/OUTBOX.",
+          "useCase": "Transcribir sesiones de audio de forma asíncrona y exportar a texto",
+          "status": "beta",
+          "tags": ["transcripción", "whisper", "audio", "sesiones", "node-red"],
+          "agent": "@wire-editor",
+          "links": { "source": "WiringEditor/", "data": "ARCHIVO/PLUGINS/ESCRIBIENTE/" }
+        },
+        {
+          "id": "wiring-app",
+          "sku": "PLG-WIR-03",
+          "name": "WiringApp",
+          "short": "Templates de juegos de navegación wiki-racer sobre Node-RED.",
+          "useCase": "Crear flujos de juego interactivo sobre grafos de artículos o conceptos",
+          "status": "beta",
+          "tags": ["wiki-racer", "node-red", "juegos", "templates"],
+          "agent": "@wiring-app",
+          "links": { "source": "WiringAppHypergraphEditor/", "data": "ARCHIVO/PLUGINS/WIRING_APP/" }
+        },
+        {
+          "id": "network",
+          "sku": "PLG-WIR-04",
+          "name": "Network / Oasis (SSB)",
+          "short": "Sincronización P2P de BOEs entre Scriptoriums via Scuttlebutt. Teatro distribuido.",
+          "useCase": "Colaboración sin servidor central y replicación de contenido P2P",
+          "status": "ready",
+          "tags": ["ssb", "p2p", "oasis", "scuttlebutt", "distribuido"],
+          "agent": "@network",
+          "links": { "source": "BlockchainComPort/", "data": "ARCHIVO/PLUGINS/NETWORK/" }
+        }
+      ]
+    },
+    {
+      "id": "vectorizacion",
+      "label": "Vectorización y Memoria",
+      "icon": "🔬",
+      "description": "Búsqueda semántica, indexación vectorial self-hosted y memoria de largo plazo para corpus.",
+      "items": [
+        {
+          "id": "vector-machine",
+          "sku": "PLG-VEC-01",
+          "name": "VectorMachine",
+          "short": "Stack vectorial self-hosted (ChromaDB). Prepara fachada MCP sobre MCPGallery/mcp-mesh-sdk.",
+          "useCase": "Indexar corpus para búsqueda semántica en proyectos de escritura larga",
+          "status": "beta",
+          "tags": ["chroma", "vectores", "embeddings", "mcp", "búsqueda"],
+          "agent": "@vector-machine",
+          "links": { "source": "VectorMachineSDK/", "ui": "VectorMachineUI/", "data": "ARCHIVO/PLUGINS/VECTOR_MACHINE/" }
+        }
+      ]
+    },
+    {
+      "id": "publicacion",
+      "label": "Publicación y Red",
+      "icon": "🌐",
+      "description": "Publicación en GitHub Pages, servidor web público y difusión del trabajo en la red.",
+      "items": [
+        {
+          "id": "gh-pages",
+          "sku": "PLG-PUB-01",
+          "name": "GH Pages Publisher",
+          "short": "Publica contenido del Scriptorium en GitHub Pages. Modos fusionar/reemplazar. Fuente: docs/.",
+          "useCase": "Llevar texto, obras y blueprints del taller a la web pública de manera controlada",
+          "status": "ready",
+          "tags": ["github-pages", "publicación", "web", "jekyll", "docs"],
+          "agent": "@gh-pages",
+          "links": { "source": ".github/plugins/gh-pages/", "url": "https://escrivivir-co.github.io/aleph-scriptorium/" }
+        },
+        {
+          "id": "oasis-pub",
+          "sku": "INF-PUB-01",
+          "name": "OASIS PUB",
+          "short": "Servidor SSB público (Caddy + Docker). Landing, panel admin y API de estado JSON.",
+          "useCase": "Nodo Oasis replicador de contenido P2P con presencia web pública",
+          "status": "ready",
+          "tags": ["oasis", "ssb", "caddy", "docker", "pub", "vps"],
+          "agent": null,
+          "links": { "source": "BlockchainComPort/OASIS_PUB/", "url": "/" }
+        }
+      ]
+    },
+    {
+      "id": "sdks",
+      "label": "SDKs Base",
+      "icon": "🔧",
+      "description": "Librerías especializadas y submódulos para integraciones de infraestructura avanzada.",
+      "items": [
+        {
+          "id": "mcp-gallery",
+          "sku": "SDK-MCP-01",
+          "name": "MCPGallery / MeshSDK",
+          "short": "Mesh de servidores MCP via Socket.IO (puerto 3010): DevOps, Model, Prolog, TypedPrompt, AAIA…",
+          "useCase": "Orquestar y descubrir capacidades MCP en el ecosistema del Scriptorium",
+          "status": "ready",
+          "tags": ["mcp", "mesh", "socket.io", "servidores", "orquestación"],
+          "agent": "@mcp-presets",
+          "links": { "source": "MCPGallery/" }
+        },
+        {
+          "id": "state-machine",
+          "sku": "SDK-MCP-02",
+          "name": "StateMachine MCP Driver",
+          "short": "Driver de máquina de estados para agentes sobre protocolo MCP.",
+          "useCase": "Modelar comportamientos de agente como máquinas de estado formales verificables",
+          "status": "beta",
+          "tags": ["state-machine", "mcp", "agentes", "formal"],
+          "agent": null,
+          "links": { "source": "StateMachine/" }
+        },
+        {
+          "id": "copilot-engine",
+          "sku": "SDK-COG-01",
+          "name": "CopilotEngine",
+          "short": "Fork del motor GitHub Copilot Chat adaptado al Scriptorium como base para agentes.",
+          "useCase": "Base para agentes Copilot personalizados con instrucciones propias",
+          "status": "beta",
+          "tags": ["copilot", "vscode", "motor", "fork"],
+          "agent": null,
+          "links": { "source": "CopilotEngine/" }
+        },
+        {
+          "id": "vscode-extension",
+          "sku": "SDK-COG-02",
+          "name": "VS Code Extension",
+          "short": "Extensión VS Code AlephScript para integración de comandos Scriptorium en el editor.",
+          "useCase": "Acceder a agentes y funciones del Scriptorium desde la paleta de VS Code",
+          "status": "beta",
+          "tags": ["vscode", "extensión", "alephscript", "comandos"],
+          "agent": null,
+          "links": { "source": "VsCodeExtension/" }
+        },
+        {
+          "id": "agent-lore-sdk",
+          "sku": "SDK-AGT-01",
+          "name": "AgentLore SDK",
+          "short": "SDK MCP para memoria editorial persistente de agentes sobre proyectos.",
+          "useCase": "Dotar a agentes de lore contextual duradera con gestión MCP",
+          "status": "beta",
+          "tags": ["lore", "memoria", "mcp", "agentes", "persistencia"],
+          "agent": null,
+          "links": { "source": "AgentLoreSDK/" }
+        },
+        {
+          "id": "threejs-ui",
+          "sku": "SDK-UI-01",
+          "name": "ThreeJS Gamify UI",
+          "short": "Componentes 3D/ThreeJS para interfaces gamificadas del Scriptorium.",
+          "useCase": "Construir UIs web inmersivas para teatro y visualización de datos narrativos",
+          "status": "beta",
+          "tags": ["threejs", "3d", "ui", "gamificación", "web"],
+          "agent": null,
+          "links": { "source": "UISDKThreejs/" }
+        },
+        {
+          "id": "stream-desktop",
+          "sku": "SDK-STR-01",
+          "name": "StreamDesktop (Kick Bot)",
+          "short": "Bot de streaming para Kick.com integrado con AlephScript y Cronos.",
+          "useCase": "Automatizar streaming en vivo con agentes del Scriptorium en Kick.com",
+          "status": "beta",
+          "tags": ["streaming", "kick", "bot", "alephscript"],
+          "agent": null,
+          "links": { "source": "StreamDesktop/" }
+        },
+        {
+          "id": "vibe-coding-suite",
+          "sku": "SDK-UTL-01",
+          "name": "VibeCodingSuite",
+          "short": "Utilidades core de AlephScript: helpers, patterns y herramientas de desarrollo rápido.",
+          "useCase": "Acelerar el desarrollo de plugins y SDKs con utilidades compartidas",
+          "status": "beta",
+          "tags": ["utils", "helpers", "patterns", "alephscript"],
+          "agent": null,
+          "links": { "source": "VibeCodingSuite/" }
+        }
+      ]
+    }
+  ]
+}

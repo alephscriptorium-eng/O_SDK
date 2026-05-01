@@ -2177,3 +2177,34 @@ Si quieres, el siguiente paso natural sería uno de estos dos:
 2\. **hacer que la landing muestre también uptime y restart count**, para que quede aún más "observabilidad poster".
 
 Made changes.
+---
+
+## Hito de planificación: Gandi + estructura de despliegue (fase plan)
+
+Decisiones cerradas en esta sesión:
+
+- **VPS confirmado**: GandiCloud VPS V-R4 (intermedio, ~2 vCPU / 4 GB / 25 GB, IPv4+IPv6, Debian 13), por ser parte de Scriptorium y no un experimento aislado.
+- **Carpeta operativa nueva**: `GANDI_DEVOPS_FOLDER/` en la raíz del repo, con `.gitignore` deny-by-default. Allí viven la clave SSH del VPS y los scripts de despliegue.
+- **Clave SSH dedicada**: generada con `GANDI_DEVOPS_FOLDER/scripts/init-ssh-key.sh` → `gandi_pub_ed25519` / `gandi_pub_ed25519.pub`. La pública se sube al panel de Gandi.
+- **Auth real del panel-api** (pendiente de elegir, propuesta en BACKLOG Épica 3):
+  - MVP: token Bearer + bind a `127.0.0.1` + túnel SSH/VS Code.
+  - VPS: subir a mTLS de Caddy en una ruta `/admin-api/` antes de cualquier exposición.
+  - Futuro: OIDC vía `oauth2-proxy`/`caddy-security` si pasa a multiusuario.
+- **Frontend easy-switch**: variable `OASIS_PUB_FRONT_MODE` (`static` | `angular`) decidirá qué sirve `pub-web` en `/`. `/public/*` y `/admin/` no cambian.
+- **Landing Scriptorium**: nueva Épica 8 en BACKLOG. Empieza como ruta `/scriptorium/` dentro de `pub-web` (sin contenedor extra) y, al pasar al VPS, se promueve a subdominio `scriptorium.escrivivir.co` con un vhost más en Caddy. Solo se considera contenedor propio si crece a un site con backend real.
+- **Imágenes propias en Docker Hub**: confirmado como camino para distribuir el stack del pub. Pendiente decidir nombre de organización/usuario en Docker Hub y política de tags (rolling `latest` + tags semánticos).
+
+Siguientes pasos (sin implementar todavía, seguimos en plan):
+
+1. Contratar el VPS V-R4 en Gandi y subir la clave pública.
+2. Reservar/crear DNS `pub.escrivivir.co` y, opcional, `scriptorium.escrivivir.co`.
+3. Diseñar el `Caddyfile` para producción con vhost por subdominio y bloque mTLS para `/admin-api/`.
+4. Definir el repo/usuario de Docker Hub y crear los Dockerfiles que se publicarán.
+
+Evidencia registrada después de contratar el VPS:
+
+- Primera conexión SSH correcta a `92.243.24.163` con la clave `gandi_pub_ed25519`.
+- Fingerprint ED25519 aceptado del host: `SHA256:9I0q2Nu89boQqsM5vieyHR3Zpmk3Lxb+69pmsd1p+eg`.
+- Hostname reportado por el sistema: `escrivivirco-scriptorium-pub-oasis`.
+- SO confirmado al login: `Debian GNU/Linux 13`.
+- Usuario inicial operativo: `debian`.
