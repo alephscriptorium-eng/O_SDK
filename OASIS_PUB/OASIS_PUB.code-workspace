@@ -1,0 +1,25 @@
+{
+  "folders": [
+    {
+      "name": "alephscript-network-sdk",
+      "path": ".."
+    },
+    {
+      "name": "OASIS_PUB",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "data": true
+    },
+    "terminal.integrated.cwd": "${workspaceFolder:OASIS_PUB}"
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-vscode-remote.remote-ssh",
+      "ms-vscode-remote.remote-containers",
+      "ms-azuretools.vscode-docker"
+    ]
+  }
+}

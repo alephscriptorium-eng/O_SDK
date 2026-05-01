@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PUB OASIS SCRIPTORIUM · Admin</title>
+  <link rel="stylesheet" href="/assets/fanzine.css">
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(0,0,0,0.05), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(0,0,0,0.04), transparent 28rem),
+        #f3ecdf;
+      max-width: 1100px;
+    }
+    .toolbar {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-top: 10px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      border: 2px solid #000;
+      background: #fff;
+      color: #000;
+      padding: 9px 10px;
+      font: inherit;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    button {
+      border: 2px solid #000;
+      background: #fff;
+      color: #000;
+      padding: 8px 12px;
+      font: inherit;
+      font-size: 0.68rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #000;
+      color: #fff;
+    }
+    button.danger {
+      background: #000;
+      color: #fff;
+    }
+    button.danger:hover {
+      background: #fff;
+      color: #000;
+    }
+    .status-line {
+      font-size: 0.68rem;
+      margin-top: 10px;
+      min-height: 1.4em;
+    }
+    .mono {
+      font-family: 'Courier New', Courier, monospace;
+    }
+    .json-box, .log-box {
+      font-size: 0.66rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #111;
+      color: #fff;
+      border: 2px solid #000;
+      padding: 12px;
+      overflow: auto;
+      max-height: 420px;
+    }
+    .log-box {
+      min-height: 300px;
+    }
+    .mini {
+      font-size: 0.64rem;
+      line-height: 1.5;
+    }
+    .metric-good { color: #0a0; }
+    .metric-bad { color: #a00; }
+    .muted { opacity: 0.75; }
+    .chip {
+      display: inline-block;
+      border: 1.5px solid #000;
+      padding: 2px 8px;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-right: 6px;
+      margin-top: 6px;
+    }
+    .chip.inv {
+      background: #000;
+      color: #fff;
+    }
+    @media (max-width: 700px) {
+      body { padding: 18px; }
+      .header h1 { font-size: 2rem; letter-spacing: 3px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="nav-back"><a href="/">← Volver a la landing</a></div>
+
+  <header class="header">
+    <div class="stamp">LOCAL / TOKEN</div>
+    <h1>PANEL OASIS PUB</h1>
+    <div class="sub">Control room local · monitorización + logs + restart</div>
+    <div class="sub2">Inspirado en el poster-template fanzine: monocromo, recortable, directo al grano.</div>
+    <div class="issue">Usa token local o puerto reenviado por VS Code / SSH</div>
+  </header>
+
+  <div class="washi"></div>
+
+  <div class="callout tilt-l">El panel visual es estático; el poder real sigue encerrado detrás del token y del puerto local.</div>
+
+  <div class="stats-bar tilt-r">
+    <div class="stat"><span id="metric-status" class="val">—</span><span class="lbl">Container</span></div>
+    <div class="stat"><span id="metric-health" class="val">—</span><span class="lbl">Health</span></div>
+    <div class="stat"><span id="metric-restarts" class="val">—</span><span class="lbl">Restarts</span></div>
+    <div class="stat"><span id="metric-uptime" class="val">—</span><span class="lbl">Uptime host</span></div>
+    <div class="stat"><span id="metric-panel" class="val">—</span><span class="lbl">Panel API</span></div>
+  </div>
+
+  <div class="cols">
+    <div class="col">
+      <div class="cutout tilt-l">
+        <div class="tape tape-tr"></div>
+        <h3>Conexión local</h3>
+
+        <div class="toolbar">
+          <label class="field">
+            API base
+            <input id="api-base" class="mono" type="text" spellcheck="false">
+          </label>
+          <label class="field">
+            Token
+            <input id="api-token" class="mono" type="password" spellcheck="false" autocomplete="off">
+          </label>
+          <label class="field">
+            Tail logs
+            <input id="tail-size" class="mono" type="number" min="10" max="2000" step="10" value="120">
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="btn-save">Guardar ajustes</button>
+          <button id="btn-refresh">Refrescar</button>
+          <button id="btn-open-public">Estado público</button>
+          <button id="btn-restart" class="danger">Restart pub</button>
+        </div>
+
+        <div id="status-line" class="status-line mono muted">Esperando credenciales locales…</div>
+
+        <details open>
+          <summary>Uso recomendado</summary>
+          <div class="detail-body mini">
+            En local: usa <span class="hl-box">http://127.0.0.1:8788</span> y tu token de <span class="hl-box">OASIS_PUB/.env.local</span>.<br>
+            En VPS: reenvía el puerto del panel con VS Code Remote SSH y apunta aquí a <span class="hl-box">http://127.0.0.1:8787</span>.
+          </div>
+        </details>
+      </div>
+
+      <div class="cutout tilt-r" style="margin-top: 14px;">
+        <div class="tape tape-tl"></div>
+        <h3>Ficha rápida</h3>
+        <table class="tbl" id="pub-table">
+          <tr><th>Campo</th><th>Valor</th></tr>
+          <tr><td>Container</td><td id="pub-name">—</td></tr>
+          <tr><td>Imagen</td><td id="pub-image">—</td></tr>
+          <tr><td>Host SSB</td><td id="pub-host">—</td></tr>
+          <tr><td>Puerto SSB</td><td id="pub-port">—</td></tr>
+          <tr><td>Started</td><td id="pub-started">—</td></tr>
+          <tr><td>Finished</td><td id="pub-finished">—</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="cutout tilt-r2">
+        <div class="tape tape-tr"></div>
+        <h3>Sistema anfitrión</h3>
+        <table class="tbl">
+          <tr><th>Propiedad</th><th>Valor</th></tr>
+          <tr><td>Hostname</td><td id="sys-hostname">—</td></tr>
+          <tr><td>Platform</td><td id="sys-platform">—</td></tr>
+          <tr><td>Arch</td><td id="sys-arch">—</td></tr>
+          <tr><td>Load</td><td id="sys-load">—</td></tr>
+          <tr><td>Mem libre</td><td id="sys-mem">—</td></tr>
+        </table>
+        <div class="chip">public/status</div>
+        <div class="chip inv">api/pub/status</div>
+        <div class="chip">api/pub/logs</div>
+        <div class="chip inv">api/pub/restart</div>
+      </div>
+
+      <div class="cutout tilt-l2" style="margin-top: 14px;">
+        <h3>Estado bruto JSON</h3>
+        <pre id="json-box" class="json-box mono">{}</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="cutout diagram-wrap">
+    <div class="tape tape-tl"></div>
+    <div class="tape tape-br"></div>
+    <h2>☞ Logs del pub</h2>
+    <pre id="log-box" class="log-box mono">Sin cargar aún.</pre>
+  </div>
+
+  <div class="cutout" style="text-align:center;">
+    <h3>Keywords</h3>
+    <span class="kw">admin-ui</span>
+    <span class="kw-inv">fanzine</span>
+    <span class="kw">local-token</span>
+    <span class="kw">restart</span>
+    <span class="kw-inv">observabilidad</span>
+  </div>
+
+  <footer class="footer">PUB OASIS SCRIPTORIUM · ADMIN LOCAL · POSTER-TEMPLATE LOOK & FEEL</footer>
+
+  <script>
+    const LOCAL_STORAGE_KEY = 'oasisPubPanelSettings';
+    const DEFAULT_LOCAL_TOKEN = 'local-dev-token-only-for-local-testing';
+
+    const els = {
+      apiBase: document.getElementById('api-base'),
+      apiToken: document.getElementById('api-token'),
+      tailSize: document.getElementById('tail-size'),
+      statusLine: document.getElementById('status-line'),
+      metricStatus: document.getElementById('metric-status'),
+      metricHealth: document.getElementById('metric-health'),
+      metricRestarts: document.getElementById('metric-restarts'),
+      metricUptime: document.getElementById('metric-uptime'),
+      metricPanel: document.getElementById('metric-panel'),
+      pubName: document.getElementById('pub-name'),
+      pubImage: document.getElementById('pub-image'),
+      pubHost: document.getElementById('pub-host'),
+      pubPort: document.getElementById('pub-port'),
+      pubStarted: document.getElementById('pub-started'),
+      pubFinished: document.getElementById('pub-finished'),
+      sysHostname: document.getElementById('sys-hostname'),
+      sysPlatform: document.getElementById('sys-platform'),
+      sysArch: document.getElementById('sys-arch'),
+      sysLoad: document.getElementById('sys-load'),
+      sysMem: document.getElementById('sys-mem'),
+      jsonBox: document.getElementById('json-box'),
+      logBox: document.getElementById('log-box'),
+      btnSave: document.getElementById('btn-save'),
+      btnRefresh: document.getElementById('btn-refresh'),
+      btnOpenPublic: document.getElementById('btn-open-public'),
+      btnRestart: document.getElementById('btn-restart')
+    };
+
+    function defaultApiBase() {
+      const host = window.location.hostname;
+      if (host === 'localhost' || host === '127.0.0.1') return 'http://127.0.0.1:8788';
+      return 'http://127.0.0.1:8787';
+    }
+
+    function loadSettings() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+        els.apiBase.value = saved.apiBase || defaultApiBase();
+        els.apiToken.value = saved.apiToken || ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? DEFAULT_LOCAL_TOKEN : '');
+        els.tailSize.value = saved.tailSize || '120';
+      } catch {
+        els.apiBase.value = defaultApiBase();
+        els.apiToken.value = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? DEFAULT_LOCAL_TOKEN : '';
+        els.tailSize.value = '120';
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+        apiBase: els.apiBase.value.trim(),
+        apiToken: els.apiToken.value,
+        tailSize: els.tailSize.value
+      }));
+      setStatus('Ajustes guardados en localStorage.', false);
+    }
+
+    function setStatus(message, isError = false) {
+      els.statusLine.textContent = message;
+      els.statusLine.style.color = isError ? '#a00' : '#000';
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return '—';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let value = bytes;
+      let idx = 0;
+      while (value >= 1024 && idx < units.length - 1) {
+        value /= 1024;
+        idx += 1;
+      }
+      return `${value.toFixed(value >= 10 || idx === 0 ? 0 : 1)} ${units[idx]}`;
+    }
+
+    function formatDate(value) {
+      if (!value || value.startsWith('0001-')) return '—';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+    }
+
+    function formatUptime(seconds) {
+      if (!Number.isFinite(seconds)) return '—';
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      return `${h}h ${m}m`;
+    }
+
+    async function apiFetch(path, options = {}) {
+      const base = els.apiBase.value.trim().replace(/\/$/, '');
+      const token = els.apiToken.value;
+      const headers = { ...(options.headers || {}) };
+      if (path.startsWith('/api/')) headers.Authorization = `Bearer ${token}`;
+      const response = await fetch(`${base}${path}`, { ...options, headers });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!response.ok) {
+        throw new Error(typeof data === 'object' && data?.error ? data.error : `${response.status} ${response.statusText}`);
+      }
+      return data;
+    }
+
+    async function refreshPanel() {
+      try {
+        setStatus('Consultando panel…', false);
+        const [statusData, logsData] = await Promise.all([
+          apiFetch('/api/pub/status'),
+          apiFetch(`/api/pub/logs?tail=${encodeURIComponent(els.tailSize.value || '120')}`)
+        ]);
+
+        const pub = statusData.pub || {};
+        const system = statusData.system || {};
+
+        els.metricStatus.textContent = pub.status || '—';
+        els.metricHealth.textContent = pub.health || '—';
+        els.metricRestarts.textContent = String(pub.restartCount ?? '—');
+        els.metricUptime.textContent = formatUptime(system.uptimeSeconds);
+        els.metricPanel.textContent = 'online';
+
+        els.pubName.textContent = pub.name || '—';
+        els.pubImage.textContent = pub.image || '—';
+        els.pubHost.textContent = pub.host || '—';
+        els.pubPort.textContent = pub.port || '—';
+        els.pubStarted.textContent = formatDate(pub.startedAt);
+        els.pubFinished.textContent = formatDate(pub.finishedAt);
+
+        els.sysHostname.textContent = system.hostname || '—';
+        els.sysPlatform.textContent = system.platform || '—';
+        els.sysArch.textContent = system.arch || '—';
+        els.sysLoad.textContent = Array.isArray(system.loadAverage) ? system.loadAverage.map(v => Number(v).toFixed(2)).join(' · ') : '—';
+        els.sysMem.textContent = system.memory ? `${formatBytes(system.memory.free)} / ${formatBytes(system.memory.total)}` : '—';
+
+        els.jsonBox.textContent = JSON.stringify(statusData, null, 2);
+        els.logBox.textContent = logsData.logs || '(sin logs)';
+        setStatus('Panel actualizado correctamente.', false);
+      } catch (error) {
+        els.metricPanel.textContent = 'error';
+        setStatus(`Error: ${error.message}`, true);
+      }
+    }
+
+    async function restartPub() {
+      if (!confirm('¿Reiniciar el contenedor del pub?')) return;
+      try {
+        setStatus('Enviando restart…', false);
+        await apiFetch('/api/pub/restart', { method: 'POST' });
+        setStatus('Restart enviado. Esperando unos segundos antes de refrescar…', false);
+        setTimeout(refreshPanel, 3500);
+      } catch (error) {
+        setStatus(`No se pudo reiniciar: ${error.message}`, true);
+      }
+    }
+
+    function openPublicStatus() {
+      window.open('/public/status', '_blank', 'noopener,noreferrer');
+    }
+
+    els.btnSave.addEventListener('click', saveSettings);
+    els.btnRefresh.addEventListener('click', refreshPanel);
+    els.btnRestart.addEventListener('click', restartPub);
+    els.btnOpenPublic.addEventListener('click', openPublicStatus);
+
+    loadSettings();
+    refreshPanel();
+    setInterval(refreshPanel, 20000);
+  </script>
+</body>
+</html>

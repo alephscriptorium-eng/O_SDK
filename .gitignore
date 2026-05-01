@@ -11,6 +11,7 @@ node_modules/
 volumes/
 volumes-dev/
 backups/
+OASIS_PUB/data/
 
 # Logs
 logs/
@@ -47,3 +48,4 @@ packages/
 cache/
 volumes-dev
 ECOIN_DOCKERIZE/ecoin.conf
+ECOIN_DOCKERIZE/ecoin_0.0.4-1_amd64.deb

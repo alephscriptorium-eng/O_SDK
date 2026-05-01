@@ -10,3 +10,9 @@ volumes-dev
 volumes-dev/**
 backups
 backups/**
+.env
+.env.*
+OASIS_PUB/.env
+OASIS_PUB/data
+OASIS_PUB/.env.local
+OASIS_PUB/data/**

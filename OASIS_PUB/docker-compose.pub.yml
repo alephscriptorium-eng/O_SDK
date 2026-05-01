@@ -1,0 +1,98 @@
+name: oasis-pub-scriptorium
+
+services:
+  oasis-pub:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: oasis-pub-scriptorium:latest
+    container_name: oasis-pub-scriptorium
+    command: ["server"]
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      OASIS_SKIP_AI_MODEL: "true"
+      OASIS_SERVER_CONFIG_OVERRIDE: /home/oasis/.ssb/config
+      OASIS_PUB_INTERNAL_SSB_PORT: ${OASIS_PUB_INTERNAL_SSB_PORT:-8008}
+      HOME: /home/oasis
+      SSB_PATH: /home/oasis/.ssb
+    ports:
+      - "${OASIS_PUB_SSB_PORT:-8008}:${OASIS_PUB_INTERNAL_SSB_PORT:-8008}"
+    volumes:
+      - "${OASIS_PUB_SSB_DATA_DIR:-../volumes-dev/oasis-pub/ssb-data}:/home/oasis/.ssb"
+      - "${OASIS_PUB_LOGS_DIR:-../volumes-dev/oasis-pub/logs}:/app/logs"
+      - "${OASIS_PUB_SSB_CONFIG_FILE:-./config/ssb/config}:/home/oasis/.ssb/config:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const net=require('net');const port=Number(process.env.OASIS_PUB_INTERNAL_SSB_PORT||8008);const s=net.connect(port,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),3000)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - oasis_pub_net
+
+  pub-panel-api:
+    build:
+      context: ./panel-api
+      dockerfile: Dockerfile
+    image: oasis-pub-panel-api:latest
+    container_name: oasis-pub-panel-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PUB_PANEL_TOKEN: ${PUB_PANEL_TOKEN:?Set PUB_PANEL_TOKEN in OASIS_PUB/.env}
+      OASIS_PUB_CONTAINER: oasis-pub-scriptorium
+      OASIS_PUB_HOST: ${OASIS_PUB_HOST:-pub.escrivivir.co}
+      OASIS_PUB_PORT: ${OASIS_PUB_SSB_PORT:-8008}
+      PANEL_BIND_HOST: 0.0.0.0
+      PANEL_PORT: 8787
+    ports:
+      - "127.0.0.1:${PUB_PANEL_PORT:-8787}:8787"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - oasis-pub
+    networks:
+      - oasis_pub_net
+
+  pub-web:
+    image: caddy:2-alpine
+    container_name: oasis-pub-web
+    restart: unless-stopped
+    environment:
+      OASIS_PUB_WEB_HOST: ${OASIS_PUB_WEB_HOST:-pub.escrivivir.co}
+    ports:
+      - "${OASIS_PUB_HTTP_PORT:-80}:80"
+      - "${OASIS_PUB_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./site:/srv/site:ro
+      - "${OASIS_PUB_CADDY_DATA_DIR:-../volumes-dev/oasis-pub/caddy-data}:/data"
+      - "${OASIS_PUB_CADDY_CONFIG_DIR:-../volumes-dev/oasis-pub/caddy-config}:/config"
+    depends_on:
+      - pub-panel-api
+    networks:
+      - oasis_pub_net
+
+  pub-frontend:
+    profiles: ["frontend"]
+    build:
+      context: ${PUB_FRONTEND_DIR:-./frontend}
+      dockerfile: ${PUB_FRONTEND_DOCKERFILE:-Dockerfile}
+    image: oasis-pub-angular-frontend:latest
+    container_name: oasis-pub-angular-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      OASIS_PUB_HOST: ${OASIS_PUB_HOST:-pub.escrivivir.co}
+      PUB_PANEL_API_URL: http://pub-panel-api:8787
+    ports:
+      - "127.0.0.1:${PUB_FRONTEND_PORT:-8080}:8080"
+    depends_on:
+      - pub-panel-api
+    networks:
+      - oasis_pub_net
+
+networks:
+  oasis_pub_net:
+    driver: bridge

@@ -14,6 +14,19 @@ MODEL_PATH="$MODEL_DIR/$MODEL_FILE"
 LEGACY_MODEL_PATH="$CURRENT_DIR/src/AI/$MODEL_FILE"
 CONFIG_FILE="$CURRENT_DIR/src/configs/oasis-config.json"
 
+if [ "$(id -u)" = "0" ] && [ "${OASIS_ENTRYPOINT_REEXEC:-0}" != "1" ]; then
+    mkdir -p /home/oasis/.ssb "$MODEL_DIR" "$CURRENT_DIR/logs"
+    chown oasis:oasis /home/oasis/.ssb "$MODEL_DIR" "$CURRENT_DIR/logs" 2>/dev/null || true
+    chmod u+rwx /home/oasis/.ssb "$MODEL_DIR" "$CURRENT_DIR/logs" 2>/dev/null || true
+
+    if [ -d /home/oasis/.ssb ]; then
+        find /home/oasis/.ssb -mindepth 1 -maxdepth 1 ! -name config -exec chown -R oasis:oasis {} + 2>/dev/null || true
+    fi
+
+    REEXEC_ARGS=$(printf '%q ' "$@")
+    exec su -m -s /bin/bash oasis -c "OASIS_ENTRYPOINT_REEXEC=1 $CURRENT_DIR/docker-entrypoint.sh ${REEXEC_ARGS}"
+fi
+
 # Configurar directorios necesarios
 mkdir -p "$MODEL_DIR"
 mkdir -p "$CURRENT_DIR/logs"
@@ -411,6 +424,9 @@ echo "==============================="
 echo "|| OASIS Dockerized AS v1.0 ||"
 echo "==============================="
 
+MODE="${1:-full}"
+SKIP_AI_MODEL="${OASIS_SKIP_AI_MODEL:-false}"
+
 # Configurar permisos (intentar sin fallar) - saltar si ya somos usuario oasis
 echo "📋 Verificando estructura de directorios..."
 ls -la /home/oasis/
@@ -444,10 +460,18 @@ fi
 setup_ssb_config
 
 # 3. Descargar modelo IA si es necesario
-download_ai_model
+if [ "$SKIP_AI_MODEL" = "true" ] || [ "$MODE" = "server" ]; then
+    echo "⏭ Saltando descarga de modelo IA para modo: $MODE"
+else
+    download_ai_model
+fi
 
 # 3b. Enlazar modelo IA al path esperado por Oasis AI sin volver a descargarlo
-link_ai_model
+if [ "$SKIP_AI_MODEL" = "true" ] || [ "$MODE" = "server" ]; then
+    echo "⏭ Saltando enlace de modelo IA para modo: $MODE"
+else
+    link_ai_model
+fi
 
 # 3. Instalar dependencias críticas
 install_runtime_deps
@@ -456,7 +480,11 @@ install_runtime_deps
 apply_node_patches
 
 # 5. Configurar OASIS según modelo disponible
-setup_oasis_config
+if [ "$SKIP_AI_MODEL" = "true" ] || [ "$MODE" = "server" ]; then
+    echo "⏭ Saltando configuración IA del cliente para modo: $MODE"
+else
+    setup_oasis_config
+fi
 
 echo ""
 echo "✅ OASIS configurado correctamente!"
@@ -478,8 +506,6 @@ if [ -d "/root/.ssb" ]; then
     cp -r /root/.ssb/* /home/oasis/.ssb/ 2>/dev/null || true
     rm -rf /root/.ssb 2>/dev/null || true
 fi
-
-MODE="$1"
 
 case "$MODE" in
     "server")

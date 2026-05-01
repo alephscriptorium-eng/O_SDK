@@ -1,0 +1,76 @@
+{
+  "logging": {
+    "level": "info"
+  },
+  "caps": {
+    "shs": "zTmidAb7t+tKi7W93FIHbOvlbd936x6G/vm8e8Td//A="
+  },
+  "pub": true,
+  "local": false,
+  "friends": {
+    "dunbar": 150,
+    "hops": 3
+  },
+  "gossip": {
+    "connections": 50,
+    "local": false,
+    "friends": true,
+    "seed": false,
+    "global": false
+  },
+  "connections": {
+    "seeds": [
+      "net:solarnethub.com:8008~shs:mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519"
+    ],
+    "incoming": {
+      "net": [
+        {
+          "port": 8008,
+          "host": "0.0.0.0",
+          "scope": "public",
+          "transform": "shs",
+          "external": "pub.escrivivir.co"
+        },
+        {
+          "port": 8008,
+          "host": "localhost",
+          "scope": "device",
+          "transform": "shs"
+        }
+      ],
+      "unix": [
+        {
+          "scope": [
+            "device",
+            "local",
+            "private"
+          ],
+          "transform": "noauth"
+        }
+      ]
+    },
+    "outgoing": {
+      "net": [
+        {
+          "transform": "shs"
+        }
+      ],
+      "tunnel": [],
+      "onion": [],
+      "ws": []
+    }
+  },
+  "replicationScheduler": {
+    "autostart": true,
+    "partialReplication": null
+  },
+  "autofollow": {
+    "enabled": true,
+    "feeds": [
+      "@mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519"
+    ],
+    "suggestions": [
+      "@mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519"
+    ]
+  }
+}

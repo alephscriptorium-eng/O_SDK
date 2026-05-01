@@ -28,8 +28,11 @@ WORKDIR /app
 # Copiar código fuente completo
 COPY --chown=oasis:oasis . .
 
-# Convertir line endings y dar permisos al entrypoint
-RUN dos2unix docker-entrypoint.sh && chmod +x docker-entrypoint.sh
+# Asegurar directorios de runtime y permisos antes de cambiar al usuario oasis
+RUN mkdir -p /app/logs /app/src/AI/models \
+    && chown -R oasis:oasis /app \
+    && dos2unix docker-entrypoint.sh \
+    && chmod +x docker-entrypoint.sh
 
 # Cambiar al usuario oasis ANTES de instalar dependencias
 USER oasis
@@ -42,6 +45,9 @@ ENV NODE_LLAMA_CPP_SKIP_DOWNLOAD=false \
 # Instalar dependencias base del servidor como usuario oasis
 WORKDIR /app/src/server
 RUN npm install --no-bin-links --ignore-scripts
+
+# Volver a root en runtime para poder ajustar permisos de volúmenes montados
+USER root
 
 # Instalar dependencias de AI con binarios Linux correctos
 # WORKDIR /app/src/AI

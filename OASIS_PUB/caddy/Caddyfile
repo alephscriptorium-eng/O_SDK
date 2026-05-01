@@ -1,0 +1,20 @@
+{$OASIS_PUB_WEB_HOST:pub.escrivivir.co} {
+  encode zstd gzip
+
+  header {
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy strict-origin-when-cross-origin
+  }
+
+  @public path /public/*
+  handle @public {
+    reverse_proxy pub-panel-api:8787
+  }
+
+  handle {
+    root * /srv/site
+    try_files {path} {path}/index.html /index.html
+    file_server
+  }
+}

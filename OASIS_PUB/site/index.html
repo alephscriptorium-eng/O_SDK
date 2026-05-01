@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PUB OASIS SCRIPTORIUM</title>
+  <link rel="stylesheet" href="/assets/fanzine.css">
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(0,0,0,0.05), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(0,0,0,0.04), transparent 28rem),
+        #f6f1e6;
+      max-width: 980px;
+    }
+    .hero-copy {
+      font-size: 0.84rem;
+      margin-top: 10px;
+    }
+    .hero-copy p {
+      margin-top: 8px;
+    }
+    .access-list {
+      font-size: 0.72rem;
+      line-height: 1.6;
+    }
+    .access-list a {
+      color: #000;
+      text-decoration: none;
+      border-bottom: 1.5px solid #000;
+    }
+    .access-list a:hover {
+      background: #000;
+      color: #fff;
+    }
+    .status-ok { color: #000; }
+    .muted-note { opacity: 0.75; }
+    .tiny {
+      font-size: 0.64rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="stamp">PUB / LIVE</div>
+    <h1>PUB OASIS SCRIPTORIUM</h1>
+    <div class="sub">Nodo Oasis / SSB · landing pública + panel local</div>
+    <div class="sub2">Servidor de replicación y memoria para Scriptorium, preparado para local y para VPS.</div>
+    <div class="issue">LOCAL DEV · VPS READY · PARA LA VOZ SDK</div>
+  </header>
+
+  <div class="washi"></div>
+
+  <div class="callout tilt-r">
+    Observabilidad local, persistencia en volumes-dev y transición limpia hacia Gandi VPS.
+  </div>
+
+  <div class="stats-bar tilt-l" aria-label="Estado del pub">
+    <div class="stat"><span id="status" class="val">—</span><span class="lbl">Estado</span></div>
+    <div class="stat"><span id="host" class="val">—</span><span class="lbl">Host SSB</span></div>
+    <div class="stat"><span id="port" class="val">—</span><span class="lbl">Puerto</span></div>
+    <div class="stat"><span id="health" class="val">—</span><span class="lbl">Health</span></div>
+  </div>
+
+  <div class="cols">
+    <div class="col">
+      <div class="cutout tilt-l">
+        <div class="tape tape-tr"></div>
+        <h3>Accesos</h3>
+        <div class="access-list">
+          · Landing pública: <a href="/">/</a><br>
+          · Panel local: <a href="/admin/">/admin/</a><br>
+          · Estado JSON: <a href="/public/status">/public/status</a><br>
+          · SDK: <a href="https://escrivivir-co.github.io/para-la-voz-sdk/">Para la Voz SDK</a>
+        </div>
+
+        <details style="margin-top:10px;" open>
+          <summary>Cómo se administra</summary>
+          <div class="detail-body">
+            El panel privado no se expone públicamente. En local usa <span class="hl-box">127.0.0.1:8788</span>.
+            En VPS se accede por túnel SSH o VS Code Port Forwarding al puerto local del panel.
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="cutout tilt-r">
+        <div class="tape tape-tl"></div>
+        <h3>Ficha rápida</h3>
+        <table class="tbl">
+          <tr><th>Propiedad</th><th>Estado</th></tr>
+          <tr><td>SSB pub</td><td class="check" id="feature-pub">…</td></tr>
+          <tr><td>Panel local</td><td class="check">✔</td></tr>
+          <tr><td>Landing web</td><td class="check">✔</td></tr>
+          <tr><td>Invites reales en localhost</td><td class="check">✘</td></tr>
+        </table>
+        <div class="tiny muted-note">
+          En local puro puedes validar el servicio, los logs y el panel. Los invites reales llegan cuando el pub anuncia host/IP públicos.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cutout diagram-wrap">
+    <div class="tape tape-tl"></div>
+    <h2>☞ Topología local</h2>
+<pre class="diagram"> localhost:8088  ─────────▶ pub-web (Caddy)
+      │                     │
+      ├─ /public/status ───▶│ reverse proxy a pub-panel-api
+      │                     │
+      └─ /admin/ ──────────▶ UI estática del panel
+
+ 127.0.0.1:8788 ───────────▶ pub-panel-api
+ localhost:8009 ───────────▶ oasis-pub (SSB / SHS)
+
+ volumes-dev/oasis-pub/* ─▶ ssb-data · logs · caddy-data · caddy-config</pre>
+  </div>
+
+  <div class="cutout" style="text-align:center;">
+    <h3>Keywords</h3>
+    <span class="kw">oasis</span>
+    <span class="kw-inv">ssb-pub</span>
+    <span class="kw">local-panel</span>
+    <span class="kw">caddy</span>
+    <span class="kw-inv">volumes-dev</span>
+  </div>
+
+  <footer class="footer">
+    PUB OASIS SCRIPTORIUM · LOCAL LANDING · PANEL LOCAL · PARA LA VOZ SDK
+  </footer>
+
+  <script>
+    async function refreshStatus() {
+      const status = document.getElementById('status');
+      const host = document.getElementById('host');
+      const port = document.getElementById('port');
+      const health = document.getElementById('health');
+      const featurePub = document.getElementById('feature-pub');
+
+      try {
+        const response = await fetch('/public/status', { cache: 'no-store' });
+        if (!response.ok) throw new Error('status unavailable');
+        const data = await response.json();
+        status.textContent = data.running ? 'online' : 'offline';
+        host.textContent = data.host || 'pub.escrivivir.co';
+        port.textContent = data.port || '8008';
+        health.textContent = data.health || '—';
+        featurePub.textContent = data.running ? '✔' : '✘';
+      } catch (error) {
+        status.textContent = 'sin datos';
+        health.textContent = '—';
+        featurePub.textContent = '✘';
+      }
+    }
+
+    refreshStatus();
+    setInterval(refreshStatus, 30000);
+  </script>
+</body>
+</html>
