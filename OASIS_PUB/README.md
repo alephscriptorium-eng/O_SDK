@@ -26,10 +26,19 @@ Para el despliegue típico con pub + Caddy + panel API + frontend Angular/Node:
 - GandiCloud VPS V-R4 o equivalente
 - 2 vCPU
 - 4 GB RAM
-- Ubuntu LTS o Debian estable
+- Debian 13
 - 25 GB iniciales, ampliable
 
 Si quieres gastar menos en MVP, un plan de 2 GB RAM puede servir para solo pub + landing simple. El plan de 1 GB lo dejaría para pruebas.
+
+## Perfil VPS Debian 13
+
+Para la fase base del VPS se fija este layout como contrato operativo:
+
+- repo en `/opt/oasis-scriptorium`
+- datos persistentes del pub en `/srv/oasis/oasis-pub`
+
+Si despliegas en ese host, **no** empieces desde `.env.example`. Usa `OASIS_PUB/.env.vps.example`, porque el perfil genérico sigue pensado para rutas relativas cómodas en local.
 
 ## Servicios incluidos
 
@@ -58,6 +67,22 @@ Endpoints MVP:
 - `POST /api/pub/restart`
 
 ## Flujo de deploy típico
+
+### Flujo recomendado en VPS Debian 13
+
+1. Prepara la base del host con `GANDI_DEVOPS_FOLDER/scripts/bootstrap-debian13-base.sh`.
+2. Clona este repo en `/opt/oasis-scriptorium`.
+3. Copia `.env.vps.example` a `.env`.
+4. Cambia `PUB_PANEL_TOKEN`.
+5. Ajusta `OASIS_PUB_HOST` si no usas `pub.escrivivir.co`.
+6. Revisa `config/ssb/config` antes del primer arranque.
+7. Arranca con `bash scripts/deploy.sh`.
+8. Obtén la identidad con `bash scripts/whoami.sh`.
+9. Publica perfil con `bash scripts/publish-profile.sh`.
+10. Anuncia el pub con `bash scripts/announce-pub.sh`.
+11. Genera invite con `bash scripts/invite.sh 1`.
+
+### Flujo genérico
 
 1. Copia `.env.example` a `.env`.
 2. Cambia `PUB_PANEL_TOKEN`.
@@ -96,16 +121,19 @@ Los datos persistentes del pub quedan en `volumes-dev/oasis-pub/` para manipulac
 - `volumes-dev/oasis-pub/caddy-data`
 - `volumes-dev/oasis-pub/caddy-config`
 
+En el VPS Debian 13 con layout canónico, esas rutas deben sustituirse por bind mounts absolutos bajo `/srv/oasis/oasis-pub/` usando `.env.vps.example`.
+
 ## VS Code remoto
 
 Ruta recomendada:
 
 1. Instala la extensión oficial **Remote - SSH**.
 2. Conecta al VPS por SSH.
-3. Clona el repo en `/srv/oasis-scriptorium` o `/opt/oasis-scriptorium`.
+3. Clona el repo en `/opt/oasis-scriptorium`.
 4. Abre `OASIS_PUB/OASIS_PUB.code-workspace`.
-5. Usa la terminal integrada remota para ejecutar scripts.
-6. Usa Port Forwarding de VS Code para abrir `127.0.0.1:8787` en local.
+5. En el VPS, crea `OASIS_PUB/.env` a partir de `OASIS_PUB/.env.vps.example`.
+6. Usa la terminal integrada remota para ejecutar scripts.
+7. Usa Port Forwarding de VS Code para abrir `127.0.0.1:8787` en local.
 
 Extensiones recomendadas en el workspace:
 

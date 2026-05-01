@@ -28,6 +28,34 @@ mkdir_pub_path() {
   fi
 }
 
+is_absolute_pub_path() {
+  local raw_path="$1"
+  [[ "$raw_path" = /* ]] || [[ "$raw_path" =~ ^[A-Za-z]:[/\\] ]]
+}
+
+is_canonical_vps_layout() {
+  [[ "$PUB_DIR" = "/opt/oasis-scriptorium/OASIS_PUB" ]]
+}
+
+require_vps_persistent_path() {
+  local var_name="$1"
+  local raw_path="$2"
+
+  if ! is_absolute_pub_path "$raw_path"; then
+    echo "Invalid $var_name for canonical VPS deploy: '$raw_path'"
+    echo "Expected an absolute path under /srv/oasis/."
+    echo "Create $PUB_ENV_PATH from $PUB_DIR/.env.vps.example before running deploy."
+    exit 1
+  fi
+
+  if [[ "$raw_path" != /srv/oasis/* ]]; then
+    echo "Invalid $var_name for canonical VPS deploy: '$raw_path'"
+    echo "Expected a path rooted under /srv/oasis/."
+    echo "Create $PUB_ENV_PATH from $PUB_DIR/.env.vps.example before running deploy."
+    exit 1
+  fi
+}
+
 require_env_file() {
   if [ ! -f "$PUB_ENV_PATH" ]; then
     echo "Missing env file: $PUB_ENV_PATH"
@@ -42,6 +70,18 @@ load_pub_env() {
   # shellcheck disable=SC1090
   . "$PUB_ENV_PATH"
   set +a
+}
+
+validate_vps_persistent_paths() {
+  if ! is_canonical_vps_layout; then
+    return 0
+  fi
+
+  load_pub_env
+  require_vps_persistent_path "OASIS_PUB_SSB_DATA_DIR" "${OASIS_PUB_SSB_DATA_DIR:-../volumes-dev/oasis-pub/ssb-data}"
+  require_vps_persistent_path "OASIS_PUB_LOGS_DIR" "${OASIS_PUB_LOGS_DIR:-../volumes-dev/oasis-pub/logs}"
+  require_vps_persistent_path "OASIS_PUB_CADDY_DATA_DIR" "${OASIS_PUB_CADDY_DATA_DIR:-../volumes-dev/oasis-pub/caddy-data}"
+  require_vps_persistent_path "OASIS_PUB_CADDY_CONFIG_DIR" "${OASIS_PUB_CADDY_CONFIG_DIR:-../volumes-dev/oasis-pub/caddy-config}"
 }
 
 ensure_runtime_dirs() {

@@ -2196,7 +2196,7 @@ Decisiones cerradas en esta sesión:
 
 Siguientes pasos (sin implementar todavía, seguimos en plan):
 
-1. Contratar el VPS V-R4 en Gandi y subir la clave pública.
+1. Formatear y montar el volumen `scriptorium-oasis-pub-volumen` en `/srv/oasis` y dejarlo persistente en `fstab`.
 2. Reservar/crear DNS `pub.escrivivir.co` y, opcional, `scriptorium.escrivivir.co`.
 3. Diseñar el `Caddyfile` para producción con vhost por subdominio y bloque mTLS para `/admin-api/`.
 4. Definir el repo/usuario de Docker Hub y crear los Dockerfiles que se publicarán.
@@ -2208,3 +2208,6 @@ Evidencia registrada después de contratar el VPS:
 - Hostname reportado por el sistema: `escrivivirco-scriptorium-pub-oasis`.
 - SO confirmado al login: `Debian GNU/Linux 13`.
 - Usuario inicial operativo: `debian`.
+- Volumen `boot` confirmado: `vps-boot` (`25 GB`, ID `55f0e620-cc53-479d-88f5-68269886b3b8`).
+- Volumen de datos ya adjuntado: `scriptorium-oasis-pub-volumen` (`40 GB`, ID `5e4ef192-48a3-4b1b-afeb-2c00985859a3`).
+- Próxima tarea de infraestructura: formatear y montar ese volumen en `/srv/oasis`.

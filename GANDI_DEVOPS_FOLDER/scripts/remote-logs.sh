@@ -1,0 +1,14 @@
+aleph@DESKTOP-7443I02 MINGW64 ~/OASIS/alephscript-network-sdk (integration/beta/scriptorium)
+$  cd /c/Users/aleph/OASIS/alephscript-network-sdk && ssh -i GANDI_DEVOPS_FOLDER/.ssh/gandi_pub_ed25519 -o StrictHostKeyChecking=accept-new debian@92.243.24.163 'docker logs --since 10m --tail 250 oasis-pub-scriptorium'
+server error, from net:127.0.0.1:57276~shs:
+Error: stream ended with:0 but wanted:64
+    at drain (/app/src/server/node_modules/pull-reader/index.js:43:26)
+    at /app/src/server/node_modules/pull-reader/index.js:63:18
+    at /app/src/server/node_modules/pull-reader/index.js:20:7
+    at drain (/app/src/server/node_modules/stream-to-pull-stream/index.js:126:18)
+    at Socket.<anonymous> (/app/src/server/node_modules/stream-to-pull-stream/index.js:143:5)
+    at Socket.emit (node:events:536:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  address: 'net:127.0.0.1:57276~shs:'
+}

@@ -1,0 +1,3 @@
+aleph@DESKTOP-7443I02 MINGW64 ~/OASIS/alephscript-network-sdk (integration/beta/scriptorium)
+$  cd /c/Users/aleph/OASIS/alephscript-network-sdk && ssh -i GANDI_DEVOPS_FOLDER/.ssh/gandi_pub_ed25519 -o StrictHostKeyChecking=accept-new debian@92.243.24.163 'cd /opt/oasis-scriptorium/OASIS_PUB && bash scripts/env-run.sh .env.prod invite.sh 1'
+pub.escrivivir.co:8008:@/snvahvaTP5obvdiYva9OX9NNnTSlUQbEUBSuDRzrZA=.ed25519~1xHgP30HPGxKPCWrkLJBjXwoENoULUHedykU25kIcXo=

@@ -1,0 +1,7 @@
+# Clave SSH de Gandi y cualquier credencial.
+# Esta carpeta NO debe versionarse jamás.
+*
+!.gitignore
+!README.md
+!scripts/
+!scripts/**

@@ -5,6 +5,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
 ensure_env_from_template
+validate_vps_persistent_paths
 ensure_runtime_dirs
 
 if grep -q 'change-me-before-deploy' "$PUB_ENV_PATH"; then
