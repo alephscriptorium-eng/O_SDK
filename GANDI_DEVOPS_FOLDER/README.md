@@ -185,6 +185,41 @@ Notas de seguridad y consistencia:
 - no debes dejar el pub normal y la UI temporal escribiendo al mismo `.ssb` a la vez;
 - por eso el script exige `--stop-pub` para el arranque de mantenimiento.
 
+### 8. Anunciar el PUB y federar con otros PUBs
+
+Una vez el pub está en marcha, hay dos mensajes SSB que necesitas publicar para entrar en la red:
+
+1. **Announce** — publica la dirección pública de tu PUB para que otros nodos puedan encontrarlo.
+2. **Follow** — suscribe el feed de otro PUB para iniciar la replicación mutua.
+
+> **IMPORTANTE**: los mensajes SSB son **inmutables** — no hay botón de deshacer. Usa `--dry-run` para ver exactamente qué se va a publicar antes de confirmar.
+
+El script `pub-federation.sh` orquesta estas operaciones desde tu máquina local, verificando siempre antes de publicar que el `caps.shs` remoto sea el correcto (`zTmidAb7t+tKi7W93FIHbOvlbd936x6G/vm8e8Td//A=`). Si no coincide, aborta sin publicar nada.
+
+```bash
+# 1. Verificar estado del pub y caps.shs antes de tocar nada
+bash GANDI_DEVOPS_FOLDER/scripts/pub-federation.sh status
+
+# 2. Preview del announce (no publica nada)
+bash GANDI_DEVOPS_FOLDER/scripts/pub-federation.sh announce --dry-run
+
+# 3. Publicar announce con confirmación interactiva
+bash GANDI_DEVOPS_FOLDER/scripts/pub-federation.sh announce
+
+# 4. Preview de follow hacia solarnethub.com "La Plaza"
+bash GANDI_DEVOPS_FOLDER/scripts/pub-federation.sh follow-solarnethub --dry-run
+
+# 5. Publicar follow hacia solarnethub.com con confirmación interactiva
+bash GANDI_DEVOPS_FOLDER/scripts/pub-federation.sh follow-solarnethub
+
+# Para seguir cualquier otro PUB de confianza
+bash GANDI_DEVOPS_FOLDER/scripts/pub-federation.sh follow @feedId=.ed25519
+```
+
+Todas las operaciones se registran en `GANDI_DEVOPS_FOLDER/logs/federation.log` (ignorado por git).
+
+El peer inicial recomendado es `solarnethub.com` / `@mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519` porque ya aparece configurado como seed en `OASIS_PUB/config/ssb/config` y está documentado en `docs/PUB/deploy.md`.
+
 ## Por qué una carpeta separada
 
 - Mantiene las claves del VPS fuera de `~/.ssh/` global, así no se mezclan con otras identidades personales.
