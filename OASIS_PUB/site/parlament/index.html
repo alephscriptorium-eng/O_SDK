@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scriptorium Parlament — Layer2 BOE</title>
+  <meta name="description" content="Big picture técnico de Scriptorium Parlament: Room, Firehose, BOE y Future-machine como layer2 deliberativa para Oasis/SSB.">
+  <link rel="stylesheet" href="/assets/fanzine.css">
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(0,0,0,0.05), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(0,0,0,0.04), transparent 28rem),
+        #f6f1e6;
+      max-width: 1040px;
+    }
+    .nav-top {
+      font-size: 0.62rem;
+      text-align: right;
+      padding: 5px 0 4px;
+      border-bottom: 1px dashed #000;
+      margin-bottom: 2px;
+    }
+    .nav-top a {
+      text-decoration: none;
+      color: #000;
+      border-bottom: 1.5px solid #000;
+      letter-spacing: 1px;
+      padding: 1px 2px;
+    }
+    .nav-top a:hover { background: #000; color: #fff; }
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+    }
+    @media (max-width: 780px) { .stage-grid { grid-template-columns: 1fr; } }
+    .stage-card {
+      border: 2px solid #000;
+      padding: 10px 12px;
+      background: #fff;
+      min-height: 188px;
+    }
+    .stage-num {
+      display: inline-block;
+      background: #000;
+      color: #fff;
+      padding: 2px 7px;
+      font-size: 0.58rem;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .stage-title {
+      font-size: 0.74rem;
+      font-weight: bold;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .stage-card ul {
+      padding-left: 16px;
+      font-size: 0.64rem;
+      line-height: 1.45;
+    }
+    .refs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 10px;
+    }
+    .ref-card {
+      border: 1.7px solid #000;
+      padding: 9px 10px;
+      font-size: 0.64rem;
+      background: #fff;
+    }
+    .ref-title {
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 0.66rem;
+    }
+    .tiny-note { font-size: 0.62rem; line-height: 1.45; opacity: 0.78; }
+    .diagram { font-size: 0.64rem; }
+
+    /* Mensajería + tiempo */
+    .seq-wrap { overflow-x: auto; }
+    .seq {
+      font-size: 0.62rem;
+      line-height: 1.35;
+      white-space: pre;
+      margin: 0;
+    }
+    .topics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    @media (max-width: 780px) { .topics-grid { grid-template-columns: 1fr; } }
+    .topic-card {
+      border: 1.7px solid #000;
+      padding: 8px 10px;
+      background: #fff;
+      font-size: 0.64rem;
+    }
+    .topic-card h4 {
+      margin: 0 0 6px;
+      font-size: 0.66rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      border-bottom: 1px dashed #000;
+      padding-bottom: 3px;
+    }
+    .topic-card.in  { background: #fdfaf0; }
+    .topic-card.out { background: #f3efe3; }
+    .topic-card code {
+      font-size: 0.6rem;
+      background: #000;
+      color: #fff;
+      padding: 1px 4px;
+    }
+    .topic-card .arrow { font-weight: bold; letter-spacing: 1px; }
+    .topic-card ul { padding-left: 16px; margin: 4px 0 0; line-height: 1.45; }
+
+    .time-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 780px) { .time-grid { grid-template-columns: 1fr; } }
+    .time-card {
+      border: 2px solid #000;
+      padding: 10px 12px;
+      background: #fff;
+      position: relative;
+    }
+    .time-card.perm   { background: #f6f1e6; }
+    .time-card.efimer { background: #fff; border-style: dashed; }
+    .time-card .scale {
+      font-size: 0.58rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #000;
+      background: #000;
+      color: #fff;
+      display: inline-block;
+      padding: 1px 6px;
+      margin-bottom: 6px;
+    }
+    .time-card .scale.dim { background: #fff; color: #000; border: 1.5px dashed #000; }
+    .time-card h4 { margin: 0 0 4px; font-size: 0.74rem; letter-spacing: 1.2px; }
+    .time-card ul { padding-left: 16px; font-size: 0.64rem; line-height: 1.5; margin: 4px 0 0; }
+    .time-card .ttl {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 0.56rem;
+      border: 1.2px solid #000;
+      padding: 1px 5px;
+      background: #fff;
+      letter-spacing: 1px;
+    }
+    .legend-line {
+      font-size: 0.6rem;
+      letter-spacing: 1px;
+      text-align: center;
+      margin-top: 8px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="nav-top">
+    <a href="/">← .PUB</a>
+    · <a href="/scriptorium/">.HACKERÍA</a>
+  </div>
+
+  <header class="header">
+    <div class="stamp">(Soon))</div>
+    <h1>SCRIPTORIUM<br>PARLAMENT</h1>
+    <div class="sub">BOE · Room · Firehose · Future-machine · Oasis/SSB</div>
+    <div class="sub2">pub.escrivivir.co as layer2 provider for Oasis blockchain.</div>
+    <div class="issue">MVP · 2026-05-02 · DRY LINKS · Scriptorium</div>
+  </header>
+
+  <div class="washi"></div>
+
+  <div class="callout tilt-r">
+    This feature allows the pub to handle its tribe.parliament daily volatile-gossip information on firehose-like real-time arg-board-based theatrical sesions.
+  </div>
+
+  <div class="stats-bar tilt-l" aria-label="Bloques del proceso">
+    <div class="stat"><span class="val">3</span><span class="lbl">Etapas</span></div>
+    <div class="stat"><span class="val">5</span><span class="lbl">Índices DRY</span></div>
+    <div class="stat"><span class="val">Room</span><span class="lbl">Inhabitants</span></div>
+    <div class="stat"><span class="val">BOE</span><span class="lbl">Append-only</span></div>
+    <div class="stat"><span class="val">Oasis</span><span class="lbl">Retorno</span></div>
+  </div>
+
+  <div class="cutout diagram-wrap">
+    <div class="tape tape-tl"></div>
+    <div class="tape tape-br"></div>
+    <h2>☞ Big picture mínimo</h2>
+<pre class="diagram"> OASIS MAIN / PUB
+   │
+   │ snapshot_in: tribes · inhabitants · parliament · votes · feed
+   ▼
+┌──────────────────────────── SCRIPTORIUM LAYER2 ─────────────────────────────┐
+│                                                                             │
+│  [ROOM] inhabitants conectan       [FIREHOSE] mensajes entran               │
+│      │                                │                                     │
+│      └──────────────┬─────────────────┘                                     │
+│                     ▼                                                       │
+│              [ARRAKIS BOE] bloque inicial + conversación + evidencias       │
+│                     │                                                       │
+│                     ▼                                                       │
+│              [FUTURE-MACHINE] piezas → vectores → corpus → grafo → universo │
+│                     │                                                       │
+│                     ▼                                                       │
+│              producción / corto / ejecución / summary_out                   │
+│                                                                             │
+└─────────────────────┬───────────────────────────────────────────────────────┘
+                      ▼
+ OASIS MAIN / PUB: tribe-content · parliamentProposal · votes · scriptorium-boe</pre>
+  </div>
+
+  <div class="cutout tilt-r">
+    <div class="tape tape-tr"></div>
+    <h3>Plan en 3 etapas</h3>
+    <div class="stage-grid">
+      <div class="stage-card">
+        <div class="stage-num">A / HANDS-IN</div>
+        <div class="stage-title">Arranca la sesión</div>
+        <ul>
+          <li>El pub o un cliente autorizado extrae <b>snapshot_in</b>.</li>
+          <li>Se abre una <b>Room</b> layer2: inhabitants, master y capabilities.</li>
+          <li>Arrakis BOE publica el <b>primer bloque</b>: objetivo, reglas, criterios.</li>
+          <li>Firehoses quedan conectados pero todavía no deciden nada.</li>
+        </ul>
+      </div>
+      <div class="stage-card">
+        <div class="stage-num">B / HANDS-ON</div>
+        <div class="stage-title">Se produce la capa de trabajo</div>
+        <ul>
+          <li>Participantes hablan: Room, Telegram, Twitch, Oasis, bots.</li>
+          <li>Firehoses capturan; la sesión selecciona qué pasa a <b>pieza</b>.</li>
+          <li>Future-machine solidifica: vector → corpus → grafo → universo.</li>
+          <li>El teatro edita producción, corto o ejecución derivada.</li>
+        </ul>
+      </div>
+      <div class="stage-card">
+        <div class="stage-num">C / HANDS-OFF</div>
+        <div class="stage-title">Cierre y regreso a Oasis</div>
+        <ul>
+          <li>Se calcula <b>summary_out</b>: hashes, fuentes, firmas, decisiones.</li>
+          <li>Decoherence valida BOE ↔ conversación ↔ artefactos.</li>
+          <li>Network publica/fusiona como <b>scriptorium-boe</b>.</li>
+          <li>Si toca gobierno: vuelve como tribe-content, proposal o votes.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="cutout diagram-wrap seq-wrap">
+    <div class="tape tape-tl"></div>
+    <div class="tape tape-br"></div>
+    <h2>☞ Mensajería en el tiempo · ida y vuelta</h2>
+    <div class="tiny-note">Tres carriles. A la izquierda el radicoma <b>permanente</b> de Oasis (append-only, P2P SSB, ciclos de días). A la derecha la <b>sesión efímera</b> del Pub (Socket.IO, ROOM_MESSAGE, segundos). En medio, el rastro <b>cristalizado</b> que vuelve.</div>
+<pre class="seq">
+  OASIS MAIN / SSB              SCRIPTORIUM LAYER2 (PUB)            INHABITANTS / FIREHOSES
+   radicoma append-only          room efímera + BOE editable          chats · bots · streams
+   ─────────────┬─────            ──────────────┬───────────          ──────────────┬──────────
+  t0  snapshot  │                               │                                   │
+      tribes /  │  ── snapshot_in (pull) ─────▶ │                                   │
+      parliam.  │                               │  open Room · MAKE_MASTER          │
+                │                               │ ◀─── CLIENT_REGISTER ──────────── │
+                │                               │ ◀─── CLIENT_SUSCRIBE ──────────── │
+  t1  BOE init  │                               │                                   │
+                │                               │  publish boe.block#0 (objetivo)   │
+                │                               │ ─── ROOM_MESSAGE (broadcast) ───▶ │
+                │                               │                                   │
+  t2  trabajo   │                               │ ◀── firehose.raw (Jetstream) ──── │
+      (volátil) │                               │ ◀── bothub.msg (Telegram/IACM) ── │
+                │                               │ ◀── room.msg (chat sesión) ────── │
+                │                               │  buffer + cursor + ttl            │
+                │                               │  ▼                                │
+                │                               │  Conversation Builder selecciona  │
+                │                               │  pieza ⇒ vector ⇒ corpus          │
+                │                               │  ⇒ grafo ⇒ universo ⇒ producción  │
+                │                               │                                   │
+  t3  cierre    │                               │  Decoherence valida BOE↔BDC↔code  │
+                │                               │  hash · firmas · summary_out      │
+                │  ◀── publish scriptorium-boe ─│                                   │
+      append    │                               │                                   │
+  t4  retorno   │  ── tribe-content / proposal ▶│  (opcional, si toca gobierno)     │
+                │  ── votes / law / revocation ▶│                                   │
+   ─────────────┴─────             ─────────────┴───────────          ──────────────┴──────────
+   TTL = ∞ (P2P gossip)             TTL = sesión (volatile)            TTL = stream cursor
+</pre>
+    <div class="legend-line">▼ tiempo ▼ &nbsp;·&nbsp; ▶ datos hacia layer2 &nbsp;·&nbsp; ◀ datos hacia main</div>
+  </div>
+
+  <div class="cutout tilt-l">
+    <div class="tape tape-tr"></div>
+    <h3>Topics pub/sub · qué viaja por dónde</h3>
+    <div class="topics-grid">
+      <div class="topic-card in">
+        <h4><span class="arrow">▶</span> Main → Layer2 (snapshot_in)</h4>
+        <ul>
+          <li><code>oasis.tribe.snapshot</code> · inhabitants, karma, capacidades.</li>
+          <li><code>oasis.parliament.cycle</code> · gobierno vigente, método, ventana.</li>
+          <li><code>oasis.feed.recent</code> · ssb feed P2P relevante.</li>
+          <li><code>scriptorium.boe.head</code> · último BOE conocido por el pub.</li>
+        </ul>
+      </div>
+      <div class="topic-card in">
+        <h4><span class="arrow">●</span> Inhabitants → Layer2 (firehose)</h4>
+        <ul>
+          <li><code>firehose.atproto.raw</code> · Jetstream filtrado.</li>
+          <li><code>bothub.telegram.msg</code> · BotHub/IACM bridge.</li>
+          <li><code>room.message</code> · Socket.IO ROOM_MESSAGE.</li>
+          <li><code>stream.chat.event</code> · Twitch/Discord adaptado.</li>
+        </ul>
+      </div>
+      <div class="topic-card out">
+        <h4><span class="arrow">◀</span> Layer2 → Main (summary_out)</h4>
+        <ul>
+          <li><code>scriptorium.boe.append</code> · bloque firmado append-only.</li>
+          <li><code>oasis.parliament.proposal</code> · propuesta derivada.</li>
+          <li><code>oasis.tribe.content</code> · pieza cristalizada (corto, voz).</li>
+          <li><code>oasis.parliament.vote</code> · voto si la sesión lo emite.</li>
+        </ul>
+      </div>
+      <div class="topic-card out">
+        <h4><span class="arrow">○</span> Layer2 → Layer2 (interno, efímero)</h4>
+        <ul>
+          <li><code>session.cursor.tick</code> · avance de cursor por firehose.</li>
+          <li><code>conversation.piece.accept</code> · selección con evidenceHash.</li>
+          <li><code>future.machine.step</code> · vector → corpus → grafo → universo.</li>
+          <li><code>decoherence.check</code> · validación BOE ↔ artefactos.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="cutout tilt-r">
+    <div class="tape tape-bl"></div>
+    <h3>Radicoma permanente vs sesión efímera</h3>
+    <div class="time-grid">
+      <div class="time-card perm">
+        <span class="ttl">TTL = ∞</span>
+        <span class="scale">main · radicoma</span>
+        <h4>Oasis / SSB</h4>
+        <ul>
+          <li>Append-only, P2P, sin borrado.</li>
+          <li>Ciclos lentos: <b>2 meses</b> elecciones, ventanas de propuestas, leyes con fecha.</li>
+          <li>Rastros que sí persisten: <code>scriptorium-boe</code>, tribe-content, proposal, vote, law.</li>
+          <li>Reloj: días · semanas · gossip propagation.</li>
+        </ul>
+      </div>
+      <div class="time-card efimer">
+        <span class="ttl">TTL = sesión</span>
+        <span class="scale dim">layer2 · pub volátil</span>
+        <h4>Scriptorium Room</h4>
+        <ul>
+          <li>Volatile-gossip: ROOM_MESSAGE, buffers, cursores, capabilities.</li>
+          <li>Ciclos rápidos: <b>segundos · minutos · una tarde</b>.</li>
+          <li>Lo que <i>no</i> cristaliza se evapora con la sesión.</li>
+          <li>Reloj: tick de Socket.IO + cursor de firehose.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="legend-line">solo lo que pasa por <b>BOE + summary_out + firma</b> sobrevive al cierre de la sesión</div>
+  </div>
+
+  <div class="cutout diagram-wrap">
+    <div class="tape tape-bl"></div>
+    <h2>☞ Pipeline de artefactos</h2>
+<pre class="diagram"> feed líquido
+   │  firehose_get_raw · bothub_get_messages · ROOM_MESSAGE · Oasis feed
+   ▼
+ pieza aceptada
+   │  evidenceHash · acceptedBy · boeRef
+   ▼
+ vector / memoria
+   │  recuperación · deduplicación · agrupación
+   ▼
+ corpus acumulativo
+   │  Bartleby analiza · Archivero mergea
+   ▼
+ grafo de bifurcación
+   │  Grafista: nodos · arcos · huecos
+   ▼
+ universo instanciado
+   │  Demiurgo: variables + inicializaciones
+   ▼
+ producción / corto / ejecución
+   │  Dramaturgo: voz cristalizada
+   ▼
+ BOE final
+   │  summary_out · signatures · target_main_action
+   ▼
+ Oasis main append-only</pre>
+  </div>
+
+  <div class="cutout tilt-l">
+    <div class="tape tape-tr"></div>
+    <h3>Referencias DRY para tirar del hilo</h3>
+    <div class="refs-grid">
+      <div class="ref-card">
+        <div class="ref-title">Parliament</div>
+        Main ↔ layer2 ↔ main, ciclos Oasis y rutas de retorno.<br>
+        <a class="deep-link" href="https://github.com/escrivivir-co/as-utils-sdk.code-workspace/tree/integration/beta/scriptorium/VibeCodingSuite/SCRIPTORIUM/Parliament.md">VibeCodingSuite/SCRIPTORIUM/Parliament.md</a>
+      </div>
+      <div class="ref-card">
+        <div class="ref-title">Arrakis BOE</div>
+        BOE como ledger custom append-only y pipeline BDC → BOE → Git → Decoherence → Network.<br>
+        <a class="deep-link" href="https://github.com/escrivivir-co/as-utils-sdk.code-workspace/tree/integration/beta/scriptorium/VibeCodingSuite/SCRIPTORIUM/ArrakisBoe.md">VibeCodingSuite/SCRIPTORIUM/ArrakisBoe.md</a>
+      </div>
+      <div class="ref-card">
+        <div class="ref-title">Scriptorium Room</div>
+        Room agéntica: inhabitants, CLIENT_REGISTER, CLIENT_SUSCRIBE, MAKE_MASTER, capabilities.<br>
+        <a class="deep-link" href="https://github.com/escrivivir-co/as-utils-sdk.code-workspace/tree/integration/beta/scriptorium/VibeCodingSuite/SCRIPTORIUM/ScriptorioumRoom.md">VibeCodingSuite/SCRIPTORIUM/ScriptorioumRoom.md</a>
+      </div>
+      <div class="ref-card">
+        <div class="ref-title">Firehose</div>
+        ATProto, Telegram/BotHub, stream chats y rooms como feeds de participantes.<br>
+        <a class="deep-link" href="https://github.com/escrivivir-co/as-utils-sdk.code-workspace/tree/integration/beta/scriptorium/VibeCodingSuite/SCRIPTORIUM/Firehose.md">VibeCodingSuite/SCRIPTORIUM/Firehose.md</a>
+      </div>
+      <div class="ref-card">
+        <div class="ref-title">Future-machine</div>
+        Rack de solidificación: piezas → vectores → corpus → grafo → universo → producción.<br>
+        <a class="deep-link" href="https://github.com/escrivivir-co/as-utils-sdk.code-workspace/tree/integration/beta/scriptorium/VibeCodingSuite/SCRIPTORIUM/Future-machine.md">VibeCodingSuite/SCRIPTORIUM/Future-machine.md</a>
+      </div>
+      <div class="ref-card">
+        <div class="ref-title">MCP Core</div>
+        Socket.IO mesh, rooms y protocolo MASTER-ROOM.<br>
+        <a class="deep-link" href="https://github.com/escrivivir-co/aleph-scriptorium/tree/main/MCPGallery/mcp-core-sdk">MCPGallery/mcp-core-sdk</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="cutout tilt-r">
+    <h3>Plan de implementación de la landing</h3>
+    <div class="tip">MVP actual: una página pública de respaldo en <span class="hl-box">/scriptorium_parlament/</span>.</div>
+    <div class="tip">Siguiente refinamiento: convertir hands-in / hands-on / hands-off en tres páginas hijas si la conversación con Oasis pide más detalle.</div>
+    <div class="tip">No duplicar documentación: esta landing enlaza a índices técnicos y solo conserva big pictures, mapas y rutas.</div>
+    <div class="tip">Mantener estética fanzine del PUB: cutouts, diagramas ASCII, tablas compactas y enlaces profundos.</div>
+  </div>
+
+  <div class="cutout" style="text-align:center;">
+    <h3>Keywords</h3>
+    <span class="kw">layer2</span>
+    <span class="kw-inv">boe</span>
+    <span class="kw">room</span>
+    <span class="kw-inv">firehose</span>
+    <span class="kw">future-machine</span>
+    <span class="kw-inv">ssb-p2p</span>
+    <span class="kw">oasis</span>
+    <span class="kw-inv">parliament</span>
+    <span class="kw">scriptorium-boe</span>
+  </div>
+
+  <footer class="footer">
+    <a href="https://github.com/escrivivir-co/aleph-scriptorium/blob/main/LICENSE.md">vAIGPLv1</a> · HACKERÍA SCRIPTORIUM · <a href="https://escrivivir-co.github.io/aleph-scriptorium/">ALEPH SCRIPTORIUM v1.0.0-beta.1</a> · <a href="https://escrivivir.co">ESCRIVIVIR.CO</a> · Demo SDK: <a href="https://escrivivir-co.github.io/para-la-voz-sdk/">Para la Voz SDK</a> · 2026
+  </footer>
+</body>
+</html>
