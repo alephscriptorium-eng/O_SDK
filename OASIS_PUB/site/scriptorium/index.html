@@ -1,120 +1,25 @@
 <!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hackería.Scriptorium</title>
+  <title>Scriptorium.Vestíbulo</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/ico.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/ico.png">
   <link rel="apple-touch-icon" href="/ico.png">
-  <meta name="description" content="Catálogo de utilidades, módulos y servicios del Aleph Scriptorium: taller de escritura asistida por IA.">
+  <meta name="description"
+    content="Vestíbulo del Scriptorium dentro del PUB: entrada a las salas Hackería, Parlament y futuras habitaciones layer2.">
   <link rel="stylesheet" href="/assets/fanzine.css">
   <style>
     body {
       background:
-        radial-gradient(circle at top left, rgba(0,0,0,0.05), transparent 34rem),
-        radial-gradient(circle at bottom right, rgba(0,0,0,0.04), transparent 28rem),
+        radial-gradient(circle at top left, rgba(0, 0, 0, 0.05), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(0, 0, 0, 0.04), transparent 28rem),
         #f6f1e6;
-      max-width: 980px;
+      max-width: 1020px;
     }
 
-    /* Grid de catálogo */
-    .catalog-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
-      gap: 10px;
-      margin-top: 10px;
-    }
-    @media (max-width: 640px) {
-      .catalog-grid { grid-template-columns: 1fr; }
-    }
-
-    /* Encabezado de categoría */
-    .cat-heading {
-      font-size: 0.95rem;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      border-bottom: 2px solid #000;
-      padding-bottom: 4px;
-      margin-bottom: 8px;
-    }
-    .cat-desc {
-      font-size: 0.64rem;
-      opacity: 0.65;
-      margin-bottom: 12px;
-      line-height: 1.45;
-    }
-
-    /* Tarjetas de producto */
-    .card-sku {
-      position: absolute;
-      top: 6px;
-      right: 8px;
-      font-size: 0.52rem;
-      letter-spacing: 0.5px;
-      opacity: 0.45;
-      font-weight: bold;
-    }
-    .card-tag-row {
-      margin-top: 6px;
-      line-height: 1.8;
-    }
-    .card-agent {
-      margin-top: 5px;
-      font-size: 0.58rem;
-      opacity: 0.5;
-      letter-spacing: 0.5px;
-    }
-
-    /* Estado */
-    .badge-ready {
-      display: inline-block;
-      background: #000;
-      color: #fff;
-      padding: 0 5px;
-      font-size: 0.52rem;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      margin: 1px 2px;
-    }
-    .badge-beta {
-      display: inline-block;
-      border: 1.5px solid #000;
-      padding: 0 5px;
-      font-size: 0.52rem;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      margin: 1px 2px;
-    }
-    .badge-wip {
-      display: inline-block;
-      border: 1.5px dashed #000;
-      padding: 0 5px;
-      font-size: 0.52rem;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      margin: 1px 2px;
-      opacity: 0.55;
-    }
-
-    /* Fallback de carga */
-    .catalog-loading {
-      font-size: 0.72rem;
-      opacity: 0.6;
-      text-align: center;
-      padding: 24px;
-      border: 1.5px dashed #000;
-    }
-    .catalog-error {
-      display: none;
-      font-size: 0.7rem;
-      padding: 14px 16px;
-      border: 2px solid #000;
-      background: #f4f4f4;
-      margin: 12px 0;
-    }
-
-    /* Barra de regreso */
     .nav-top {
       font-size: 0.62rem;
       text-align: right;
@@ -122,6 +27,7 @@
       border-bottom: 1px dashed #000;
       margin-bottom: 2px;
     }
+
     .nav-top a {
       text-decoration: none;
       color: #000;
@@ -129,265 +35,291 @@
       letter-spacing: 1px;
       padding: 1px 2px;
     }
-    .nav-top a:hover { background: #000; color: #fff; }
 
-    /* Índice de categorías */
-    .cat-index a.deep-link { display: block; margin: 2px 0; }
+    .nav-top a:hover {
+      background: #000;
+      color: #fff;
+    }
 
-    /* Separador de secciones */
-    #catalog > .cutout { margin-top: 14px; }
+    .room-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 780px) {
+      .room-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .room-card {
+      border: 2px solid #000;
+      background: #fff;
+      padding: 12px 14px;
+      min-height: 255px;
+      position: relative;
+    }
+
+    .room-stamp {
+      display: inline-block;
+      background: #000;
+      color: #fff;
+      padding: 2px 7px;
+      font-size: 0.56rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+
+    .room-title {
+      font-size: 1rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    .room-copy {
+      font-size: 0.68rem;
+      line-height: 1.55;
+      margin-bottom: 10px;
+    }
+
+    .room-card ul {
+      padding-left: 17px;
+      font-size: 0.64rem;
+      line-height: 1.45;
+      margin-bottom: 14px;
+    }
+
+    .door-link {
+      display: inline-block;
+      border: 2px solid #000;
+      padding: 6px 11px;
+      text-decoration: none;
+      color: #000;
+      font-size: 0.64rem;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      font-weight: bold;
+      background: #fff;
+    }
+
+    .door-link:hover {
+      background: #000;
+      color: #fff;
+    }
+
+    .subrooms {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 780px) {
+      .subrooms {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .future-card {
+      border: 1.7px dashed #000;
+      padding: 10px 11px;
+      background: #fcfaf4;
+      min-height: 118px;
+    }
+
+    .future-title {
+      font-size: 0.7rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    .tiny-note {
+      font-size: 0.62rem;
+      line-height: 1.45;
+      opacity: 0.76;
+    }
   </style>
 </head>
+
 <body>
 
   <div class="nav-top">
     <a href="/">← Escrivivir.Pub</a>
+    · <a href="/hackeria/">Hackería</a>
+    · <a href="/parlament/">Parlament</a>
   </div>
 
-  <!-- ════════════ HEADER ════════════ -->
   <header class="header">
-    <div class="stamp">(Preview)</div>
-    <h1>Hackería Scriptorium</h1>
-    <div class="sub">Cacharrería y casos para hacking documental</div>
-    <div class="sub2">Sistema de escritura asistida por IA  herramientas, plugins, SDKs y agentes.</div>
-    <div class="issue">Animus Iocandi General Public License</div>
+    <div class="stamp">Vestíbulo</div>
+    <h1>Scriptorium</h1>
+    <div class="sub">Puerta de entrada a las salas layer2 del PUB</div>
+    <div class="sub2">Herramientas a un lado, deliberación al otro, y más salas al fondo.</div>
+    <div class="issue">PUB.ESCRIVIVIR.CO · HALL DE SALAS · 2026</div>
   </header>
 
   <div class="washi"></div>
 
-  <!-- ════════════ CALLOUT ════════════ -->
   <div class="callout tilt-r">
-    DIY · NSFW · EXPERIMENTAL · PoC · VibeCoding Alert 
+    Vestíbulo del Scriptorium: desde aquí se accede a las salas activas del PUB y a las próximas habitaciones layer2.
   </div>
 
-  <!-- ════════════ STATS BAR ════════════ -->
-  <div class="stats-bar tilt-l js-stats-bar">
-    <div class="stat"><span class="val">Plugins</span><span class="lbl">✔</span></div>
-    <div class="stat"><span class="val">SDKs</span><span class="lbl">✔</span></div>
-    <div class="stat"><span class="val">Agentes</span><span class="lbl">✔</span></div>
-    <div class="stat"><span class="val">MCP</span><span class="lbl">✔ </span></div>
-    <div class="stat"><span class="val">v1.0</span><span class="lbl">Beta</span></div>
+  <div class="stats-bar tilt-l" aria-label="Estado del vestíbulo">
+    <div class="stat"><span class="val">2</span><span class="lbl">Salas vivas</span></div>
+    <div class="stat"><span class="val">1</span><span class="lbl">Vestíbulo</span></div>
+    <div class="stat"><span class="val">PUB</span><span class="lbl">Nodo base</span></div>
+    <div class="stat"><span class="val">Layer2</span><span class="lbl">Ordenado</span></div>
+    <div class="stat"><span class="val">3</span><span class="lbl">Salas por venir</span></div>
   </div>
 
-  <!-- ════════════ MAPA DEL TALLER ════════════ -->
   <div class="cutout diagram-wrap">
     <div class="tape tape-tl"></div>
     <div class="tape tape-br"></div>
-    <h2>☞ Mapa del Taller</h2>
-<pre class="diagram"> ┌─ MOSTRADOR ──────────────────┐  ┌─ BANCO DE AUTORÍA ───────────────────┐
- │ ScriptoriumPack              │  │ Novelist MCP · Teatro Interactivo    │
- │ Scrum / Backlog              │  │ Consejo Asesor · LoreSDK Editorial   │
- │ MCP Presets                  │  │ Enciclopedia · Foro Scraper          │
- │ OpenAsyncAPI · Notebooks     │  └──────────────────────────────────────┘
- └──────────────────────────────┘
- ┌─ TALLER DE AGENTES ──────────┐  ┌─ HERRAMIENTAS DE LÓGICA ─────────────┐
- │ AgentCreator · ARG Board     │  │ Prolog Editor MCP (port:3006)        │
- │ AAIA Editor · BotHub SDK     │  │ Blockly Editor · TypedPrompting      │
- │ ArgBoardApp                  │  │ N8N Editor · HyperGraph Editor       │
- └──────────────────────────────┘  └──────────────────────────────────────┘
- ┌─ FLUJOS Y WIRING ────────────┐  ┌─ VECTORIZACIÓN ──────────────────────┐
- │ Wire Editor (Node-RED)       │  │ VectorMachine + ChromaDB             │
- │ Escribiente (Audio→Texto)    │  │ VectorMachineUI (admin Next.js)      │
- │ WiringApp · Network/Oasis P2P│  └──────────────────────────────────────┘
- └──────────────────────────────┘
- ┌─ PUBLICACIÓN Y RED ──────────┐  ┌─ SDKs BASE ──────────────────────────┐
- │ GH Pages · OASIS PUB         │  │ MCPGallery/MeshSDK · StateMachine    │
- └──────────────────────────────┘  │ CopilotEngine · VsCode Extension     │
-                                    │ AgentLoreSDK · ThreeJS UI · VibeSuite│
-                                    └──────────────────────────────────────┘</pre>
+    <h2>☞ Mapa de acceso</h2>
+    <pre class="diagram"> ESCRIVIVIR PUB
+      │
+      ▼
+ SCRIPTORIUM / VESTÍBULO
+      │
+      ├──▶ HACKERÍA
+      │     catálogo · plugins · SDKs · agentes · mostrador del taller
+      │
+      ├──▶ PARLAMENT
+      │     room · firehose · BOE · future-machine · ida/vuelta a Oasis
+      │
+      └──▶ FUTURAS SALAS
+            sesiones · revisits · corpus · mapping · otras habitaciones
+
+ Regla del pasillo:
+ lo permanente se anuncia aquí,
+ lo específico ocurre en cada sala.</pre>
   </div>
 
-  <!-- ════════════ DOS COLUMNAS: ÍNDICE + TABLA ════════════ -->
-  <div class="cols">
-    <div class="col">
-      <div class="cutout tilt-l">
-        <div class="tape tape-tr"></div>
-        <h3>Índice de Categorías</h3>
-        <div class="cat-index" style="font-size:0.7rem;line-height:2.1;">
-          <a class="deep-link" href="#cat-mostrador">Mostrador</a>
-          <a class="deep-link" href="#cat-autoria">Banco de Autoría</a>
-          <a class="deep-link" href="#cat-agentes">Taller de Agentes</a>
-          <a class="deep-link" href="#cat-logica">Herramientas de Lógica</a>
-          <a class="deep-link" href="#cat-wiring">Flujos y Wiring</a>
-          <a class="deep-link" href="#cat-vectorizacion">Vectorización y Memoria</a>
-          <a class="deep-link" href="#cat-publicacion">Publicación y Red</a>
-          <a class="deep-link" href="#cat-sdks">SDKs Base</a>
-        </div>
+  <div class="cutout tilt-l">
+    <div class="tape tape-tr"></div>
+    <h3>Puertas abiertas</h3>
+    <div class="room-grid">
+      <div class="room-card">
+        <div class="room-stamp">Sala 01</div>
+        <div class="room-title">Hackería</div>
+        <div class="room-copy">El taller operativo del Scriptorium: catálogo de cacharrería, plugins, SDKs y
+          agentes del ecosistema, con su mostrador y sus categorías.</div>
+        <ul>
+          <li>Mostrador de herramientas y categorías.</li>
+          <li>Catálogo declarado en <b>JSON</b>, renderizado en la página.</li>
+          <li>Entrada útil cuando ya sabes que vienes a cacharrear.</li>
+        </ul>
+        <a class="door-link" href="/hackeria/">Entrar en Hackería →</a>
+      </div>
+
+      <div class="room-card">
+        <div class="room-stamp">Sala 02</div>
+        <div class="room-title">Parlament</div>
+        <div class="room-copy">La sala política y de producción layer2: Room, Firehose, Arrakis BOE y Future-machine.
+          Aquí se ve cómo lo efímero de la sesión se cristaliza antes de volver a Oasis.</div>
+        <ul>
+          <li>Diagramas de ida y vuelta con el pub y SSB.</li>
+          <li>Mensajería, tiempos, TTL y retorno append-only.</li>
+          <li>Entrada útil cuando vienes a explicar arquitectura o gobierno.</li>
+        </ul>
+        <a class="door-link" href="/parlament/">Entrar en Parlament →</a>
       </div>
     </div>
+  </div>
 
+  <div class="cols">
     <div class="col">
       <div class="cutout tilt-r">
         <div class="tape tape-tl"></div>
-        <h3>¿Qué Necesito?</h3>
+        <h3>Cómo usar este vestíbulo</h3>
         <table class="tbl">
-          <tr><th>Si quiero…</th><th>Usar</th></tr>
-          <tr><td>Escribir una obra larga</td><td>Novelist + Teatro</td></tr>
-          <tr><td>Gestionar sprints</td><td>Scrum</td></tr>
-          <tr><td>Crear un agente IA</td><td>AgentCreator</td></tr>
-          <tr><td>Transcribir audio</td><td>Escribiente</td></tr>
-          <tr><td>Automatizar flujos</td><td>Wire Editor</td></tr>
-          <tr><td>Buscar en corpus</td><td>VectorMachine</td></tr>
-          <tr><td>Publicar en la web</td><td>GH Pages</td></tr>
-          <tr><td>Lógica declarativa</td><td>Prolog Editor</td></tr>
-          <tr><td>Contratos API</td><td>TypedPrompting</td></tr>
-          <tr><td>Teatro ARG transmedia</td><td>ARGBoard + Teatro</td></tr>
+          <tr>
+            <th>Si vienes a…</th>
+            <th>Entra en…</th>
+          </tr>
+          <tr>
+            <td>Ver herramientas, plugins y SDKs</td>
+            <td><a class="deep-link" href="/hackeria/">Hackería</a></td>
+          </tr>
+          <tr>
+            <td>Explicar layer2, BOE y retorno a Oasis</td>
+            <td><a class="deep-link" href="/parlament/">Parlament</a></td>
+          </tr>
+          <tr>
+            <td>Presentar el mapa general del PUB</td>
+            <td><a class="deep-link" href="/">Escrivivir.Pub</a></td>
+          </tr>
+          <tr>
+            <td>Abrir una futura sala</td>
+            <td>Desde aquí</td>
+          </tr>
         </table>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="cutout tilt-l">
+        <div class="tape tape-bl"></div>
+        <h3>Lectura del pasillo</h3>
+        <div class="tip">Cada puerta abre a un trabajo distinto, con su propia voz visual.</div>
+        <div class="tip">A un lado el taller, al otro la deliberación; al fondo, las habitaciones por venir.</div>
+        <div class="tip">Las salas se suceden, no se solapan: lo que vive en una no se repite en otra.</div>
       </div>
     </div>
   </div>
 
-  <div class="washi"></div>
+  <!--
+    Nota de mantenimiento (no visible al lector):
+    El vestíbulo ordena puertas; no duplica documentación detallada de cada sala.
+    Las nuevas habitaciones se añaden como tarjetas sin convertir el pasillo en
+    una acumulación de accesos y duplicados.
+  -->
 
-  <!-- ════════════ CATÁLOGO DINÁMICO ════════════ -->
-  <div id="catalog">
-    <div class="catalog-loading">▶ Cargando catálogo de herramientas…</div>
+  <div class="cutout tilt-r">
+    <div class="tape tape-tr"></div>
+    <h3>Salas por venir</h3>
+    <div class="subrooms">
+      <div class="future-card">
+        <div class="future-title">Sala de sesiones</div>
+        <div class="tiny-note">Friday sessions, hands-in / hands-on / hands-off, snapshots y replays.</div>
+      </div>
+      <div class="future-card">
+        <div class="future-title">Sala de corpus</div>
+        <div class="tiny-note">Índices, vectores, bibliotecas y cartografías del taller.</div>
+      </div>
+      <div class="future-card">
+        <div class="future-title">Sala revisitada</div>
+        <div class="tiny-note">Lo cristalizado que vuelve: BOEs, cierres, actas y piezas ya consolidadas.</div>
+      </div>
+    </div>
   </div>
 
-  <div class="catalog-error" id="catalog-error">
-    <strong>⚠ No se pudo cargar el catálogo automático.</strong><br><br>
-    Consulta las fuentes canónicas directamente:<br>
-    <a class="deep-link" href="https://github.com/escrivivir-co/aleph-scriptorium/blob/main/.github/plugins/registry.json">registry.json — plugins</a>
-    <a class="deep-link" href="https://github.com/escrivivir-co/aleph-scriptorium/blob/main/.gitmodules">.gitmodules — SDKs</a>
-    <a class="deep-link" href="https://escrivivir-co.github.io/aleph-scriptorium/">Sitio principal del Scriptorium</a>
-  </div>
-
-  <div class="washi"></div>
-
-  <!-- ════════════ KEYWORDS ════════════ -->
   <div class="cutout" style="text-align:center;">
     <h3>Keywords</h3>
-    <span class="kw">escritura-asistida</span>
-    <span class="kw-inv">agentes-ia</span>
-    <span class="kw">mcp</span>
-    <span class="kw-inv">largo-aliento</span>
-    <span class="kw">vscode</span>
-    <span class="kw-inv">scriptorium</span>
-    <span class="kw">node-red</span>
-    <span class="kw-inv">prolog</span>
-    <span class="kw">teatro</span>
-    <span class="kw-inv">open-source</span>
-    <span class="kw">ssb-p2p</span>
+    <span class="kw">vestíbulo</span>
+    <span class="kw-inv">salas</span>
+    <span class="kw">scriptorium</span>
     <span class="kw-inv">hackería</span>
-    <span class="kw">github-copilot</span>
-    <span class="kw-inv">chroma-vector</span>
-  </div>
-
-  <!-- ════════════ MANTENIMIENTO ════════════ -->
-  <div class="cutout tilt-l">
-    <h3>Mantenimiento del Catálogo</h3>
-    <div class="tip">Para añadir o editar una herramienta, editar solo <span class="hl-box">scriptorium/catalog.json</span> — no el HTML.</div>
-    <div class="tip">Fuentes canónicas: <span class="hl-box">.github/plugins/registry.json</span> (plugins) · <span class="hl-box">.gitmodules</span> (SDKs).</div>
-    <div class="warn">Esta landing <b>resume</b> el ecosistema. No duplica <span class="hl-box">ARCHIVO/DEVOPS/Funcional.md</span> ni <span class="hl-box">Tecnico.md</span>.</div>
+    <span class="kw">parlament</span>
+    <span class="kw-inv">layer2</span>
+    <span class="kw">oasis</span>
+    <span class="kw-inv">pub</span>
   </div>
 
   <!-- ════════════ FOOTER ════════════ -->
   <footer class="footer">
-    <a href="https://github.com/escrivivir-co/aleph-scriptorium/blob/main/LICENSE.md">vAIGPLv1</a> · HACKERÍA SCRIPTORIUM · <a href="https://escrivivir-co.github.io/aleph-scriptorium/">ALEPH SCRIPTORIUM v1.0.0-beta.1</a> · <a href="https://escrivivir.co">ESCRIVIVIR.CO</a> · Demo SDK: <a href="https://escrivivir-co.github.io/para-la-voz-sdk/">Para la Voz SDK</a> · 2026
+    <a href="https://github.com/escrivivir-co/aleph-scriptorium/blob/main/LICENSE.md">vAIGPLv1</a> · hackeria · <a
+      href="https://escrivivir-co.github.io/aleph-scriptorium/">scriptorium v1.0.0-beta.1</a> · <a
+      href="https://escrivivir.co">escrivivir.co</a> · Demo SDK: <a
+      href="https://escrivivir-co.github.io/para-la-voz-sdk/">Para la Voz SDK</a> · 2026
   </footer>
 
-  <!-- ════════════ SCRIPT DE RENDERIZADO ════════════ -->
-  <script>
-    'use strict';
-
-    const TILT_SEQ   = ['tilt-l', 'tilt-r', 'tilt-l2', 'tilt-r2'];
-    const TAPE_SEQ   = ['tape-tl', 'tape-tr', 'tape-bl', 'tape-br'];
-    let   seqIdx     = 0;
-
-    function nextTilt() { return TILT_SEQ[seqIdx % TILT_SEQ.length]; }
-    function nextTape() { return TAPE_SEQ[seqIdx % TAPE_SEQ.length]; }
-    function advance()  { seqIdx++; }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    function statusBadge(status) {
-      const s = escapeHtml(status || 'wip');
-      if (s === 'ready') return `<span class="badge-ready">✔ next!</span>`;
-      if (s === 'beta')  return `<span class="badge-beta">β beta</span>`;
-      return `<span class="badge-wip">${s}</span>`;
-    }
-
-    function renderCard(item) {
-      const name   = escapeHtml(item.name  || '—');
-      const sku    = escapeHtml(item.sku   || '');
-      const short  = escapeHtml(item.short || '');
-      const agent  = item.agent ? `<div class="card-agent">${escapeHtml(item.agent)}</div>` : '';
-      const tags   = (item.tags || []).map(t => `<span class="kw">${escapeHtml(t)}</span>`).join(' ');
-      const badge  = statusBadge(item.status);
-
-      return `
-      <div class="card">
-        <div class="card-sku">${sku}</div>
-        <div class="card-title">${name}</div>
-        <div class="card-body">
-          ${short}
-          <div class="card-tag-row">${tags} ${badge}</div>
-          ${agent}
-        </div>
-      </div>`;
-    }
-
-    function renderCategory(cat) {
-      const tilt  = nextTilt();
-      const tape  = nextTape();
-      advance();
-
-      const icon  = escapeHtml(cat.icon  || '·');
-      const label = escapeHtml(cat.label || '');
-      const desc  = escapeHtml(cat.description || '');
-      const items = (cat.items || []).map(renderCard).join('\n');
-
-      return `
-    <div class="cutout ${tilt}" id="cat-${escapeHtml(cat.id)}">
-      <div class="tape ${tape}"></div>
-      <div class="cat-heading">${icon} ${label}</div>
-      <div class="cat-desc">${desc}</div>
-      <div class="catalog-grid">${items}</div>
-    </div>`;
-    }
-
-    async function loadCatalog() {
-      const catalogEl = document.getElementById('catalog');
-      const errorEl   = document.getElementById('catalog-error');
-
-      try {
-        const res = await fetch('./catalog.json', { cache: 'no-cache' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-
-        const data = await res.json();
-
-        // Actualizar stats bar si el JSON las provee
-        if (Array.isArray(data.stats)) {
-          const statsBar = document.querySelector('.js-stats-bar');
-          if (statsBar) {
-            statsBar.innerHTML = data.stats.map(s =>
-              `<div class="stat"><span class="val">${escapeHtml(String(s.val))}</span><span class="lbl">${escapeHtml(s.lbl)}</span></div>`
-            ).join('');
-          }
-        }
-
-        // Renderizar categorías
-        if (Array.isArray(data.categories) && catalogEl) {
-          catalogEl.innerHTML = data.categories.map(renderCategory).join('\n');
-        } else if (catalogEl) {
-          catalogEl.innerHTML = '<p class="catalog-loading">Catálogo vacío.</p>';
-        }
-
-      } catch (err) {
-        if (catalogEl) catalogEl.innerHTML = '';
-        if (errorEl)   errorEl.style.display = 'block';
-        console.error('[Hackería] Error cargando catalog.json:', err);
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', loadCatalog);
-  </script>
-
 </body>
+
 </html>
