@@ -6,19 +6,64 @@ const log = (msg) => console.log(`[OASIS] [PATCH] ${msg}`);
 // === Patch ssb-ref ===
 const ssbRefPath = path.resolve(__dirname, '../src/server/node_modules/ssb-ref/index.js');
 if (fs.existsSync(ssbRefPath)) {
-  const data = fs.readFileSync(ssbRefPath, 'utf8');
-  const alreadyClean = /exports\.parseAddress\s*=\s*parseAddress/.test(data);
-  if (!alreadyClean) {
-    const patched = data.replace(
+  let data = fs.readFileSync(ssbRefPath, 'utf8');
+  let changed = false;
+
+  // parseAddress
+  if (!/exports\.parseAddress\s*=\s*parseAddress(?!\s*\()/.test(data)) {
+    const p = data.replace(
       /exports\.parseAddress\s*=\s*deprecate\(\s*['"][^'"]*['"]\s*,\s*parseAddress\s*\)/,
       'exports.parseAddress = parseAddress'
     );
-    if (patched !== data) {
-      fs.writeFileSync(ssbRefPath, patched);
-      log('Patched ssb-ref to remove deprecated usage of parseAddress');
-    } else {
-      log('ssb-ref patch skipped: unexpected parseAddress export format');
-    }
+    if (p !== data) { data = p; changed = true; log('ssb-ref: removed deprecate wrapper from parseAddress'); }
+    else log('ssb-ref: parseAddress patch skipped – unexpected format');
+  }
+
+  // parseLegacyInvite
+  if (/exports\.parseLegacyInvite\s*=\s*deprecate\(/.test(data)) {
+    const p = data.replace(
+      /exports\.parseLegacyInvite\s*=\s*deprecate\(\s*['"][^'"]*['"]\s*,\s*parseLegacyInvite\s*\)/,
+      'exports.parseLegacyInvite = parseLegacyInvite'
+    );
+    if (p !== data) { data = p; changed = true; log('ssb-ref: removed deprecate wrapper from parseLegacyInvite'); }
+    else log('ssb-ref: parseLegacyInvite patch skipped – unexpected format');
+  }
+
+  // parseMultiServerInvite
+  if (/exports\.parseMultiServerInvite\s*=\s*deprecate\(/.test(data)) {
+    const p = data.replace(
+      /exports\.parseMultiServerInvite\s*=\s*deprecate\(\s*['"][^'"]*['"]\s*,\s*parseMultiServerInvite\s*\)/,
+      'exports.parseMultiServerInvite = parseMultiServerInvite'
+    );
+    if (p !== data) { data = p; changed = true; log('ssb-ref: removed deprecate wrapper from parseMultiServerInvite'); }
+    else log('ssb-ref: parseMultiServerInvite patch skipped – unexpected format');
+  }
+
+  // parseInvite (inline anonymous function wrapped in deprecate)
+  if (/exports\.parseInvite\s*=\s*deprecate\(/.test(data)) {
+    const p = data.replace(
+      /exports\.parseInvite\s*=\s*deprecate\(\s*['"][^'"]*['"]\s*,\s*(function\s*\(invite\)\s*\{[\s\S]*?\})\s*\)/,
+      'exports.parseInvite = $1'
+    );
+    if (p !== data) { data = p; changed = true; log('ssb-ref: removed deprecate wrapper from parseInvite'); }
+    else log('ssb-ref: parseInvite patch skipped – unexpected format');
+  }
+
+  // toLegacyAddress
+  if (/exports\.toLegacyAddress\s*=\s*deprecate\(/.test(data)) {
+    const p = data.replace(
+      /exports\.toLegacyAddress\s*=\s*deprecate\(\s*['"][^'"]*['"]\s*,\s*toLegacyAddress\s*\)/,
+      'exports.toLegacyAddress = toLegacyAddress'
+    );
+    if (p !== data) { data = p; changed = true; log('ssb-ref: removed deprecate wrapper from toLegacyAddress'); }
+    else log('ssb-ref: toLegacyAddress patch skipped – unexpected format');
+  }
+
+  if (changed) {
+    fs.writeFileSync(ssbRefPath, data);
+    log('ssb-ref patched successfully');
+  } else {
+    log('ssb-ref no necesita patch');
   }
 } else {
   log('ssb-ref patch skipped: file not found at ' + ssbRefPath);

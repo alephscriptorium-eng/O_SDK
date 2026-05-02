@@ -1,59 +1,121 @@
 <!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PUB OASIS SCRIPTORIUM</title>
+  <title>Scriptorium.Pub</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/ico.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/ico.png">
+  <link rel="apple-touch-icon" href="/ico.png">
   <link rel="stylesheet" href="/assets/fanzine.css">
   <style>
     body {
       background:
-        radial-gradient(circle at top left, rgba(0,0,0,0.05), transparent 34rem),
-        radial-gradient(circle at bottom right, rgba(0,0,0,0.04), transparent 28rem),
+        radial-gradient(circle at top left, rgba(0, 0, 0, 0.05), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(0, 0, 0, 0.04), transparent 28rem),
         #f6f1e6;
       max-width: 980px;
     }
+
     .hero-copy {
       font-size: 0.84rem;
       margin-top: 10px;
     }
+
     .hero-copy p {
       margin-top: 8px;
     }
+
     .access-list {
       font-size: 0.72rem;
       line-height: 1.6;
     }
+
     .access-list a {
       color: #000;
       text-decoration: none;
       border-bottom: 1.5px solid #000;
     }
+
     .access-list a:hover {
       background: #000;
       color: #fff;
     }
-    .status-ok { color: #000; }
-    .muted-note { opacity: 0.75; }
+
+    .status-ok {
+      color: #000;
+    }
+
+    .muted-note {
+      opacity: 0.75;
+    }
+
     .tiny {
       font-size: 0.64rem;
       line-height: 1.5;
     }
+
+    .kw {
+      display: inline-block;
+      border: 1.5px solid #000;
+      padding: 2px 7px;
+      font-size: 0.65rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin: 3px 2px;
+    }
+
+    .kw-inv {
+      display: inline-block;
+      border: 1.5px solid #000;
+      padding: 2px 7px;
+      font-size: 0.65rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin: 3px 2px;
+      background: #000;
+      color: #fff;
+    }
+
+    .copy-btn {
+      font-family: 'Courier New', monospace;
+      font-size: 0.6rem;
+      font-weight: bold;
+      letter-spacing: 1.5px;
+      background: #000;
+      color: #fff;
+      border: none;
+      padding: 3px 8px;
+      cursor: pointer;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .copy-btn:hover {
+      background: #333;
+    }
+
+    .copy-btn.copied {
+      background: #444;
+    }
   </style>
 </head>
+
 <body>
   <header class="header">
-    <div class="stamp">PUB / LIVE</div>
-    <h1>PUB OASIS SCRIPTORIUM</h1>
-    <div class="sub">Nodo Oasis / SSB · landing pública + panel local</div>
-    <div class="sub2">Servidor de replicación y memoria para Scriptorium, preparado para local y para VPS.</div>
-    <div class="issue">LOCAL DEV · VPS READY · PARA LA VOZ SDK</div>
+    <div class="stamp">Preview</div>
+    <h1>Escrivivir Pub</h1>
+    <div class="sub">Nodo Oasis / SSB</div>
+    <div class="sub2">Servidor de replicación y SDK (Hackería).</div>
+    <div class="issue">2026 · 5º CICLO</div>
   </header>
 
   <div class="washi"></div>
 
   <div class="callout tilt-r">
-    Observabilidad local, persistencia en volumes-dev y transición limpia hacia Gandi VPS.
+    project networking application that helps you follow interesting
+    content and discover new ones.
   </div>
 
   <div class="stats-bar tilt-l" aria-label="Estado del pub">
@@ -63,6 +125,85 @@
     <div class="stat"><span id="health" class="val">—</span><span class="lbl">Health</span></div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- PUB CARD — únete a este pub                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div class="cutout tilt-l" id="pub-card" style="margin-top:28px;">
+    <div class="tape tape-tl"></div>
+    <div class="tape tape-tr"></div>
+
+    <div
+      style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:1.7rem;font-weight:bold;letter-spacing:5px;text-transform:uppercase;line-height:1;">
+          ESCRIVIVIR
+        </div>
+        <div style="font-size:0.72rem;letter-spacing:2px;opacity:0.6;margin-top:3px;">
+          pub.escrivivir.co · Oasis SSB Pub
+        </div>
+        <div style="font-size:0.7rem;margin-top:8px;max-width:440px;line-height:1.5;">
+          Nodo de replicación para la red Oasis. Escritura, comunidad y memoria distribuida — <code
+            style="font-size:0.65rem;background:#f0f0f0;padding:1px 4px;">caps.shs zTmidAb7…</code>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div id="card-status-dot"
+          style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#aaa;border:2px solid #000;margin-right:4px;vertical-align:middle;">
+        </div>
+        <span id="card-status-label"
+          style="font-size:0.75rem;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">—</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:0.68rem;">
+
+      <div>
+        <div style="font-size:0.58rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.55;margin-bottom:3px;">
+          HOST</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <code id="val-host"
+            style="background:#000;color:#fff;padding:3px 7px;letter-spacing:1px;">pub.escrivivir.co:8008</code>
+          <button class="copy-btn" data-target="val-host" title="Copiar host">COPY</button>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:0.58rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.55;margin-bottom:3px;">PUB
+          KEY</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <code id="val-pubkey"
+            style="background:#f4f4f4;border:1.5px solid #000;padding:3px 7px;word-break:break-all;max-width:260px;">@/snvahvaTP5obvdiYva9OX9NNnTSlUQbEUBSuDRzrZA=.ed25519</code>
+          <button class="copy-btn" data-target="val-pubkey" title="Copiar pub key">COPY</button>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:0.58rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.55;margin-bottom:3px;">
+          CONNECT</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <code id="val-connect"
+            style="background:#f4f4f4;border:1.5px solid #000;padding:3px 7px;word-break:break-all;max-width:260px;">net:pub.escrivivir.co:8008~shs:/snvahvaTP5obvdiYva9OX9NNnTSlUQbEUBSuDRzrZA=</code>
+          <button class="copy-btn" data-target="val-connect" title="Copiar multiserver address">COPY</button>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:0.58rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.55;margin-bottom:3px;">
+          INVITE <span style="opacity:0.5;font-weight:normal;">(1000 usos)</span></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <code id="val-invite"
+            style="background:#f4f4f4;border:1.5px solid #000;padding:3px 7px;word-break:break-all;max-width:260px;">pub.escrivivir.co:8008:@/snvahvaTP5obvdiYva9OX9NNnTSlUQbEUBSuDRzrZA=.ed25519~1xHgP30HPGxKPCWrkLJBjXwoENoULUHedykU25kIcXo=</code>
+          <button class="copy-btn" data-target="val-invite" title="Copiar invite">COPY</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:14px;font-size:0.62rem;opacity:0.6;border-top:1px solid #000;padding-top:8px;">
+      En OASIS: <strong>Invites → Tribus</strong> → pegar el código invite. O usa el CONNECT para seguir el feed
+      directamente.
+    </div>
+  </div>
   <div class="cols">
     <div class="col">
       <div class="cutout tilt-l">
@@ -73,14 +214,14 @@
           · Hackería Scriptorium: <a href="/scriptorium/">/scriptorium/</a><br>
           · Panel local: <a href="/admin/">/admin/</a><br>
           · Estado JSON: <a href="/public/status">/public/status</a><br>
-          · SDK: <a href="https://escrivivir-co.github.io/para-la-voz-sdk/">Para la Voz SDK</a>
+
         </div>
 
         <details style="margin-top:10px;" open>
-          <summary>Cómo se administra</summary>
+          <summary>Contacto</summary>
           <div class="detail-body">
-            El panel privado no se expone públicamente. En local usa <span class="hl-box">127.0.0.1:8788</span>.
-            En VPS se accede por túnel SSH o VS Code Port Forwarding al puerto local del panel.
+
+            <span class="hl-box">secretaria at escrivivir.co</span>
           </div>
         </details>
       </div>
@@ -91,27 +232,44 @@
         <div class="tape tape-tl"></div>
         <h3>Ficha rápida</h3>
         <table class="tbl">
-          <tr><th>Propiedad</th><th>Estado</th></tr>
-          <tr><td>SSB pub</td><td class="check" id="feature-pub">…</td></tr>
-          <tr><td>Panel local</td><td class="check">✔</td></tr>
-          <tr><td>Landing web</td><td class="check">✔</td></tr>
-          <tr><td>Invites reales en localhost</td><td class="check">✘</td></tr>
+          <tr>
+            <th>Propiedad</th>
+            <th>Estado</th>
+          </tr>
+          <tr>
+            <td>SSB pub</td>
+            <td class="check" id="feature-pub">…</td>
+          </tr>
+          <tr>
+            <td>Panel local</td>
+            <td class="check">✔</td>
+          </tr>
+          <tr>
+            <td>Landing web</td>
+            <td class="check">✔</td>
+          </tr>
+          <tr>
+            <td>Invites</td>
+            <td class="check">✔</td>
+          </tr>
         </table>
         <div class="tiny muted-note">
-          En local puro puedes validar el servicio, los logs y el panel. Los invites reales llegan cuando el pub anuncia host/IP públicos.
+          En local puro puedes validar el servicio, los logs y el panel. Los invites reales llegan cuando el pub anuncia
+          host/IP públicos.
         </div>
       </div>
     </div>
   </div>
 
   <div class="cutout diagram-wrap">
+
+
     <div class="tape tape-tl"></div>
     <h2>☞ Topología local</h2>
-<pre class="diagram"> localhost:8088  ─────────▶ pub-web (Caddy)
+    <pre class="diagram"> localhost:8088  ──────────▶ pub-web (Caddy)
       │                     │
-      ├─ /public/status ───▶│ reverse proxy a pub-panel-api
-      │                     │
-      └─ /admin/ ──────────▶ UI estática del panel
+      ├─ /public/status ─── │ reverse proxy a pub-panel-api
+      └─ /admin/ ────────── │ UI estática del panel
 
  127.0.0.1:8788 ───────────▶ pub-panel-api
  localhost:8009 ───────────▶ oasis-pub (SSB / SHS)
@@ -120,16 +278,19 @@
   </div>
 
   <div class="cutout" style="text-align:center;">
-    <h3>Keywords</h3>
-    <span class="kw">oasis</span>
+    <h3>social network</h3>
+    <span class="kw">distributed</span>
     <span class="kw-inv">ssb-pub</span>
-    <span class="kw">local-panel</span>
-    <span class="kw">caddy</span>
-    <span class="kw-inv">volumes-dev</span>
+    <span class="kw">open-source</span>
+    <span class="kw"> peer-to-peer</span>
+    <span class="kw-inv">federated</span>
   </div>
 
+
   <footer class="footer">
-    PUB OASIS SCRIPTORIUM · LOCAL LANDING · PANEL LOCAL · PARA LA VOZ SDK
+     <a href="https://escrivivir-co.github.io/aleph-scriptorium/">ALEPH SCRIPTORIUM v1.0.0-beta.1</a> · <a
+      href="https://escrivivir.co">ESCRIVIVIR.CO</a> · Demo SDK: <a
+      href="https://escrivivir-co.github.io/para-la-voz-sdk/">Para la Voz SDK</a> · 2026
   </footer>
 
   <script>
@@ -139,25 +300,53 @@
       const port = document.getElementById('port');
       const health = document.getElementById('health');
       const featurePub = document.getElementById('feature-pub');
+      const dot = document.getElementById('card-status-dot');
+      const label = document.getElementById('card-status-label');
 
       try {
         const response = await fetch('/public/status', { cache: 'no-store' });
         if (!response.ok) throw new Error('status unavailable');
         const data = await response.json();
-        status.textContent = data.running ? 'online' : 'offline';
+        const online = data.running;
+        status.textContent = online ? 'online' : 'offline';
         host.textContent = data.host || 'pub.escrivivir.co';
         port.textContent = data.port || '8008';
         health.textContent = data.health || '—';
-        featurePub.textContent = data.running ? '✔' : '✘';
+        featurePub.textContent = online ? '✔' : '✘';
+        if (dot) { dot.style.background = online ? '#000' : '#aaa'; }
+        if (label) { label.textContent = online ? 'ONLINE' : 'OFFLINE'; }
       } catch (error) {
         status.textContent = 'sin datos';
         health.textContent = '—';
         featurePub.textContent = '✘';
+        if (dot) { dot.style.background = '#aaa'; }
+        if (label) { label.textContent = '—'; }
       }
     }
+
+    // Copy-to-clipboard for pub card buttons
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.target);
+        if (!target) return;
+        navigator.clipboard.writeText(target.textContent.trim()).then(() => {
+          const orig = btn.textContent;
+          btn.textContent = 'OK ✔';
+          btn.classList.add('copied');
+          setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1400);
+        }).catch(() => {
+          const sel = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(target);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        });
+      });
+    });
 
     refreshStatus();
     setInterval(refreshStatus, 30000);
   </script>
 </body>
+
 </html>

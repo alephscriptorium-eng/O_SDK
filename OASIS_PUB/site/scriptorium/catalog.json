@@ -15,11 +15,11 @@
     "url": "https://pub.escrivivir.co/scriptorium/"
   },
   "stats": [
-    { "val": "27", "lbl": "Plugins" },
-    { "val": "23", "lbl": "SDKs" },
-    { "val": "35+", "lbl": "Agentes" },
-    { "val": "8", "lbl": "Servidores MCP" },
-    { "val": "v1.0", "lbl": "Beta" }
+    { "val": "Plugins", "lbl": "-" },
+    { "val": "SDKs", "lbl": "" },
+    { "val": "Agentes", "lbl": "-" },
+    { "val": "MCP", "lbl": "." },
+    { "val": "Skills", "lbl": "-" }
   ],
   "categories": [
     {

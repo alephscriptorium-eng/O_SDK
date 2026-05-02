@@ -91,22 +91,27 @@ apply_node_patches() {
     echo "Aplicando parches críticos a node_modules..."
     cd "$CURRENT_DIR/src/server"
     
-    # Patch 1: ssb-ref - Remover uso deprecado de parseAddress
+    # Patch 1: ssb-ref - Remover wrappers deprecados (parseAddress, parseInvite, etc.)
     SSB_REF_PATH="node_modules/ssb-ref/index.js"
     if [ -f "$SSB_REF_PATH" ]; then
         echo "  → Aplicando patch a ssb-ref..."
         node -e "
         const fs = require('fs');
-        const path = '$SSB_REF_PATH';
-        if (fs.existsSync(path)) {
-            const data = fs.readFileSync(path, 'utf8');
-            const patched = data.replace(
-                /exports\.parseAddress\s*=\s*deprecate\([^)]*\)/,
-                'exports.parseAddress = parseAddress'
-            );
-            if (patched !== data) {
-                fs.writeFileSync(path, patched);
-                console.log('    ✓ ssb-ref patcheado exitosamente');
+        const p = '$SSB_REF_PATH';
+        if (fs.existsSync(p)) {
+            let d = fs.readFileSync(p, 'utf8');
+            let changed = false;
+            const rep = (re, s) => { const n = d.replace(re, s); if (n !== d) { d = n; changed = true; } };
+
+            rep(/exports\.parseAddress\s*=\s*deprecate\(\s*['\"]\S*['\"],\s*parseAddress\s*\)/, 'exports.parseAddress = parseAddress');
+            rep(/exports\.parseLegacyInvite\s*=\s*deprecate\(\s*['\"]\S*['\"],\s*parseLegacyInvite\s*\)/, 'exports.parseLegacyInvite = parseLegacyInvite');
+            rep(/exports\.parseMultiServerInvite\s*=\s*deprecate\(\s*['\"]\S*['\"],\s*parseMultiServerInvite\s*\)/, 'exports.parseMultiServerInvite = parseMultiServerInvite');
+            rep(/exports\.parseInvite\s*=\s*deprecate\(\s*['\"]\S*['\"]\s*,(\s*function\s*\(invite\)\s*\{[\s\S]*?\})\s*\)/, 'exports.parseInvite =\$1');
+            rep(/exports\.toLegacyAddress\s*=\s*deprecate\(\s*['\"]\S*['\"],\s*toLegacyAddress\s*\)/, 'exports.toLegacyAddress = toLegacyAddress');
+
+            if (changed) {
+                fs.writeFileSync(p, d);
+                console.log('    \u2713 ssb-ref patcheado exitosamente');
             } else {
                 console.log('    - ssb-ref no necesita patch');
             }

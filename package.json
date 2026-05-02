@@ -53,7 +53,8 @@
     "pub:local:profile": "bash ./OASIS_PUB/scripts/env-run.sh .env.local publish-profile.sh",
     "pub:local:announce": "bash ./OASIS_PUB/scripts/env-run.sh .env.local announce-pub.sh",
     "pub:local:join": "bash ./OASIS_PUB/scripts/env-run.sh .env.local join-info.sh",
-    "pub:local:join-client": "bash ./OASIS_PUB/scripts/env-run.sh .env.local join-client.sh"
+    "pub:local:join-client": "bash ./OASIS_PUB/scripts/env-run.sh .env.local join-client.sh",
+    "pub:site:deploy": "bash ./GANDI_DEVOPS_FOLDER/scripts/deploy-site.sh"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
