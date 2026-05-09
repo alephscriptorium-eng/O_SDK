@@ -18,3 +18,77 @@
     file_server
   }
 }
+
+# Scriptorium VPS — hosts aditivos del MVP.
+# Edge productivo compartido: este Caddy `pub-web` de OASIS_PUB.
+# Upstreams esperados en la red Docker `oasis_pub_net` con aliases `scriptorium-*`.
+
+scriptorium.escrivivir.co {
+  encode zstd gzip
+
+  header {
+    X-Content-Type-Options nosniff
+    Referrer-Policy strict-origin-when-cross-origin
+  }
+
+  @health path /healthz
+  handle @health {
+    respond "scriptorium public edge ok" 200
+  }
+
+  reverse_proxy scriptorium-nodered:1880
+}
+
+admin.scriptorium.escrivivir.co {
+  encode zstd gzip
+
+  header {
+    X-Content-Type-Options nosniff
+    Referrer-Policy strict-origin-when-cross-origin
+    X-Robots-Tag noindex, nofollow, noarchive
+  }
+
+  @health path /healthz
+  handle @health {
+    respond "scriptorium admin edge ok" 200
+  }
+
+  basic_auth {
+    {$NODERED_ADMIN_USER:admin} {$NODERED_ADMIN_PASSWORD_BCRYPT}
+  }
+
+  reverse_proxy scriptorium-nodered:1880
+}
+
+mcp.scriptorium.escrivivir.co {
+  encode zstd gzip
+
+  header {
+    X-Content-Type-Options nosniff
+    Referrer-Policy strict-origin-when-cross-origin
+  }
+
+  @health path /healthz
+  handle @health {
+    respond "scriptorium mcp edge ok" 200
+  }
+
+  reverse_proxy scriptorium-mcp-devops:3003
+}
+
+npm.scriptorium.escrivivir.co {
+  encode zstd gzip
+
+  header {
+    X-Content-Type-Options nosniff
+    Referrer-Policy strict-origin-when-cross-origin
+    X-Robots-Tag noindex
+  }
+
+  @health path /healthz
+  handle @health {
+    respond "scriptorium npm edge ok" 200
+  }
+
+  reverse_proxy scriptorium-verdaccio:4873
+}
