@@ -145,6 +145,29 @@
       line-height: 1.45;
       opacity: 0.76;
     }
+
+    .copy-btn {
+      border: 1.5px solid #000;
+      background: #fff;
+      color: #000;
+      padding: 2px 7px;
+      font-size: 0.58rem;
+      letter-spacing: 1.2px;
+      cursor: pointer;
+      font-family: inherit;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+
+    .copy-btn:hover {
+      background: #000;
+      color: #fff;
+    }
+
+    .copy-btn.copied {
+      background: #000;
+      color: #fff;
+    }
   </style>
 </head>
 
@@ -233,6 +256,103 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- PEER CARD — fedérate al Pub.Rooms con tu Node-RED                  -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div class="cutout tilt-l" id="peer-card" style="margin-top:28px;">
+    <div class="tape tape-tl"></div>
+    <div class="tape tape-br"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:1.4rem;font-weight:bold;letter-spacing:4px;text-transform:uppercase;line-height:1;">
+          SCRIPTORIUM · ROOMS
+        </div>
+        <div style="font-size:0.72rem;letter-spacing:2px;opacity:0.6;margin-top:3px;">
+          rooms.scriptorium.escrivivir.co · Node-RED mesh peer
+        </div>
+        <div style="font-size:0.7rem;margin-top:8px;max-width:440px;line-height:1.5;">
+          Fedérate con tu Node-RED ya en marcha. Sin abrir puertos en tu lado — solo HTTPS/WSS saliente.
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div id="rooms-status-dot"
+          style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#aaa;border:2px solid #000;margin-right:4px;vertical-align:middle;">
+        </div>
+        <span id="rooms-status-label"
+          style="font-size:0.75rem;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">—</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:0.68rem;">
+
+      <div>
+        <div style="font-size:0.58rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.55;margin-bottom:3px;">ENDPOINT</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <code id="val-rooms-endpoint"
+            style="background:#000;color:#fff;padding:3px 7px;letter-spacing:1px;">rooms.scriptorium.escrivivir.co</code>
+          <button class="copy-btn" data-target="val-rooms-endpoint" title="Copiar endpoint">COPY</button>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:0.58rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.55;margin-bottom:3px;">TOKEN
+          <span style="opacity:0.5;font-weight:normal;">(PUBLIC_ROOM)</span></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <code id="val-rooms-token"
+            style="background:#f4f4f4;border:1.5px solid #000;padding:3px 7px;word-break:break-all;max-width:260px;">q5S6IaYodYVDmhLZeH9RLTGUpcNqlC9c66e9Lylo</code>
+          <button class="copy-btn" data-target="val-rooms-token" title="Copiar token">COPY</button>
+        </div>
+      </div>
+
+      <div style="grid-column:1/-1;">
+        <div style="font-size:0.58rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.55;margin-bottom:3px;">BOOTSTRAP
+          <span style="opacity:0.5;font-weight:normal;">(sustituye TU-ALIAS)</span></div>
+        <div style="display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;">
+          <code id="val-rooms-script"
+            style="background:#f4f4f4;border:1.5px solid #000;padding:3px 7px;word-break:break-all;font-size:0.6rem;max-width:520px;display:block;">curl -fsSL https://raw.githubusercontent.com/escrivivir-co/scriptorium-vps/integration/beta/scriptorium/scripts/bootstrap-mesh-client.sh | ROOMS_USER="TU-ALIAS" ROOMS_ROOM="PUBLIC_ROOM" ROOMS_SECRET="q5S6IaYodYVDmhLZeH9RLTGUpcNqlC9c66e9Lylo" bash</code>
+          <button class="copy-btn" data-target="val-rooms-script" title="Copiar comando bootstrap">COPY</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- mini steps -->
+    <div style="margin-top:16px;border-top:1px solid #000;padding-top:10px;font-size:0.65rem;">
+      <div
+        style="font-size:0.58rem;letter-spacing:1.5px;text-transform:uppercase;opacity:0.55;margin-bottom:8px;">PASOS
+        RÁPIDOS</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div style="border:1.5px solid #000;padding:8px 9px;background:#fff;">
+          <div style="font-weight:bold;letter-spacing:1px;margin-bottom:4px;">① BOOTSTRAP</div>
+          <div style="opacity:0.8;line-height:1.45;">Ejecuta el script con tu alias, <code
+              style="font-size:0.58rem;">PUBLIC_ROOM</code> y el token. Instala contribs y escribe
+            <code style="font-size:0.58rem;">~/.node-red/.env.rooms</code> (permisos 600).</div>
+        </div>
+        <div style="border:1.5px solid #000;padding:8px 9px;background:#fff;">
+          <div style="font-weight:bold;letter-spacing:1px;margin-bottom:4px;">② ARRANCAR</div>
+          <div style="opacity:0.8;line-height:1.45;"><code
+              style="font-size:0.58rem;">source ~/.node-red/.env.rooms &amp;&amp; node-red</code>,
+            importa <code style="font-size:0.58rem;">flows_pub-room-client.json</code> y haz Deploy.</div>
+        </div>
+        <div style="border:1.5px solid #000;padding:8px 9px;background:#fff;">
+          <div style="font-weight:bold;letter-spacing:1px;margin-bottom:4px;">③ VERIFICAR</div>
+          <div style="opacity:0.8;line-height:1.45;">El nodo pasa a verde <code
+              style="font-size:0.58rem;">connected</code>. Salud sin Node-RED: <code
+              style="font-size:0.58rem;">curl -I https://rooms.scriptorium.escrivivir.co/healthz</code>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      style="margin-top:12px;font-size:0.62rem;opacity:0.75;border-top:1px dashed #000;padding-top:7px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+      <a href="https://github.com/escrivivir-co/node-red-alephscript-sdk/blob/integration/beta/scriptorium/NOD-RED-FED-NOTES/NOTA-AMIGO-DESDE-CERO.md"
+        style="color:#000;border-bottom:1px solid #000;text-decoration:none;">Guía completa desde cero →</a>
+      <a href="https://rooms.scriptorium.escrivivir.co/healthz"
+        style="color:#000;border-bottom:1px solid #000;text-decoration:none;">rooms healthz →</a>
+    </div>
+  </div>
+
   <div class="cols">
     <div class="col">
       <div class="cutout tilt-r">
@@ -274,6 +394,51 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- STACK TOPOLOGY                                                      -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div class="cutout diagram-wrap tilt-l" style="margin-top:28px;">
+    <div class="tape tape-tl"></div>
+    <div class="tape tape-br"></div>
+    <h2>☞ Stack · Scriptorium VPS</h2>
+    <pre class="diagram"> INTERNET / PEERS
+       │ HTTPS · WSS :443
+       ▼
+ pub-web (Caddy) ─── BlockchainComPort/OASIS_PUB ─── red: oasis_pub_net
+       │
+       ├─ scriptorium.escrivivir.co ─────────────────▶ nodered :1880
+       │    /red        editor Node-RED (read-only público)     │
+       │    /ui         Dashboard clásico                       │ alias: scriptorium-nodered
+       │    /dashboard  Dashboard 2                             │
+       │                                                        │
+       ├─ admin.scriptorium.escrivivir.co ─────────────────────▶│
+       │    /red        editor admin (write · projects)         │
+       │                                                        │
+       ├─ rooms.scriptorium.escrivivir.co ─────────────────────▶│
+       │    wss://.../runtime  Socket.IO + shared-secret        │ alias: scriptorium-rooms
+       │    ← peers externos · bootstrap-mesh-client.sh         │
+       │    ← PUBLIC_ROOM token                                 │
+       │                                                        │
+       │    Persistencia:  /data/projects  · node-red-projects/ │
+       │                   /data/ARCHIVO   · /run/secrets/rooms │
+       │                                                        ▼
+       ├─ mcp.scriptorium.escrivivir.co ─────────────▶ mcp-devops :3003
+       │    /mcp   Streamable HTTP · Bearer token               │ alias: scriptorium-mcp-devops
+       │                                                        │
+       │    Persistencia:  /workspace/devops-data               │
+       │                   /workspace/audit                      │
+       │                                                        ▼
+       └─ npm.scriptorium.escrivivir.co ─────────────▶ verdaccio :4873
+            @alephscript/* · registry público                    │ alias: scriptorium-verdaccio
+                                                                 │
+            Paquetes publicados:                                  │
+              @alephscript/mcp-core-sdk@1.4.0                   │
+              node-red-contrib-alephscript-core@0.2.0           │
+              node-red-dashboard-2-alephscript-rooms@0.2.0      │
+                                                                 ▼
+                                              /verdaccio/storage (persistencia)</pre>
+  </div>
+
   <!--
     Nota de mantenimiento (no visible al lector):
     El vestíbulo ordena puertas; no duplica documentación detallada de cada sala.
@@ -311,6 +476,43 @@
     <span class="kw">oasis</span>
     <span class="kw-inv">pub</span>
   </div>
+
+  <script>
+    // Copy-to-clipboard for peer card buttons
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.target);
+        if (!target) return;
+        navigator.clipboard.writeText(target.textContent.trim()).then(() => {
+          const orig = btn.textContent;
+          btn.textContent = 'OK ✔';
+          btn.classList.add('copied');
+          setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1400);
+        }).catch(() => {
+          const sel = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(target);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        });
+      });
+    });
+
+    // Rooms healthz status check
+    (async () => {
+      const dot = document.getElementById('rooms-status-dot');
+      const label = document.getElementById('rooms-status-label');
+      try {
+        const r = await fetch('https://rooms.scriptorium.escrivivir.co/healthz', { cache: 'no-store' });
+        const online = r.ok;
+        if (dot) dot.style.background = online ? '#000' : '#aaa';
+        if (label) label.textContent = online ? 'ONLINE' : 'OFFLINE';
+      } catch {
+        if (dot) dot.style.background = '#aaa';
+        if (label) label.textContent = '—';
+      }
+    })();
+  </script>
 
   <!-- ════════════ FOOTER ════════════ -->
   <footer class="footer">

@@ -276,6 +276,37 @@
  volumes-dev/oasis-pub/* ─▶ ssb-data · logs · caddy-data · caddy-config</pre>
   </div>
 
+  <div class="cutout diagram-wrap tilt-r">
+    <div class="tape tape-tr"></div>
+    <h2>☞ Cableado Caddy · extensión Scriptorium</h2>
+    <pre class="diagram"> INTERNET :443
+       │
+       ▼
+ pub-web (Caddy) ── red Docker: oasis_pub_net
+       │
+       ├─ pub.escrivivir.co
+       │    /public/*  ──────────────────▶ pub-panel-api:8787
+       │    resto  ──────────────────────▶ /srv/site (estático)
+       │
+       ├─ scriptorium.escrivivir.co ──────▶ scriptorium-nodered:1880
+       │    /red · /ui · /dashboard        (editor público read-only + dashboards)
+       │
+       ├─ admin.scriptorium.escrivivir.co ─▶ scriptorium-nodered:1880
+       │    /red                            (editor admin + projects)
+       │
+       ├─ rooms.scriptorium.escrivivir.co ─▶ scriptorium-rooms:3010
+       │    wss://.../runtime              (Socket.IO · shared-secret)
+       │
+       ├─ mcp.scriptorium.escrivivir.co ───▶ scriptorium-mcp-devops:3003
+       │    /mcp                           (Streamable HTTP · Bearer)
+       │
+       └─ npm.scriptorium.escrivivir.co ───▶ scriptorium-verdaccio:4873
+            @alephscript/*                 (registry público)</pre>
+    <div style="margin-top:10px;font-size:0.62rem;opacity:0.75;">
+      Stack completo con persistencias y paquetes publicados: <a href="/scriptorium/" style="color:#000;border-bottom:1px solid #000;text-decoration:none;">scriptorium/ →</a>
+    </div>
+  </div>
+
   <div class="cutout" style="text-align:center;">
     <h3>social network</h3>
     <span class="kw">distributed</span>
