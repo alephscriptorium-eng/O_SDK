@@ -1,5 +1,6 @@
 const { div, h2, h3, h4, p, section, button, form, a, span, br, textarea, input, label, select, option, table, tr, td, ul, li } = require("../server/node_modules/hyperaxe")
-const { template, i18n } = require("./main_views")
+const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton } = require("./main_views")
+const { renderEncryptedChip } = require("./clearnet_view")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 
@@ -46,21 +47,35 @@ const renderStatus = (cal) => {
   return span({ class: "pad-status-open" }, i18n.calendarStatusOpen || "OPEN")
 }
 
-const renderCalendarCard = (cal) => {
+const renderCalendarStatusChip = (cal) => {
+  const isClosed = !!cal.isClosed
+  const variant = isClosed ? "closed" : "mutuals"
+  const icon = isClosed ? "\u2717" : "\u2713"
+  const label = isClosed ? (i18n.calendarStatusClosed || "CLOSED") : (i18n.calendarStatusOpen || "OPEN")
+  return renderStateChip(variant, icon, label)
+}
+
+const renderCalendarCard = (cal, spreadInfo) => {
   const href = `/calendars/${encodeURIComponent(cal.rootId)}`
+  const chips = [
+    renderCalendarStatusChip(cal),
+    renderEncryptedChip(i18n),
+    renderLifespanChip(cal.lifetime, i18n)
+  ].filter(Boolean)
   return div({ class: "tribe-card" },
     div({ class: "tribe-card-body" },
-      div({ class: "tribe-card-title" },
-        a({ href }, cal.title || "\u2014")
+      div({ class: "shop-title-row" },
+        h2({ class: "tribe-card-title" }, a({ href }, cal.title || "\u2014"))
       ),
-      table({ class: "tribe-info-table" },
-        tr(td({ class: "tribe-info-label" }, i18n.calendarStatusLabel || "Status"), td({ class: "tribe-info-value" }, renderStatus(cal))),
-        cal.deadline ? tr(td({ class: "tribe-info-label" }, i18n.calendarDeadlineLabel || "Deadline"), td({ class: "tribe-info-value" }, moment(cal.deadline).format("YYYY-MM-DD HH:mm"))) : null,
-      ),
+      chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
+      cal.deadline
+        ? p({ class: "job-meta-line" }, `${i18n.calendarDeadlineLabel || "Deadline"}: ${moment(cal.deadline).format("YYYY-MM-DD HH:mm")}`)
+        : null,
       div({ class: "tribe-card-members" },
         span({ class: "tribe-members-count calendar-participants-count" }, `${i18n.calendarParticipantsLabel || "Participants"}: ${cal.participants.length}`)
       ),
-      div({ class: "visit-btn-centered" },
+      div({ class: "card-spread-centered" }, renderSpreadButton(cal.rootId, spreadInfo)),
+      div({ class: "card-visit-btn-centered" },
         a({ href, class: "filter-btn" }, i18n.calendarVisitCalendar || "Visit Calendar")
       )
     )
@@ -165,6 +180,17 @@ const renderMonthGrid = (year, month, datesMap, calendarId) => {
   return div({ class: "calendar-grid" }, ...headerCells, ...cells)
 }
 
+exports.renderCalendarInvitePage = (code) => {
+  const pageContent = div({ class: "invite-page" },
+    h2(i18n.tribeInviteCodeText, code),
+    form({ method: "GET", action: "/calendars" },
+      input({ type: "hidden", name: "filter", value: "all" }),
+      button({ type: "submit", class: "filter-btn" }, i18n.walletBack)
+    )
+  )
+  return template(i18n.calendarGenerateInvite || "Invite", section(pageContent))
+}
+
 exports.calendarsView = async (calendars, filter, calendarToEdit, params) => {
   const q = (params && params.q) || ""
   const showForm = filter === "create" || filter === "edit" || !!calendarToEdit
@@ -199,7 +225,7 @@ exports.calendarsView = async (calendars, filter, calendarToEdit, params) => {
       showForm
         ? renderCreateForm(calendarToEdit, params)
         : (calendars.length > 0
-            ? div({ class: "tribe-grid" }, ...calendars.map(c => renderCalendarCard(c)))
+            ? div({ class: "tribe-grid" }, ...calendars.map(c => renderCalendarCard(c, params && params.spreadMap && params.spreadMap.get(c.rootId))))
             : p({ class: "no-content" }, i18n.calendarsNoItems || "No calendars found."))
     )
   )
@@ -230,19 +256,25 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
     ? div({ class: "tribe-side-tags" }, ...calendar.tags.map(t => a({ href: `/search?query=%23${encodeURIComponent(t)}` }, `#${t} `)))
     : null
 
+  const detailChips = [
+    renderCalendarStatusChip(calendar),
+    renderEncryptedChip(i18n),
+    renderLifespanChip(calendar.lifetime, i18n)
+  ].filter(Boolean)
   const calSide = div({ class: "tribe-side" },
-    h2(null, calendar.title || "\u2014"),
+    div({ class: "shop-title-row" },
+      h2({ class: "tribe-card-title" }, calendar.title || "\u2014")
+    ),
+    detailChips.length ? div({ class: "card-chips-row" }, ...detailChips) : null,
+    div({ class: "card-spread-centered" }, renderSpreadButton(calendar.rootId, params && params.spreads)),
     div({ class: "shop-share" },
       span({ class: "tribe-info-label" }, i18n.calendarsShareUrl || "Share URL"),
       input({ type: "text", readonly: true, value: shareUrl, class: "shop-share-input" })
     ),
-    div({ class: "tribe-card-members" },
-      span({ class: "tribe-members-count calendar-participants-count" }, `${i18n.calendarParticipantsLabel || "Participants"}: ${calendar.participants.length}`)
-    ),
     table({ class: "tribe-info-table" },
       tr(td({ class: "tribe-info-label" }, i18n.calendarCreated || "Created"), td({ class: "tribe-info-value", colspan: "3" }, moment(calendar.createdAt).format("YYYY-MM-DD"))),
-      tr(td({ class: "tribe-info-value", colspan: "4" }, a({ href: `/author/${encodeURIComponent(calendar.author)}`, class: "user-link" }, calendar.author))),
       tr(td({ class: "tribe-info-label" }, i18n.calendarStatusLabel || "Status"), td({ class: "tribe-info-value", colspan: "3" }, renderStatus(calendar))),
+      tr(td({ class: "tribe-info-value", colspan: "4" }, userLink(calendar.author))),
       calendar.deadline ? tr(td({ class: "tribe-info-label" }, i18n.calendarDeadlineLabel || "Deadline"), td({ class: "tribe-info-value", colspan: "3" }, moment(calendar.deadline).format("YYYY-MM-DD HH:mm"))) : null
     ),
     div({ class: "tribe-side-actions" },
@@ -254,6 +286,11 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
             button({ type: "submit", class: "tribe-action-btn" }, i18n.calendarUpdate || "Update")
           )
         : null,
+      isAuthor && calendar.status !== "OPEN"
+        ? form({ method: "POST", action: `/calendars/generate-invite/${encodeURIComponent(calendar.rootId)}` },
+            button({ type: "submit", class: "tribe-action-btn" }, i18n.tribeGenerateInvite)
+          )
+        : null,
       isAuthor
         ? form({ method: "POST", action: `/calendars/delete/${encodeURIComponent(calendar.rootId)}` },
             button({ type: "submit", class: "tribe-action-btn danger-btn" }, i18n.calendarDelete || "Delete")
@@ -262,18 +299,24 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
       !isAuthor
         ? a({ href: `/pm?to=${encodeURIComponent(calendar.author)}`, class: "tribe-action-btn" }, "PM")
         : null,
-      !isAuthor && !isParticipant
+      !isAuthor && !isParticipant && calendar.status === "OPEN"
         ? form({ method: "POST", action: `/calendars/join/${encodeURIComponent(calendar.rootId)}` },
             button({ type: "submit", class: "create-button" }, i18n.calendarJoin || "Join Calendar")
           )
         : null,
+      !isAuthor && !isParticipant && calendar.status !== "OPEN"
+        ? a({ class: "tribe-action-btn", href: "/invites#invites-calendars" }, i18n.tribeEnterInvite)
+        : null,
       !isAuthor && isParticipant
         ? form({ method: "POST", action: `/calendars/leave/${encodeURIComponent(calendar.rootId)}` },
-            button({ type: "submit", class: "tribe-action-btn danger-btn" }, i18n.calendarLeave || "Leave Calendar")
+            button({ type: "submit", class: "tribe-action-btn" }, i18n.tribeLeaveButton)
           )
         : null
     ),
-    tags
+    tags,
+    div({ class: "tribe-card-members" },
+      span({ class: "tribe-members-count calendar-participants-count" }, `${i18n.calendarParticipantsLabel || "Participants"}: ${calendar.participants.length}`)
+    )
   )
 
   const minDate = now.add(1, "minute").format("YYYY-MM-DDTHH:mm")
@@ -333,9 +376,11 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
                 div({ class: "calendar-date-item-header" },
                   `${moment(d.date).format("YYYY-MM-DD HH:mm")}${d.label ? " \u2014 " + d.label : ""}`
                 ),
-                notes.length === 0
-                  ? p({ class: "no-content" }, i18n.calendarNoNotes || "No notes.")
-                  : div(null, ...notes.map(n => {
+                (() => {
+                  const visibleNotes = notes.filter(n => n.text && String(n.text).trim())
+                  return visibleNotes.length === 0
+                    ? p({ class: "no-content" }, i18n.calendarNoNotes || "No notes.")
+                    : div(null, ...visibleNotes.map(n => {
                       const isSelf = String(n.author) === String(userId)
                       const dateStr = moment(n.createdAt).format("YYYY/MM/DD HH:mm")
                       const shortId = n.author ? "@" + n.author.slice(1, 9) + "\u2026" : "?"
@@ -348,13 +393,14 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
                           : null,
                         div({ class: "chat-message-meta" },
                           span({ class: "chat-message-sender" },
-                            a({ href: `/author/${encodeURIComponent(n.author)}`, class: "user-link" }, shortId)
+                            userLink(n.author)
                           ),
                           span({ class: "chat-message-date" }, ` [ ${dateStr} ]`)
                         ),
                         span({ class: "chat-message-text" }, ...renderNoteText(n.text || ""))
                       )
                     }))
+                })()
               )
             }))
       )

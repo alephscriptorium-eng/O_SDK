@@ -1,5 +1,5 @@
-const { form, button, div, h2, p, section, textarea, label, input, br, img, a, select, option } = require("../server/node_modules/hyperaxe");
-const { template, i18n } = require('./main_views');
+const { form, button, div, h2, p, section, textarea, label, input, br, img, a, select, option, span } = require("../server/node_modules/hyperaxe");
+const { template, i18n, userLink, renderVisibilityChip } = require('./main_views');
 const { renderUrl } = require('../backend/renderUrl');
 
 const generateCVBox = (label, content, className) => {
@@ -89,6 +89,11 @@ exports.createCVView = async (cv = {}, editMode = false) => {
             select({ name: "preferences", required: true },
               option({ value: "IN PERSON", selected: cv.preferences === "IN-PERSON ONLY" }, "IN-PERSON ONLY"),
               option({ value: "REMOTE WORKING", selected: !cv.preferences || cv.preferences === "REMOTE WORKING" }, "REMOTE-WORKING")
+            ), br(), br(),
+            label(i18n.visibilityLabel || "Visibility"), br(),
+            select({ name: "visibility" },
+              option({ value: "PUBLIC", selected: (cv.visibility || "PUBLIC") === "PUBLIC" }, i18n.visibilityPublic || "Public"),
+              option({ value: "HIDDEN", selected: cv.visibility === "HIDDEN" }, i18n.visibilityHidden || "Hidden")
             ), br()
           ], "availability"),
 
@@ -136,6 +141,21 @@ exports.cvView = async (cv) => {
       ),
       div({ class: "cv-section" },
         div({ class: "cv-item" }, ...[
+          (() => {
+            const vis = (cv.visibility || 'PUBLIC').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'PUBLIC';
+            const next = vis === 'PUBLIC' ? 'HIDDEN' : 'PUBLIC';
+            return div({ class: "cv-visibility-row" },
+              span({ class: "card-label" }, `${i18n.visibilityLabel || 'Visibility'}: `),
+              renderVisibilityChip(vis, i18n),
+              " ",
+              form({ method: "POST", action: `/cv/visibility/${encodeURIComponent(cv.id)}`, class: "inline-form" },
+                input({ type: "hidden", name: "visibility", value: next }),
+                button({ type: "submit", class: "filter-btn" },
+                  next === 'PUBLIC' ? (i18n.visibilityMakePublic || 'Make public') : (i18n.visibilityMakeHidden || 'Make hidden')
+                )
+              )
+            );
+          })(),
           div({ class: "cv-actions" },
             form({ method: "GET", action: `/cv/edit/${encodeURIComponent(cv.id)}` },
               button({ type: "submit" }, i18n.cvEditButton)
@@ -156,7 +176,11 @@ exports.cvView = async (cv) => {
                 })
               : null,
             cv.name ? h2(`${cv.name}`) : null,
-            cv.contact ? p(a({ class: "user-link", href: `/author/${encodeURIComponent(cv.contact)}` }, cv.contact)) : null,
+            (cv.contact || cv.author)
+              ? a({ href: `/author/${encodeURIComponent(cv.contact || cv.author)}`, class: 'inhabitant-qr-link' },
+                  img({ class: 'inhabitant-qr-small', src: `/qr/${encodeURIComponent(cv.contact || cv.author)}?size=120`, alt: 'QR' }))
+              : null,
+            cv.contact ? p(userLink(cv.contact)) : null,
             cv.description ? p(...renderUrl(`${cv.description}`)) : null,
             (cv.personalSkills && cv.personalSkills.length)
               ? div(

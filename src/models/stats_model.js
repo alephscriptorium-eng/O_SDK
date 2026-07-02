@@ -3,6 +3,7 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const { getConfig } = require('../configs/config-manager.js');
+const { buildValidatedTombstoneSet } = require('./tombstone_validator');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 
 const STORAGE_DIR = path.join(__dirname, "..", "configs");
@@ -29,9 +30,32 @@ const listPubsFromEbt = () => {
   }
 };
 
-module.exports = ({ cooler }) => {
+const HIDDEN_ENVELOPE_TYPES = new Set([
+  'tribe-keys-distrib',
+  'tribe-invite-msg',
+  'tribe-invite-tombstone'
+]);
+
+module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
   let ssb;
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb; };
+
+  const buildAccessibleTribeIds = async () => {
+    const set = new Set();
+    if (!tribesModel) return set;
+    try {
+      const list = await tribesModel.listAll();
+      for (const t of list) {
+        if (!t || !t.id) continue;
+        set.add(t.id);
+        try {
+          const chain = await tribesModel.getChainIds(t.id);
+          for (const cid of chain) set.add(cid);
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return set;
+  };
 
   const types = [
     'bookmark','event','task','votes','report','feed','project',
@@ -43,12 +67,15 @@ module.exports = ({ cooler }) => {
   ];
 
   const getFolderSize = (folderPath) => {
-    const files = fs.readdirSync(folderPath);
+    let files;
+    try { files = fs.readdirSync(folderPath); } catch (_) { return 0; }
     let totalSize = 0;
     for (const file of files) {
       const filePath = `${folderPath}/${file}`;
-      const st = fs.statSync(filePath);
-      totalSize += st.isDirectory() ? getFolderSize(filePath) : st.size;
+      try {
+        const st = fs.statSync(filePath);
+        totalSize += st.isDirectory() ? getFolderSize(filePath) : st.size;
+      } catch (_) {}
     }
     return totalSize;
   };
@@ -258,12 +285,14 @@ module.exports = ({ cooler }) => {
       );
     });
 
-    const allMsgs = messages.filter(m => m.value?.content);
-    const tombTargets = new Set(
-      allMsgs
-        .filter(m => m.value.content.type === 'tombstone' && m.value.content.target)
-        .map(m => m.value.content.target)
-    );
+    const allMsgs = messages.filter(m => {
+      const c = m.value && m.value.content;
+      if (!c) return false;
+      if (typeof c === 'string' && c.endsWith('.box')) return false;
+      if (c.type && HIDDEN_ENVELOPE_TYPES.has(c.type)) return false;
+      return true;
+    });
+    const tombTargets = buildValidatedTombstoneSet(allMsgs);
 
     const scopedMsgs = filter === 'MINE' ? allMsgs.filter(m => m.value.author === userId) : allMsgs;
 
@@ -274,10 +303,26 @@ module.exports = ({ cooler }) => {
       parentOf[t] = new Map();
     }
 
+    const fpIdx = tribeCrypto ? tribeCrypto.buildFingerprintIndex() : null;
+    const accessibleTribeIds = await buildAccessibleTribeIds();
     for (const m of scopedMsgs) {
       const k = m.key;
-      const c = m.value.content;
-      theType = c.type;
+      let c = m.value.content;
+      if (tribeCrypto && tribeCrypto.isTribeMsg(c)) {
+        const r = fpIdx ? tribeCrypto.unwrapMsg(c, fpIdx) : null;
+        if (!r || !r.body) continue;
+        const inner = r.body;
+        if (inner.k === 'tribe') {
+          c = { ...inner, type: 'tribe' };
+        } else if (inner.k === 'tribe-content' && inner.contentType) {
+          c = { ...inner, type: inner.contentType };
+        } else {
+          continue;
+        }
+      } else if (c && c.tribeId && !accessibleTribeIds.has(c.tribeId)) {
+        continue;
+      }
+      let theType = c.type;
       if (!types.includes(theType)) continue;
       byType[theType].set(k, { key: k, ts: m.value.timestamp, content: c, author: m.value.author });
       if (c.replaces) parentOf[theType].set(k, c.replaces);
@@ -319,17 +364,17 @@ module.exports = ({ cooler }) => {
 
     const allTribesPublic = tribeDedupNodes
       .filter(n => n.content?.isAnonymous === false)
-      .map(n => ({ id: n.key, name: n.content.name || n.content.title || n.key }));
+      .map(n => ({ id: findRoot('tribe', n.key), name: n.content.name || n.content.title || n.key }));
 
     const allTribes = allTribesPublic.map(t => t.name);
 
     const memberTribesDetailed = tribeDedupNodes
       .filter(n => Array.isArray(n.content?.members) && n.content.members.includes(userId))
-      .map(n => ({ id: n.key, name: n.content.name || n.content.title || n.key }));
+      .map(n => ({ id: findRoot('tribe', n.key), name: n.content.name || n.content.title || n.key }));
 
     const myPrivateTribesDetailed = tribeDedupNodes
       .filter(n => n.content?.isAnonymous !== false && Array.isArray(n.content?.members) && n.content.members.includes(userId))
-      .map(n => ({ id: n.key, name: n.content.name || n.content.title || n.key }));
+      .map(n => ({ id: findRoot('tribe', n.key), name: n.content.name || n.content.title || n.key }));
 
     const content = {};
     const opinions = {};
@@ -446,6 +491,41 @@ module.exports = ({ cooler }) => {
       .slice(0, 5)
       .map(([id, count]) => ({ id, count }));
 
+    const tagCount = new Map();
+    for (const t of types) {
+      for (const v of Array.from(tipOf[t].values())) {
+        const tags = v.content && Array.isArray(v.content.tags) ? v.content.tags : [];
+        for (const tg of tags) {
+          const key = String(tg || '').trim();
+          if (!key) continue;
+          tagCount.set(key, (tagCount.get(key) || 0) + 1);
+        }
+      }
+    }
+    const topTags = Array.from(tagCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([tag, count]) => ({ tag, count }));
+
+    const totalTypeCount = types.reduce((s, t) => s + (Array.from(tipOf[t].values()).length || 0), 0);
+    const topTypeBlacklist = new Set(['shopProduct','chatMessage','padEntry','calendarDate','calendarNote','log']);
+    const topTypes = types
+      .filter(t => !topTypeBlacklist.has(t))
+      .map(t => ({ type: t, count: Array.from(tipOf[t].values()).length || 0 }))
+      .filter(o => o.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const myMsgsAll = allMsgs.filter(m => m.value.author === userId);
+    const myShare = allMsgs.length ? (myMsgsAll.length / allMsgs.length) * 100 : 0;
+    const avgMsgsPerInhabitant = inhabitants ? allMsgs.length / inhabitants : 0;
+    const validatedTombstoneCount = tombTargets.size;
+    const tombstoneRatio = allMsgs.length ? (validatedTombstoneCount / allMsgs.length) * 100 : 0;
+
+    const totalsTs = allMsgs.map(m => m.value.timestamp || 0).filter(Boolean).sort((a, b) => a - b);
+    const networkSpanDays = totalsTs.length >= 2 ? (totalsTs[totalsTs.length - 1] - totalsTs[0]) / 86400000 : 0;
+    const networkMsgsPerDay = networkSpanDays > 0 ? (allMsgs.length / networkSpanDays) : 0;
+
     const addrMap = readAddrMap();
     const myAddress = addrMap[userId] || null;
     const banking = {
@@ -470,8 +550,8 @@ module.exports = ({ cooler }) => {
       tribePublicNames,
       tribePublicCount,
       tribePrivateCount,
-      userTombstoneCount: scopedMsgs.filter(m => m.value.content.type === 'tombstone').length,
-      networkTombstoneCount: allMsgs.filter(m => m.value.content.type === 'tombstone').length,
+      userTombstoneCount: scopedMsgs.filter(m => m.value.content.type === 'tombstone' && m.value.author === userId).length,
+      networkTombstoneCount: validatedTombstoneCount,
       folderSize: formatSize(folderSize),
       statsBlockchainSize: formatSize(flumeSize),
       statsBlobsSize: formatSize(blobsSize),
@@ -506,9 +586,20 @@ module.exports = ({ cooler }) => {
         topAuthors
       },
       tombstoneKPIs: {
-        networkTombstoneCount: allMsgs.filter(m => m.value.content.type === 'tombstone').length,
-        ratio: allMsgs.length ? (allMsgs.filter(m => m.value.content.type === 'tombstone').length / allMsgs.length) * 100 : 0
+        networkTombstoneCount: validatedTombstoneCount,
+        ratio: tombstoneRatio
       },
+      networkKPIs: {
+        totalMsgs: allMsgs.length,
+        myMsgs: myMsgsAll.length,
+        myShare,
+        avgMsgsPerInhabitant,
+        networkSpanDays,
+        networkMsgsPerDay
+      },
+      topTags,
+      topTypes,
+      totalTypeCount,
       banking
     };
 

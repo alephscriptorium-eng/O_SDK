@@ -1,19 +1,22 @@
 const { div, h2, p, section, button, form, a, span, textarea, br, input, label, select, option, img, progress, video, table, tr, td } = require("../server/node_modules/hyperaxe")
-const { template, i18n } = require("./main_views")
+const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderUrl } = require("../backend/renderUrl")
 const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel } = require("./maps_view")
 const opinionCategories = require("../backend/opinion_categories")
+const { renderReachChip, renderClearnetUrlBlock, renderClearnetPage, renderClearnetSearchForm, renderEncryptedChip, blobUrl: cnBlobUrl, escapeHtml: cnEscapeHtml } = require("./clearnet_view")
 
 const userId = config.keys.id
 const safeArr = (v) => (Array.isArray(v) ? v : [])
 const safeText = (v) => String(v || "").trim()
 const voteSum = (opinions = {}) => Object.values(opinions || {}).reduce((s, n) => s + (Number(n) || 0), 0)
+const sumCats = (opinions = {}, cats = []) => (cats || []).reduce((s, c) => s + (Number((opinions || {})[c]) || 0), 0)
 const renderStarRating = (opinions, voterCount) => {
-  const total = voteSum(opinions)
-  const avg = voterCount > 0 ? Math.min(5, Math.round((total / voterCount) * 5) / 5) : 0
-  const full = Math.floor(avg)
+  const pos = sumCats(opinions, opinionCategories.positive)
+  const neg = sumCats(opinions, opinionCategories.constructive) + sumCats(opinions, opinionCategories.moderation)
+  const totalVotes = pos + neg
+  const full = totalVotes > 0 ? Math.round((pos / totalVotes) * 5) : 0
   const stars = "\u2605".repeat(full) + "\u2606".repeat(5 - full)
   return span({ class: "shop-product-stars" }, `${stars} (${voterCount})`)
 }
@@ -48,6 +51,9 @@ const renderModeButtons = (currentFilter) =>
         button({ type: "submit", class: currentFilter === f ? "filter-btn active" : "filter-btn" }, i18n[`shopFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase())
       )
     ),
+    form({ method: "GET", action: "/shops/purchases" },
+      button({ type: "submit", class: currentFilter === "purchases" ? "filter-btn active" : "filter-btn" }, (i18n.shopPurchasesButton || "Purchases").toUpperCase())
+    ),
     form({ method: "GET", action: "/shops" },
       input({ type: "hidden", name: "filter", value: "create" }),
       button({ type: "submit", class: "create-button" }, i18n.shopUpload)
@@ -61,7 +67,7 @@ const renderFavoriteToggle = (shop, returnTo) =>
     button({ type: "submit", class: "filter-btn" }, shop.isFavorite ? i18n.shopRemoveFavorite : i18n.shopAddFavorite)
   )
 
-const renderShopCard = (shop, filter, params = {}) => {
+const renderShopCard = exports.renderShopCard = (shop, filter, params = {}) => {
   const returnTo = buildReturnTo(filter, params)
   const isAuthor = String(shop.author) === String(userId)
 
@@ -69,39 +75,27 @@ const renderShopCard = (shop, filter, params = {}) => {
     div({ class: "tribe-card-image-wrapper" },
       a({ href: `/shops/${encodeURIComponent(shop.key)}` },
         renderMediaBlob(shop.image, '/assets/images/default-avatar.png', { class: 'tribe-card-hero-image' })
-      ),
-      form({ method: 'GET', action: `/shops/${encodeURIComponent(shop.key)}`, class: 'tribe-visit-btn-wrapper' },
-        button({ type: 'submit', class: 'filter-btn' }, String(i18n.shopVisitShop || 'VISIT SHOP').toUpperCase())
       )
     ),
     div({ class: "tribe-card-body" },
-      h2({ class: "tribe-card-title" }, a({ href: `/shops/${encodeURIComponent(shop.key)}` }, shop.title || i18n.shopUntitled)),
-      shop.shortDescription ? p({ class: "tribe-card-description" }, shop.shortDescription) : null,
-      renderMapLocationVisitLabel(shop.mapUrl),
-      br(),
-      table({ class: "tribe-info-table" },
-        tr(
-          td({ class: "tribe-info-label" }, i18n.shopStatus || "STATUS"),
-          td({ class: "tribe-info-value", colspan: "3" }, shop.visibility === "CLOSED" ? i18n.shopClosed : i18n.shopOpen)
-        ),
-        shop.location ? tr(
-          td({ class: "tribe-info-label" }, i18n.shopLocation),
-          td({ class: "tribe-info-value", colspan: "3" }, ...renderUrl(shop.location))
-        ) : null
+      div({ class: "shop-title-row" },
+        h2({ class: "tribe-card-title" }, a({ href: `/shops/${encodeURIComponent(shop.key)}` }, shop.title || i18n.shopUntitled))
+      ),
+      div({ class: "card-chips-row" },
+        shop.visibility === "CLOSED"
+          ? renderStateChip("closed", "✗", i18n.shopClosed)
+          : renderStateChip("mutuals", "✓", i18n.shopOpen),
+        renderLifespanChip(shop.lifetime, i18n)
       ),
       div({ class: "tribe-card-members" },
         span({ class: "tribe-members-count" }, `${i18n.shopProducts}: ${shop.productCount || 0}`)
       ),
-      safeArr(shop.featuredProducts).length
-        ? div({ class: "shop-featured-products" },
-            safeArr(shop.featuredProducts).slice(0, 4).map(prod =>
-              a({ href: `/shops/product/${encodeURIComponent(prod.key)}?shopId=${encodeURIComponent(prod.shopId)}`, class: "shop-featured-item" },
-                prod.image ? renderMediaBlob(prod.image, null, { class: "shop-featured-thumb" }) : null,
-                span({ class: "shop-featured-price" }, `${Number(prod.price || 0).toFixed(6)} ECO`)
-              )
-            )
-          )
-        : null
+      div({ class: "card-spread-centered" }, renderSpreadButton(shop.key, params.spreadMap && params.spreadMap.get(shop.key))),
+      div({ class: "card-visit-btn-centered" },
+        form({ method: 'GET', action: `/shops/${encodeURIComponent(shop.key)}` },
+          button({ type: 'submit', class: 'filter-btn' }, i18n.viewShop || i18n.shopVisitShop || 'View Shop')
+        )
+      )
     )
   )
 }
@@ -130,9 +124,7 @@ const renderProductCard = (product, shopId, returnTo) => {
       (() => {
         const actions = [];
         if (!isAuthor && stock > 0) {
-          actions.push(form({ method: "POST", action: `/shops/product/buy/${encodeURIComponent(product.key)}` },
-            input({ type: "hidden", name: "returnTo", value: returnTo }),
-            button({ type: "submit", class: "buy-btn" }, i18n.marketActionsBuy || i18n.shopBuy)));
+          actions.push(a({ href: productUrl, class: "buy-btn" }, i18n.marketActionsBuy || i18n.shopBuy));
         }
         actions.push(form({ method: "POST", action: product.isFavorite ? `/shops/favorites/remove/${encodeURIComponent(product.key)}` : `/shops/favorites/add/${encodeURIComponent(product.key)}` },
           returnTo ? input({ type: "hidden", name: "returnTo", value: returnTo }) : null,
@@ -195,18 +187,21 @@ const renderShopForm = (filter, shop = {}, params = {}) => {
       label(i18n.blogImage || "Upload media (max-size: 50MB)"), br,
       input({ type: "file", name: "image", accept: "image/*,video/*" }), br(), br(),
       label(i18n.shopUrl), br,
-      input({ type: "text", name: "url", placeholder: i18n.shopUrlPlaceholder || "https://your-shop-url.com", value: shop.url || "" }), br,
+      input({ type: "text", name: "url", placeholder: "https://", value: shop.url || "" }), br,
       label(i18n.shopLocation), br,
       input({ type: "text", name: "location", placeholder: i18n.shopLocationPlaceholder || "City, Country", value: shop.location || "" }), br,
       label(i18n.mapLocationTitle || "Map Location"), br,
       input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: shop.mapUrl || "" }), br,
       label(i18n.shopTags), br,
       input({ type: "text", name: "tags", placeholder: i18n.shopTagsPlaceholder || "tag1, tag2, tag3", value: safeArr(shop.tags).join(", ") }), br,
-      label(i18n.shopVisibility), br,
-      select({ name: "visibility" },
+      isEdit ? null : label(i18n.shopVisibility),
+      isEdit ? null : br,
+      isEdit ? null : select({ name: "visibility" },
         option({ value: "OPEN", selected: (shop.visibility || "OPEN") === "OPEN" }, i18n.shopOpen),
         option({ value: "CLOSED", selected: shop.visibility === "CLOSED" }, i18n.shopClosed)
-      ), br(), br(),
+      ),
+      isEdit ? null : br(),
+      br(),
       button({ type: "submit" }, isEdit ? i18n.shopUpdate : i18n.shopCreate)
     )
   )
@@ -263,7 +258,15 @@ exports.shopsView = async (shops, filter, shopToEdit = null, params = {}) => {
 
   const isForm = filter === "create" || filter === "edit"
 
-  const header = div({ class: "tags-header" }, h2(title), p(i18n.shopDescription))
+  const viewerClearnet = !!(params.viewerPrefs && params.viewerPrefs.clearnetShops)
+  const header = [
+    div({ class: "tags-header" },
+      h2(title),
+      p(i18n.shopDescription)
+    ),
+    div({ class: "shop-title-row" }, renderReachChip(viewerClearnet, i18n)),
+    br()
+  ]
 
   const searchBar = div({ class: "filters" },
     form({ method: "GET", action: "/shops" },
@@ -283,7 +286,7 @@ exports.shopsView = async (shops, filter, shopToEdit = null, params = {}) => {
 
   return template(
     title,
-    section(header),
+    section(...header),
     section(renderModeButtons(filter)),
     !isForm ? section(searchBar) : null,
     section(
@@ -297,7 +300,7 @@ exports.shopsView = async (shops, filter, shopToEdit = null, params = {}) => {
             )
           : div({ class: "tribe-grid" },
               list.length
-                ? list.map(shop => renderShopCard(shop, filter, { q, sort }))
+                ? list.map(shop => renderShopCard(shop, filter, { q, sort, spreadMap: params.spreadMap }))
                 : p(i18n.shopNoItems)
             )
     )
@@ -311,15 +314,25 @@ exports.singleShopView = async (shop, filter, products = [], comments = [], para
   const isAuthor = String(shop.author) === String(userId)
   const fullShareUrl = `/shops/${encodeURIComponent(shop.key)}`
 
+  const isClearnet = !!(params.authorPrefs && params.authorPrefs.clearnetShops && shop.visibility !== 'CLOSED');
   const shopSide = div({ class: "tribe-side" },
-    h2(shop.title || i18n.shopUntitled),
+    div({ class: "shop-title-row" },
+      h2({ class: "tribe-card-title" }, shop.title || i18n.shopUntitled)
+    ),
+    div({ class: "card-chips-row" },
+      shop.visibility === "CLOSED"
+        ? renderStateChip("closed", "✗", i18n.shopClosed)
+        : renderStateChip("mutuals", "✓", i18n.shopOpen),
+      shop.encrypted ? renderStateChip("encrypted", "🔒", i18n.encryptedChipLabel || "E2E") : null,
+      renderLifespanChip(shop.lifetime, i18n),
+      renderReachChip(isClearnet, i18n)
+    ),
+    div({ class: "card-spread-centered" }, renderSpreadButton(shop.key, params.spreads)),
     renderMediaBlob(shop.image, '/assets/images/default-avatar.png', { class: 'tribe-detail-image' }),
+    shop.description ? p({ class: "tribe-side-description" }, ...renderUrl(shop.description)) : null,
     div({ class: "shop-share" },
       span({ class: "tribe-info-label" }, `${i18n.shopShareUrl}: `),
       input({ type: "text", value: fullShareUrl, readonly: true, class: "shop-share-input" })
-    ),
-    div({ class: "tribe-card-members" },
-      span({ class: "tribe-members-count" }, `${i18n.shopProducts}: ${shop.productCount || 0}`)
     ),
     table({ class: "tribe-info-table" },
       tr(
@@ -327,7 +340,7 @@ exports.singleShopView = async (shop, filter, products = [], comments = [], para
         td({ class: "tribe-info-value", colspan: "3" }, new Date(shop.createdAt).toLocaleString())
       ),
       tr(
-        td({ class: "tribe-info-value", colspan: "4" }, a({ class: "user-link", href: `/author/${encodeURIComponent(shop.author)}` }, shop.author))
+        td({ class: "tribe-info-value", colspan: "4" }, userLink(shop.author))
       ),
       shop.location ? tr(
         td({ class: "tribe-info-label" }, i18n.shopLocation),
@@ -342,8 +355,10 @@ exports.singleShopView = async (shop, filter, products = [], comments = [], para
         td({ class: "tribe-info-value", colspan: "3" }, ...renderUrl(shop.url))
       ) : null
     ),
-    shop.description ? p({ class: "tribe-side-description" }, ...renderUrl(shop.description)) : null,
     renderMapEmbed(params.mapData, shop.mapUrl),
+    div({ class: "tribe-card-members" },
+      span({ class: "tribe-members-count" }, `${i18n.shopProducts}: ${shop.productCount || 0}`)
+    ),
     div({ class: "tribe-side-actions" },
       renderFavoriteToggle(shop, returnTo),
       shop.author && String(shop.author) !== String(userId)
@@ -355,25 +370,36 @@ exports.singleShopView = async (shop, filter, products = [], comments = [], para
           )
         : null,
       isAuthor
+        ? form({ method: "GET", action: `/shops/${encodeURIComponent(shop.key)}/orders` },
+            button({ type: "submit", class: "tribe-action-btn" },
+              i18n.shopOrdersTitle || "Orders",
+              Number(shop.pendingOrders || 0) > 0 ? span({ class: "shop-orders-badge", title: i18n.shopOrdersPending || "Pending orders" }, ` ● ${shop.pendingOrders}`) : null
+            )
+          )
+        : null,
+      isAuthor
         ? form({ method: "POST", action: `/shops/delete/${encodeURIComponent(shop.key)}` },
-            button({ type: "submit", class: "tribe-action-btn" }, i18n.shopDelete)
-          )
-        : null,
-      isAuthor && shop.visibility !== "CLOSED"
-        ? form({ method: "POST", action: `/shops/visibility/${encodeURIComponent(shop.key)}` },
-            input({ type: "hidden", name: "returnTo", value: returnTo }),
-            input({ type: "hidden", name: "visibility", value: "CLOSED" }),
-            button({ type: "submit", class: "tribe-action-btn" }, i18n.shopCloseShop)
-          )
-        : null,
-      isAuthor && shop.visibility === "CLOSED"
-        ? form({ method: "POST", action: `/shops/visibility/${encodeURIComponent(shop.key)}` },
-            input({ type: "hidden", name: "returnTo", value: returnTo }),
-            input({ type: "hidden", name: "visibility", value: "OPEN" }),
-            button({ type: "submit", class: "tribe-action-btn" }, i18n.shopOpenShop)
+            button({ type: "submit", class: "tribe-action-btn danger-btn" }, i18n.shopDelete)
           )
         : null
     ),
+    isAuthor
+      ? div({ class: "tribe-side-actions shop-visibility-row" },
+          span({ class: "card-label" }, `${i18n.visibilityLabel || "Visibility"}: `),
+          shop.encrypted
+            ? renderStateChip("encrypted", "🔒", i18n.encryptedChipLabel || "E2E")
+            : renderStateChip("mutuals", "👁", i18n.shopOpen),
+          shop.encrypted
+            ? form({ method: "POST", action: `/shops/generate-invite/${encodeURIComponent(shop.key)}` },
+                button({ type: "submit", class: "tribe-action-btn" }, i18n.tribeGenerateInvite))
+            : null,
+          form({ method: "POST", action: `/shops/visibility/${encodeURIComponent(shop.key)}`, class: "inline-form" },
+            input({ type: "hidden", name: "returnTo", value: returnTo }),
+            input({ type: "hidden", name: "visibility", value: shop.encrypted ? "OPEN" : "CLOSED" }),
+            button({ type: "submit", class: "tribe-action-btn" },
+              shop.encrypted ? i18n.shopMakePublic : i18n.shopMakePrivate))
+        )
+      : null,
     safeArr(shop.tags).length
       ? div({ class: "tribe-side-tags" }, safeArr(shop.tags).map(tag => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: "tag-link" }, `#${tag}`)))
       : null
@@ -449,8 +475,24 @@ exports.singleProductView = async (product, shop, comments = [], params = {}) =>
           progress({ class: "confirmations-progress stock-progress", value: Math.min(stock, 100), max: 100 })
         ),
         !isAuthor && stock > 0
-          ? form({ method: "POST", action: `/shops/product/buy/${encodeURIComponent(product.key)}` },
+          ? form({ method: "POST", action: `/shops/product/buy/${encodeURIComponent(product.key)}`, class: "shop-buy-form" },
               input({ type: "hidden", name: "returnTo", value: returnTo }),
+              p({ class: "shop-buy-form-note" }, i18n.shopBuyEncryptedNote || "Your delivery details are sent encrypted only to the shop owner."),
+              label(i18n.shopBuyDeliveryAddress || "Delivery address"),
+              br(),
+              textarea({ name: "deliveryAddress", required: true, rows: 3, placeholder: i18n.shopBuyDeliveryAddressPlaceholder || "" }),
+              br(),
+              br(),
+              label(i18n.shopBuyContact || "Contact"),
+              br(),
+              input({ type: "text", name: "contact", placeholder: i18n.shopBuyContactPlaceholder || "email, phone, etc." }),
+              br(),
+              br(),
+              label(i18n.shopBuyNotes || "Notes"),
+              br(),
+              textarea({ name: "notes", rows: 2, placeholder: i18n.shopBuyNotesPlaceholder || "" }),
+              br(),
+              br(),
               button({ type: "submit", class: "buy-btn" }, i18n.marketActionsBuy || i18n.shopBuy)
             )
           : null,
@@ -458,9 +500,9 @@ exports.singleProductView = async (product, shop, comments = [], params = {}) =>
         p({ class: "card-footer" },
           span({ class: "date-link" }, moment(product.createdAt).format("YYYY-MM-DD HH:mm")),
           " ",
-          a({ href: `/author/${encodeURIComponent(product.author)}`, class: "user-link" }, product.author)
+          userLink(product.author)
         ),
-        !isAuthor && safeArr(product.buyers).includes(userId) && !safeArr(product.opinions_inhabitants).includes(userId)
+        !isAuthor && params.canRate && !safeArr(product.opinions_inhabitants).includes(userId)
           ? div({ class: "voting-buttons transfer-voting-buttons" },
               opinionCategories.map(category =>
                 form({ method: "POST", action: `/shops/product/opinions/${encodeURIComponent(product.key)}/${category}` },
@@ -486,3 +528,175 @@ exports.editProductView = async (product, shopId, params = {}) => {
     )
   )
 }
+
+const ORDER_STATUS_VARIANT = { PENDING: "whole", ACCEPTED: "mutuals", REJECTED: "closed", PAID: "mutuals", SHIPPED: "hidden", RECEIVED: "mutuals" }
+const orderStatusChip = (st) => {
+  const s = String(st || "PENDING").toUpperCase()
+  const labels = {
+    PENDING: i18n.shopOrderStatusPending || "Pending",
+    ACCEPTED: i18n.shopOrderStatusAccepted || "Accepted",
+    REJECTED: i18n.shopOrderStatusRejected || "Rejected",
+    PAID: i18n.shopOrderStatusPaid || "Payment received",
+    SHIPPED: i18n.shopOrderStatusShipped || "Shipped",
+    RECEIVED: i18n.shopOrderStatusReceived || "Received"
+  }
+  return renderStateChip(ORDER_STATUS_VARIANT[s] || "whole", "", labels[s] || s)
+}
+
+exports.shopOrdersView = async (shop, orders) => {
+  const sid = shop.rootId || shop.key || shop.id || ""
+  const title = `${i18n.shopOrdersTitle || "Orders"}: ${shop.title || ""}`
+  const statusForm = (orderId, status, label, cls) =>
+    form({ method: "POST", action: `/shops/orders/${encodeURIComponent(orderId)}/status`, class: "inline-form" },
+      input({ type: "hidden", name: "shopId", value: sid }),
+      input({ type: "hidden", name: "status", value: status }),
+      button({ type: "submit", class: cls || "tribe-action-btn" }, label)
+    )
+  const orderActions = (o) => {
+    const s = String(o.status || "PENDING").toUpperCase()
+    const acts = []
+    if (s === "PENDING") {
+      acts.push(statusForm(o.id, "ACCEPTED", i18n.shopOrderAccept || "Accept"))
+      acts.push(statusForm(o.id, "REJECTED", i18n.shopOrderReject || "Reject", "tribe-action-btn danger-btn"))
+    } else if (s === "ACCEPTED") {
+      const concept = `${i18n.shopOrderInvoiceConcept || "Invoice"} — ${i18n.shopOrderContractConcept || "Shop order"}: ${o.title || ""}`
+      const cHref = `/transfers?filter=create&to=${encodeURIComponent(o.buyer)}&amount=${encodeURIComponent(Number(o.price || 0).toFixed(6))}&concept=${encodeURIComponent(concept)}&category=ECONOMIC`
+      acts.push(a({ href: cHref, class: "tribe-action-btn" }, i18n.shopOrderInvoice || "Invoice"))
+      acts.push(statusForm(o.id, "PAID", i18n.shopOrderMarkPaid || "Payment received"))
+    } else if (s === "PAID") {
+      acts.push(statusForm(o.id, "SHIPPED", i18n.shopOrderMarkShipped || "Mark shipped"))
+    }
+    acts.push(a({ href: `/pm?recipients=${encodeURIComponent(o.buyer)}`, class: "tribe-action-btn" }, i18n.shopOrderPmBuyer || i18n.privateMessage || "PM"))
+    return div({ class: "tribe-side-actions" }, ...acts)
+  }
+  const rows = (orders || []).map(o => div({ class: "shop-order-card card-section" },
+    div({ class: "card-chips-row" }, renderEncryptedChip(i18n), orderStatusChip(o.status)),
+    div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopOrderProduct || "Product"}:`), span({ class: "card-value" }, String(o.title || o.productId || ""))),
+    div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopOrderPrice || "Price"}:`), span({ class: "card-value" }, `${Number(o.price || 0).toFixed(6)} ECO`)),
+    div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopOrderBuyer || "Buyer"}:`), userLink(o.buyer)),
+    div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopBuyDeliveryAddress || "Delivery address"}:`), span({ class: "card-value" }, String(o.deliveryAddress || ""))),
+    o.contact ? div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopBuyContact || "Contact"}:`), span({ class: "card-value" }, String(o.contact))) : null,
+    o.notes ? div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopBuyNotes || "Notes"}:`), span({ class: "card-value" }, String(o.notes))) : null,
+    p({ class: "card-footer" }, span({ class: "date-link" }, moment(o.createdAt || o.ts).format("YYYY-MM-DD HH:mm"))),
+    orderActions(o)
+  ))
+  return template(
+    title,
+    section(
+      div({ class: "tags-header" }, h2(title), p(i18n.shopOrdersDescription || "Encrypted purchase orders received by this shop.")),
+      a({ href: `/shops/${encodeURIComponent(shop.key || shop.id || "")}`, class: "filter-btn" }, i18n.goBack || "Go back")
+    ),
+    section(
+      rows.length ? div({ class: "shop-orders-list" }, ...rows) : p(i18n.shopOrdersEmpty || "No orders yet.")
+    )
+  )
+}
+
+exports.myPurchasesView = async (purchases) => {
+  const title = i18n.shopMyOrdersTitle || "My orders"
+  const buyerActions = (o) => {
+    const acts = []
+    if (o.seller) acts.push(a({ href: `/pm?recipients=${encodeURIComponent(o.seller)}`, class: "tribe-action-btn" }, i18n.shopOrderPmSeller || i18n.privateMessage || "PM"))
+    if (String(o.status || "PENDING").toUpperCase() === "SHIPPED") {
+      acts.push(form({ method: "POST", action: `/shops/orders/${encodeURIComponent(o.id)}/status`, class: "inline-form" },
+        input({ type: "hidden", name: "status", value: "RECEIVED" }),
+        input({ type: "hidden", name: "returnTo", value: "/shops/purchases" }),
+        button({ type: "submit", class: "tribe-action-btn" }, i18n.shopOrderConfirmReceived || "Confirm received")
+      ))
+    }
+    return acts.length ? div({ class: "tribe-side-actions" }, ...acts) : null
+  }
+  const rows = (purchases || []).map(o => div({ class: "shop-order-card card-section" },
+    div({ class: "card-chips-row" }, renderEncryptedChip(i18n), orderStatusChip(o.status)),
+    div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopOrderProduct || "Product"}:`), span({ class: "card-value" }, String(o.title || o.productId || ""))),
+    div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopOrderPrice || "Price"}:`), span({ class: "card-value" }, `${Number(o.price || 0).toFixed(6)} ECO`)),
+    o.seller ? div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopOrderSeller || "Seller"}:`), userLink(o.seller)) : null,
+    div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopBuyDeliveryAddress || "Delivery address"}:`), span({ class: "card-value" }, String(o.deliveryAddress || ""))),
+    o.contact ? div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopBuyContact || "Contact"}:`), span({ class: "card-value" }, String(o.contact))) : null,
+    o.notes ? div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopBuyNotes || "Notes"}:`), span({ class: "card-value" }, String(o.notes))) : null,
+    p({ class: "card-footer" }, span({ class: "date-link" }, moment(o.createdAt || o.ts).format("YYYY-MM-DD HH:mm"))),
+    buyerActions(o)
+  ))
+  return template(
+    title,
+    section(
+      div({ class: "tags-header" }, h2(title), p(i18n.shopMyOrdersDescription || "Your encrypted purchase orders."))
+    ),
+    section(renderModeButtons("purchases")),
+    section(
+      rows.length ? div({ class: "shop-orders-list" }, ...rows) : p(i18n.shopMyOrdersEmpty || "You have no purchases yet.")
+    )
+  )
+}
+
+exports.clearnetShopView = async (shop, products = []) => {
+  const fmtPrice = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toFixed(6) : '0.000000';
+  };
+  const productCards = (products || []).filter(p => Number(p.stock) > 0 || p.featured).map(prod => {
+    const pImg = cnBlobUrl(prod.image);
+    return `<article class="cn-product">
+      ${pImg ? `<img class="cn-product-img" src="${pImg}" alt="" loading="lazy"/>` : ''}
+      <h3 class="cn-product-title">${cnEscapeHtml(prod.title || '')}</h3>
+      ${prod.description ? `<p class="cn-product-desc">${cnEscapeHtml(prod.description)}</p>` : ''}
+      <p class="cn-product-price">${fmtPrice(prod.price)} ECO</p>
+      ${Number(prod.stock) > 0 ? `<p class="cn-product-stock">Stock: ${prod.stock}</p>` : ''}
+    </article>`;
+  }).join('\n');
+  const shopBlobUrl = cnBlobUrl(shop.image);
+  const shopImg = shopBlobUrl ? `<img class="cn-shop-img" src="${shopBlobUrl}" alt="${cnEscapeHtml(shop.title || '')}"/>` : '';
+  const desc = cnEscapeHtml(shop.shortDescription || shop.description || '');
+  const extraCss = `
+.cn-hero{display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap;align-items:flex-start}
+.cn-shop-img{display:block;max-width:280px;width:100%;border:3px solid var(--fg);border-radius:8px;background:#000}
+.cn-hero-body{flex:1 1 320px;min-width:0}
+.cn-shop-title{color:var(--fg);margin:0 0 12px 0;font-size:32px;font-weight:700;letter-spacing:0.3px}
+.cn-shop-desc{color:var(--fg-soft);margin:0 0 16px 0;font-size:15px;white-space:pre-wrap}
+.cn-shop-meta{display:flex;gap:12px;flex-wrap:wrap;background:var(--bg-sub);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--fg-soft)}
+.cn-shop-meta-item{display:inline-flex;align-items:center;gap:6px}
+.cn-products{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.cn-product{background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color .15s ease}
+.cn-product:hover{border-color:var(--fg)}
+.cn-product-img{width:100%;height:180px;object-fit:cover;border-radius:6px;margin-bottom:10px;background:#000;border:1px solid var(--border)}
+.cn-product-title{color:var(--fg);font-size:16px;margin:0 0 8px 0;font-weight:600}
+.cn-product-desc{color:var(--fg-soft);font-size:13px;margin:0 0 10px 0;line-height:1.4}
+.cn-product-price{color:var(--fg);background:var(--bg-sub);border:1px solid var(--fg);display:inline-block;padding:4px 10px;border-radius:4px;font-weight:bold;margin:0;font-size:14px}
+.cn-product-stock{color:var(--fg-dim);font-size:12px;margin:8px 0 0 0;text-transform:uppercase;letter-spacing:1px}
+.cn-empty{background:var(--bg-elev);border:1px dashed var(--border);border-radius:8px;padding:32px;text-align:center;color:var(--fg-dim)}
+`;
+  const body = `
+  <div class="cn-hero">
+    ${shopImg}
+    <div class="cn-hero-body">
+      <h1 class="cn-shop-title">${cnEscapeHtml(shop.title || '')}</h1>
+      ${desc ? `<p class="cn-shop-desc">${desc}</p>` : ''}
+      <div class="cn-shop-meta">
+        ${shop.createdAt ? `<span class="cn-shop-meta-item">📅 ${new Date(shop.createdAt).toISOString().slice(0,10)}</span>` : ''}
+        ${shop.location ? `<span class="cn-shop-meta-item">📍 ${cnEscapeHtml(shop.location)}</span>` : ''}
+      </div>
+    </div>
+  </div>
+  <h2 class="cn-section">Products</h2>
+  ${productCards ? `<div class="cn-products">${productCards}</div>` : '<div class="cn-empty">No products available.</div>'}
+`;
+  return renderClearnetPage({
+    title: `${shop.title || 'Shop'} — Oasis`,
+    ogTitle: shop.title || 'Oasis',
+    ogDescription: shop.shortDescription || shop.description || '',
+    ogImage: shopBlobUrl,
+    extraCss,
+    body,
+    hubFeedId: shop.author || null
+  });
+};
+
+exports.renderShopInvitePage = (code) => {
+  const pageContent = div({ class: "invite-page" },
+    h2(i18n.tribeInviteCodeText, code),
+    form({ method: "GET", action: "/shops" },
+      button({ type: "submit", class: "filter-btn" }, i18n.walletBack)
+    )
+  );
+  return template(i18n.invitesShopsTitle || "Shops", section(pageContent));
+};

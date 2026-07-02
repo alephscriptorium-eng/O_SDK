@@ -2,7 +2,8 @@ const { form, button, div, h2, h3, p, section, input, label, br, a, span, textar
   require("../server/node_modules/hyperaxe");
 
 const moment = require("../server/node_modules/moment");
-const { template, i18n } = require("./main_views");
+const { template, i18n, userLink, renderLifespanChip, renderSpreadButton } = require("./main_views");
+const { renderEncryptedChip } = require("./clearnet_view");
 const { config } = require("../server/SSB_server.js");
 const { renderMapWithPins, renderZoomedMapWithPins, getViewportBounds, latLngToPx, pxToLatLng, MAP_W, MAP_H, getMaxTileZoom } = require("../maps/map_renderer");
 const { sanitizeHtml } = require('../backend/sanitizeHtml');
@@ -165,7 +166,7 @@ const renderMapUrl = (mapObj) =>
 const renderMapOwnerActions = (filter, mapObj, params = {}) => {
   const returnTo = buildReturnTo(filter, params);
   if (String(mapObj.author) !== String(userId)) return [];
-  return [
+  const actions = [
     form({ method: "GET", action: `/maps/edit/${encodeURIComponent(mapObj.key)}` },
       input({ type: "hidden", name: "returnTo", value: returnTo }),
       button({ class: "update-btn", type: "submit" }, i18n.mapUpdateButton)),
@@ -173,6 +174,12 @@ const renderMapOwnerActions = (filter, mapObj, params = {}) => {
       input({ type: "hidden", name: "returnTo", value: returnTo }),
       button({ class: "delete-btn", type: "submit" }, i18n.mapDeleteButton))
   ];
+  const isPrivateMap = !mapObj.tribeId && mapObj.mapType !== "OPEN";
+  if (isPrivateMap) {
+    actions.push(form({ method: "POST", action: `/maps/generate-invite/${encodeURIComponent(mapObj.key)}` },
+      button({ type: "submit", class: "tribe-action-btn" }, i18n.tribeGenerateInvite)));
+  }
+  return actions;
 };
 
 const renderFilters = (filter, q) =>
@@ -313,7 +320,7 @@ const renderMarkersList = (markers, mapObj) => {
           span({ class: "map-marker-dot" }, "ꔌ"),
           span({ class: "map-marker-coords" }, `${(typeof mk.lat === 'number' ? mk.lat : 0).toFixed(4)}, ${(typeof mk.lng === 'number' ? mk.lng : 0).toFixed(4)}`),
           span({ class: "map-marker-meta" },
-            a({ href: `/author/${encodeURIComponent(mk.author)}`, class: "user-link" }, mk.author),
+            userLink(mk.author),
             ` · ${moment(mk.createdAt).fromNow()}`))
     ])));
 };
@@ -328,11 +335,19 @@ const renderMapCard = (mapObj, filter, params = {}) => {
   const thumbFile = renderMapWithPins(thumbMarkers, 0);
   const thumbSrc = thumbFile ? `/mapcache/${thumbFile}` : "/assets/images/worldmap-z2.png";
 
+  const chips = [
+    renderEncryptedChip(i18n),
+    renderLifespanChip(mapObj.lifetime, i18n)
+  ].filter(Boolean);
+
   return div({ class: "map-card" },
     a({ href: `/maps/${encodeURIComponent(mapObj.key)}?filter=${encodeURIComponent(filter)}`, class: "map-card-thumb-link" },
       { innerHTML: `<img src="${thumbSrc}" class="map-card-thumb" alt="map">` }),
     div({ class: "map-card-body" },
-      mapObj.title ? h2(a({ href: `/maps/${encodeURIComponent(mapObj.key)}?filter=${encodeURIComponent(filter)}` }, mapObj.title)) : null,
+      div({ class: "shop-title-row" },
+        mapObj.title ? h2({ class: "tribe-card-title" }, a({ href: `/maps/${encodeURIComponent(mapObj.key)}?filter=${encodeURIComponent(filter)}` }, mapObj.title)) : null
+      ),
+      chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
       div({ class: "map-card-header" },
         div({ class: "map-card-info" },
           span({ class: "map-type-badge" }, mapObj.mapType),
@@ -348,10 +363,14 @@ const renderMapCard = (mapObj, filter, params = {}) => {
           renderPMButton(mapObj.author),
           ...ownerActions)),
       safeText(mapObj.description) ? p({ class: "map-description" }, mapObj.description) : null,
+      (() => {
+        const btn = renderSpreadButton(mapObj.key, params.spreadMap && params.spreadMap.get(mapObj.key));
+        return btn ? div({ class: "card-spread-left" }, btn) : null;
+      })(),
       p({ class: "card-footer" },
         span({ class: "date-link" }, moment(mapObj.createdAt).fromNow()),
         span(" · "),
-        a({ href: `/author/${encodeURIComponent(mapObj.author)}`, class: "user-link" }, mapObj.author))));
+        userLink(mapObj.author))));
 };
 
 const renderMapList = (maps, filter, params = {}) =>
@@ -406,7 +425,13 @@ exports.singleMapView = async (mapObj, filter = "all", params = {}) => {
     section(renderFilters(filter, q)),
     section(
       div({ class: "map-detail" },
-        mapObj.title ? h2(mapObj.title) : null,
+        mapObj.title ? div({ class: "shop-title-row" },
+          h2({ class: "tribe-card-title" }, mapObj.title)
+        ) : null,
+        mapObj.title ? div({ class: "card-chips-row" },
+          renderEncryptedChip(i18n),
+          renderLifespanChip(mapObj.lifetime, i18n)
+        ) : null,
         safeText(mapObj.description) ? p({ class: "map-description" }, mapObj.description) : null,
         div({ class: "map-detail-header" },
           div({ class: "map-detail-info" },
@@ -415,6 +440,9 @@ exports.singleMapView = async (mapObj, filter = "all", params = {}) => {
           div({ class: "map-detail-actions" },
             renderMapFavoriteToggle(mapObj, returnTo),
             renderPMButton(mapObj.author),
+            (String(mapObj.author) !== String(userId) && !mapObj.tribeId && mapObj.mapType !== "OPEN")
+              ? a({ class: "tribe-action-btn", href: "/invites#invites-maps" }, i18n.tribeEnterInvite)
+              : null,
             ...ownerActions)),
         renderMapUrl(mapObj),
         br(),
@@ -430,10 +458,14 @@ exports.singleMapView = async (mapObj, filter = "all", params = {}) => {
         renderMap(allMarkers, null, 0, { pinLabels, pinImages, pinPrefix: `detail${areaCounter}`, zoom: zoomVal, centerLat: parseFloat(mapObj.lat) || 0, centerLng: parseFloat(mapObj.lng) || 0 }),
         renderMarkersList(mapObj.markers, mapObj),
         renderTags(mapObj.tags),
+        (() => {
+          const btn = renderSpreadButton(mapObj.key);
+          return btn ? div({ class: "card-spread-centered" }, btn) : null;
+        })(),
         br(),
         p({ class: "card-footer" },
           span({ class: "date-link" }, `${moment(mapObj.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
-          a({ href: `/author/${encodeURIComponent(mapObj.author)}`, class: "user-link" }, mapObj.author),
+          userLink(mapObj.author),
           mapObj.updatedAt && mapObj.updatedAt !== mapObj.createdAt
             ? span({ class: "votations-comment-date" }, ` · ${i18n.mapUpdatedAt}: ${moment(mapObj.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`)
             : null),

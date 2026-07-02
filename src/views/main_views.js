@@ -8,6 +8,7 @@ const debug = require("../server/node_modules/debug")("oasis");
 const highlightJs = require("../server/node_modules/highlight.js");
 const prettyMs = require("../server/node_modules/pretty-ms");
 const moment = require('../server/node_modules/moment');
+const QRCode = require('../server/node_modules/qrcode');
 const { renderUrl } = require('../backend/renderUrl');
 const ssbClientGUI = require("../client/gui");
 const config = require("../server/ssb_config");
@@ -27,6 +28,199 @@ const { a, article, br, body, button, details, div, em, footer, form, h1, h2, h3
 const lodash = require("../server/node_modules/lodash");
 const markdown = require("./markdown");
 const { sanitizeHtml } = require('../backend/sanitizeHtml');
+const nameCache = require('../backend/nameCache');
+
+const userLinkLabel = (feedId, knownName) => {
+  const id = String(feedId || '');
+  if (!id) return '';
+  const name = (knownName && String(knownName).trim()) || nameCache.get(id);
+  if (name && name.length) return '@' + name;
+  return id;
+};
+
+const userLink = (feedId, knownName) => {
+  if (!feedId) return null;
+  return a({ class: 'user-link', href: `/author/${encodeURIComponent(feedId)}` }, userLinkLabel(feedId, knownName));
+};
+
+exports.userLink = userLink;
+exports.userLinkLabel = userLinkLabel;
+
+const renderStateChip = (variant, icon, text) =>
+  span({ class: `pm-exposition-chip pm-exposition-${variant}` },
+    icon ? span({ class: "pm-exposition-icon" }, icon) : null,
+    span({ class: "pm-exposition-text" }, String(text || ""))
+  );
+
+const renderOpenClosedChip = (status, i18nObj) => {
+  const s = String(status || "").toUpperCase();
+  const isOpen = s === "OPEN";
+  const label = (i18nObj && i18nObj["statusChip" + s]) || s;
+  return renderStateChip(isOpen ? "mutuals" : "closed", isOpen ? "✓" : "✗", label);
+};
+
+const renderVisibilityChip = (visibility, i18nObj) => {
+  const v = String(visibility || "").toUpperCase();
+  if (v === "HIDDEN") {
+    return renderStateChip("hidden", "🙈", (i18nObj && i18nObj.visibilityHidden) || "HIDDEN");
+  }
+  return renderStateChip("mutuals", "👁", (i18nObj && i18nObj.visibilityPublic) || "PUBLIC");
+};
+
+const renderPrivacyChip = (isPrivate, i18nObj) =>
+  isPrivate
+    ? renderStateChip("closed", "🔒", (i18nObj && i18nObj.privacyPrivate) || "PRIVATE")
+    : renderStateChip("mutuals", "🌐", (i18nObj && i18nObj.privacyPublic) || "PUBLIC");
+
+const renderModeChip = (mode, i18nObj) => {
+  const m = String(mode || "").toLowerCase();
+  if (m === "strict") return renderStateChip("closed", null, (i18nObj && i18nObj.tribeStrict) || "STRICT");
+  return renderStateChip("mutuals", null, (i18nObj && i18nObj.tribeOpen) || "OPEN");
+};
+
+const renderLifespanChip = (lifetime, i18nObj) => {
+  const lt = lifetime || null;
+  if (!lt || !lt.bucket) return null;
+  const range = lt.range || "";
+  if (range) {
+    return span({ class: `pm-exposition-chip pm-exposition-lifespan-${lt.bucket}` },
+      span({ class: "pm-exposition-text" }, range)
+    );
+  }
+  return span({ class: `pm-exposition-chip pm-exposition-lifespan-${lt.bucket}` },
+    span({ class: `activity-dot ${lt.bucket}` }, "●"),
+    span({ class: "pm-exposition-text" }, (i18nObj && i18nObj.lifespanLabel) || "Lifespan")
+  );
+};
+
+exports.renderStateChip = renderStateChip;
+exports.renderOpenClosedChip = renderOpenClosedChip;
+exports.renderVisibilityChip = renderVisibilityChip;
+exports.renderPrivacyChip = renderPrivacyChip;
+exports.renderModeChip = renderModeChip;
+exports.renderLifespanChip = renderLifespanChip;
+
+const formatCarbon = (bytes) => {
+  const n = Number(bytes) || 0;
+  if (!n) return '0 µg CO₂';
+  const grams = (n / (1024 * 1024)) * 0.095;
+  if (grams >= 1) return `${grams.toFixed(2)} g CO₂`;
+  const mg = grams * 1000;
+  if (mg >= 1) return `${mg.toFixed(2)} mg CO₂`;
+  const ug = mg * 1000;
+  return `${ug.toFixed(2)} µg CO₂`;
+};
+
+const renderEcoTax = (sizeBytes, blockId) => {
+  const n = Number(sizeBytes);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const label = (i18n && i18n.ecoTaxLabel) ? i18n.ecoTaxLabel : 'ECO Tax';
+  const href = blockId
+    ? `/blockexplorer?inspect=${encodeURIComponent(blockId)}#inspect`
+    : '/blockexplorer#inspect';
+  let band = 'low';
+  let reducer = 1;
+  let rawRatio = 0;
+  let inhabitants = 1;
+  try {
+    const maxObserved = sharedState.getMaxBlockBytes ? Number(sharedState.getMaxBlockBytes()) : 0;
+    const max = maxObserved > 0 ? maxObserved : n;
+    rawRatio = max > 0 ? Math.min(1, n / max) : 0;
+    inhabitants = Math.max(1, (sharedState.getInhabitantCount && sharedState.getInhabitantCount()) || 1);
+    reducer = 1 + Math.log10(inhabitants);
+    const adjusted = rawRatio / reducer;
+    if (adjusted >= 0.66) band = 'high';
+    else if (adjusted >= 0.33) band = 'mid';
+    else band = 'low';
+  } catch (_) {}
+  const reducerNote = inhabitants > 1
+    ? ` · reducer ×${reducer.toFixed(2)} (${inhabitants} inhabitants)`
+    : '';
+  const title = `${label} · ${formatCarbon(sizeBytes)}${reducerNote}`;
+  return a({ href, class: `eco-tax-chip eco-tax-chip-${band}`, title },
+    span({ class: 'eco-tax-chip-label' }, label + ': '),
+    span({ class: 'eco-tax-chip-value' }, formatCarbon(sizeBytes))
+  );
+};
+
+exports.formatCarbon = formatCarbon;
+exports.renderEcoTax = renderEcoTax;
+
+const errorView = ({ title, message, backHref }) => {
+  const heading = title || i18n.errorPageTitle || 'Error';
+  return exports.template(
+    heading,
+    section(
+      div({ class: 'tags-header' },
+        message ? p({ class: 'error-page-message' }, String(message)) : null,
+        div({ class: 'error-page-actions' },
+          a({ href: backHref || '/', class: 'filter-btn' }, i18n.goBack || 'Go back')
+        )
+      )
+    )
+  );
+};
+exports.errorView = errorView;
+
+const renderSpreadButton = (msgKey, opts) => {
+  if (!msgKey || typeof msgKey !== 'string' || !msgKey.startsWith('%') || !/\.sha256$/.test(msgKey)) return null;
+  const o = (opts && typeof opts === 'object') ? opts : {};
+  const voters = Array.isArray(o.voters) ? o.voters : [];
+  const count = typeof o.count === 'number' ? o.count : voters.length;
+  const alreadySpread = o.alreadySpread === true;
+  const maxNames = 5;
+  const maxLen = 16;
+  const lastVoters = voters.slice(-maxNames);
+  const tooltipNames = lastVoters
+    .map(v => (v && typeof v === 'object' ? (v.name || v.key || '') : String(v || '')))
+    .filter(Boolean)
+    .map(n => n.slice(0, maxLen))
+    .join(', ');
+  const extra = count > maxNames ? ` +${count - maxNames} ${i18n.spreadMore || 'more'}` : '';
+  const tooltip = count > 0 ? `${tooltipNames}${extra}` : (i18n.spreadHint || 'Spread this to your supporters (replicates via your feed).');
+  return form(
+    { method: 'POST', action: `/spread/${encodeURIComponent(msgKey)}`, class: 'spread-form' },
+    button(
+      { type: 'submit', class: alreadySpread ? 'spread-btn spread-btn-on' : 'spread-btn', title: tooltip },
+      `🔁 ${count}`
+    )
+  );
+};
+exports.renderSpreadButton = renderSpreadButton;
+
+const aiNavResultsView = ({ query, results }) => {
+  const title = i18n.aiNavResultsTitle || 'AI navigation results';
+  const safeQuery = String(query || '').trim();
+  const safeResults = Array.isArray(results) ? results : [];
+  const fmtScore = (s) => {
+    const n = Number(s);
+    return Number.isFinite(n) ? n.toFixed(2) : '—';
+  };
+  const splitTerms = (desc) => String(desc || '')
+    .split(/[,;]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  return exports.template(
+    title,
+    section(
+      div({ class: 'tags-header' },
+        h2(title),
+        safeQuery ? p({ class: 'ai-nav-query' }, `${i18n.aiNavQueryLabel || 'Query'}: "${safeQuery}"`) : null
+      ),
+      safeResults.length
+        ? div({ class: 'ai-nav-results' },
+            safeResults.map(r => div({ class: 'ai-nav-result-card card-section' },
+              div({ class: 'card-field' },
+                span({ class: 'card-label' }, `${(i18n.aiNavResultMatch || 'Match').toUpperCase()}: ${fmtScore(r.score)}`),
+                span({ class: 'card-value' }, a({ href: r.path, class: 'filter-btn' }, r.path))
+              )
+            ))
+          )
+        : p(i18n.aiNavResultsEmpty || 'No matching routes. Try /search instead.')
+    )
+  );
+};
+exports.aiNavResultsView = aiNavResultsView;
 
 const i18nBase = require("../client/assets/translations/i18n");
 let selectedLanguage = "en";
@@ -74,15 +268,14 @@ const renderFooter = () => {
   const pkgName = pkg?.name || "@krakenslab/oasis";
   const pkgVersion = pkg?.version || "?";
 
-  let blockchainCycle = {};
-  try {
-    blockchainCycle = JSON.parse(fs.readFileSync(path.join(__dirname, "../configs/blockchain-cycle.json"), "utf8"));
-  } catch (_) {}
-  const cycleVal = blockchainCycle.cycle || "?";
-  const cycleUrl = blockchainCycle.url || "https://laplaza.solarnethub.com";
-
   const hcT = sharedState.getCarbonHcT();
   const hcH = sharedState.getCarbonHcH();
+
+  const peersOnline = sharedState.getOnlinePeerCount ? sharedState.getOnlinePeerCount() : null;
+  const inboxUnread = sharedState.getInboxUnreadCount ? sharedState.getInboxUnreadCount() : null;
+  const lastSyncTs = sharedState.getLastSyncTs ? sharedState.getLastSyncTs() : null;
+  const lastSyncLabel = lastSyncTs ? moment(lastSyncTs).fromNow() : '–';
+  const lastActivity = sharedState.getLastActivity ? sharedState.getLastActivity() : null;
 
   return div(
     { class: "oasis-footer" },
@@ -96,6 +289,21 @@ const renderFooter = () => {
           alt: "Oasis"
         })
       ),
+      (() => {
+        const myId = (config.keys && config.keys.id) ? config.keys.id : '';
+        if (!myId) return null;
+        return [
+          br(),
+          a({ href: "/profile" }, span(myId))
+        ];
+      })(),
+      br(),
+      span({ class: "oasis-footer-carbon" },
+        span("HcT: "),
+        a({ href: "/stats?filter=ALL" }, hcT != null ? String(hcT) : '–'),
+        span(" | HcH: "),
+        a({ href: "/stats?filter=MINE" }, hcH != null ? String(hcH) : '–')
+      ),
       br(),
       a(
         { href: "https://code.03c8.net/krakenslab/oasis", target: "_blank", rel: "noreferrer noopener" },
@@ -104,23 +312,14 @@ const renderFooter = () => {
       span("["),
          span({ class: "oasis-footer-version" }, pkgVersion),
       span("]"),
-      span({ class: "oasis-footer-sep" }, " - "),
+      br(),
+      span(`${i18n.footerLicenseLabel || 'License'}: `),
       a(
         { href: "https://www.gnu.org/licenses/gpl-3.0.html", target: "_blank", rel: "noreferrer noopener" },
         i18n.footerLicense
       ),
       span({ class: "oasis-footer-sep" }, " - "),
-      span({ class: "oasis-footer-year" }, year),
-      br(),
-      span("BLOCKCHAIN CYCLE: "),
-      a({ href: cycleUrl, target: "_blank", rel: "noreferrer noopener" }, String(cycleVal)),
-      br(),
-      span({ class: "oasis-footer-carbon" },
-        span("HcT: "),
-        a({ href: "/stats?filter=ALL" }, hcT != null ? String(hcT) : '–'),
-        span(" | HcH: "),
-        a({ href: "/stats?filter=MINE" }, hcH != null ? String(hcH) : '–')
-      )
+      span({ class: "oasis-footer-year" }, year)
     )
   );
 };
@@ -135,8 +334,7 @@ const navLink = ({ href, emoji, text, current, class: extraClass }) =>
           .join(" ")
       },
       span({ class: "emoji" }, emoji),
-      nbsp,
-      text
+      span({ class: "nav-text" }, text)
     )
   );
 
@@ -168,8 +366,7 @@ const navGroup = ({ id, emoji, title, defaultOpen = false }, ...items) => {
     label(
       { for: `oasis-nav-group-${id}`, class: "oasis-nav-header" },
       span({ class: "emoji" }, emoji),
-      nbsp,
-      title,
+      span({ class: "nav-text" }, title),
       span({ class: "oasis-nav-arrow" }, "▾")
     ),
     ul({ class: "oasis-nav-list" }, ...active)
@@ -293,6 +490,21 @@ const renderCipherLink = () => {
         emoji: "ꗄ",
         text: i18n.cipher,
         class: "cipher-link enabled"
+      })
+    ];
+  }
+  return "";
+};
+
+const renderGraphosLink = () => {
+  const graphosMod = getConfig().modules.graphosMod === "on";
+  if (graphosMod) {
+    return [
+      navLink({
+        href: "/graphos",
+        emoji: "ꔯ",
+        text: i18n.graphos,
+        class: "graphos-link enabled"
       })
     ];
   }
@@ -442,6 +654,17 @@ const renderMultiverseLink = () => {
     : "";
 };
 
+const renderMastodonLink = () => {
+  const fediverseMod = getConfig().modules.fediverseMod === "on";
+  return fediverseMod
+    ? navLink({
+        href: "/fediverse",
+        emoji: "ꗵ",
+        text: i18n.fediverseTimeline
+      })
+    : "";
+};
+
 const renderMarketLink = () => {
   const marketMod = getConfig().modules.marketMod === "on";
   return marketMod
@@ -514,6 +737,20 @@ const renderTribesLink = () => {
           emoji: "ꖥ",
           text: i18n.tribesTitle,
           class: "tribes-link enabled"
+        })
+      ]
+    : "";
+};
+
+const renderLarpLink = () => {
+  const larpMod = getConfig().modules.larpMod === "on";
+  return larpMod
+    ? [
+        navLink({
+          href: "/larp",
+          emoji: "✦",
+          text: i18n.larpTitle || "L.A.R.P.",
+          class: "larp-link enabled"
         })
       ]
     : "";
@@ -655,6 +892,20 @@ const renderPixeliaLink = () => {
     : "";
 };
 
+const renderMelodyLink = () => {
+  const melodyMod = getConfig().modules.melodyMod === "on";
+  return melodyMod
+    ? [
+        navLink({
+          href: "/melody",
+          emoji: "♪",
+          text: i18n.melodyTitle,
+          class: "melody-link enabled"
+        })
+      ]
+    : "";
+};
+
 const renderGamesLink = () => {
   const gamesMod = getConfig().modules.gamesMod === "on";
   return gamesMod
@@ -777,6 +1028,7 @@ const renderTasksLink = () => {
 const template = (titlePrefix, ...elements) => {
   const currentConfig = getConfig();
   const theme = currentConfig.themes.current || "Dark-SNH";
+  const uxMode = currentConfig.ux?.current === "ainav" ? "ainav" : "blocks";
   const themeLink = link({
     rel: "stylesheet",
     href: `/assets/themes/${theme}.css`
@@ -801,7 +1053,7 @@ const template = (titlePrefix, ...elements) => {
     ),
     body(
       div(
-        { class: "header" },
+        { class: uxMode === "ainav" ? "header ainav-only" : "header" },
         div(
           { class: "top-bar-left" },
           a(
@@ -812,7 +1064,21 @@ const template = (titlePrefix, ...elements) => {
               alt: "Oasis Logo"
             })
           ),
-          nav(
+          uxMode === "ainav" ? nav(
+            ul(
+              (() => {
+                const inboxCount = sharedState.getInboxCount();
+                const badge = inboxCount > 0 ? span({ class: 'inbox-badge' }, String(inboxCount)) : '';
+                return li(
+                  a({ href: "/inbox" },
+                    span({ class: "emoji" }, "☂"), nbsp, i18n.inbox, badge
+                  )
+                );
+              })(),
+              navLink({ href: "/settings", emoji: "⚙", text: i18n.settings }),
+              navLink({ href: "/invites", emoji: "ꔮ", text: i18n.invites })
+            )
+          ) : nav(
             ul(
               (() => {
                 const inboxCount = sharedState.getInboxCount();
@@ -832,12 +1098,42 @@ const template = (titlePrefix, ...elements) => {
             )
           )
         ),
-        div(
+        (() => {
+          const aiNavOn = getConfig().modules.aiNavMod === 'on';
+          if (!aiNavOn && uxMode !== 'ainav') return null;
+          return div(
+            { class: uxMode === 'ainav' ? "top-bar-center top-bar-center-ainav" : "top-bar-center" },
+            form(
+              { method: 'POST', action: '/ai/ask', class: 'ai-ask-form' },
+              input({
+                type: 'text',
+                name: 'q',
+                class: 'ai-ask-input',
+                placeholder: i18n.aiNavPlaceholder || 'Where do you want to go?',
+                autocomplete: 'off',
+                maxlength: '300',
+                autofocus: uxMode === 'ainav' ? 'autofocus' : undefined
+              }),
+              button({ type: 'submit', class: 'ai-ask-btn' }, '➤')
+            )
+          );
+        })(),
+        uxMode === "ainav" ? div(
           { class: "top-bar-right" },
           nav(
             ul(
-              renderTagsLink(),
-              navLink({ href: "/search", emoji: "ꔅ", text: i18n.searchTitle })
+              navLink({ href: "/activity", emoji: "ꔙ", text: i18n.activityTitle }),
+              navLink({ href: "/graphos", emoji: "ꕢ", text: i18n.graphos }),
+              navLink({ href: "/peers", emoji: "⧖", text: i18n.peers })
+            )
+          )
+        ) : div(
+          { class: "top-bar-right" },
+          nav(
+            ul(
+              navLink({ href: "/search", emoji: "ꔅ", text: i18n.searchTitle }),
+              renderGraphosLink(),
+              navLink({ href: "/peers", emoji: "⧖", text: i18n.peers })
             )
           )
         )
@@ -855,8 +1151,8 @@ const template = (titlePrefix, ...elements) => {
         return null;
       })(),
       div(
-        { class: "main-content" },
-        div(
+        { class: uxMode === "ainav" ? "main-content ainav-only" : "main-content" },
+        uxMode === "ainav" ? null : div(
           { class: "sidebar-left" },
           nav(
             ul(
@@ -893,24 +1189,6 @@ const template = (titlePrefix, ...elements) => {
               ),
               navGroup(
                 {
-                  id: "content",
-                  emoji: "✦",
-                  title: i18n.menuContent
-                },
-                navLink({
-                  href: "/mentions",
-                  emoji: "✺",
-                  text: i18n.mentions
-                }),
-                renderLatestLink(),
-                renderThreadsLink(),
-                renderTopicsLink(),
-                renderSummariesLink(),
-                renderPopularLink(),
-                renderMultiverseLink()
-              ),
-              navGroup(
-                {
                   id: "governance",
                   emoji: "⚖",
                   title: i18n.menuGovernance
@@ -921,6 +1199,7 @@ const template = (titlePrefix, ...elements) => {
                   text: i18n.inhabitantsLabel
                 }),
                 renderTribesLink(),
+                renderLarpLink(),
                 renderParliamentLink(),
                 renderCourtsLink()
               ),
@@ -938,29 +1217,43 @@ const template = (titlePrefix, ...elements) => {
               ),
               navGroup(
                 {
+                  id: "economy",
+                  emoji: "¤",
+                  title: i18n.menuEconomy
+                },
+                renderBankingLink(),
+                renderMarketLink(),
+                renderProjectsLink(),
+                renderJobsLink(),
+                renderShopsLink(),
+                renderTransfersLink()
+              ),
+              navGroup(
+                {
                   id: "tools",
                   emoji: "⚒",
                   title: i18n.menuTools
                 },
                 renderAILink(),
                 navLink({
-                  href: "/stats",
-                  emoji: "ꕷ",
-                  text: i18n.statistics
-                }),
-                navLink({
                   href: "/blockexplorer",
                   emoji: "ꖸ",
                   text: i18n.blockchain
                 }),
                 renderCipherLink(),
-                renderLegacyLink()
+                renderInvitesLink(),
+                renderLegacyLink(),
+                navLink({
+                  href: "/stats",
+                  emoji: "ꕷ",
+                  text: i18n.statistics
+                })
               )
             )
           )
         ),
         main({ id: "content", class: "main-column" }, elements),
-        div(
+        uxMode === "ainav" ? null : div(
           { class: "sidebar-right" },
           nav(
             ul(
@@ -975,18 +1268,31 @@ const template = (titlePrefix, ...elements) => {
                   emoji: "ꔙ",
                   text: i18n.activityTitle
                 }),
+                renderTagsLink(),
                 renderTrendingLink(),
                 renderOpinionsLink(),
                 renderPadsLink(),
                 renderForumLink(),
                 renderMapsLink(),
-                renderChatsLink(),
-                renderInvitesLink(),
+                renderChatsLink()
+              ),
+              navGroup(
+                {
+                  id: "blogs",
+                  emoji: "✦",
+                  title: i18n.menuBlogs
+                },
                 navLink({
-                  href: "/peers",
-                  emoji: "⧖",
-                  text: i18n.peers
-                })
+                  href: "/mentions",
+                  emoji: "✺",
+                  text: i18n.mentions
+                }),
+                renderLatestLink(),
+                renderThreadsLink(),
+                renderTopicsLink(),
+                renderSummariesLink(),
+                renderPopularLink(),
+                renderMultiverseLink()
               ),
               navGroup(
                 {
@@ -996,20 +1302,8 @@ const template = (titlePrefix, ...elements) => {
                 },
                 renderFeedLink(),
                 renderGamesLink(),
-                renderPixeliaLink()
-              ),
-              navGroup(
-                {
-                  id: "economy",
-                  emoji: "¤",
-                  title: i18n.menuEconomy
-                },
-                renderBankingLink(),
-                renderMarketLink(),
-                renderProjectsLink(),
-                renderJobsLink(),
-                renderShopsLink(),
-                renderTransfersLink()
+                renderPixeliaLink(),
+                renderMelodyLink()
               ),
               navGroup(
                 {
@@ -1023,6 +1317,14 @@ const template = (titlePrefix, ...elements) => {
                 renderImagesLink(),
                 renderTorrentsLink(),
                 renderVideosLink()
+              ),
+              navGroup(
+                {
+                  id: "fediverse",
+                  emoji: "⌬",
+                  title: i18n.fediverse
+                },
+                renderMastodonLink()
               )
             )
           )
@@ -1036,6 +1338,90 @@ const template = (titlePrefix, ...elements) => {
 // menu END
 
 exports.template = template;
+
+exports.ainavHomeView = ({ recentTags = [] } = {}) => {
+  const currentConfig = getConfig();
+  const theme = currentConfig.themes.current || "Dark-SNH";
+  const placeholder = i18n.aiNavPlaceholder || 'Where do you want to go?';
+  const nodes = html(
+    { lang: "en" },
+    head(
+      title(placeholder, " | Oasis"),
+      link({ rel: "stylesheet", href: "/assets/styles/style.css" }),
+      link({ rel: "stylesheet", href: `/assets/themes/${theme}.css` }),
+      link({ rel: "stylesheet", href: "/assets/styles/mobile.css", media: "(max-width: 768px)" }),
+      link({ rel: "icon", href: "/assets/images/favicon.svg" }),
+      meta({ charset: "utf-8" }),
+      meta({ name: "description", content: i18n.oasisDescription }),
+      meta({ name: "viewport", content: toAttributes({ width: "device-width", "initial-scale": 1 }) })
+    ),
+    body(
+      div({ class: "ainav-landing" },
+        div({ class: "ainav-landing-topbar" },
+          div({ class: "top-bar-left" },
+            nav(
+              ul(
+                (() => {
+                  const inboxCount = sharedState.getInboxCount();
+                  const badge = inboxCount > 0 ? span({ class: 'inbox-badge' }, String(inboxCount)) : '';
+                  return li(
+                    a({ href: "/inbox" },
+                      span({ class: "emoji" }, "☂"), nbsp, i18n.inbox, badge
+                    )
+                  );
+                })(),
+                navLink({ href: "/settings", emoji: "⚙", text: i18n.settings }),
+                navLink({ href: "/invites", emoji: "ꔮ", text: i18n.invites })
+              )
+            )
+          ),
+          div({ class: "top-bar-right" },
+            nav(
+              ul(
+                navLink({ href: "/activity", emoji: "ꔙ", text: i18n.activityTitle }),
+                navLink({ href: "/graphos", emoji: "ꕢ", text: i18n.graphos }),
+                navLink({ href: "/peers", emoji: "⧖", text: i18n.peers })
+              )
+            )
+          )
+        ),
+        div({ class: "ainav-landing-center" },
+          a({ href: "/", class: "ainav-landing-logo" },
+            img({ src: "/assets/images/snh-oasis.jpg", alt: "Oasis Logo" })
+          ),
+          (() => {
+            const myId = (config.keys && config.keys.id) ? config.keys.id : '';
+            return myId ? div({ class: 'ainav-landing-myid oasis-footer-center' },
+              a({ href: '/profile' }, span(myId))
+            ) : null;
+          })(),
+          form(
+            { method: 'POST', action: '/ai/ask', class: 'ai-ask-form ainav-landing-form' },
+            input({
+              type: 'text',
+              name: 'q',
+              class: 'ai-ask-input ainav-landing-input',
+              placeholder,
+              autocomplete: 'off',
+              maxlength: '300',
+              autofocus: 'autofocus'
+            }),
+            button({ type: 'submit', class: 'ai-ask-btn ainav-landing-btn' }, '➤')
+          ),
+          Array.isArray(recentTags) && recentTags.length
+            ? div({ class: 'ainav-landing-tags' },
+                recentTags.map(t => a({
+                  href: `/search?query=%23${encodeURIComponent(t.name || t)}`,
+                  class: 'tag-link'
+                }, `#${t.name || t}`))
+              )
+            : null
+        )
+      )
+    )
+  );
+  return doctypeString + nodes.outerHTML;
+};
 
 exports.tribeAccessDeniedView = (tribe) => {
   const tribeName = tribe && !tribe.isAnonymous ? tribe.title : "";
@@ -1069,7 +1455,7 @@ exports.inviteRequiredView = (kind, tribe) => {
   );
 };
 
-const thread = (messages) => {
+const thread = (messages, spreadMap = null) => {
   let lookingForTarget = true;
   let shallowest = Infinity;
 
@@ -1092,6 +1478,8 @@ const thread = (messages) => {
     }
   }
 
+  const getSpread = (key) => (spreadMap instanceof Map ? spreadMap.get(key) : null) || null;
+
   const msgList = [];
   for (let i = 0; i < messages.length; i++) {
     const j = i + 1;
@@ -1103,7 +1491,7 @@ const thread = (messages) => {
       return lodash.get(msg, "value.meta.thread.depth", 0);
     };
 
-    msgList.push(post({ msg: currentMsg }));
+    msgList.push(post({ msg: currentMsg, spreadInfo: getSpread(currentMsg.key) }));
 
     if (depth(currentMsg) < depth(nextMsg)) {
       const isAncestor = Boolean(
@@ -1197,7 +1585,7 @@ const postAside = ({ key, value }) => {
   return fragments;
 };
 
-const post = ({ msg, aside = false, preview = false }) => {
+const post = ({ msg, aside = false, preview = false, spreadInfo = null }) => {
     const encoded = {
         key: encodeURIComponent(msg.key),
         author: encodeURIComponent(msg.value?.author),
@@ -1206,7 +1594,7 @@ const post = ({ msg, aside = false, preview = false }) => {
 
     const url = {
         author: `/author/${encoded.author}`,
-        likeForm: `/like/${encoded.key}`,
+        spreadForm: `/spread/${encoded.key}`,
         link: `/thread/${encoded.key}#${encoded.key}`,
         parent: `/thread/${encoded.parent}#${encoded.parent}`,
         avatar: msg.value?.meta?.author?.avatar?.url || '/assets/images/default-avatar.png',
@@ -1502,25 +1890,36 @@ const post = ({ msg, aside = false, preview = false }) => {
     const timeAgo = validTimestamp.fromNow();
     const timeAbsolute = validTimestamp.toISOString().split(".")[0].replace("T", " ");
 
-    const likeButton = msg.value?.meta?.voted
-        ? { value: 0, class: "liked" }
-        : { value: 1, class: null };
-
-    const likeCount = msg.value?.meta?.votes?.length || 0;
-    const maxLikedNameLength = 16;
-    const maxLikedNames = 16;
-
-    const likedByNames = msg.value?.meta?.votes
-        .slice(0, maxLikedNames)
+    const fallbackVoted = !!msg.value?.meta?.voted;
+    const fallbackVoteCount = msg.value?.meta?.votes?.length || 0;
+    const fallbackVoteNames = (msg.value?.meta?.votes || [])
         .map((person) => person.name)
-        .map((n) => n.slice(0, maxLikedNameLength))
+        .filter(Boolean);
+
+    const spreadInfoObj = (spreadInfo && typeof spreadInfo === 'object') ? spreadInfo : null;
+    const spreadCount = spreadInfoObj && typeof spreadInfoObj.count === 'number'
+        ? spreadInfoObj.count
+        : fallbackVoteCount;
+    const alreadySpread = spreadInfoObj && typeof spreadInfoObj.alreadySpread === 'boolean'
+        ? spreadInfoObj.alreadySpread
+        : fallbackVoted;
+    const spreadVoters = (spreadInfoObj && Array.isArray(spreadInfoObj.voters))
+        ? spreadInfoObj.voters
+              .map(v => (v && typeof v === 'object') ? (v.name || v.key || '') : String(v || ''))
+              .filter(Boolean)
+        : fallbackVoteNames;
+
+    const maxSpreadNameLength = 16;
+    const maxSpreadNames = 16;
+    const spreadByNames = spreadVoters
+        .slice(0, maxSpreadNames)
+        .map((n) => String(n).slice(0, maxSpreadNameLength))
         .join(", ");
-
-    const additionalLikesMessage =
-        likeCount > maxLikedNames ? `+${likeCount - maxLikedNames} more` : ``;
-
-    const likedByMessage =
-        likeCount > 0 ? `${likedByNames} ${additionalLikesMessage}` : null;
+    const additionalSpreadsMessage =
+        spreadCount > maxSpreadNames ? `+${spreadCount - maxSpreadNames} more` : ``;
+    const spreadByMessage =
+        spreadCount > 0 ? `${spreadByNames} ${additionalSpreadsMessage}`.trim() : (i18n.spreadHint || 'Spread this to your supporters (replicates via your feed).');
+    const spreadButtonClass = alreadySpread ? 'liked' : null;
 
     const messageClasses = ["post"];
     const recps = [];
@@ -1589,16 +1988,14 @@ const post = ({ msg, aside = false, preview = false }) => {
         footer(
             div(
                 form(
-                    { action: url.likeForm, method: "post" },
+                    { action: url.spreadForm, method: "post" },
                     button(
                         {
-                            name: "voteValue",
                             type: "submit",
-                            value: likeButton.value,
-                            class: likeButton.class,
-                            title: likedByMessage,
+                            class: spreadButtonClass,
+                            title: spreadByMessage,
                         },
-                        `☉ ${likeCount}`
+                        `☉ ${spreadCount}`
                     )
                 ),
                 a({ href: url.comment }, i18n.comment),
@@ -1619,8 +2016,49 @@ const post = ({ msg, aside = false, preview = false }) => {
     }
 };
 
-exports.editProfileView = ({ name, description }) =>
-  template(
+exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '', baseUrl = '', gpgFingerprint = '' }) => {
+  const prefs = {
+    activity: visibilityPrefs.activity === true,
+    device:   visibilityPrefs.device   === true,
+    karma:    visibilityPrefs.karma !== false,
+    ubi:      visibilityPrefs.ubi      === true,
+    wallet:   visibilityPrefs.wallet   === true,
+    clearnetShops:     visibilityPrefs.clearnetShops     === true,
+    clearnetJobs:      visibilityPrefs.clearnetJobs      === true,
+    clearnetEvents:    visibilityPrefs.clearnetEvents    === true,
+    clearnetProjects:  visibilityPrefs.clearnetProjects  === true,
+    clearnetPosts:     visibilityPrefs.clearnetPosts     === true,
+    clearnetAudios:    visibilityPrefs.clearnetAudios    === true,
+    clearnetVideos:    visibilityPrefs.clearnetVideos    === true,
+    clearnetImages:    visibilityPrefs.clearnetImages    === true,
+    clearnetDocuments: visibilityPrefs.clearnetDocuments === true,
+    clearnetTorrents:  visibilityPrefs.clearnetTorrents  === true,
+    clearnetBookmarks: visibilityPrefs.clearnetBookmarks === true,
+    profileShops:      visibilityPrefs.profileShops      === true,
+    profileJobs:       visibilityPrefs.profileJobs       === true,
+    profileEvents:     visibilityPrefs.profileEvents     === true,
+    profileProjects:   visibilityPrefs.profileProjects   === true,
+    profilePosts:      visibilityPrefs.profilePosts      === true,
+    profileAudios:     visibilityPrefs.profileAudios     === true,
+    profileVideos:     visibilityPrefs.profileVideos     === true,
+    profileImages:     visibilityPrefs.profileImages     === true,
+    profileDocuments:  visibilityPrefs.profileDocuments  === true,
+    profileTorrents:   visibilityPrefs.profileTorrents   === true,
+    profileBookmarks:  visibilityPrefs.profileBookmarks  === true,
+    ecoTax:            visibilityPrefs.ecoTax            !== false,
+    larpSign:          visibilityPrefs.larpSign          === true,
+    fediverse:         visibilityPrefs.fediverse         === true,
+    gpg:               visibilityPrefs.gpg               !== false
+  };
+  const fediverseHandleValue = typeof visibilityPrefs.fediverseHandle === 'string' ? visibilityPrefs.fediverseHandle : '';
+  prefs.clearnet = prefs.clearnetShops || prefs.clearnetJobs || prefs.clearnetEvents || prefs.clearnetProjects || prefs.clearnetPosts || prefs.clearnetAudios || prefs.clearnetVideos || prefs.clearnetImages || prefs.clearnetDocuments || prefs.clearnetTorrents || prefs.clearnetBookmarks;
+  const togglePill = (key, labelText, forced = false) => label(
+    { class: forced ? "pref-pill pref-pill-forced" : "pref-pill", for: forced ? undefined : `vis_${key}`, title: forced ? (i18n.profileDeviceLockedHint || 'On mobile devices this sensor is mandatory and cannot be disabled.') : undefined },
+    forced ? input({ type: "hidden", name: `vis_${key}`, value: "1" }) : null,
+    input({ type: "checkbox", name: forced ? undefined : `vis_${key}`, id: forced ? undefined : `vis_${key}`, value: "1", class: "pref-pill-input", checked: (forced || prefs[key]) ? "checked" : undefined, disabled: forced ? "disabled" : undefined }),
+    span({ class: "pref-pill-label" }, labelText)
+  );
+  return template(
     i18n.editProfile,
     section(
       h1(i18n.editProfile),
@@ -1653,6 +2091,77 @@ exports.editProfileView = ({ name, description }) =>
             description
           )
         ),
+        br(),br(),
+        label(
+          i18n.profileGpgKey || 'GPG Public Key (.asc)',
+          br(),
+          div({ class: "gpg-edit-row" },
+            input({ type: "file", name: "gpgKey", accept: ".asc,.gpg,.pgp,application/pgp-keys,text/plain" }),
+            gpgFingerprint
+              ? button({ type: "submit", formaction: "/profile/gpg/remove", formenctype: "application/x-www-form-urlencoded", formnovalidate: true, class: "gpg-remove-btn" },
+                  (i18n.profileGpgRemove || 'Remove') + ' (' + String(gpgFingerprint).slice(-8).toUpperCase() + ')'
+                )
+              : null
+          )
+        ),
+        br(), br(),
+        div({ class: "prefs-card" },
+          div({ class: "tags-header" },
+            h2(i18n.profileContentSectionTitle || 'Avatar Content'),
+            p({ class: "prefs-help" }, i18n.profileContentHelp || 'Choose which of your modules will be displayed on your profile.')
+          ),
+          div({ class: "pref-pill-row" },
+            togglePill('profileShops',     i18n.profileClearnetShopsLabel     || 'Shops'),
+            togglePill('profileJobs',      i18n.profileClearnetJobsLabel      || 'Jobs'),
+            togglePill('profileEvents',    i18n.profileClearnetEventsLabel    || 'Events'),
+            togglePill('profileProjects',  i18n.profileClearnetProjectsLabel  || 'Projects'),
+            togglePill('profilePosts',     i18n.profileClearnetPostsLabel     || 'Blogs'),
+            togglePill('profileAudios',    i18n.profileClearnetAudiosLabel    || 'Audios'),
+            togglePill('profileVideos',    i18n.profileClearnetVideosLabel    || 'Videos'),
+            togglePill('profileImages',    i18n.profileClearnetImagesLabel    || 'Images'),
+            togglePill('profileDocuments', i18n.profileClearnetDocumentsLabel || 'Documents'),
+            togglePill('profileTorrents',  i18n.profileClearnetTorrentsLabel  || 'Torrents'),
+            togglePill('profileBookmarks', i18n.profileClearnetBookmarksLabel || 'Bookmarks')
+          )
+        ),
+        br(),
+        div({ class: "prefs-card" },
+          div({ class: "tags-header" },
+            h2(i18n.profileSensorsSectionTitle || 'Sensors'),
+            p({ class: "prefs-help" }, i18n.profileSensorsHelp || 'Optional metrics shown on your profile.')
+          ),
+          div({ class: "pref-pill-row" },
+            togglePill('karma',    i18n.profileVisibilityKarma    || 'KARMA Scoring'),
+            togglePill('activity', i18n.profileVisibilityActivity || 'Activity Level'),
+            togglePill('fediverse', i18n.profileVisibilityFediverse || 'Fediverse'),
+            togglePill('larpSign', i18n.profileVisibilityLarpSign || 'L.A.R.P. Sign'),
+            togglePill('gpg',      i18n.profileVisibilityGpg      || 'GPG Key'),
+            togglePill('wallet',   i18n.profileVisibilityWallet   || 'ECOIN Wallet'),
+            togglePill('ubi',      i18n.profileVisibilityUbi      || 'UBI'),
+            togglePill('ecoTax',   i18n.profileVisibilityEcoTax   || 'ECO Tax')
+          ),
+          input({ type: "hidden", name: "fediverseHandle", value: fediverseHandleValue })
+        ),
+        br(),
+        div({ class: "prefs-card" },
+          div({ class: "tags-header" },
+            h2(i18n.clearnetSectionTitle || 'Clearnet'),
+            p({ class: "prefs-help" }, i18n.profileClearnetHelp || 'Modules that can be accessed from outside Oasis.')
+          ),
+          div({ class: "pref-pill-row" },
+            togglePill('clearnetShops',     i18n.profileClearnetShopsLabel     || 'Shops'),
+            togglePill('clearnetJobs',      i18n.profileClearnetJobsLabel      || 'Jobs'),
+            togglePill('clearnetEvents',    i18n.profileClearnetEventsLabel    || 'Events'),
+            togglePill('clearnetProjects',  i18n.profileClearnetProjectsLabel  || 'Projects'),
+            togglePill('clearnetPosts',     i18n.profileClearnetPostsLabel     || 'Blogs'),
+            togglePill('clearnetAudios',    i18n.profileClearnetAudiosLabel    || 'Audios'),
+            togglePill('clearnetVideos',    i18n.profileClearnetVideosLabel    || 'Videos'),
+            togglePill('clearnetImages',    i18n.profileClearnetImagesLabel    || 'Images'),
+            togglePill('clearnetDocuments', i18n.profileClearnetDocumentsLabel || 'Documents'),
+            togglePill('clearnetTorrents',  i18n.profileClearnetTorrentsLabel  || 'Torrents'),
+            togglePill('clearnetBookmarks', i18n.profileClearnetBookmarksLabel || 'Bookmarks')
+          )
+        ),
         br(),
         button(
           {
@@ -1663,8 +2172,232 @@ exports.editProfileView = ({ name, description }) =>
       )
     )
   );
+};
 
-exports.authorView = ({
+exports.clearnetBlogView = async ({ msgKey, text, author, authorName, contentWarning, sentAt }) => {
+  const { escapeHtml: esc, renderClearnetPage } = require('./clearnet_view');
+  const rawText = String(text || '');
+  const renderedHtml = sanitizeHtml(markdown(rawText))
+    .replace(/(["'])\/blob\//g, '$1/c/blob/');
+  const plainPreview = rawText.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/<[^>]+>/g, '').slice(0, 200);
+  const authorEsc = esc(authorName || (author || '').slice(1, 9));
+  const dateStr = sentAt ? esc(new Date(sentAt).toISOString().slice(0, 10)) : '';
+  const cw = esc(contentWarning || '');
+  const firstLine = rawText.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/<[^>]+>/g, '').split('\n').map(s => s.trim()).find(Boolean) || '';
+  const titleText = cw || firstLine.slice(0, 100) || 'Post';
+  const extraCss = `
+.cn-blog-meta{color:var(--fg-dim);font-size:13px;margin-bottom:16px;display:flex;gap:14px;flex-wrap:wrap}
+.cn-blog-cw{background:#663d00;color:#ffd700;border:1px solid #ff7300;padding:8px 14px;border-radius:6px;margin-bottom:16px;font-weight:600}
+.cn-blog-body{color:var(--fg-soft);line-height:1.7;font-size:16px;margin:0;word-wrap:break-word}
+.cn-blog-body p{margin:0 0 14px 0}
+.cn-blog-body img{max-width:100%;height:auto;border-radius:6px;border:1px solid var(--border);display:block;margin:10px 0}
+.cn-blog-body a{color:var(--fg);text-decoration:underline}
+.cn-blog-body a:hover{color:var(--accent)}
+.cn-blog-body pre,.cn-blog-body code{background:var(--bg-sub);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:monospace;font-size:13px}
+.cn-blog-body pre{padding:10px 14px;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.cn-blog-body blockquote{margin:10px 0;padding:6px 14px;border-left:3px solid var(--fg);color:var(--fg-soft);background:var(--bg-sub);border-radius:0 4px 4px 0}
+.cn-blog-body h1,.cn-blog-body h2,.cn-blog-body h3{color:var(--fg);margin:18px 0 10px 0}
+.cn-blog-body ul,.cn-blog-body ol{padding-left:24px;margin:8px 0}
+.cn-blog-body video,.cn-blog-body audio{max-width:100%;display:block;margin:10px 0}
+`;
+  const body = `
+  <div class="cn-blog-meta">
+    ${dateStr ? `<span>📅 ${dateStr}</span>` : ''}
+  </div>
+  ${cw ? `<div class="cn-blog-cw">${cw}</div>` : ''}
+  <article class="cn-blog-body">${renderedHtml}</article>
+`;
+  return renderClearnetPage({
+    title: `${esc(titleText)} — Oasis`,
+    ogTitle: titleText,
+    ogDescription: plainPreview,
+    extraCss,
+    body,
+    hubFeedId: author || null
+  });
+};
+
+exports.clearnetInhabitantView = async ({ feedId, name, description, image, prefs, items = {}, query = '', filterType = '' }) => {
+  const { blobUrl: cnBlob, escapeHtml: esc, renderClearnetPage } = require('./clearnet_view');
+  const blobAvatarUrl = cnBlob(image);
+  const avatarSrc = blobAvatarUrl || '/assets/images/default-avatar.png';
+  const qrSrc = feedId ? `/qr/${encodeURIComponent(feedId)}` : null;
+  const displayName = esc(name || 'Anonymous');
+  const desc = esc(description || '');
+  const renderHubItem = (modulePath, it) => {
+    const blob = cnBlob(it.image);
+    const title = esc(it.title || 'Untitled');
+    const snippet = esc((it.snippet || '').slice(0, 160));
+    const meta = esc(it.meta || '');
+    const kind = esc(it.kind || '');
+    return `<a class="cn-hub-card" href="/c/${modulePath}/${encodeURIComponent(it.id)}">
+      ${blob ? `<img class="cn-hub-thumb" src="${blob}" alt="" loading="lazy"/>` : ''}
+      <div class="cn-hub-body">
+        ${kind ? `<div class="cn-hub-kind">${kind}</div>` : ''}
+        <div class="cn-hub-title">${title}</div>
+        ${snippet ? `<div class="cn-hub-snippet">${snippet}${(it.snippet || '').length > 160 ? '…' : ''}</div>` : ''}
+        ${meta ? `<div class="cn-hub-meta">${meta}</div>` : ''}
+      </div>
+    </a>`;
+  };
+  const moduleDef = [
+    { key: 'shops',     label: 'Shops',     kind: 'Shop',     prefKey: 'clearnetShops' },
+    { key: 'jobs',      label: 'Jobs',      kind: 'Job',      prefKey: 'clearnetJobs' },
+    { key: 'events',    label: 'Events',    kind: 'Event',    prefKey: 'clearnetEvents' },
+    { key: 'projects',  label: 'Projects',  kind: 'Project',  prefKey: 'clearnetProjects' },
+    { key: 'posts',     label: 'Blogs',     kind: 'Blog',     prefKey: 'clearnetPosts',     modulePath: 'blog' },
+    { key: 'audios',    label: 'Audios',    kind: 'Audio',    prefKey: 'clearnetAudios' },
+    { key: 'videos',    label: 'Videos',    kind: 'Video',    prefKey: 'clearnetVideos' },
+    { key: 'images',    label: 'Images',    kind: 'Image',    prefKey: 'clearnetImages' },
+    { key: 'documents', label: 'Documents', kind: 'Document', prefKey: 'clearnetDocuments' },
+    { key: 'torrents',  label: 'Torrents',  kind: 'Torrent',  prefKey: 'clearnetTorrents' },
+    { key: 'bookmarks', label: 'Bookmarks', kind: 'Bookmark', prefKey: 'clearnetBookmarks' }
+  ];
+  const allItems = [];
+  for (const m of moduleDef) {
+    for (const it of (items[m.key] || [])) {
+      allItems.push({ ...it, modulePath: m.modulePath || m.key, kind: m.kind, _moduleKey: m.key });
+    }
+  }
+  const activeFilter = (filterType || '').toLowerCase();
+  const visibleItems = activeFilter
+    ? allItems.filter(it => it._moduleKey === activeFilter)
+    : allItems;
+  const totalCount = visibleItems.length;
+  const filterBase = `/c/inhabitant/${encodeURIComponent(feedId)}`;
+  const filterButtons = `<div class="cn-filter-row">
+    <a class="cn-filter-btn${activeFilter ? '' : ' active'}" href="${filterBase}">All (${allItems.length})</a>
+    ${moduleDef.filter(m => prefs && prefs[m.prefKey] && (items[m.key] || []).length).map(m => {
+      const isActive = activeFilter === m.key;
+      const count = (items[m.key] || []).length;
+      return `<a class="cn-filter-btn${isActive ? ' active' : ''}" href="${filterBase}?type=${m.key}">${esc(m.label)} (${count})</a>`;
+    }).join('')}
+  </div>`;
+  const sections = totalCount
+    ? `${filterButtons}<h2 class="cn-section">Public Content (${totalCount})</h2><div class="cn-hub-grid">${visibleItems.map(it => renderHubItem(it.modulePath, it)).join('')}</div>`
+    : (allItems.length ? `${filterButtons}<div class="cn-empty-content">No content in this category.</div>` : '');
+  const noResults = '<div class="cn-empty-content">This inhabitant has not published content to Clearnet yet.</div>';
+  const extraCss = `
+.cn-profile{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-bottom:24px}
+.cn-avatar{width:160px;height:160px;border-radius:8px;border:3px solid var(--fg);object-fit:cover;background:#000;flex:0 0 auto}
+.cn-profile-body{flex:1 1 280px;min-width:0}
+.cn-name{color:var(--fg);margin:0 0 8px 0;font-size:28px;font-weight:700}
+.cn-id{color:var(--fg-dim);font-size:12px;word-break:break-all;font-family:monospace;background:var(--bg-sub);border:1px solid var(--border);padding:6px 10px;border-radius:4px;display:inline-block;margin-bottom:14px}
+.cn-desc{color:var(--fg-soft);white-space:pre-wrap;margin:0}
+.cn-qr-col{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:center}
+.cn-qr-img{width:160px;height:160px;background:#fff;padding:8px;border-radius:8px;image-rendering:pixelated}
+.cn-filter-row{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0 12px 0}
+.cn-filter-btn{display:inline-block;padding:6px 14px;background:var(--bg-elev);color:var(--fg-soft);border:1px solid var(--border);border-radius:14px;font-size:13px;text-decoration:none;transition:border-color .15s ease,color .15s ease,background .15s ease}
+.cn-filter-btn:hover{border-color:var(--fg);color:var(--fg);text-decoration:none}
+.cn-filter-btn.active{background:var(--bg-sub);border-color:var(--fg);color:var(--fg);font-weight:600}
+.cn-hub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:16px}
+.cn-hub-kind{color:var(--fg-dim);font-size:10px;text-transform:uppercase;letter-spacing:2px;font-weight:600}
+.cn-hub-card{display:flex;flex-direction:column;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .15s ease;color:var(--fg);text-decoration:none}
+.cn-hub-card:hover{border-color:var(--fg);text-decoration:none}
+.cn-hub-thumb{width:100%;height:140px;object-fit:cover;background:#000;border-bottom:1px solid var(--border)}
+.cn-hub-body{padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.cn-hub-title{color:var(--fg);font-weight:600;font-size:15px;word-break:break-word}
+.cn-hub-snippet{color:var(--fg-soft);font-size:13px;line-height:1.4;word-break:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cn-hub-meta{color:var(--fg-dim);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-top:auto}
+.cn-empty-content{background:var(--bg-elev);border:1px dashed var(--border);border-radius:8px;padding:24px;text-align:center;color:var(--fg-dim);font-size:14px}
+`;
+  const body = `
+  <div class="cn-profile">
+    <img class="cn-avatar" src="${avatarSrc}" alt="${displayName}"/>
+    <div class="cn-profile-body">
+      <h1 class="cn-name">${displayName}</h1>
+      <div class="cn-id">${esc(feedId)}</div>
+      ${desc ? `<p class="cn-desc">${desc}</p>` : ''}
+    </div>
+    ${qrSrc ? `<div class="cn-qr-col"><img class="cn-qr-img" src="${qrSrc}" alt="QR"/></div>` : ''}
+  </div>
+  ${totalCount > 0 ? sections : noResults}
+`;
+  return renderClearnetPage({
+    title: `${name || 'Inhabitant'} — Oasis`,
+    ogTitle: name || 'Oasis',
+    ogDescription: description || '',
+    ogImage: blobAvatarUrl,
+    extraCss,
+    body,
+    hubFeedId: feedId || null
+  });
+};
+
+const renderUserSensors = (u, opts = {}) => {
+  const { renderReachChip, renderClearnetUrlBlock, renderFediverseReach, renderContentStats } = require('./clearnet_view');
+  const prefs = u.prefs || {};
+  const isMe = !!u.isMe;
+  const show = (k) => prefs[k];
+  const fmtCarbon = (g) => {
+    const n = Number(g) || 0;
+    if (!n) return '0 µg CO₂';
+    if (n >= 1) return `${n.toFixed(2)} g CO₂`;
+    const mg = n * 1000;
+    if (mg >= 1) return `${mg.toFixed(2)} mg CO₂`;
+    return `${(mg * 1000).toFixed(2)} µg CO₂`;
+  };
+  const fediverseNode = (isMe && !u.fediverseConfigured) ? null : renderFediverseReach(prefs, i18n);
+  const dot = u.activityBucket === 'green' ? 'green' : u.activityBucket === 'orange' ? 'orange' : u.activityBucket === 'red' ? 'red' : null;
+  const activityChip = (show('activity') && dot)
+    ? span({ class: 'inhabitant-last-activity' }, `${i18n.inhabitantActivityLevel}: `, span({ class: `activity-dot ${dot}` }, '●'))
+    : null;
+  const deviceSrc = isMe
+    ? (getConfig().themes.current === 'OasisKIT' ? 'KIT' : (getConfig().themes.current === 'OasisMobile' || process.env.OASIS_MOBILE === '1') ? 'MOBILE' : 'DESKTOP')
+    : (u.deviceSource || null);
+  const deviceChip = deviceSrc
+    ? (() => {
+        const up = String(deviceSrc).toUpperCase();
+        const cls = up === 'KIT' ? 'device-kit' : up === 'MOBILE' ? 'device-mobile' : 'device-desktop';
+        return span({ class: 'inhabitant-last-activity' }, `${i18n.deviceLabel || 'Device'}: `, span({ class: cls }, deviceSrc));
+      })()
+    : null;
+  const items = [];
+  if (show('karma')) items.push(span({ class: 'karma-line' }, `${i18n.bankingUserEngagementScore}: `, strong(String(u.karmaScore !== undefined ? u.karmaScore : 0))));
+  if (show('ecoTax')) items.push(span({ class: 'karma-line eco-tax-line' }, `${i18n.profileVisibilityEcoTax || 'ECO Tax'}: `, strong(fmtCarbon(u.carbonGrams))));
+  if (activityChip) items.push(activityChip);
+  if (deviceChip) items.push(deviceChip);
+  if (show('gpg') && (u.gpgFingerprint || isMe)) {
+    let gpgNode;
+    if (u.gpgFingerprint) {
+      const sid = String(u.gpgFingerprint).slice(-8).toUpperCase();
+      gpgNode = a({ href: `/profile/${encodeURIComponent(u.id)}/gpg.asc`, title: i18n.profileGpgDownload || 'Download' }, strong(sid));
+    } else {
+      const nc = i18n.statsEcoWalletNotConfigured || 'Not configured!';
+      gpgNode = isMe ? a({ href: '/profile/edit' }, strong(nc)) : strong(nc);
+    }
+    items.push(span({ class: 'gpg-line' }, `${i18n.profileGpgChip || 'GPG'}: `, gpgNode));
+  }
+  if (show('wallet') && (u.ecoAddress || isMe)) {
+    const wt = u.ecoAddress || (i18n.statsEcoWalletNotConfigured || 'Not configured!');
+    const wn = isMe ? a({ href: '/wallet' }, strong(wt)) : strong(wt);
+    items.push(span({ class: 'ubi-line' }, `${i18n.statsEcoWalletLabel || 'ECOin Wallet'}: `, wn));
+  }
+  if (show('ubi')) {
+    items.push(span({ class: 'ubi-line' }, `${i18n.bankUbiThisMonth || 'UBI'}: `, strong(`${Number(u.estimatedUBI || 0).toFixed(6)} ECO`)));
+    items.push(span({ class: 'ubi-line' }, `${i18n.bankUbiLastClaimed || 'Last claimed'}: `, u.lastClaimedDate ? a({ href: '/transfers?filter=ubi', class: 'user-link' }, new Date(u.lastClaimedDate).toLocaleDateString()) : strong(i18n.bankUbiNeverClaimed || 'Never claimed')));
+    items.push(span({ class: 'ubi-line' }, `${i18n.bankUbiTotalClaimed || 'Total claimed'}: `, strong(`${Number(u.totalClaimed || 0).toFixed(6)} ECO`)));
+  }
+  const sensorsBox = items.length ? div({ class: 'profile-sensors-box' }, ...items) : null;
+  const larpNode = (show('larpSign') && u.larpHouse && u.larpHouse.key)
+    ? a({ href: `/larp/${u.larpHouse.key}`, class: 'larp-sign-block', title: u.larpHouse.name }, img({ src: u.larpHouse.image || '/assets/larp/images/default.jpg', alt: u.larpHouse.name, class: 'larp-sign-large' }))
+    : null;
+  const reachNode = prefs.clearnet
+    ? (() => {
+        const path = `/c/inhabitant/${encodeURIComponent(u.id)}`;
+        return div({ class: 'profile-reach' },
+          renderReachChip(true, i18n, path),
+          renderClearnetUrlBlock({ path, i18nObj: i18n }),
+          isMe ? form({ method: 'POST', action: '/profile/clearnet-toggle', class: 'profile-reach-toggle' }, button({ type: 'submit', class: 'btn' }, i18n.profileSwitchToOasis || 'Return to Oasis')) : null
+        );
+      })()
+    : null;
+  const contentNode = opts.excludeContent ? null : renderContentStats(u.stats, i18n);
+  return [fediverseNode, opts.relationshipNode || null, sensorsBox, larpNode, reachNode, contentNode].filter(Boolean);
+};
+exports.renderUserSensors = renderUserSensors;
+
+exports.authorView = async ({
   avatarUrl,
   description,
   feedId,
@@ -1678,19 +2411,52 @@ exports.authorView = ({
   estimatedUBI = 0,
   lastClaimedDate = null,
   totalClaimed = 0,
-  lastActivityBucket
+  carbonGrams = 0,
+  larpHouse = null,
+  lastActivityBucket,
+  visibilityPrefs = null,
+  deviceSource = null,
+  stats = {},
+  baseUrl = '',
+  userActions = [],
+  allActions = [],
+  profileItems = null,
+  profileFilterType = '',
+  gpgFingerprint = '',
+  spreadMap = null,
+  fediverseConfigured = false
 }) => {
+  const isOwnProfile = !!(relationship && relationship.me);
+  const rawPrefs = visibilityPrefs || {};
+  const prefs = {
+    activity: rawPrefs.activity === true,
+    device:   rawPrefs.device   === true,
+    karma:    rawPrefs.karma !== false,
+    ubi:      rawPrefs.ubi      === true,
+    wallet:   rawPrefs.wallet   === true,
+    ecoTax:   rawPrefs.ecoTax   !== false,
+    larpSign: rawPrefs.larpSign === true,
+    clearnet: rawPrefs.clearnet === true,
+    fediverse: rawPrefs.fediverse === true,
+    fediverseHandle: typeof rawPrefs.fediverseHandle === 'string' ? rawPrefs.fediverseHandle : '',
+    gpg:      rawPrefs.gpg      !== false
+  };
+  const clearnetSubKeys = ['clearnetShops','clearnetJobs','clearnetEvents','clearnetProjects','clearnetPosts','clearnetAudios','clearnetVideos','clearnetImages','clearnetDocuments','clearnetTorrents','clearnetBookmarks'];
+  const anySubClearnet = clearnetSubKeys.some(k => rawPrefs[k] === true);
+  prefs.clearnet = prefs.clearnet || anySubClearnet;
+  const showField = (key) => prefs[key];
+  const qrSrc = feedId ? `/qr/${encodeURIComponent(feedId)}` : null;
   const linkUrl = `/author/${encodeURIComponent(feedId)}`;
 
-  const mention = `[@${name}](${feedId})`;
-  const markdownMention = highlightJs.highlight(mention, { language: "markdown", ignoreIllegals: true }).value;
+  const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const markdownMention = `[@${escHtml(name)}](<strong>${escHtml(feedId)}</strong>)`;
 
   const contactForms = [];
   const addForm = ({ action }) =>
     contactForms.push(
       form(
         { action: `/${action}/${encodeURIComponent(feedId)}`, method: "post" },
-        button({ type: "submit" }, i18n[action])
+        button({ type: "submit", class: "btn" }, i18n[action])
       )
     );
 
@@ -1711,126 +2477,134 @@ exports.authorView = ({
     return messagesArr.join(". ") + ".";
   })();
 
-  const bucket = lastActivityBucket || 'red';
-
-  const { lastActivityBadge } = require('./inhabitants_view');
-
-  const prefix = section(
-    { class: "message" },
-    div(
-      { class: "profile" },
-      div({ class: "avatar-container" },
-        img({ class: "inhabitant-photo-details", src: avatarUrl }),
-        h1({ class: "name" }, name),
-      ),
-      pre({ class: "md-mention", innerHTML: sanitizeHtml(markdownMention) }),
-      p(a({ class: "user-link", href: `/author/${encodeURIComponent(feedId)}` }, feedId)),
-      div({ class: "profile-metrics" },
-        ...lastActivityBadge({ lastActivityBucket: bucket }, true),
-        div({ class: "inhabitant-karma-ubi" },
-          span({ class: "karma-line" }, `${i18n.bankingUserEngagementScore}: `, strong(karmaScore !== undefined ? karmaScore : 0)),
-          span({ class: "ubi-line" }, `${i18n.bankUbiThisMonth}: `, strong(`${Number(estimatedUBI || 0).toFixed(6)} ECO`)),
-          span({ class: "ubi-line" }, `${i18n.bankUbiLastClaimed}: `,
-            lastClaimedDate
-              ? a({ href: "/transfers?filter=ubi", class: "user-link" }, new Date(lastClaimedDate).toLocaleDateString())
-              : strong(i18n.bankUbiNeverClaimed)
-          ),
-          span({ class: "ubi-line" }, `${i18n.bankUbiTotalClaimed}: `, strong(`${Number(totalClaimed || 0).toFixed(6)} ECO`))
-        ),
-        (ecoAddress || relationship.me)
-          ? div({ class: "eco-wallet" },
-              p(`${i18n.statsEcoWalletLabel || 'ECOin Wallet'}: `,
-                a({ href: '/wallet' }, ecoAddress || i18n.statsEcoWalletNotConfigured || 'Not configured!')))
-          : null
-      )
-    ),
-    description !== "" ? article({ innerHTML: sanitizeHtml(markdown(description)) }) : null,
-    footer(
-      div(
-        { class: "profile" },
-        ...contactForms.map(form => span({ class: "contact-bold" }, form)),
-        relationship.me
-          ? span({ class: "status you" }, i18n.relationshipYou)
-          : div({ class: "relationship-status" },
-              relationship.blocking && relationship.blockedBy
-                ? span({ class: "status blocked" }, i18n.relationshipMutualBlock)
+  const relationshipBlock = relationship.me
+    ? span({ class: "status you" }, i18n.relationshipYou)
+    : div({ class: "relationship-status" },
+        relationship.blocking && relationship.blockedBy
+          ? span({ class: "status blocked" }, i18n.relationshipMutualBlock)
+          : [
+              relationship.blocking ? span({ class: "status blocked" }, i18n.relationshipBlocking) : null,
+              relationship.blockedBy ? span({ class: "status blocked-by" }, i18n.relationshipBlockedBy) : null,
+              relationship.following && relationship.followsMe
+                ? span({ class: "status mutual" }, i18n.relationshipMutuals)
                 : [
-                    relationship.blocking ? span({ class: "status blocked" }, i18n.relationshipBlocking) : null,
-                    relationship.blockedBy ? span({ class: "status blocked-by" }, i18n.relationshipBlockedBy) : null,
-                    relationship.following && relationship.followsMe
-                      ? span({ class: "status mutual" }, i18n.relationshipMutuals)
-                      : [
-                          span({ class: "status supporting" }, relationship.following ? i18n.relationshipFollowing : i18n.relationshipNone),
-                          span({ class: "status supported-by" }, relationship.followsMe ? i18n.relationshipTheyFollow : i18n.relationshipNotFollowing)
-                        ]
+                    span({ class: "status supporting" }, relationship.following ? i18n.relationshipFollowing : i18n.relationshipNone),
+                    span({ class: "status supported-by" }, relationship.followsMe ? i18n.relationshipTheyFollow : i18n.relationshipNotFollowing)
                   ]
-            ),
-        relationship.me ? a({ href: `/profile/edit`, class: "btn" }, nbsp, i18n.editProfile) : null,
-        a({ href: `/likes/${encodeURIComponent(feedId)}`, class: "btn" }, i18n.viewLikes),
-        !relationship.me ? a({ href: `/pm?recipients=${encodeURIComponent(feedId)}`, class: "btn" }, i18n.pmCreateButton) : null
-      )
+            ],
+        contactForms.length
+          ? div({ class: "relationship-actions" }, ...contactForms)
+          : null
+      );
+
+  const userSensors = renderUserSensors({
+    isMe: isOwnProfile, fediverseConfigured, prefs, id: feedId,
+    karmaScore, carbonGrams, deviceSource, activityBucket: lastActivityBucket,
+    gpgFingerprint, ecoAddress, estimatedUBI, lastClaimedDate, totalClaimed,
+    larpHouse, stats
+  }, { relationshipNode: div({ class: "profile-side-relationship" }, relationshipBlock) });
+
+  const sideColumn = div({ class: "tribe-side profile-side" },
+    img({ class: "inhabitant-photo-details", src: avatarUrl, alt: name }),
+    h2({ class: "profile-side-name" }, name),
+    div({ class: "profile-side-mention" },
+      a({ href: `/author/${encodeURIComponent(feedId)}` }, strong(feedId))
+    ),
+    qrSrc ? img({ src: qrSrc, alt: feedId, class: "profile-side-qr", width: "180", height: "180" }) : null,
+    description !== ""
+      ? div({ class: "profile-side-description", innerHTML: sanitizeHtml(markdown(description)) })
+      : null,
+    ...userSensors,
+    div({ class: "profile-side-actions" },
+      isOwnProfile ? a({ href: `/profile/edit`, class: "btn" }, i18n.editProfile) : null,
+      a({ href: `/likes/${encodeURIComponent(feedId)}`, class: "btn" }, i18n.viewLikes),
+      !isOwnProfile ? a({ href: `/pm?recipients=${encodeURIComponent(feedId)}`, class: "btn" }, i18n.pmCreateButton) : null
     )
   );
 
-  let items = messages.map((msg) => post({ msg }));
-  if (items.length === 0) {
-    if (lastPost === undefined) {
-      items.push(section(div(span(i18n.feedEmpty))));
-    } else {
-      items.push(
-        section(
-          div(
-            span(i18n.feedRangeEmpty),
-            a({ href: `${linkUrl}` }, i18n.seeFullFeed)
+  let mainColumnContent = [];
+
+  if (Array.isArray(allActions) && allActions.length) {
+    const keyToTypes = {
+      shops:     new Set(['shop', 'shopProduct']),
+      jobs:      new Set(['job']),
+      events:    new Set(['event']),
+      projects:  new Set(['project']),
+      posts:     new Set(['post']),
+      audios:    new Set(['audio']),
+      videos:    new Set(['video']),
+      images:    new Set(['image']),
+      documents: new Set(['document']),
+      torrents:  new Set(['torrent'])
+    };
+    const moduleDef = [
+      { key: 'shops',     label: i18n.profileClearnetShopsLabel     || 'Shops' },
+      { key: 'jobs',      label: i18n.profileClearnetJobsLabel      || 'Jobs' },
+      { key: 'events',    label: i18n.profileClearnetEventsLabel    || 'Events' },
+      { key: 'projects',  label: i18n.profileClearnetProjectsLabel  || 'Projects' },
+      { key: 'posts',     label: i18n.profileClearnetPostsLabel     || 'Blogs' },
+      { key: 'audios',    label: i18n.profileClearnetAudiosLabel    || 'Audios' },
+      { key: 'videos',    label: i18n.profileClearnetVideosLabel    || 'Videos' },
+      { key: 'images',    label: i18n.profileClearnetImagesLabel    || 'Images' },
+      { key: 'documents', label: i18n.profileClearnetDocumentsLabel || 'Documents' },
+      { key: 'torrents',  label: i18n.profileClearnetTorrentsLabel  || 'Torrents' }
+    ];
+    const enabledKeys = moduleDef.filter(m => rawPrefs[`profile${m.key.charAt(0).toUpperCase() + m.key.slice(1)}`] === true).map(m => m.key);
+    if (enabledKeys.length > 0) {
+      const allowedTypes = new Set();
+      for (const k of enabledKeys) for (const t of keyToTypes[k]) allowedTypes.add(t);
+      const authorActions = allActions.filter(a => a && a.author === feedId && allowedTypes.has(a.type));
+      const counts = {};
+      for (const k of enabledKeys) counts[k] = 0;
+      for (const a of authorActions) {
+        for (const k of enabledKeys) {
+          if (keyToTypes[k].has(a.type)) { counts[k]++; break; }
+        }
+      }
+      const totalCount = authorActions.length;
+      if (totalCount > 0) {
+        const activeFilter = (profileFilterType || '').toLowerCase();
+        const filterBase = isOwnProfile ? `/profile` : `/author/${encodeURIComponent(feedId)}`;
+        const filterRow = div({ class: "tribe-section-nav no-border" },
+          div({ class: "tribe-section-group no-border" },
+            a({ href: filterBase, class: `filter-btn${activeFilter ? '' : ' active'}` }, `${String(i18n.profileHubAll || 'All').toUpperCase()} (${totalCount})`),
+            ...moduleDef.filter(m => enabledKeys.includes(m.key) && counts[m.key] > 0).map(m => {
+              const isActive = activeFilter === m.key;
+              return a({ href: `${filterBase}?type=${encodeURIComponent(m.key)}`, class: `filter-btn${isActive ? ' active' : ''}` }, `${String(m.label).toUpperCase()} (${counts[m.key]})`);
+            })
           )
-        )
-      );
+        );
+        const visible = activeFilter && keyToTypes[activeFilter]
+          ? authorActions.filter(a => keyToTypes[activeFilter].has(a.type))
+          : authorActions;
+        visible.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+        const limited = visible.slice(0, 50);
+        const { renderActionCards } = require('./activity_view');
+        mainColumnContent.push(filterRow);
+        mainColumnContent.push(div({ class: 'feed-container profile-module-section' },
+          renderActionCards(limited, feedId, allActions || limited, spreadMap instanceof Map ? spreadMap : new Map())
+        ));
+      }
     }
-  } else {
-    const highestSeqNum = messages[0].value.sequence;
-    const lowestSeqNum = messages[messages.length - 1].value.sequence;
-
-    const newerPostsLink = a(
-      {
-        href:
-          lastPost !== undefined && highestSeqNum < lastPost.value.sequence
-            ? `${linkUrl}?gt=${highestSeqNum}`
-            : "#",
-        class:
-          lastPost !== undefined && highestSeqNum < lastPost.value.sequence
-            ? "btn"
-            : "btn disabled",
-        "aria-disabled":
-          lastPost === undefined || highestSeqNum >= lastPost.value.sequence
-      },
-      i18n.newerPosts
-    );
-
-    const olderPostsLink = a(
-      {
-        href:
-          lowestSeqNum > firstPost.value.sequence
-            ? `${linkUrl}?lt=${lowestSeqNum}`
-            : "#",
-        class:
-          lowestSeqNum > firstPost.value.sequence
-            ? "btn"
-            : "btn disabled",
-        "aria-disabled": !(lowestSeqNum > firstPost.value.sequence)
-      },
-      i18n.olderPosts
-    );
-
-    const pagination = section(
-      { class: "message" },
-      footer(div(newerPostsLink, olderPostsLink), br())
-    );
-
-    items.unshift(pagination);
-    items.push(pagination);
   }
 
-  return template(i18n.profile, prefix, items);
+  const hasMainContent = mainColumnContent.length > 0;
+  const layout = hasMainContent
+    ? section(div({ class: "tribe-details profile-layout" },
+        sideColumn,
+        div({ class: "tribe-main profile-main" }, ...mainColumnContent)
+      ))
+    : section(div({ class: "profile-layout profile-layout-single" }, sideColumn));
+
+  let html = template(i18n.profile, layout);
+  const hasDocument = Array.isArray(allActions) && allActions.some(a => a && a.author === feedId && a.type === 'document');
+  if (hasDocument) {
+    html += `
+      <script type="module" src="/js/pdf.min.mjs"></script>
+      <script src="/js/pdf-viewer.js"></script>
+    `;
+  }
+  return html;
 };
 
 exports.previewCommentView = async ({
@@ -1859,7 +2633,7 @@ exports.previewCommentView = async ({
 };
 
 exports.commentView = async (
-  { messages, myFeedId, parentMessage },
+  { messages, myFeedId, parentMessage, spreadMap = null },
   preview,
   text,
   contentWarning
@@ -1917,7 +2691,8 @@ exports.commentView = async (
     markdownMention = `[@${parentAuthorName}](${parentAuthorFeedId})\n\n`;
   }
 
-  const messageElements = threadMessages.map((m) => post({ msg: m }));
+  const getSpread = (key) => (spreadMap instanceof Map ? spreadMap.get(key) : null) || null;
+  const messageElements = threadMessages.map((m) => post({ msg: m, spreadInfo: getSpread(m.key) }));
 
   const action = `/comment/preview/${encodeURIComponent(parentKey)}`;
   const method = "post";
@@ -1971,7 +2746,6 @@ exports.commentView = async (
 const renderMessage = (msg) => {
   const content = lodash.get(msg, "value.content", {});
   const authorId = msg.value.author || "Anonymous";
-  const authorName = lodash.get(msg, "value.meta.author.name") || authorId.slice(0, 10) + '...';
   const createdAt = new Date(msg.value.timestamp).toLocaleString();
   const mentionsText = content.text || '';
   const isTribe = content.type === 'tribe-content';
@@ -1985,19 +2759,27 @@ const renderMessage = (msg) => {
   const badge = isTribe && content.tribeName
     ? span({ class: 'tribe-badge' }, content.tribeName)
     : null;
+  const typeLabel = isTribe ? 'TRIBE' : 'POST';
 
-  return div({ class: "mention-item" },
-    div({ class: "mention-content" },
-      badge,
-      ...renderUrl(mentionsText || '[No content]')
+  return div({ class: 'card card-rpg mention-card' },
+    div({ class: 'card-header' },
+      h2({ class: 'card-label' }, `[${typeLabel}]`),
+      visitUrl
+        ? form({ method: 'GET', action: visitUrl, class: 'inline-form' },
+            button({ type: 'submit', class: 'filter-btn' }, i18n.viewDetails || 'View details')
+          )
+        : null
     ),
-    p(a({ class: 'user-link', href: `/author/${encodeURIComponent(authorId)}` }, authorName)),
-    p(`${i18n.createdAtLabel || 'Created at'}: ${createdAt}`),
-    visitUrl
-      ? form({ method: 'GET', action: visitUrl },
-          button({ type: 'submit', class: 'filter-btn' }, i18n.visitContent || 'Visit')
-        )
-      : null
+    div({ class: 'card-body' },
+      div({ class: 'card-section' },
+        badge,
+        p({ class: 'post-text' }, ...renderUrl(mentionsText || '[No content]'))
+      )
+    ),
+    p({ class: 'card-footer' },
+      span({ class: 'date-link' }, `${createdAt} ${i18n.performed || ''} `),
+      userLink(authorId)
+    )
   );
 };
 
@@ -2081,8 +2863,7 @@ exports.privateView = async (messagesInput, filter) => {
   const isSent = m => (m?.value?.author === userId) || (m?.value?.content?.from === userId)
   const isToUser = m => Array.isArray(m?.value?.content?.to) && m.value.content.to.includes(userId)
 
-  const linkAuthor = (id) =>
-    a({ class: 'user-link', href: `/author/${encodeURIComponent(id)}` }, id)
+  const linkAuthor = (id) => userLink(id)
 
   const hrefFor = {
     job: (id) => `/jobs/${encodeURIComponent(id)}`,
@@ -2102,7 +2883,8 @@ exports.privateView = async (messagesInput, filter) => {
 
   const chip = (txt) => span({ class: 'chip' }, txt)
 
-  function headerLine({ sentAt, from, toLinks, subject }) {
+  function headerLine({ sentAt, from, toLinks, subject, msgKey, msgSize }) {
+    const ecoChip = msgSize ? renderEcoTax(msgSize, msgKey) : null;
     return table({ class: 'pm-info-table' },
       tr(
         td({ class: 'card-label' }, i18n.pmFromLabel || 'From:'),
@@ -2119,15 +2901,26 @@ exports.privateView = async (messagesInput, filter) => {
       tr(
         td({ class: 'card-label' }, i18n.pmSubjectLabel || 'Subject:'),
         td({ class: 'card-value' }, subject || i18n.pmNoSubject || '(no subject)')
-      )
+      ),
+      ecoChip
+        ? tr(
+            td({ class: 'card-label' }, i18n.ecoTaxLabel || 'ECO Tax'),
+            td({ class: 'card-value' }, ecoChip)
+          )
+        : null
     )
+  }
+
+  function msgSizeBytes(m) {
+    try { return Buffer.byteLength(JSON.stringify(m && m.value), 'utf8'); } catch (_) { return 0; }
   }
 
   function actions({ key, replyId, subjectRaw, text }) {
     const stop = { onclick: 'event.stopPropagation()' }
     const subjectReply = /^(\s*RE:\s*)/i.test(subjectRaw || '') ? (subjectRaw || '') : `RE: ${subjectRaw || ''}`
+    const isSelf = replyId === userId
     return div({ class: 'pm-actions' },
-      form({ method: 'GET', action: '/pm', class: 'pm-action-form', ...stop },
+      isSelf ? null : form({ method: 'GET', action: '/pm', class: 'pm-action-form', ...stop },
         input({ type: 'hidden', name: 'recipients', value: replyId }),
         input({ type: 'hidden', name: 'subject', value: subjectReply }),
         input({ type: 'hidden', name: 'quote', value: text || '' }),
@@ -2199,11 +2992,13 @@ exports.privateView = async (messagesInput, filter) => {
     }
     flushQuote()
     return parts.join('<br>')
-      .replace(/(@[a-zA-Z0-9/+._=-]+\.ed25519)/g, (match, id) => `<a class="user-link" href="/author/${encodeURIComponent(id)}">${match}</a>`)
+      .replace(/(@[a-zA-Z0-9/+._=-]+\.ed25519)/g, (match, id) => `<a class="user-link" href="/author/${encodeURIComponent(id)}">${userLinkLabel(id)}</a>`)
       .replace(/\/jobs\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="job-link" href="${hrefFor.job(id)}">${match}</a>`)
       .replace(/\/projects\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="project-link" href="${hrefFor.project(id)}">${match}</a>`)
       .replace(/\/market\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="market-link" href="${hrefFor.market(id)}">${match}</a>`)
       .replace(/\/calendars\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="calendar-link" href="/calendars/${encodeURIComponent(id)}">${match}</a>`)
+      .replace(/\/ai\/ask\?[^\s<"]+/g, (match) => `<a class="ai-ask-link" href="${match}">${match}</a>`)
+      .replace(/(?<![A-Za-z0-9_])\/(profile|inbox|invites|peers|tribes|inhabitants|publish|activity|settings|modules|banking|larp|melody|audios|videos|images|documents|bookmarks|torrents|forum|feed|fediverse|events|tasks|votes|reports|market|jobs|projects|shops|pixelia|opinions|trending|agenda|cv|favorites|stats|blockexplorer|wallet|chats|pads|maps|calendars|ai|games)(?![A-Za-z0-9_\/])/g, (match) => `<a class="oasis-path-link" href="${match}">${match}</a>`)
       .replace(/(https?:\/\/[^\s<"]+)/g, (match) => `<a href="${match}" target="_blank" rel="noopener noreferrer">${match}</a>`)
   }
 
@@ -2216,17 +3011,25 @@ exports.privateView = async (messagesInput, filter) => {
 
   const inboxSet = new Set()
   for (const arr of Object.values(threads)) {
-    const hasInbound = arr.some(isToUser)
-    if (hasInbound) for (const m of arr) inboxSet.add(m)
+    for (const m of arr) {
+      if (!isSent(m) && isToUser(m)) inboxSet.add(m)
+    }
+  }
+
+  const isReminder = m => {
+    const s = String(m?.value?.content?.subject || '')
+    return /^(Task Reminder:|Calendar Reminder:)/i.test(s)
   }
 
   const data =
-    filter === 'sent' ? messages.filter(isSent) :
-    filter === 'inbox' ? Array.from(inboxSet) :
+    filter === 'sent' ? messages.filter(m => isSent(m) && !isReminder(m)) :
+    filter === 'reminders' ? messages.filter(isReminder) :
+    filter === 'inbox' ? Array.from(inboxSet).filter(m => !isReminder(m)) :
     messages
 
-  const inboxCount = Array.from(inboxSet).length
-  const sentCount = messages.filter(isSent).length
+  const inboxCount = Array.from(inboxSet).filter(m => !isReminder(m)).length
+  const sentCount = messages.filter(m => isSent(m) && !isReminder(m)).length
+  const reminderCount = messages.filter(isReminder).length
 
   const sorted = [...data].sort((a, b) => {
     const ta = threadId(a)
@@ -2238,7 +3041,7 @@ exports.privateView = async (messagesInput, filter) => {
     return sa - sb
   })
 
-  function JobCard({ type, sentAt, from, toLinks, text, key }) {
+  function JobCard({ type, sentAt, from, toLinks, text, key, msgSize }) {
     const isSub = type === 'JOB_SUBSCRIBED'
     const icon = isSub ? '🟡' : '🟠'
     const titleH = isSub ? (i18n.inboxJobSubscribedTitle || 'New subscription to your job offer') : (i18n.inboxJobUnsubscribedTitle || 'Unsubscription from your job offer')
@@ -2247,7 +3050,7 @@ exports.privateView = async (messagesInput, filter) => {
     const href = jobId ? hrefFor.job(jobId) : null
     return div(
       clickableCardProps(href, `job-notification thread-level-0`),
-      headerLine({ sentAt, from, toLinks, subject: type }),
+      headerLine({ sentAt, from, toLinks, subject: type, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `${icon} ${i18n.pmBotJobs} · ${titleH}`),
       p(
         i18n.pmInhabitantWithId, ' ',
@@ -2260,7 +3063,7 @@ exports.privateView = async (messagesInput, filter) => {
     )
   }
 
-  function ProjectFollowCard({ type, sentAt, from, toLinks, text, key }) {
+  function ProjectFollowCard({ type, sentAt, from, toLinks, text, key, msgSize }) {
     const isFollow = type === 'PROJECT_FOLLOWED'
     const icon = isFollow ? '🔔' : '🔕'
     const titleH = isFollow
@@ -2271,11 +3074,11 @@ exports.privateView = async (messagesInput, filter) => {
     const href = projectId ? hrefFor.project(projectId) : null
     return div(
       clickableCardProps(href, `project-${isFollow ? 'follow' : 'unfollow'}-notification thread-level-0`),
-      headerLine({ sentAt, from, toLinks, subject: type }),
+      headerLine({ sentAt, from, toLinks, subject: type, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `${icon} ${i18n.pmBotProjects} · ${titleH}`),
       p(
         i18n.pmInhabitantWithId, ' ',
-        a({ class: 'user-link', href: `/author/${encodeURIComponent(from)}` }, from),
+        userLink(from),
         ' ',
         isFollow ? (i18n.pmHasFollowedYourProject || 'has followed your project') : (i18n.pmHasUnfollowedYourProject || 'has unfollowed your project'),
         ' ',
@@ -2285,7 +3088,7 @@ exports.privateView = async (messagesInput, filter) => {
     )
   }
 
-  function MarketSoldCard({ sentAt, from, toLinks, subject, text, key }) {
+  function MarketSoldCard({ sentAt, from, toLinks, subject, text, key, msgSize }) {
     const itemTitle = quoted(subject) || quoted(text) || 'item'
     const buyerId = (text.match(/OASIS ID:\s*([\w=/+.-]+)/) || [])[1] || from
     const price = (text.match(/for:\s*\$([\d.]+)/) || [])[1] || ''
@@ -2293,7 +3096,7 @@ exports.privateView = async (messagesInput, filter) => {
     const href = marketId ? hrefFor.market(marketId) : null
     return div(
       clickableCardProps(href, 'market-sold-notification thread-level-0'),
-      headerLine({ sentAt, from, toLinks, subject }),
+      headerLine({ sentAt, from, toLinks, subject, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `💰 ${i18n.pmBotMarket} · ${i18n.inboxMarketItemSoldTitle}`),
       p(
         i18n.pmYourItem, ' ',
@@ -2307,14 +3110,14 @@ exports.privateView = async (messagesInput, filter) => {
     )
   }
 
-  function ProjectPledgeCard({ sentAt, from, toLinks, content, text, key }) {
+  function ProjectPledgeCard({ sentAt, from, toLinks, content, text, key, msgSize }) {
     const amount = content.meta?.amount ?? (text.match(/pledged\s+([\d.]+)/)?.[1] || '0')
     const projectTitle = content.meta?.projectTitle ?? (text.match(/project\s+"([^"]+)"/)?.[1] || 'project')
     const projectId = content.meta?.projectId ?? pickLink(text, 'project')
     const href = projectId ? hrefFor.project(projectId) : null
     return div(
       clickableCardProps(href, 'project-pledge-notification thread-level-0'),
-      headerLine({ sentAt, from, toLinks, subject: 'PROJECT_PLEDGE' }),
+      headerLine({ sentAt, from, toLinks, subject: 'PROJECT_PLEDGE', msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `💚 ${i18n.pmBotProjects} · ${i18n.inboxProjectPledgedTitle}`),
       p(
         i18n.pmInhabitantWithId, ' ',
@@ -2328,13 +3131,34 @@ exports.privateView = async (messagesInput, filter) => {
     )
   }
 
+  const { renderEncryptedChip } = require('./clearnet_view');
   return template(
     i18n.private,
     section(
       div({ class: 'tags-header' },
-        h2(i18n.private),
+        div({ class: 'title-with-chip' }, h2(i18n.private), renderEncryptedChip(i18n)),
         p(i18n.privateDescription)
       ),
+      (() => {
+        const pmVis = getConfig().pmVisibility === 'mutuals' ? 'mutuals' : 'whole'
+        const pmVisLabel = pmVis === 'mutuals' ? i18n.settingsPmVisibilityMutuals : i18n.settingsPmVisibilityWhole
+        const pmVisIcon = pmVis === 'mutuals' ? '🤝' : '🌐'
+        const nextVis = pmVis === 'mutuals' ? 'whole' : 'mutuals'
+        const nextLabel = nextVis === 'mutuals'
+          ? (i18n.inboxToggleToMutuals || 'Switch to mutuals')
+          : (i18n.inboxToggleToWhole || 'Switch to whole')
+        return div({ class: 'pm-exposition inbox-exposition' },
+          span({ class: 'inbox-filters-label' }, i18n.inboxFiltersLabel || 'Filters:'),
+          span({ class: `pm-exposition-chip pm-exposition-${pmVis}` },
+            span({ class: 'pm-exposition-icon' }, pmVisIcon),
+            span({ class: 'pm-exposition-text' }, pmVisLabel)
+          ),
+          form({ method: 'POST', action: '/settings/pm-visibility?returnTo=/inbox', class: 'inbox-vis-toggle' },
+            input({ type: 'hidden', name: 'pmVisibility', value: nextVis }),
+            button({ type: 'submit', class: 'btn' }, nextLabel)
+          )
+        )
+      })(),
       div({ class: 'filters' },
         form({ method: 'GET', action: '/inbox' }, [
           button({
@@ -2343,6 +3167,12 @@ exports.privateView = async (messagesInput, filter) => {
             value: 'inbox',
             class: filter === 'inbox' ? 'filter-btn active' : 'filter-btn'
           }, `${i18n.privateInbox} (${inboxCount})`),
+          button({
+            type: 'submit',
+            name: 'filter',
+            value: 'reminders',
+            class: filter === 'reminders' ? 'filter-btn active' : 'filter-btn'
+          }, `${i18n.privateReminders || 'Reminders'} (${reminderCount})`),
           button({
             type: 'submit',
             name: 'filter',
@@ -2371,23 +3201,24 @@ exports.privateView = async (messagesInput, filter) => {
             const fromResolved = content.from || author
             const toLinks = Array.isArray(content.to) ? content.to.map(addr => linkAuthor(addr)) : []
             const level = threadLevel(subjectRaw)
+            const msgSize = msgSizeBytes(msg)
 
             if (subjectU === 'JOB_SUBSCRIBED' || subjectU === 'JOB_UNSUBSCRIBED') {
-              return JobCard({ type: subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key })
+              return JobCard({ type: subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key, msgSize })
             }
             if (subjectU === 'PROJECT_FOLLOWED' || subjectU === 'PROJECT_UNFOLLOWED') {
-              return ProjectFollowCard({ type: subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key })
+              return ProjectFollowCard({ type: subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key, msgSize })
             }
             if (subjectU === 'MARKET_SOLD') {
-              return MarketSoldCard({ sentAt, from: fromResolved, toLinks, subject: subjectRaw, text, key: msg.key })
+              return MarketSoldCard({ sentAt, from: fromResolved, toLinks, subject: subjectRaw, text, key: msg.key, msgSize })
             }
             if (subjectU === 'PROJECT_PLEDGE' || content.meta?.type === 'project-pledge') {
-              return ProjectPledgeCard({ sentAt, from: fromResolved, toLinks, content, text, key: msg.key })
+              return ProjectPledgeCard({ sentAt, from: fromResolved, toLinks, content, text, key: msg.key, msgSize })
             }
 
             return div(
               { class: 'pm-card normal-pm' },
-              headerLine({ sentAt, from: fromResolved, toLinks, subject: subjectRaw }),
+              headerLine({ sentAt, from: fromResolved, toLinks, subject: subjectRaw, msgKey: msg.key, msgSize }),
               div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text)) }),
               actions({ key: msg.key, replyId: fromResolved, subjectRaw, text })
             )
@@ -2475,7 +3306,7 @@ exports.publishCustomView = async () => {
   );
 };
 
-exports.threadView = ({ messages }) => {
+exports.threadView = ({ messages, spreadMap = null }) => {
   const rootMessage = messages[0];
   const rootAuthorName = rootMessage.value.meta.author.name;
 
@@ -2486,7 +3317,7 @@ exports.threadView = ({ messages }) => {
 
   const tpl = template(
     [`@${rootAuthorName}`],
-    div(thread(messages))
+    div(thread(messages, spreadMap))
   );
 
   return `${tpl}${
@@ -2536,7 +3367,8 @@ exports.publishView = (preview, text, contentWarning) => {
                 rows: "6",
                 cols: "50",
                 placeholder: i18n.publishWarningPlaceholder,
-                class: "publish-textarea"
+                class: "publish-textarea",
+                maxlength: "8096"
               },
               text || ""
             ),
@@ -2623,9 +3455,11 @@ const markdownMentionsToHtml = (markdownText) => {
 
   const unescapeBlob = (b) => b.replace(/&amp;/g, '&')
 
+  const escAttr = (s) => String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+
   const withImages = withBr.replace(
     /!\[([^\]]*)\]\(\s*(&amp;[^)\s]+\.sha256)\s*\)/g,
-    (_m, alt, blob) => `<img src="/blob/${encodeURIComponent(unescapeBlob(blob))}" alt="${alt}" class="post-image">`
+    (_m, alt, blob) => `<img src="/blob/${encodeURIComponent(unescapeBlob(blob))}" alt="${escAttr(alt)}" class="post-image">`
   )
 
   const withVideos = withImages.replace(
@@ -2640,7 +3474,7 @@ const markdownMentionsToHtml = (markdownText) => {
 
   const withPdfs = withAudios.replace(
     /\[pdf:([^\]]*)\]\(\s*(&amp;[^)\s]+\.sha256)\s*\)/g,
-    (_m, name, blob) => `<a class="post-pdf" href="/blob/${encodeURIComponent(unescapeBlob(blob))}" target="_blank">${name || i18n.pdfFallbackLabel || 'PDF'}</a>`
+    (_m, name, blob) => `<a class="post-pdf" href="/blob/${encodeURIComponent(unescapeBlob(blob))}" target="_blank">${escapeHtml(name || i18n.pdfFallbackLabel || 'PDF')}</a>`
   )
 
   const withMentions = withPdfs.replace(
@@ -2648,13 +3482,13 @@ const markdownMentionsToHtml = (markdownText) => {
     (_m, label, feed) => {
       const href = authorHref(feed)
       const shown = `@${String(label || "").replace(/^@+/, "")}`
-      return `<a class="mention" href="${href}">${escapeHtml(shown)}</a>`
+      return `<a class="mention" href="${escAttr(href)}">${escapeHtml(shown)}</a>`
     }
   )
 
   const withLinks = withMentions.replace(
-    /(https?:\/\/[^\s<]+)/g,
-    (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`
+    /(https?:\/\/[^\s"'<>]+)/g,
+    (u) => `<a href="${escAttr(u)}" target="_blank" rel="noopener noreferrer">${escAttr(u)}</a>`
   )
 
   return withLinks
@@ -2722,7 +3556,7 @@ const generatePreview = ({ previewData, contentWarning, action }) => {
             { class: "mention-relationship-details" },
             span(
               { class: "mentions-listing" },
-              a({ class: "user-link", href: authorHref(feed) }, `@${stripAt(feed)}`)
+              userLink(feed)
             )
           )
         )
@@ -2779,11 +3613,12 @@ const viewInfoBox = ({ viewTitle = null, viewDescription = null }) => {
 }
 //generate preview
 
-exports.likesView = async ({ messages, feed, name }) => {
+exports.likesView = async ({ messages, feed, name, spreadMap = null }) => {
   const authorLink = a(
     { href: `/author/${encodeURIComponent(feed)}` },
     "@" + name
   );
+  const getSpread = (key) => (spreadMap instanceof Map ? spreadMap.get(key) : null) || null;
 
   return template(
     ["@", name],
@@ -2791,7 +3626,7 @@ exports.likesView = async ({ messages, feed, name }) => {
       viewTitle: span(authorLink),
       viewDescription: span(i18n.spreadedDescription)
     }),
-    messages.map((msg) => post({ msg }))
+    messages.map((msg) => post({ msg, spreadInfo: getSpread(msg.key) }))
   );
 };
 
@@ -2801,6 +3636,7 @@ const messageListView = ({
   viewDescription = null,
   viewElements = null,
   aside = null,
+  spreadMap = null,
 }) => {
   const hasHeader = !!viewElements;
   const titleBlock = hasHeader
@@ -2809,14 +3645,15 @@ const messageListView = ({
         h2(viewTitle),
         p(viewDescription)
       );
+  const getSpread = (key) => (spreadMap instanceof Map ? spreadMap.get(key) : null) || null;
   return template(
     viewTitle,
     section(titleBlock),
-    messages.map((msg) => post({ msg, aside }))
+    messages.map((msg) => post({ msg, aside, spreadInfo: getSpread(msg.key) }))
   );
 };
 
-exports.popularView = ({ messages, prefix }) => {
+exports.popularView = ({ messages, prefix, spreadMap = null }) => {
   const header = div({ class: "tags-header" },
     h2(i18n.popular),
     p(i18n.popularDescription)
@@ -2824,11 +3661,12 @@ exports.popularView = ({ messages, prefix }) => {
   return messageListView({
     messages,
     viewTitle: i18n.popular,
-    viewElements: [header, prefix]
+    viewElements: [header, prefix],
+    spreadMap
   });
 };
 
-exports.extendedView = ({ messages }) => {
+exports.extendedView = ({ messages, spreadMap = null }) => {
   const header = div({ class: "tags-header" },
     h2(i18n.extended),
     p(i18n.extendedDescription)
@@ -2836,11 +3674,12 @@ exports.extendedView = ({ messages }) => {
   return messageListView({
     messages,
     viewTitle: i18n.extended,
-    viewElements: header
+    viewElements: header,
+    spreadMap
   });
 };
 
-exports.latestView = ({ messages }) => {
+exports.latestView = ({ messages, spreadMap = null }) => {
   const header = div({ class: "tags-header" },
     h2(i18n.latest),
     p(i18n.latestDescription)
@@ -2848,11 +3687,12 @@ exports.latestView = ({ messages }) => {
   return messageListView({
     messages,
     viewTitle: i18n.latest,
-    viewElements: header
+    viewElements: header,
+    spreadMap
   });
 };
 
-exports.topicsView = ({ messages, prefix }) => {
+exports.topicsView = ({ messages, prefix, spreadMap = null }) => {
   const header = div({ class: "tags-header" },
     h2(i18n.topics),
     p(i18n.topicsDescription)
@@ -2860,11 +3700,12 @@ exports.topicsView = ({ messages, prefix }) => {
   return messageListView({
     messages,
     viewTitle: i18n.topics,
-    viewElements: [header, prefix]
+    viewElements: [header, prefix],
+    spreadMap
   });
 };
 
-exports.summaryView = ({ messages }) => {
+exports.summaryView = ({ messages, spreadMap = null }) => {
   const header = div({ class: "tags-header" },
     h2(i18n.summaries),
     p(i18n.summariesDescription)
@@ -2873,7 +3714,8 @@ exports.summaryView = ({ messages }) => {
     messages,
     viewTitle: i18n.summaries,
     viewElements: header,
-    aside: true
+    aside: true,
+    spreadMap
   });
 };
 
@@ -2889,7 +3731,7 @@ exports.spreadedView = ({ messages }) => {
   });
 };
 
-exports.threadsView = ({ messages }) => {
+exports.threadsView = ({ messages, spreadMap = null }) => {
   const header = div({ class: "tags-header" },
     h2(i18n.threads),
     p(i18n.threadsDescription)
@@ -2898,7 +3740,8 @@ exports.threadsView = ({ messages }) => {
     messages,
     viewTitle: i18n.threads,
     viewElements: header,
-    aside: true
+    aside: true,
+    spreadMap
   });
 };
 
@@ -2923,7 +3766,7 @@ exports.previewSubtopicView = async ({
 };
 
 exports.subtopicView = async (
-  { messages, myFeedId },
+  { messages, myFeedId, spreadMap = null },
   preview,
   text,
   contentWarning
@@ -2933,6 +3776,7 @@ exports.subtopicView = async (
   )}`;
 
   let markdownMention;
+  const getSpread = (key) => (spreadMap instanceof Map ? spreadMap.get(key) : null) || null;
 
   const messageElements = await Promise.all(
     messages.reverse().map((message) => {
@@ -2945,7 +3789,7 @@ exports.subtopicView = async (
           markdownMention = x;
         }
       }
-      return post({ msg: message });
+      return post({ msg: message, spreadInfo: getSpread(message.key) });
     })
   );
 

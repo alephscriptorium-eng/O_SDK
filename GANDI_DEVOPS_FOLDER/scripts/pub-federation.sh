@@ -20,11 +20,10 @@ PUB_CONTAINER="${PUB_CONTAINER:-oasis-pub-scriptorium}"
 # Oasis network SHS cap — must match remote config before any SSB publish.
 # Verified in: OASIS_PUB/config/ssb/config, src/configs/server-config.json,
 # and GANDI_DEVOPS_FOLDER/backups/oasis-pub/20260501T185202Z/identity/config
-EXPECTED_SHS="zTmidAb7t+tKi7W93FIHbOvlbd936x6G/vm8e8Td//A="
+EXPECTED_SHS="H5EC+V5BU9s0lWxCkt4z8a095Sj8a6TgiLKPYi1JD7s="
 
-# solarnethub.com "La Plaza" — validated in docs/PUB/deploy.md and
-# src/configs/snh-invite-code.json
-SNH_FEED="@mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519"
+# solarnethub.com cycle-6 seed — validated in docs/PUB/deploy.md (0.8.3)
+SNH_FEED="@0qSCyK3xyL71X4qKkmf84Cb2riP6OeUqxCvbP2Z6HWs=.ed25519"
 
 PUB_HOST_OVERRIDE=""
 PUB_PORT_OVERRIDE=""

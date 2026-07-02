@@ -2,6 +2,7 @@ const pull = require("../server/node_modules/pull-stream")
 const moment = require("../server/node_modules/moment")
 const { getConfig } = require("../configs/config-manager.js")
 const categories = require("../backend/opinion_categories")
+const { buildValidatedTombstoneSet } = require('./tombstone_validator');
 const logLimit = getConfig().ssbLogStream?.limit || 1000
 
 const isValidId = (to) => /^@[A-Za-z0-9+/]+={0,2}\.ed25519$/.test(String(to || ""))
@@ -15,6 +16,12 @@ const normalizeTags = (raw) => {
   if (raw === undefined || raw === null) return []
   if (Array.isArray(raw)) return raw.map(t => String(t || "").trim()).filter(Boolean)
   return String(raw).split(",").map(t => t.trim()).filter(Boolean)
+}
+
+const CATEGORIES = ["ECONOMIC", "TIME", "TRUST"]
+const normalizeCategory = (raw) => {
+  const c = String(raw || "ECONOMIC").trim().toUpperCase()
+  return CATEGORIES.includes(c) ? c : "ECONOMIC"
 }
 
 module.exports = ({ cooler }) => {
@@ -146,6 +153,7 @@ module.exports = ({ cooler }) => {
       to: c.to,
       concept: c.concept,
       amount: c.amount,
+      category: normalizeCategory(c.category),
       createdAt: c.createdAt || new Date(node.ts).toISOString(),
       updatedAt: c.updatedAt || null,
       deadline: c.deadline,
@@ -171,7 +179,7 @@ module.exports = ({ cooler }) => {
       return tip
     },
 
-    async createTransfer(to, concept, amount, deadline, tagsRaw = []) {
+    async createTransfer(to, concept, amount, deadline, tagsRaw = [], category) {
       const ssbClient = await openSsb()
       const userId = ssbClient.id
 
@@ -184,6 +192,7 @@ module.exports = ({ cooler }) => {
       if (!dl.isValid() || dl.isBefore(moment())) throw new Error("Deadline must be in the future")
 
       const tags = normalizeTags(tagsRaw)
+      const cat = normalizeCategory(category)
       const isSelf = to === userId
       const now = new Date().toISOString()
 
@@ -193,6 +202,7 @@ module.exports = ({ cooler }) => {
         to,
         concept: String(concept || ""),
         amount: num.toFixed(6),
+        category: cat,
         createdAt: now,
         updatedAt: now,
         deadline: dl.toISOString(),
@@ -208,7 +218,7 @@ module.exports = ({ cooler }) => {
       })
     },
 
-    async updateTransferById(id, to, concept, amount, deadline, tagsRaw = []) {
+    async updateTransferById(id, to, concept, amount, deadline, tagsRaw = [], category) {
       const ssbClient = await openSsb()
       const userId = ssbClient.id
       const tipId = await this.resolveCurrentId(id)
@@ -235,6 +245,7 @@ module.exports = ({ cooler }) => {
       if (!dl.isValid() || dl.isBefore(moment())) throw new Error("Deadline must be in the future")
 
       const tags = normalizeTags(tagsRaw)
+      const cat = normalizeCategory(category !== undefined ? category : current.category)
       const isSelf = to === userId
 
       const tombstone = { type: "tombstone", target: tipId, deletedAt: new Date().toISOString(), author: userId }
@@ -246,6 +257,7 @@ module.exports = ({ cooler }) => {
         to,
         concept: String(concept || ""),
         amount: num.toFixed(6),
+        category: cat,
         createdAt: current.createdAt,
         deadline: dl.toISOString(),
         confirmedBy: [userId],

@@ -19,7 +19,7 @@ const {
   td
 } = require("../server/node_modules/hyperaxe");
 
-const { template, i18n } = require("./main_views");
+const { template, i18n, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl");
@@ -162,7 +162,7 @@ const formatSize = (bytes) => {
   return (n / (1024 * 1024)).toFixed(1) + " MB";
 };
 
-const renderTorrentTable = (torrents, filter, params = {}) => {
+const renderTorrentTable = exports.renderTorrentTable = (torrents, filter, params = {}) => {
   const returnTo = buildReturnTo(filter, params);
 
   if (!torrents.length) return p(params.q ? i18n.torrentNoMatch : i18n.noTorrents);
@@ -180,7 +180,7 @@ const renderTorrentTable = (torrents, filter, params = {}) => {
     torrents.map((t) =>
       tr(
         td(moment(t.createdAt).format("YYYY/MM/DD HH:mm")),
-        td(a({ href: `/author/${encodeURIComponent(t.author)}`, class: "user-link" }, t.author)),
+        td(userLink(t.author)),
         td(t.title || ""),
         td(formatSize(t.size)),
         td(
@@ -205,6 +205,7 @@ const renderTorrentTable = (torrents, filter, params = {}) => {
 
 const renderTorrentForm = (filter, torrentId, torrentToEdit, params = {}) => {
   const returnTo = safeText(params.returnTo) || buildReturnTo("all", params);
+  const tribeId = safeText(params.tribeId || "");
   return div(
     { class: "div-center audio-form" },
     form(
@@ -214,6 +215,7 @@ const renderTorrentForm = (filter, torrentId, torrentToEdit, params = {}) => {
         enctype: "multipart/form-data"
       },
       input({ type: "hidden", name: "returnTo", value: returnTo }),
+      tribeId ? input({ type: "hidden", name: "tribeId", value: tribeId }) : null,
       span(i18n.torrentFileLabel),
       br(),
       input({ type: "file", name: "torrent", accept: ".torrent", required: filter !== "edit" }),
@@ -267,7 +269,16 @@ exports.torrentsView = async (torrents, filter = "all", torrentId = null, params
   return template(
     title,
     section(
-      div({ class: "tags-header" }, h2(title), p(i18n.torrentsDescription)),
+      div({ class: "tags-header" },
+        h2(title),
+        p(i18n.torrentsDescription)
+      ),
+      (() => {
+        const { renderReachChip } = require('./clearnet_view');
+        const isClearnet = !!(params.viewerPrefs && params.viewerPrefs.clearnetTorrents);
+        return div({ class: "shop-title-row" }, renderReachChip(isClearnet, i18n));
+      })(),
+      br(),
       div(
         { class: "filters" },
         form(
@@ -326,16 +337,89 @@ exports.singleTorrentView = async (torrentObj, filter = "all", comments = [], pa
   const returnTo = safeText(params.returnTo) || buildReturnTo(filter, { q, sort });
 
   const title = safeText(torrentObj.title);
-  const ownerActions = renderTorrentOwnerActions(filter, torrentObj, { q, sort });
+  const { renderReachChip } = require('./clearnet_view');
+  const isClearnet = !!(params.authorPrefs && params.authorPrefs.clearnetTorrents);
 
-  const topbar = div(
-    { class: "bookmark-topbar" },
-    div({ class: "bookmark-actions" }, renderTorrentFavoriteToggle(torrentObj, returnTo), ...ownerActions)
+  const chips = [
+    renderLifespanChip(torrentObj.lifetime, i18n),
+    torrentObj.sizeBytes ? renderEcoTax(torrentObj.sizeBytes, torrentObj.key) : null
+  ].filter(Boolean);
+
+  const ownerActions = renderTorrentOwnerActions(filter, torrentObj, { q, sort });
+  const sideActions = [];
+  sideActions.push(renderTorrentFavoriteToggle(torrentObj, returnTo));
+  if (torrentObj.author && String(torrentObj.author) !== String(userId)) {
+    sideActions.push(form(
+      { method: "GET", action: "/pm" },
+      input({ type: "hidden", name: "recipients", value: torrentObj.author }),
+      button({ type: "submit", class: "filter-btn" }, i18n.privateMessage)
+    ));
+  }
+  for (const a of ownerActions) sideActions.push(a);
+
+  const tagsNode = renderTags(torrentObj.tags);
+
+  const torrentSide = div({ class: "tribe-side" },
+    div({ class: "shop-title-row" },
+      title ? h2({ class: "tribe-card-title" }, title) : null,
+      renderReachChip(isClearnet, i18n)
+    ),
+    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
+    safeText(torrentObj.description)
+      ? p({ class: "tribe-side-description" }, ...renderUrl(torrentObj.description))
+      : null,
+    tagsNode,
+    div({ class: "card-spread-centered" }, renderSpreadButton(torrentObj.key, params.spreads))
+  );
+
+  const torrentMain = div({ class: "tribe-main" },
+    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
+    torrentObj.url && torrentObj.url.startsWith("&")
+      ? div({ class: "torrent-download" },
+          a({ href: `/blob/${encodeURIComponent(torrentObj.url)}?name=${encodeURIComponent((torrentObj.title || 'download').replace(/\.torrent$/i, '') + '.torrent')}` , class: "filter-btn" }, i18n.torrentDownloadButton || "DOWNLOAD IT!")
+        )
+      : p(i18n.torrentNoFile),
+    div({ class: "voting-buttons" },
+      opinionCategories.map((category) =>
+        form(
+          { method: "POST", action: `/torrents/opinions/${encodeURIComponent(torrentObj.key)}/${category}` },
+          input({ type: "hidden", name: "returnTo", value: returnTo }),
+          button(
+            { class: "vote-btn" },
+            `${i18n[`vote${category.charAt(0).toUpperCase() + category.slice(1)}`] || category} [${
+              torrentObj.opinions?.[category] || 0
+            }]`
+          )
+        )
+      )
+    ),
+    (() => {
+      const createdTs = torrentObj.createdAt ? new Date(torrentObj.createdAt).getTime() : NaN;
+      const updatedTs = torrentObj.updatedAt ? new Date(torrentObj.updatedAt).getTime() : NaN;
+      const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
+
+      return p(
+        { class: "card-footer" },
+        span({ class: "date-link" }, `${moment(torrentObj.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
+        userLink(torrentObj.author),
+        showUpdated
+          ? span(
+              { class: "votations-comment-date" },
+              ` | ${i18n.torrentUpdatedAt}: ${moment(torrentObj.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`
+            )
+          : null
+      );
+    })(),
+    renderTorrentCommentsSection(torrentObj.key, comments, returnTo)
   );
 
   return template(
     i18n.torrentsTitle,
     section(
+      div({ class: "tags-header" },
+        h2(i18n.torrentAllSectionTitle || i18n.torrentsTitle),
+        p(i18n.torrentDescription)
+      ),
       div(
         { class: "filters" },
         form(
@@ -353,52 +437,7 @@ exports.singleTorrentView = async (torrentObj, filter = "all", comments = [], pa
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.torrentCreateButton)
         )
       ),
-      div(
-        { class: "bookmark-item card" },
-        topbar,
-        title ? h2(title) : null,
-        safeText(torrentObj.description) ? p(...renderUrl(torrentObj.description)) : null,
-        torrentObj.url && torrentObj.url.startsWith("&")
-          ? div({ class: "torrent-download" },
-              a({ href: `/blob/${encodeURIComponent(torrentObj.url)}?name=${encodeURIComponent((torrentObj.title || 'download').replace(/\.torrent$/i, '') + '.torrent')}` , class: "filter-btn" }, i18n.torrentDownloadButton || "DOWNLOAD IT!")
-            )
-          : p(i18n.torrentNoFile),
-        renderTags(torrentObj.tags),
-        br(),
-        (() => {
-          const createdTs = torrentObj.createdAt ? new Date(torrentObj.createdAt).getTime() : NaN;
-          const updatedTs = torrentObj.updatedAt ? new Date(torrentObj.updatedAt).getTime() : NaN;
-          const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
-
-          return p(
-            { class: "card-footer" },
-            span({ class: "date-link" }, `${moment(torrentObj.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
-            a({ href: `/author/${encodeURIComponent(torrentObj.author)}`, class: "user-link" }, `${torrentObj.author}`),
-            showUpdated
-              ? span(
-                  { class: "votations-comment-date" },
-                  ` | ${i18n.torrentUpdatedAt}: ${moment(torrentObj.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`
-                )
-              : null
-          );
-        })(),
-        div(
-          { class: "voting-buttons" },
-          opinionCategories.map((category) =>
-            form(
-              { method: "POST", action: `/torrents/opinions/${encodeURIComponent(torrentObj.key)}/${category}` },
-              input({ type: "hidden", name: "returnTo", value: returnTo }),
-              button(
-                { class: "vote-btn" },
-                `${i18n[`vote${category.charAt(0).toUpperCase() + category.slice(1)}`] || category} [${
-                  torrentObj.opinions?.[category] || 0
-                }]`
-              )
-            )
-          )
-        )
-      ),
-      div({ id: "comments" }, renderTorrentCommentsSection(torrentObj.key, comments, returnTo))
+      div({ class: "tribe-details" }, torrentSide, torrentMain)
     )
   );
 };

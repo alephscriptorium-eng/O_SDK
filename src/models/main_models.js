@@ -1,5 +1,6 @@
 "use strict";
 
+const { buildValidatedTombstoneSet } = require("./tombstone_validator");
 const debug = require("../server/node_modules/debug")("oasis");
 const { isRoot, isReply: isComment } = require("../server/node_modules/ssb-thread-schema");
 const lodash = require("../server/node_modules/lodash");
@@ -14,6 +15,7 @@ const fs = require('fs/promises');
 const os = require('os');
 
 const ssbRef = require("../server/node_modules/ssb-ref");
+const nameCache = require('../backend/nameCache');
 
 const { getConfig } = require('../configs/config-manager.js');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
@@ -296,16 +298,63 @@ models.about = {
     });
     return result === true;
   },
+  deviceSource: async (feedId) => {
+    const result = await getAbout({ key: "deviceSource", feedId });
+    return typeof result === 'string' && result.trim() ? result : null;
+  },
+  visibilityPrefs: async (feedId) => {
+    const result = await getAbout({ key: "visibilityPrefs", feedId });
+    if (!result || typeof result !== 'object') return null;
+    return {
+      activity: result.activity === true,
+      device:   result.device   === true,
+      karma:    result.karma !== false,
+      ubi:      result.ubi      === true,
+      wallet:   result.wallet   === true,
+      ecoTax:   result.ecoTax   !== false,
+      larpSign: result.larpSign === true,
+      gpg:      result.gpg      !== false,
+      clearnet: result.clearnet === true,
+      fediverse: result.fediverse === true,
+      fediverseHandle: typeof result.fediverseHandle === 'string' ? result.fediverseHandle : '',
+      clearnetShops:     result.clearnetShops     === true,
+      clearnetJobs:      result.clearnetJobs      === true,
+      clearnetEvents:    result.clearnetEvents    === true,
+      clearnetProjects:  result.clearnetProjects  === true,
+      clearnetPosts:     result.clearnetPosts     === true,
+      clearnetAudios:    result.clearnetAudios    === true,
+      clearnetVideos:    result.clearnetVideos    === true,
+      clearnetImages:    result.clearnetImages    === true,
+      clearnetDocuments: result.clearnetDocuments === true,
+      clearnetTorrents:  result.clearnetTorrents  === true,
+      clearnetBookmarks: result.clearnetBookmarks === true,
+      profileShops:      result.profileShops      === true,
+      profileJobs:       result.profileJobs       === true,
+      profileEvents:     result.profileEvents     === true,
+      profileProjects:   result.profileProjects   === true,
+      profilePosts:      result.profilePosts      === true,
+      profileAudios:     result.profileAudios     === true,
+      profileVideos:     result.profileVideos     === true,
+      profileImages:     result.profileImages     === true,
+      profileDocuments:  result.profileDocuments  === true,
+      profileTorrents:   result.profileTorrents   === true,
+      profileBookmarks:  result.profileBookmarks  === true
+    };
+  },
   name: async (feedId) => {
     if (isPublic && (await models.about.publicWebHosting(feedId)) === false) {
       return "Redacted";
     }
-    return (
-      (await getAbout({
-        key: "name",
-        feedId,
-      })) || feedId.slice(1, 1 + 8)
-    );
+    const resolved = await getAbout({ key: "name", feedId });
+    if (resolved) nameCache.set(feedId, resolved, Date.now());
+    return resolved || feedId.slice(1, 1 + 8);
+  },
+  nameSync: (feedId) => {
+    if (!feedId) return null;
+    const cached = nameCache.get(feedId);
+    if (cached) return cached;
+    const local = feeds_to_name[feedId];
+    return local && local.name ? local.name : null;
   },
   named: (name) => {
     let found = [];
@@ -353,11 +402,25 @@ models.about = {
       })) || "";
     return raw;
   },
+  gpgFingerprint: async (feedId) => {
+    if (isPublic && (await models.about.publicWebHosting(feedId)) === false) {
+      return "";
+    }
+    const raw = await getAbout({ key: "gpgFingerprint", feedId });
+    return typeof raw === "string" ? raw : "";
+  },
+  gpgBlobId: async (feedId) => {
+    if (isPublic && (await models.about.publicWebHosting(feedId)) === false) {
+      return "";
+    }
+    const raw = await getAbout({ key: "gpgBlobId", feedId });
+    return typeof raw === "string" ? raw : "";
+  },
   _startNameWarmup() {
     const abortable = pullAbortable();
     let intervals = [];
     cooler.open().then((ssb) => {
-      console.time("Warmup-time");
+      const _warmupStart = Date.now();
       pull(
         ssb.query.read({
           live: true,
@@ -377,7 +440,9 @@ models.about = {
         abortable,
         pull.filter((msg) => {
           if (msg.sync && msg.sync === true) {
-            console.timeEnd("Warmup-time");
+            const _elapsed = Date.now() - _warmupStart;
+            const _fmt = _elapsed >= 1000 ? `${(_elapsed/1000).toFixed(2)}s` : `${_elapsed}ms`;
+            try { require('../server/ssb_metadata').setWarmupTime(_fmt); } catch (_) { console.log(`- Warmup-time: ${_fmt}`); }
             transposeLookupTable();
             intervals.push(setInterval(transposeLookupTable, 1000 * 60)); 
             return false;
@@ -394,9 +459,11 @@ models.about = {
           if (typeof currentEntry == "undefined") {
             dirty = true;
             feeds_to_name[feed] = newEntry;
+            nameCache.set(feed, name, ts);
           } else if (currentEntry.ts < ts) {
             dirty = true;
             feeds_to_name[feed] = newEntry;
+            nameCache.set(feed, name, ts);
           }
         }, (err) => {
           console.error(err);
@@ -598,14 +665,97 @@ models.meta = {
           pull.take(1),
           pull.collect((err, [entries]) => {
             if (err) return reject(err);
-            resolve(entries);
+            resolve(entries || []);
           })
         );
       });
     },
     connectedPeers: async () => {
-      const peers = await models.meta.peers();
-      return peers.filter(([_, data]) => data.state === "connected");
+      const ssb = await cooler.open();
+      const connEntries = await models.meta.peers();
+      const seen = new Set();
+      const result = [];
+
+      const lookupAddr = (key) => {
+        for (const [addr, data] of connEntries) {
+          if (data && data.key === key) return addr;
+        }
+        return null;
+      };
+
+      const lookupConnData = (key) => {
+        for (const [, data] of connEntries) {
+          if (data && data.key === key) return data;
+        }
+        return null;
+      };
+
+      try {
+        const livePeers = ssb && ssb.peers && typeof ssb.peers === "object" ? ssb.peers : {};
+        for (const rawKey of Object.keys(livePeers)) {
+          if (!rawKey || rawKey === ssb.id) continue;
+          const rpcs = livePeers[rawKey];
+          if (!Array.isArray(rpcs) || rpcs.length === 0) continue;
+          const key = canonicalizePubId(rawKey);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const existing = lookupConnData(key) || {};
+          const addr = (rpcs[0] && rpcs[0].stream && rpcs[0].stream.address) || lookupAddr(key) || `live:${key}`;
+          result.push([addr, { ...existing, key, state: "connected", source: "rpc" }]);
+        }
+      } catch {}
+
+      for (const [addr, data] of connEntries) {
+        if (!data || data.state !== "connected" || !data.key || seen.has(data.key)) continue;
+        seen.add(data.key);
+        result.push([addr, data]);
+      }
+
+      try {
+        const gp = ssb.gossip && typeof ssb.gossip.peers === "function" ? ssb.gossip.peers() : [];
+        const RECENT_MS = 30 * 60 * 1000;
+        const now = Date.now();
+        for (const p of (gp || [])) {
+          if (!p || !p.key) continue;
+          const key = canonicalizePubId(p.key);
+          if (seen.has(key)) continue;
+          const isConnected = p.state === "connected";
+          const recentlyConnected =
+            !isConnected &&
+            (p.failure === 0 || p.failure === undefined || p.failure === null) &&
+            typeof p.stateChange === "number" &&
+            (now - p.stateChange) < RECENT_MS;
+          if (!isConnected && !recentlyConnected) continue;
+          let addr = p.address;
+          if (!addr && p.host && p.port) {
+            const core = String(p.key).replace(/^@/, "").replace(/\.ed25519$/, "");
+            addr = `net:${p.host}:${p.port}~shs:${core}`;
+          }
+          if (!addr) continue;
+          seen.add(key);
+          result.push([addr, { ...p, key, state: "connected", source: isConnected ? "gossip" : "recent" }]);
+        }
+      } catch {}
+
+      try {
+        const myId = ssb.id;
+        const status = ssb.ebt && typeof ssb.ebt.peerStatus === "function" ? ssb.ebt.peerStatus(myId) : null;
+        const ebtPeers = (status && status.peers) ? Object.keys(status.peers) : [];
+        for (const rawKey of ebtPeers) {
+          if (!rawKey) continue;
+          const key = canonicalizePubId(rawKey);
+          if (seen.has(key)) continue;
+          let addr = lookupAddr(key);
+          if (!addr) {
+            const core = String(key).replace(/^@/, "").replace(/\.ed25519$/, "");
+            addr = `ebt:${core}`;
+          }
+          seen.add(key);
+          result.push([addr, { key, state: "connected", source: "ebt" }]);
+        }
+      } catch {}
+
+      return result;
     },
     onlinePeers: async () => {
       const entries = await models.meta.connectedPeers();
@@ -624,7 +774,44 @@ models.meta = {
           }
         }
       } catch {}
-      const allDbPeers = await enrichEntries(snapshot);
+      let stagedEntries = [];
+      try {
+        if (ssb.conn && typeof ssb.conn.stagedPeers === 'function') {
+          stagedEntries = await new Promise((resolve) => {
+            try {
+              pull(
+                ssb.conn.stagedPeers(),
+                pull.take(1),
+                pull.collect((err, results) => {
+                  if (err || !results || !results[0]) return resolve([]);
+                  resolve(Array.isArray(results[0]) ? results[0] : []);
+                })
+              );
+            } catch (_) { resolve([]); }
+          });
+        }
+      } catch {}
+      const dbKeys = new Set(
+        snapshot
+          .map(([, d]) => d && d.key ? canonicalizePubId(d.key) : null)
+          .filter(Boolean)
+      );
+      const mergedSnapshot = snapshot.slice();
+      for (const entry of stagedEntries) {
+        const data = Array.isArray(entry) ? entry[1] : entry;
+        const addr = Array.isArray(entry) ? entry[0] : null;
+        if (!data || !data.key) continue;
+        const ck = canonicalizePubId(data.key);
+        if (dbKeys.has(ck)) continue;
+        let host = data.host, port = data.port;
+        if ((!host || !port) && addr) {
+          const m = String(addr).match(/^net:([^:]+):(\d+)/);
+          if (m) { host = host || m[1]; port = port || Number(m[2]); }
+        }
+        mergedSnapshot.push([addr, { key: data.key, host, port, source: data.type || 'staged', verified: data.verified }]);
+        dbKeys.add(ck);
+      }
+      const allDbPeers = await enrichEntries(mergedSnapshot);
       for (const [, peerData] of allDbPeers) {
         if ((!peerData.announcers || peerData.announcers === 0) && gossipMap.has(peerData.key)) {
           const gossipEntry = gossipMap.get(peerData.key);
@@ -632,15 +819,13 @@ models.meta = {
         }
       }
       const connectedEntries = await models.meta.connectedPeers();
-      const onlineKeys = new Set(connectedEntries.map(([remote]) => {
-        const m = /~shs:([^=]+)=/.exec(remote);
-        if (!m) return null;
-        let core = m[1].replace(/-/g, '+').replace(/_/g, '/');
-        if (!core.endsWith('=')) core += '=';
-        return `@${core}.ed25519`;
-      }).filter(Boolean));
-      const discoveredPeers = allDbPeers.filter(([, d]) => !onlineKeys.has(d.key));
-      const discoveredIds = new Set(allDbPeers.map(([, d]) => d.key));
+      const onlineKeys = new Set(
+        connectedEntries
+          .map(([, d]) => d && d.key ? canonicalizePubId(d.key) : null)
+          .filter(Boolean)
+      );
+      const discoveredPeers = allDbPeers.filter(([, d]) => !onlineKeys.has(canonicalizePubId(d.key)));
+      const discoveredIds = new Set(allDbPeers.map(([, d]) => canonicalizePubId(d.key)));
       const ebtList = await loadPeersFromEbt();
       const ebtMap = new Map(ebtList.map(e => [e.pub, e.users]));
       const unknownPeers = [];
@@ -1707,8 +1892,72 @@ const post = {
         });
       });
     },
-    publishProfileEdit: async ({ name, description, image }) => {
+    publishFediverseHandle: async (handle) => {
       const ssb = await cooler.open();
+      const current = (await models.about.visibilityPrefs(ssb.id).catch(() => null)) || {};
+      const h = String(handle || '');
+      const prefs = { ...current, fediverseHandle: h };
+      if (h === '') prefs.fediverse = false;
+      return new Promise((resolve, reject) => {
+        ssb.publish({ type: "about", about: ssb.id, visibilityPrefs: prefs }, (err, msg) => err ? reject(err) : resolve(msg));
+      });
+    },
+    publishProfileEdit: async ({ name, description, image, visibilityPrefs, gpgFingerprint, gpgBlob, gpgBlobId }) => {
+      const ssb = await cooler.open();
+      const normalizePrefs = (raw) => {
+        const r = raw || {};
+        return {
+          activity: r.activity === true,
+          device:   r.device   === true,
+          karma:    r.karma !== false,
+          ubi:      r.ubi      === true,
+          wallet:   r.wallet   === true,
+          ecoTax:   r.ecoTax   !== false,
+          larpSign: r.larpSign === true,
+          gpg:      r.gpg      !== false,
+          clearnet: r.clearnet === true,
+          fediverse: r.fediverse === true,
+          fediverseHandle: typeof r.fediverseHandle === 'string' ? r.fediverseHandle : '',
+          clearnetShops:     r.clearnetShops     === true,
+          clearnetJobs:      r.clearnetJobs      === true,
+          clearnetEvents:    r.clearnetEvents    === true,
+          clearnetProjects:  r.clearnetProjects  === true,
+          clearnetPosts:     r.clearnetPosts     === true,
+          clearnetAudios:    r.clearnetAudios    === true,
+          clearnetVideos:    r.clearnetVideos    === true,
+          clearnetImages:    r.clearnetImages    === true,
+          clearnetDocuments: r.clearnetDocuments === true,
+          clearnetTorrents:  r.clearnetTorrents  === true,
+          clearnetBookmarks: r.clearnetBookmarks === true,
+          profileShops:      r.profileShops      === true,
+          profileJobs:       r.profileJobs       === true,
+          profileEvents:     r.profileEvents     === true,
+          profileProjects:   r.profileProjects   === true,
+          profilePosts:      r.profilePosts      === true,
+          profileAudios:     r.profileAudios     === true,
+          profileVideos:     r.profileVideos     === true,
+          profileImages:     r.profileImages     === true,
+          profileDocuments:  r.profileDocuments  === true,
+          profileTorrents:   r.profileTorrents   === true,
+          profileBookmarks:  r.profileBookmarks  === true
+        };
+      };
+      const prefs = visibilityPrefs ? normalizePrefs(visibilityPrefs) : undefined;
+      const baseFields = { type: "about", about: ssb.id, name, description };
+      const curTheme = getConfig()?.themes?.current;
+      baseFields.deviceSource = curTheme === 'OasisKIT' ? 'KIT' : (curTheme === 'OasisMobile' || process.env.OASIS_MOBILE === '1') ? 'MOBILE' : 'DESKTOP';
+      if (prefs) baseFields.visibilityPrefs = prefs;
+      if (gpgFingerprint !== undefined) baseFields.gpgFingerprint = String(gpgFingerprint || "");
+      let resolvedBlobId = gpgBlobId;
+      if (gpgBlob && gpgBlob.length > 0) {
+        resolvedBlobId = await new Promise((resolve, reject) => {
+          pull(
+            pull.values([gpgBlob]),
+            ssb.blobs.add((err, id) => err ? reject(err) : resolve(id))
+          );
+        });
+      }
+      if (resolvedBlobId !== undefined) baseFields.gpgBlobId = String(resolvedBlobId || "");
       if (image && image.length > 0) {
         const megabyte = Math.pow(2, 20);
         const maxSize = 50 * megabyte;
@@ -1722,13 +1971,7 @@ const post = {
               if (err) {
                 reject(err);
               } else {
-                const content = {
-                  type: "about",
-                  about: ssb.id,
-                  name,
-                  description,
-                  image: blobId,
-                };
+                const content = { ...baseFields, image: blobId };
                 ssb.publish(content, (err, msg) => {
                   if (err) reject(err);
                   else resolve(msg);
@@ -1738,9 +1981,8 @@ const post = {
           );
         });
       } else {
-        const body = { type: "about", about: ssb.id, name, description };
         return new Promise((resolve, reject) => {
-          ssb.publish(body, (err, msg) => {
+          ssb.publish(baseFields, (err, msg) => {
             if (err) reject(err);
             else resolve(msg);
           });
@@ -1886,11 +2128,7 @@ const post = {
           return null;
         }
       }).filter(Boolean);
-      const tombstoneTargets = new Set(
-        decryptedMessages
-          .filter(msg => msg.value?.content?.type === 'tombstone')
-          .map(msg => msg.value.content.target)
-      );
+      const tombstoneTargets = buildValidatedTombstoneSet(decryptedMessages);
       return decryptedMessages.filter(msg => {
         if (tombstoneTargets.has(msg.key)) return false;
           const content = msg.value?.content;
@@ -1937,5 +2175,173 @@ models.vote = {
       });
   },
 };
+
+models.lifetime = (() => {
+  const FRESH_GREEN_DAYS = 14;
+  const FRESH_ORANGE_DAYS = 182.5;
+  const norm = (t) => (t && t < 1e12 ? t * 1000 : t || 0);
+  const bucketOf = (ts) => {
+    if (!ts) return { bucket: 'red', range: '≥6m' };
+    const days = Math.max(0, Date.now() - ts) / 86400000;
+    if (days < FRESH_GREEN_DAYS) return { bucket: 'green', range: '<2w' };
+    if (days < FRESH_ORANGE_DAYS) return { bucket: 'orange', range: '2w–6m' };
+    return { bucket: 'red', range: '≥6m' };
+  };
+  const lastAuthorTs = async (feedId) => {
+    if (!feedId) return null;
+    const ssbClient = await cooler.open();
+    return new Promise((resolve) => {
+      try {
+        pull(
+          ssbClient.createUserStream({ id: feedId, reverse: true }),
+          pull.filter(m => m && m.value && m.value.content && m.value.content.type !== 'tombstone'),
+          pull.take(1),
+          pull.collect((err, arr) => {
+            if (err || !arr || !arr.length) return resolve(null);
+            const m = arr[0];
+            resolve(norm((m.value && m.value.timestamp) || m.timestamp) || null);
+          })
+        );
+      } catch (_) { resolve(null); }
+    });
+  };
+  const lastBacklinkTs = async (msgKey) => {
+    if (!msgKey) return null;
+    const ssbClient = await cooler.open();
+    return new Promise((resolve) => {
+      try {
+        pull(
+          ssbClient.backlinks.read({ query: [{ $filter: { dest: msgKey } }], index: 'DTA', reverse: true, limit: 1 }),
+          pull.collect((err, arr) => {
+            if (err || !arr || !arr.length) return resolve(null);
+            const m = arr[0];
+            resolve(norm((m.value && m.value.timestamp) || m.timestamp) || null);
+          })
+        );
+      } catch (_) { resolve(null); }
+    });
+  };
+  return {
+    bucket: bucketOf,
+    lastAuthorTs,
+    lastBacklinkTs,
+    async forContent({ key, author, createdAt } = {}) {
+      const [authorTs, interactionTs] = await Promise.all([
+        author ? lastAuthorTs(author) : null,
+        key ? lastBacklinkTs(key) : null
+      ]);
+      const createdTs = createdAt ? new Date(createdAt).getTime() : null;
+      const candidates = [authorTs, interactionTs, createdTs].filter(x => typeof x === 'number' && x > 0);
+      const lastTs = candidates.length ? Math.max(...candidates) : null;
+      const { bucket, range } = bucketOf(lastTs);
+      return { bucket, range, lastTs, authorTs, interactionTs, createdTs };
+    },
+    async enrichAndFilter(items, opts = {}) {
+      const { includeDead = false, getKey = (x) => x.id || x.key, getAuthor = (x) => x.author, getCreatedAt = (x) => x.createdAt } = opts;
+      const authorCache = new Map();
+      const out = [];
+      for (const item of items) {
+        const author = getAuthor(item);
+        let authorTs;
+        if (author && authorCache.has(author)) {
+          authorTs = authorCache.get(author);
+        } else {
+          authorTs = author ? await lastAuthorTs(author) : null;
+          if (author) authorCache.set(author, authorTs);
+        }
+        const key = getKey(item);
+        const interactionTs = key ? await lastBacklinkTs(key) : null;
+        const createdAt = getCreatedAt(item);
+        const createdTs = createdAt ? new Date(createdAt).getTime() : null;
+        const candidates = [authorTs, interactionTs, createdTs].filter(x => typeof x === 'number' && x > 0);
+        const lastTs = candidates.length ? Math.max(...candidates) : null;
+        const { bucket, range } = bucketOf(lastTs);
+        if (!includeDead && bucket === 'red') continue;
+        out.push({ ...item, lifetime: { bucket, range, lastTs, authorTs, interactionTs, createdTs } });
+      }
+      return out;
+    }
+  };
+})();
+
+const ownSpreadsByTarget = new Map();
+const ownTombstoned = new Set();
+models.spreads = {
+  noteOwnSpread: (target, key) => {
+    if (!target || !key) return;
+    const set = ownSpreadsByTarget.get(target) || new Set();
+    set.add(key);
+    ownSpreadsByTarget.set(target, set);
+  },
+  noteOwnTombstone: (key) => {
+    if (key) ownTombstoned.add(key);
+  },
+  getCachedActiveOwnSpreadKey: (target) => {
+    if (!target) return null;
+    const set = ownSpreadsByTarget.get(target);
+    if (!set || set.size === 0) return null;
+    for (const k of Array.from(set).reverse()) {
+      if (!ownTombstoned.has(k)) return k;
+    }
+    return null;
+  },
+  forMessages: async (keys) => {
+    const out = new Map();
+    const list = Array.isArray(keys) ? keys.filter(k => typeof k === 'string' && k.startsWith('%')) : [];
+    const results = await Promise.all(list.map(k => models.spreads.forMessage(k).catch(() => null)));
+    list.forEach((k, i) => { if (results[i]) out.set(k, results[i]); });
+    return out;
+  },
+  forMessage: async (msgKey) => {
+    if (!msgKey || typeof msgKey !== 'string') return { count: 0, voters: [], alreadySpread: false };
+    const ssb = await cooler.open();
+    const myId = ssb.id;
+    const refs = await new Promise((resolve) => {
+      pull(
+        ssb.backlinks.read({
+          query: [{ $filter: { dest: msgKey } }],
+          index: 'DTA',
+          meta: true
+        }),
+        pull.filter(ref => {
+          if (!ref || !ref.value || !ref.value.content) return false;
+          const c = ref.value.content;
+          if (c.type === 'spread' && c.link === msgKey) return true;
+          if (c.type === 'vote' && c.vote && c.vote.link === msgKey && Number(c.vote.value) === 1) {
+            const br = Array.isArray(c.branch) ? c.branch : (typeof c.branch === 'string' ? [c.branch] : []);
+            return br.includes(msgKey);
+          }
+          return false;
+        }),
+        pull.collect((err, arr) => resolve(!err && arr ? arr : []))
+      );
+    });
+    const tombstoned = new Set(ownTombstoned);
+    await Promise.all(refs.map(r => new Promise((resolve) => {
+      pull(
+        ssb.backlinks.read({ query: [{ $filter: { dest: r.key } }], meta: true }),
+        pull.filter(t => t && t.value && t.value.content && t.value.content.type === 'tombstone' && t.value.content.target === r.key),
+        pull.collect((err, ts) => { if (!err && ts && ts.length) tombstoned.add(r.key); resolve(); })
+      );
+    })));
+    const byAuthor = new Map();
+    for (const r of refs) {
+      if (tombstoned.has(r.key)) continue;
+      byAuthor.set(r.value.author, true);
+    }
+    const ownExtra = ownSpreadsByTarget.get(msgKey);
+    if (ownExtra && ownExtra.size > 0) {
+      const hasNonTombstoned = Array.from(ownExtra).some(k => !tombstoned.has(k));
+      if (hasNonTombstoned) byAuthor.set(myId, true);
+    }
+    const authors = Array.from(byAuthor.keys());
+    const voters = await Promise.all(authors.map(async (k) => ({
+      key: k,
+      name: await models.about.name(k).catch(() => k.slice(1, 9))
+    })));
+    return { count: voters.length, voters, alreadySpread: authors.includes(myId) };
+  }
+};
+
 return models;
 };

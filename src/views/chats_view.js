@@ -1,5 +1,6 @@
 const { div, h2, p, section, button, form, a, span, textarea, br, input, label, select, option, img, table, tr, td, ul, li } = require("../server/node_modules/hyperaxe")
-const { template, i18n } = require("./main_views")
+const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton } = require("./main_views")
+const { renderEncryptedChip } = require("./clearnet_view")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderUrl } = require("../backend/renderUrl")
@@ -48,9 +49,22 @@ const renderModeButtons = (currentFilter) =>
     )
   )
 
+const renderChatStatusChip = (status) => {
+  const s = String(status || "OPEN").toUpperCase()
+  const variant = s === "CLOSED" ? "closed" : s === "INVITE-ONLY" ? "whole" : "mutuals"
+  const icon = s === "CLOSED" ? "\u2717" : s === "INVITE-ONLY" ? "\uD83D\uDD11" : "\u2713"
+  const label = s === "CLOSED" ? i18n.chatStatusClosed
+    : s === "INVITE-ONLY" ? i18n.chatStatusInviteOnly
+    : i18n.chatStatusOpen
+  return renderStateChip(variant, icon, label)
+}
+
 const renderChatCard = (chat, filter, params = {}) => {
-  const statusLabel = chat.status === "CLOSED" ? i18n.chatStatusClosed :
-    chat.status === "INVITE-ONLY" ? i18n.chatStatusInviteOnly : i18n.chatStatusOpen
+  const chips = [
+    renderChatStatusChip(chat.status),
+    renderEncryptedChip(i18n),
+    renderLifespanChip(chat.lifetime, i18n)
+  ].filter(Boolean)
 
   return div({ class: "tribe-card" },
     div({ class: "tribe-card-image-wrapper" },
@@ -59,20 +73,20 @@ const renderChatCard = (chat, filter, params = {}) => {
       )
     ),
     div({ class: "tribe-card-body" },
-      h2({ class: "tribe-card-title" },
-        a({ href: `/chats/${encodeURIComponent(chat.key)}` }, "\uD83D\uDD12 " + (chat.title || i18n.chatUntitled))
-      ),
-      chat.description ? p({ class: "tribe-card-description" }, chat.description) : null,
-      br(),
-      table({ class: "tribe-info-table" },
-        tr(
-          td({ class: "tribe-info-label" }, i18n.chatStatus),
-          td({ class: "tribe-info-value", colspan: "3" }, statusLabel)
+      div({ class: "shop-title-row" },
+        h2({ class: "tribe-card-title" },
+          a({ href: `/chats/${encodeURIComponent(chat.key)}` }, chat.title || i18n.chatUntitled)
         )
       ),
+      chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
+      chat.description ? p({ class: "tribe-card-description" }, chat.description) : null,
       div({ class: "tribe-card-members" },
         span({ class: "tribe-members-count" }, `${i18n.chatParticipants}: ${safeArr(chat.members).length}`)
       ),
+      (() => {
+        const btn = renderSpreadButton(chat.key, (params && params.spreadMap && params.spreadMap.get(chat.key)) || (params && params.spreads));
+        return btn ? div({ class: "card-spread-left" }, btn) : null;
+      })(),
       div({ class: "visit-btn-centered" },
         a({ href: `/chats/${encodeURIComponent(chat.key)}`, class: "filter-btn" }, i18n.chatVisitChat)
       )
@@ -131,9 +145,7 @@ const renderMessage = (msg, chatAuthor) => {
   const isSelf = String(msg.author) === String(userId)
   const dateStr = moment(msg.createdAt).format("YYYY/MM/DD HH:mm")
   const shortId = msg.author ? "@" + msg.author.slice(1, 9) + "\u2026" : "?"
-  const authorLink = msg.author
-    ? a({ href: `/author/${encodeURIComponent(msg.author)}`, class: "user-link" }, shortId)
-    : span("?")
+  const authorLink = msg.author ? userLink(msg.author) : span("?")
 
   const imageNode = msg.image ? renderMediaBlob(msg.image, null, { class: "chat-message-image" }) : null
 
@@ -213,20 +225,32 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
   const q = safeText(params.q || "")
   const returnTo = safeText(params.returnTo) || buildReturnTo(filter, { q })
   const isAuthor = String(chat.author) === String(userId)
-  const isMember = safeArr(chat.members).includes(userId)
+  const isMember = safeArr(chat.members).includes(userId) || (!!chat.tribeId && !!chat.isTribeMember)
   const fullShareUrl = `/chats/${encodeURIComponent(chat.key)}`
   const isRestrictedInviteOnly = !isMember && !isAuthor && chat.status === "INVITE-ONLY"
 
   const statusLabel = chat.status === "CLOSED" ? i18n.chatStatusClosed :
     chat.status === "INVITE-ONLY" ? i18n.chatStatusInviteOnly : i18n.chatStatusOpen
 
+  const detailChips = [
+    renderChatStatusChip(chat.status),
+    renderEncryptedChip(i18n),
+    renderLifespanChip(chat.lifetime, i18n)
+  ].filter(Boolean)
   const chatSide = div({ class: "tribe-side" },
-    h2("\uD83D\uDD12 " + (chat.title || i18n.chatUntitled)),
+    div({ class: "shop-title-row" },
+      h2({ class: "tribe-card-title" }, chat.title || i18n.chatUntitled)
+    ),
+    detailChips.length ? div({ class: "card-chips-row" }, ...detailChips) : null,
     renderMediaBlob(chat.image, "/assets/images/default-avatar.png", { class: "tribe-detail-image" }),
     div({ class: "shop-share" },
       span({ class: "tribe-info-label" }, `${i18n.chatShareUrl}: `),
       input({ type: "text", value: fullShareUrl, readonly: true, class: "shop-share-input" })
     ),
+    (() => {
+      const btn = renderSpreadButton(chat.key, params.spreads);
+      return btn ? div({ class: "card-spread-centered" }, btn) : null;
+    })(),
     div({ class: "tribe-card-members" },
       span({ class: "tribe-members-count" }, `${i18n.chatParticipants}: ${safeArr(chat.members).length}`)
     ),
@@ -237,12 +261,8 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
       ),
       isRestrictedInviteOnly ? null : tr(
         td({ class: "tribe-info-value", colspan: "4" },
-          a({ href: `/author/${encodeURIComponent(chat.author)}`, class: "user-link" }, chat.author)
+          userLink(chat.author)
         )
-      ),
-      tr(
-        td({ class: "tribe-info-label" }, i18n.chatStatus),
-        td({ class: "tribe-info-value", colspan: "3" }, statusLabel)
       ),
       !isRestrictedInviteOnly && chat.category ? tr(
         td({ class: "tribe-info-label" }, i18n.chatCategoryLabel),
@@ -250,11 +270,11 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
       ) : null
     ),
     isRestrictedInviteOnly ? null : div({ class: "tribe-side-actions" },
-      isAuthor
+      isAuthor && chat.status === "INVITE-ONLY"
         ? form({ method: "POST", action: `/chats/generate-invite` },
             input({ type: "hidden", name: "chatId", value: chat.key }),
             input({ type: "hidden", name: "returnTo", value: returnTo }),
-            button({ type: "submit", class: "tribe-action-btn" }, i18n.chatGenerateCode)
+            button({ type: "submit", class: "tribe-action-btn" }, i18n.tribeGenerateInvite)
           )
         : null,
       form(
@@ -281,26 +301,19 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
         : null,
       isAuthor
         ? form({ method: "POST", action: `/chats/delete/${encodeURIComponent(chat.key)}` },
-            button({ type: "submit", class: "tribe-action-btn" }, i18n.chatDelete)
+            button({ type: "submit", class: "tribe-action-btn danger-btn" }, i18n.chatDelete)
           )
         : null,
       !isAuthor && isMember
         ? form({ method: "POST", action: `/chats/leave/${encodeURIComponent(chat.key)}` },
             input({ type: "hidden", name: "returnTo", value: returnTo }),
-            button({ type: "submit", class: "tribe-action-btn" }, i18n.chatLeave)
+            button({ type: "submit", class: "tribe-action-btn" }, i18n.tribeLeaveButton)
           )
         : null
     ),
     !isMember && chat.status === "INVITE-ONLY"
       ? div({ class: "chat-join-section" },
-          div({ class: "chat-invite-form" },
-            form({ method: "POST", action: "/chats/join-code" },
-              input({ type: "hidden", name: "returnTo", value: `/chats/${encodeURIComponent(chat.key)}` }),
-              label(i18n.chatInviteCodeLabel), br(),
-              input({ type: "text", name: "code", required: true, placeholder: i18n.chatInviteCode }), br(), br(),
-              button({ type: "submit", class: "filter-btn" }, i18n.chatJoinByInvite)
-            )
-          )
+          a({ class: "tribe-action-btn", href: "/invites#invites-chats" }, i18n.tribeEnterInvite)
         )
       : null,
     !isRestrictedInviteOnly && safeArr(chat.tags).length
@@ -328,9 +341,12 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
         )
       : null,
     div({ class: "chat-messages-list" },
-      msgList.length
-        ? msgList.map(msg => renderMessage(msg, chat.author))
-        : p({ class: "chat-no-messages" }, i18n.chatNoMessages)
+      (() => {
+        const visible = msgList.filter(msg => (msg.text && String(msg.text).trim()) || msg.image)
+        return visible.length
+          ? visible.map(msg => renderMessage(msg, chat.author))
+          : p({ class: "chat-no-messages" }, i18n.chatNoMessages)
+      })()
     )
   )
 

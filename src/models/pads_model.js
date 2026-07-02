@@ -1,6 +1,7 @@
 const pull = require("../server/node_modules/pull-stream")
 const crypto = require("crypto")
 const fs = require("fs")
+const { buildValidatedTombstoneSet } = require('./tombstone_validator')
 const path = require("path")
 const { getConfig } = require("../configs/config-manager.js")
 const logLimit = getConfig().ssbLogStream?.limit || 1000
@@ -15,21 +16,55 @@ const INVITE_SALT = "SolarNET.HuB-pads"
 const INVITE_BYTES = 16
 const MEMBER_COLORS = ["#e74c3c","#3498db","#2ecc71","#f39c12","#9b59b6","#1abc9c","#e67e22","#e91e63","#00bcd4","#8bc34a"]
 
-module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
+module.exports = ({ cooler, cipherModel, tribeCrypto, padCrypto, tribesModel }) => {
   let ssb
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb }
 
+  const ownCrypto = padCrypto || tribeCrypto
+  const lookupKey = (rid) => (ownCrypto && ownCrypto.getKey(rid)) || (tribeCrypto && tribeCrypto.getKey(rid)) || null
+  const lookupKeys = (rid) => {
+    const a = (ownCrypto && ownCrypto.getKeys(rid)) || []
+    if (a.length) return a
+    return (tribeCrypto && tribeCrypto.getKeys(rid)) || []
+  }
+  const lookupGen = (rid) => ((ownCrypto && ownCrypto.getGen(rid)) || (tribeCrypto && tribeCrypto.getGen(rid)) || 0)
+
   let keyringPath = null
-  const getKeyring = () => {
+  let migratedToTribeCrypto = false
+  const getLegacyKeyringPath = () => {
     if (!keyringPath) {
       const ssbConfig = require("../server/node_modules/ssb-config/inject")()
       keyringPath = path.join(ssbConfig.path, "pad-keys.json")
     }
-    try { return JSON.parse(fs.readFileSync(keyringPath, "utf8")) } catch (e) { return {} }
+    return keyringPath
   }
-  const saveKeyring = (kr) => fs.writeFileSync(keyringPath, JSON.stringify(kr, null, 2), "utf8")
-  const getPadKey = (rootId) => { const kr = getKeyring(); return kr[rootId] || null }
-  const setPadKey = (rootId, keyHex) => { const kr = getKeyring(); kr[rootId] = keyHex; saveKeyring(kr) }
+  const migrateLegacyKeyring = () => {
+    if (migratedToTribeCrypto || !ownCrypto) { migratedToTribeCrypto = true; return }
+    migratedToTribeCrypto = true
+    try {
+      const p = getLegacyKeyringPath()
+      if (!fs.existsSync(p)) return
+      const legacy = JSON.parse(fs.readFileSync(p, "utf8")) || {}
+      for (const [rootId, keyHex] of Object.entries(legacy)) {
+        if (rootId && keyHex && !ownCrypto.getKey(rootId)) {
+          ownCrypto.setKey(rootId, keyHex, 1)
+        }
+      }
+    } catch (_) {}
+  }
+  const getPadKey = (rootId) => {
+    migrateLegacyKeyring()
+    if (ownCrypto) return lookupKey(rootId)
+    try { return JSON.parse(fs.readFileSync(getLegacyKeyringPath(), "utf8"))[rootId] || null } catch (_) { return null }
+  }
+  const setPadKey = (rootId, keyHex) => {
+    migrateLegacyKeyring()
+    if (ownCrypto) { ownCrypto.setKey(rootId, keyHex, 1); return }
+    let kr = {}
+    try { kr = JSON.parse(fs.readFileSync(getLegacyKeyringPath(), "utf8")) } catch (_) {}
+    kr[rootId] = keyHex
+    fs.writeFileSync(getLegacyKeyringPath(), JSON.stringify(kr, null, 2), "utf8")
+  }
 
   const encryptField = (text, keyHex) => {
     const key = Buffer.from(keyHex, "hex")
@@ -86,14 +121,75 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
     return null
   }
 
-  const encryptForInvite = (padKeyHex, code) => {
-    const derived = crypto.scryptSync(code, INVITE_SALT, 32)
+  const encryptForInvite = (padKeyHex, code, saltHex) => {
+    const salt = saltHex ? Buffer.from(saltHex, "hex") : Buffer.from(INVITE_SALT)
+    const derived = crypto.scryptSync(code, salt, 32)
     return encryptField(padKeyHex, derived.toString("hex"))
   }
 
-  const decryptFromInvite = (encryptedKey, code) => {
-    const derived = crypto.scryptSync(code, INVITE_SALT, 32)
+  const decryptFromInvite = (encryptedKey, code, saltHex) => {
+    const salt = saltHex ? Buffer.from(saltHex, "hex") : Buffer.from(INVITE_SALT)
+    const derived = crypto.scryptSync(code, salt, 32)
     return decryptField(encryptedKey, derived.toString("hex"))
+  }
+
+  const tryDecryptPublicInviteKey = (invites) => {
+    if (!Array.isArray(invites)) return null
+    for (const inv of invites) {
+      if (!inv || typeof inv !== "object") continue
+      if (inv.public !== true) continue
+      if (typeof inv.code !== "string" || typeof inv.ek !== "string") continue
+      try {
+        const key = decryptFromInvite(inv.ek, inv.code, inv.salt)
+        if (key) return key
+      } catch (_) {}
+    }
+    return null
+  }
+
+  const generateInviteSalt = () => crypto.randomBytes(16).toString("hex")
+
+  const rotatePadKey = async (rootId, remainingMembers) => {
+    if (!ownCrypto || !tribeCrypto || !rootId) return
+    const existing = getPadKey(rootId)
+    if (!existing) return
+    const newKey = crypto.randomBytes(32).toString("hex")
+    const newGen = ownCrypto.addNewKey(rootId, newKey)
+    if (!Array.isArray(remainingMembers) || !remainingMembers.length) return
+    const ssbClient = await openSsb()
+    const ssbKeys = require("../server/node_modules/ssb-keys")
+    const memberKeys = {}
+    for (const m of remainingMembers) {
+      try { memberKeys[m] = tribeCrypto.boxKeyForMember(newKey, m, ssbKeys) } catch (_) {}
+    }
+    if (Object.keys(memberKeys).length) {
+      await new Promise((resolve) => {
+        ssbClient.publish({ type: "tribe-keys", tribeId: rootId, generation: newGen, memberKeys }, () => resolve())
+      })
+    }
+  }
+
+  const ingestOwnTribeKeys = async () => {
+    if (!ownCrypto) return
+    try {
+      const ssbClient = await openSsb()
+      const ssbKeys = require("../server/node_modules/ssb-keys")
+      const config = require("../server/ssb_config")
+      const msgs = await readAll(ssbClient)
+      for (const m of msgs) {
+        const c = m.value && m.value.content
+        if (!c || c.type !== "tribe-keys") continue
+        const memberKeys = c.memberKeys
+        if (!memberKeys || typeof memberKeys !== "object") continue
+        const boxed = memberKeys[ssbClient.id]
+        if (!boxed) continue
+        try {
+          const unboxed = ssbKeys.unbox(boxed, config.keys)
+          const key = typeof unboxed === "string" ? unboxed : (unboxed && unboxed.toString ? unboxed.toString() : null)
+          if (key && c.tribeId) ownCrypto.addNewKey(c.tribeId, key)
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   const readAll = async (ssbClient) =>
@@ -106,17 +202,25 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
     const nodes = new Map()
     const parent = new Map()
     const child = new Map()
+    const authorByKey = new Map()
+    const tombRequests = []
 
     for (const m of messages) {
       const k = m.key
       const v = m.value || {}
       const c = v.content
       if (!c) continue
-      if (c.type === "tombstone" && c.target) { tomb.add(c.target); continue }
+      if (c.type === "tombstone" && c.target) { tombRequests.push({ target: c.target, author: v.author }); continue }
       if (c.type === "pad") {
         nodes.set(k, { key: k, ts: v.timestamp || m.timestamp || 0, c, author: v.author })
+        authorByKey.set(k, v.author)
         if (c.replaces) { parent.set(k, c.replaces); child.set(c.replaces, k) }
       }
+    }
+
+    for (const t of tombRequests) {
+      const targetAuthor = authorByKey.get(t.target)
+      if (targetAuthor && t.author === targetAuthor) tomb.add(t.target)
     }
 
     const rootOf = (id) => { let cur = id; while (parent.has(cur)) cur = parent.get(cur); return cur }
@@ -138,7 +242,8 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
       const viaTribe = decryptWithKeys(c, tribeKeys)
       if (viaTribe) return viaTribe
     }
-    const keyHex = getPadKey(rootId)
+    let keyHex = getPadKey(rootId)
+    if (!keyHex) keyHex = tryDecryptPublicInviteKey(c.invites)
     if (!keyHex) return { title: "", deadline: "", tags: [] }
     const title = c.title ? decryptField(c.title, keyHex) : ""
     const deadline = c.deadline ? decryptField(c.deadline, keyHex) : ""
@@ -163,7 +268,8 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
       invites: Array.isArray(c.invites) ? c.invites : [],
       createdAt: c.createdAt || new Date(node.ts).toISOString(),
       updatedAt: c.updatedAt || null,
-      tribeId: c.tribeId || null
+      tribeId: c.tribeId || null,
+      encrypted: c.encrypted === true
     }
   }
 
@@ -179,6 +285,22 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
     async decryptContent(content, rootId) {
       const tKeys = content && content.tribeId ? await getTribeKeysFor(content.tribeId) : []
       return decryptPadFields(content, rootId, tKeys)
+    },
+
+    decryptContentPublicSync(content) {
+      if (!content) return null
+      if (content.encrypted !== true) {
+        return { title: safeText(content.title), deadline: content.deadline ? String(content.deadline) : "", tags: normalizeTags(content.tags) }
+      }
+      if (content.tribeId) return null
+      const keyHex = tryDecryptPublicInviteKey(content.invites)
+      if (!keyHex) return null
+      try {
+        const title = content.title ? decryptField(content.title, keyHex) : ""
+        const deadline = content.deadline ? decryptField(content.deadline, keyHex) : ""
+        const tagsRaw = content.tags ? decryptField(content.tags, keyHex) : ""
+        return { title, deadline, tags: normalizeTags(tagsRaw) }
+      } catch (_) { return null }
     },
 
     async resolveRootId(id) {
@@ -207,6 +329,28 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
       const ssbClient = await openSsb()
       const now = new Date().toISOString()
       const validStatus = ["OPEN", "INVITE-ONLY"].includes(String(status).toUpperCase()) ? String(status).toUpperCase() : "OPEN"
+      const userId = ssbClient.id
+      const tagsArr = normalizeTags(tagsRaw)
+
+      const isPublicOpen = validStatus === "OPEN" && !tribeId
+      if (isPublicOpen) {
+        const content = {
+          type: "pad",
+          title: safeText(title),
+          status: validStatus,
+          deadline: deadline ? String(deadline) : "",
+          tags: tagsArr,
+          author: userId,
+          members: [userId],
+          invites: [],
+          createdAt: now,
+          updatedAt: now,
+          encrypted: false
+        }
+        return new Promise((resolve, reject) => {
+          ssbClient.publish(content, (err, msg) => err ? reject(err) : resolve(msg))
+        })
+      }
 
       let keyHex = null
       let usesTribeKey = false
@@ -222,9 +366,9 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
         title: enc(safeText(title)),
         status: validStatus,
         deadline: deadline ? enc(String(deadline)) : "",
-        tags: enc(normalizeTags(tagsRaw).join(",")),
-        author: ssbClient.id,
-        members: [ssbClient.id],
+        tags: enc(tagsArr.join(",")),
+        author: userId,
+        members: [userId],
         invites: [],
         createdAt: now,
         updatedAt: now,
@@ -235,7 +379,17 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
       return new Promise((resolve, reject) => {
         ssbClient.publish(content, (err, msg) => {
           if (err) return reject(err)
-          if (!usesTribeKey) setPadKey(msg.key, keyHex)
+          if (!usesTribeKey) {
+            setPadKey(msg.key, keyHex)
+            if (tribeCrypto) {
+              try {
+                const ssbKeys = require("../server/node_modules/ssb-keys")
+                const boxedKey = tribeCrypto.boxKeyForMember(keyHex, userId, ssbKeys)
+                ssbClient.publish({ type: "tribe-keys", tribeId: msg.key, generation: 1, memberKeys: { [userId]: boxedKey } }, () => resolve(msg))
+                return
+              } catch (_) {}
+            }
+          }
           resolve(msg)
         })
       })
@@ -252,20 +406,25 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
           if (err || !item?.content) return reject(new Error("Pad not found"))
           if (item.content.author !== userId) return reject(new Error("Not the author"))
           const c = item.content
+          const isEncrypted = c.encrypted === true
           let keyHex = null
           let usesTribeKey = false
-          if (c.tribeId) {
-            const tKeys = await getTribeKeysFor(c.tribeId)
-            if (tKeys.length) { keyHex = tKeys[0]; usesTribeKey = true }
+          if (isEncrypted) {
+            if (c.tribeId) {
+              const tKeys = await getTribeKeysFor(c.tribeId)
+              if (tKeys.length) { keyHex = tKeys[0]; usesTribeKey = true }
+            }
+            if (!keyHex) keyHex = getPadKey(rootId)
+            if (!keyHex) return reject(new Error(`Missing pad key for ${rootId} — cannot update pad`))
           }
-          if (!keyHex) keyHex = getPadKey(rootId)
-          const enc = (text) => keyHex ? encryptField(text, keyHex) : text
+          const enc = (text) => isEncrypted ? encryptField(text, keyHex) : text
+          const tagsField = (raw) => isEncrypted ? encryptField(normalizeTags(raw).join(","), keyHex) : normalizeTags(raw)
           const updated = {
             ...c,
             title: data.title !== undefined ? enc(safeText(data.title)) : c.title,
             status: data.status !== undefined ? (["OPEN","INVITE-ONLY"].includes(String(data.status).toUpperCase()) ? String(data.status).toUpperCase() : c.status) : c.status,
-            deadline: data.deadline !== undefined ? enc(String(data.deadline)) : c.deadline,
-            tags: data.tags !== undefined ? enc(normalizeTags(data.tags).join(",")) : c.tags,
+            deadline: data.deadline !== undefined ? (isEncrypted ? enc(String(data.deadline)) : String(data.deadline)) : c.deadline,
+            tags: data.tags !== undefined ? tagsField(data.tags) : c.tags,
             updatedAt: new Date().toISOString(),
             replaces: tipId
           }
@@ -318,6 +477,55 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
       })
     },
 
+    async leavePad(padId) {
+      const ssbClient = await openSsb()
+      const userId = ssbClient.id
+      const pad = await this.getPadById(padId)
+      if (!pad) throw new Error("Pad not found")
+      if (pad.author === userId) throw new Error("Author cannot leave their own pad")
+      const members = (Array.isArray(pad.members) ? pad.members : []).filter(m => m !== userId)
+      if (!Array.isArray(pad.members) || !pad.members.includes(userId)) return
+      const tipId = await this.resolveCurrentId(padId)
+      const rootId = await this.resolveRootId(padId)
+      await new Promise((resolve, reject) => {
+        ssbClient.get(tipId, (err, item) => {
+          if (err || !item?.content) return reject(new Error("Pad not found"))
+          const updated = { ...item.content, members, updatedAt: new Date().toISOString(), replaces: tipId }
+          const tombstone = { type: "tombstone", target: tipId, deletedAt: new Date().toISOString(), author: userId }
+          ssbClient.publish(tombstone, (e1) => {
+            if (e1) return reject(e1)
+            ssbClient.publish(updated, (e2) => e2 ? reject(e2) : resolve())
+          })
+        })
+      })
+      try { await rotatePadKey(rootId, members) } catch (_) {}
+    },
+
+    async ingestKeys() { await ingestOwnTribeKeys() },
+
+    async pruneOrphanKeys() {
+      if (!ownCrypto || typeof ownCrypto.getAllRootIds !== "function") return 0
+      try {
+        const ssbClient = await openSsb()
+        const messages = await readAll(ssbClient)
+        const live = new Set()
+        const tomb = buildValidatedTombstoneSet(messages)
+        for (const m of messages) {
+          const c = m.value && m.value.content
+          if (!c) continue
+          if (c.type === "pad") live.add(m.key)
+        }
+        const all = ownCrypto.getAllRootIds()
+        let removed = 0
+        for (const rid of all) {
+          if (!live.has(rid) || tomb.has(rid)) {
+            try { ownCrypto.dropKey(rid); removed += 1 } catch (_) {}
+          }
+        }
+        return removed
+      } catch (_) { return 0 }
+    },
+
     async addMemberToPad(padId, feedId) {
       const tipId = await this.resolveCurrentId(padId)
       const ssbClient = await openSsb()
@@ -329,13 +537,17 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
           const c = item.content
           const members = Array.isArray(c.members) ? c.members : []
           if (members.includes(feedId)) return resolve()
+          if (c.encrypted === true && !c.tribeId && !getPadKey(rootId)) {
+            const key = tryDecryptPublicInviteKey(c.invites)
+            if (key) setPadKey(rootId, key)
+          }
           const updated = { ...c, members: [...members, feedId], updatedAt: new Date().toISOString(), replaces: tipId }
           const tombstone = { type: "tombstone", target: tipId, deletedAt: new Date().toISOString(), author: ssbClient.id }
           ssbClient.publish(tombstone, (e1) => {
             if (e1) return reject(e1)
             ssbClient.publish(updated, (e2, res) => {
               if (e2) return reject(e2)
-              if (!c.tribeId) {
+              if (c.encrypted === true && !c.tribeId) {
                 const keyHex = getPadKey(rootId)
                 if (keyHex) setPadKey(res.key, keyHex)
               }
@@ -421,8 +633,9 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
       const code = crypto.randomBytes(INVITE_BYTES).toString("hex")
       let invite = code
       if (keyHex) {
-        const ek = encryptForInvite(keyHex, code)
-        invite = { code, ek }
+        const inviteSalt = generateInviteSalt()
+        const ek = encryptForInvite(keyHex, code, inviteSalt)
+        invite = { code, ek, salt: inviteSalt }
       }
       const invites = [...pad.invites, invite]
       await this.updatePadById(padId, { invites })
@@ -444,13 +657,31 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
       }
       if (!matchedPad) throw new Error("Invalid or expired invite code")
       if (matchedPad.members.includes(userId)) throw new Error("Already a member")
+      let padKey = null
+      let resolvedRootId = null
       if (typeof matchedInvite === "object" && matchedInvite.ek) {
-        const padKey = decryptFromInvite(matchedInvite.ek, code)
-        const rootId = await this.resolveRootId(matchedPad.rootId)
-        setPadKey(rootId, padKey)
+        padKey = decryptFromInvite(matchedInvite.ek, code, matchedInvite.salt)
+        resolvedRootId = await this.resolveRootId(matchedPad.rootId)
+        setPadKey(resolvedRootId, padKey)
       }
       await this.addMemberToPad(matchedPad.rootId, userId)
-      const invites = matchedPad.invites.filter(inv => {
+      if (tribeCrypto && padKey && resolvedRootId) {
+        try {
+          const ssbKeys = require("../server/node_modules/ssb-keys")
+          const memberKeys = {}
+          try { memberKeys[userId] = tribeCrypto.boxKeyForMember(padKey, userId, ssbKeys) } catch (_) {}
+          if (matchedPad.author && matchedPad.author !== userId) {
+            try { memberKeys[matchedPad.author] = tribeCrypto.boxKeyForMember(padKey, matchedPad.author, ssbKeys) } catch (_) {}
+          }
+          if (Object.keys(memberKeys).length) {
+            await new Promise((resolve) => {
+              ssbClient.publish({ type: "tribe-keys", tribeId: resolvedRootId, generation: 1, memberKeys }, () => resolve())
+            })
+          }
+        } catch (_) {}
+      }
+      const isPublicInvite = typeof matchedInvite === "object" && matchedInvite.public === true
+      const invites = isPublicInvite ? matchedPad.invites : matchedPad.invites.filter(inv => {
         if (typeof inv === "string") return inv !== code
         return inv.code !== code
       })
@@ -473,21 +704,39 @@ module.exports = ({ cooler, cipherModel, tribeCrypto, tribesModel }) => {
       const ssbClient = await openSsb()
       const rootId = await this.resolveRootId(padId)
       const pad = await this.getPadById(rootId)
+      const padIsEncrypted = !!(pad && pad.encrypted)
+      const now = new Date().toISOString()
+      const safeBody = safeText(text)
+
+      if (!padIsEncrypted) {
+        const content = {
+          type: "padEntry",
+          padId: rootId,
+          text: safeBody,
+          author: ssbClient.id,
+          createdAt: now,
+          encrypted: false,
+          ...(pad && pad.tribeId ? { tribeId: pad.tribeId } : {})
+        }
+        return new Promise((resolve, reject) => {
+          ssbClient.publish(content, (err, msg) => err ? reject(err) : resolve(msg))
+        })
+      }
+
       let keyHex = null
       if (pad && pad.tribeId) {
         const tKeys = await getTribeKeysFor(pad.tribeId)
         if (tKeys.length) keyHex = tKeys[0]
       }
       if (!keyHex) keyHex = getPadKey(rootId)
-      const now = new Date().toISOString()
-      const encText = keyHex ? encryptField(safeText(text), keyHex) : safeText(text)
+      if (!keyHex) throw new Error(`Missing pad key for ${rootId} — cannot publish pad entry`)
       const content = {
         type: "padEntry",
         padId: rootId,
-        text: encText,
+        text: encryptField(safeBody, keyHex),
         author: ssbClient.id,
         createdAt: now,
-        encrypted: !!keyHex,
+        encrypted: true,
         ...(pad && pad.tribeId ? { tribeId: pad.tribeId } : {})
       }
       return new Promise((resolve, reject) => {

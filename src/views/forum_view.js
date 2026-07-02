@@ -3,13 +3,25 @@ const {
   input, label, br, select, option, h2, textarea
 } = require("../server/node_modules/hyperaxe");
 const moment = require("../server/node_modules/moment");
-const { template, i18n } = require('./main_views');
+const { template, i18n, userLink, renderSpreadButton, renderPrivacyChip, renderLifespanChip } = require('./main_views');
+const { renderEncryptedChip: renderForumEncryptedChip } = require('./clearnet_view');
 const { config } = require('../server/SSB_server.js');
 const { renderUrl } = require('../backend/renderUrl');
 const { renderTextWithStyles } = require('../backend/renderTextWithStyles');
 const { sanitizeHtml } = require('../backend/sanitizeHtml');
 
 const userId = config.keys.id;
+
+exports.renderForumInvitePage = (code) => {
+  const pageContent = div({ class: 'invite-page' },
+    h2(i18n.tribeInviteCodeText, code),
+    form({ method: 'GET', action: '/forum' },
+      button({ type: 'submit', class: 'filter-btn' }, i18n.walletBack)
+    )
+  );
+  return template(i18n.invitesForumsTitle || 'Forums', section(pageContent));
+};
+
 const BASE_FILTERS = ['hot','all','mine','recent','top'];
 const CAT_BLOCK1 = ['GENERAL','OASIS','L.A.R.P.','POLITICS','TECH'];
 const CAT_BLOCK2 = ['SCIENCE','MUSIC','ART','GAMING','BOOKS','FILMS'];
@@ -79,6 +91,11 @@ const renderForumForm = () =>
       select({ name: 'category', required: true },
         ALL_CATS.map(cat => option({ value: cat }, catLabel(cat)))
       ), br(), br(),
+      label(i18n.eventPrivacyLabel), br(),
+      select({ name: 'isPublic', id: 'isPublic' },
+        option({ value: 'public', selected: true }, i18n.eventPublic),
+        option({ value: 'private' }, i18n.eventPrivate)
+      ), br(), br(),
       label(i18n.forumTitleLabel), br(),
       input({
         type: 'text',
@@ -100,6 +117,7 @@ const renderForumForm = () =>
 const renderThread = (nodes, level = 0, forumId) => {
   if (!Array.isArray(nodes)) return [];
   return [...nodes]
+    .filter(m => (m && m.text && String(m.text).trim()) || (m && Array.isArray(m.children) && m.children.length))
     .sort((a, b) =>
       wilsonScore(b.positiveVotes, b.negativeVotes)
       - wilsonScore(a.positiveVotes, a.negativeVotes)
@@ -117,11 +135,7 @@ const renderThread = (nodes, level = 0, forumId) => {
         div({ class: 'comment-header' },
           span({ class: 'date-link' },
             `${moment(m.timestamp).format('YYYY/MM/DD HH:mm:ss')} ${i18n.performed}`),
-          a({
-            href: `/author/${encodeURIComponent(m.author)}`,
-            class: 'user-link',
-            style: 'margin-left:12px;'
-          }, m.author),
+          userLink(m.author),
           div({ class: 'comment-votes' },
             span({ class: 'votes-count' }, `▲: ${m.positiveVotes || 0}`),
             span({ class: 'votes-count', style: 'margin-left:12px;' },
@@ -164,10 +178,13 @@ const renderThread = (nodes, level = 0, forumId) => {
     });
 };
 
-const renderForumList = (forums, currentFilter) =>
-  div({ class: 'forum-list' },
-    Array.isArray(forums) && forums.length
-      ? forums.map(f =>
+const renderForumList = (forums, currentFilter, spreadMap = new Map()) => {
+  const visibleForums = (Array.isArray(forums) ? forums : []).filter(f =>
+    (f && f.title && String(f.title).trim()) || (f && f.text && String(f.text).trim())
+  )
+  return div({ class: 'forum-list' },
+    visibleForums.length
+      ? visibleForums.map(f =>
         div({ class: 'forum-card' },
           div({ class: 'forum-score-col' },
             renderVotes(f.key, f.score, f.key)
@@ -181,7 +198,10 @@ const renderForumList = (forums, currentFilter) =>
               a({
                 class: 'forum-title',
                 href: `/forum/${encodeURIComponent(f.key)}`
-              }, f.title)
+              }, f.title),
+              f.isPrivate ? renderPrivacyChip(true, i18n) : null,
+              f.isPrivate ? renderForumEncryptedChip(i18n) : null,
+              renderLifespanChip(f.lifetime, i18n)
             ),
 	    div({
 	      class: 'forum-body',
@@ -200,14 +220,14 @@ const renderForumList = (forums, currentFilter) =>
                 button({ type: 'submit', class: 'filter-btn' }, i18n.forumVisitButton)
               )
             ),
+            (() => {
+              const btn = renderSpreadButton(f.key, spreadMap.get(f.key));
+              return btn ? div({ class: 'card-spread-left' }, btn) : null;
+            })(),
             div({ class: 'forum-footer' },
               span({ class: 'date-link' },
                 `${moment(f.createdAt).format('YYYY/MM/DD HH:mm:ss')} ${i18n.performed}`),
-              a({
-                href: `/author/${encodeURIComponent(f.author)}`,
-                class: 'user-link',
-                style: 'margin-left:12px;'
-              }, f.author)
+              userLink(f.author)
             ),
             currentFilter === 'mine' && f.author === userId
               ? div({ class: 'forum-owner-actions' },
@@ -226,8 +246,9 @@ const renderForumList = (forums, currentFilter) =>
       )
       : p(i18n.noForums)
   );
+}
 
-exports.forumView = async (forums, currentFilter) => {
+exports.forumView = async (forums, currentFilter, params = {}) => {
   const CAT_I18N_MAP_UP = ALL_CATS.reduce((m,c)=>{ m[c]=(catLabel(c)||c).toUpperCase(); return m; },{});
   return template(i18n.forumTitle,
     section(
@@ -254,7 +275,8 @@ exports.forumView = async (forums, currentFilter) => {
         ? renderForumForm()
         : renderForumList(
           getFilteredForums(currentFilter || 'all', forums),
-          currentFilter
+          currentFilter,
+          params.spreadMap
         )
     )
   );
@@ -307,16 +329,21 @@ exports.singleForumView = async (forum, messagesData, currentFilter) => {
             a({
               class: 'forum-title',
               href: `/forum/${encodeURIComponent(forum.key)}`
-            }, forum.title)
-          ),
-          div({ class: 'forum-footer' },
-            span({ class: 'date-link' },
-              `${moment(forum.createdAt).format('YYYY/MM/DD HH:mm:ss')} ${i18n.performed}`),
-            a({
-              href: `/author/${encodeURIComponent(forum.author)}`,
-              class: 'user-link',
-              style: 'margin-left:12px;'
-            }, forum.author)
+            }, forum.title),
+            forum.isPrivate ? renderPrivacyChip(true, i18n) : null,
+            forum.isPrivate ? renderForumEncryptedChip(i18n) : null,
+            renderLifespanChip(forum.lifetime, i18n),
+            (forum.isPrivate && forum.author === userId)
+              ? form({ method: 'POST', action: `/forum/generate-invite/${encodeURIComponent(forum.key)}`, class: 'forum-invite-form' },
+                  button({ type: 'submit', class: 'tribe-action-btn' }, i18n.tribeGenerateInvite))
+              : null,
+            (forum.isPrivate && forum.author !== userId)
+              ? a({ class: 'tribe-action-btn', href: '/invites#invites-forums' }, i18n.tribeEnterInvite)
+              : null,
+            (forum.author === userId)
+              ? form({ method: 'POST', action: `/forum/delete/${encodeURIComponent(forum.key)}`, class: 'forum-delete-form' },
+                  button({ type: 'submit', class: 'tribe-action-btn danger-btn' }, i18n.forumDeleteButton))
+              : null
           ),
 	  div({
 	    class: 'forum-body',
@@ -333,6 +360,15 @@ exports.singleForumView = async (forum, messagesData, currentFilter) => {
               `${i18n.forumParticipants.toUpperCase()}: ${forum.participants?.length || 1}`),
             span({ class: 'forum-messages' },
               `${i18n.forumMessages.toUpperCase()}: ${messagesData.total}`)
+          ),
+          (() => {
+            const btn = renderSpreadButton(forum.key);
+            return btn ? div({ class: 'card-spread-left' }, btn) : null;
+          })(),
+          div({ class: 'forum-footer' },
+            span({ class: 'date-link' },
+              `${moment(forum.createdAt).format('YYYY/MM/DD HH:mm:ss')} ${i18n.performed}`),
+            userLink(forum.author)
           )
         )
       ),

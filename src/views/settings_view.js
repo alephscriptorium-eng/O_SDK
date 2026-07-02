@@ -1,4 +1,4 @@
-const { form, button, div, h2, p, section, select, option, input, br, a, label } = require("../server/node_modules/hyperaxe");
+const { form, button, div, h2, h3, p, section, select, option, input, br, a, label, span } = require("../server/node_modules/hyperaxe");
 const fs = require('fs');
 const path = require('path');
 const { getConfig } = require('../configs/config-manager.js');
@@ -18,10 +18,13 @@ const getThemeConfig = () => {
   }
 };
 
-const settingsView = ({ version, aiPrompt }) => {
+const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError }) => {
   const currentThemeConfig = getThemeConfig();
   const theme = currentThemeConfig.themes?.current || "Dark-SNH";
   const currentConfig = getConfig();
+  let serverConfig = {};
+  try { serverConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '../configs/server-config.json'), 'utf8')); } catch (_) {}
+  const currentHops = (serverConfig.friends && Number.isFinite(serverConfig.friends.hops)) ? serverConfig.friends.hops : 2;
   const walletUrl = currentConfig.wallet.url;
   const walletUser = currentConfig.wallet.user;
   const walletFee = currentConfig.wallet.fee;
@@ -49,9 +52,9 @@ const settingsView = ({ version, aiPrompt }) => {
   );
 
   const updateFlagPath = path.join(__dirname, '../server/.update_required');
-  let updateNotice = null;
+  let updateButton = null;
   if (fs.existsSync(updateFlagPath)) {
-    updateNotice = p(
+    updateButton = p(
       "Upstream Oasis updates are available. For this Dockerized deployment, update from the host repository and rebuild the container. In-app auto-update is disabled."
     );
   }
@@ -62,7 +65,7 @@ const settingsView = ({ version, aiPrompt }) => {
       div({ class: "tags-header" },
         h2(i18n.settings),
         p(a({ href: snhUrl, target: "_blank" }, i18n.settingsIntro({ version }))),
-        updateNotice
+        updateButton
       )
     ),
     section(
@@ -100,6 +103,27 @@ const settingsView = ({ version, aiPrompt }) => {
           br(),
           br(),
           button({ type: "submit" }, i18n.setLanguage)
+        )
+      )
+    ),
+    section(
+      div({ class: "tags-header" },
+        h2(i18n.uxModeTitle || "UX"),
+        p(i18n.uxModeDescription || "Select which UX navigation mode you want for your GUI."),
+        form(
+          { action: "/settings/ux", method: "POST" },
+          (() => {
+            const aiNavEnabled = currentConfig.modules && currentConfig.modules.aiNavMod === 'on';
+            const opts = [
+              option({ value: "blocks", selected: (currentConfig.ux?.current !== "ainav") ? true : undefined }, i18n.uxModeMenus || "Blocks")
+            ];
+            if (aiNavEnabled) {
+              opts.push(option({ value: "ainav", selected: currentConfig.ux?.current === "ainav" ? true : undefined }, i18n.uxModeAINav || "AI"));
+            }
+            return select({ name: "ux" }, ...opts);
+          })(),
+          br(), br(),
+          button({ type: "submit" }, i18n.saveSettings)
         )
       )
     ),
@@ -148,13 +172,57 @@ const settingsView = ({ version, aiPrompt }) => {
     ),
     section(
       div({ class: "tags-header" },
+        h2(i18n.settingsReplicationTitle || 'Replication'),
+        p(i18n.settingsReplicationDesc || 'Configure the number of hops your peer follows out from your own feed when replicating content.'),
+        form(
+          { action: "/settings/replication", method: "POST" },
+          label({ for: "replication_hops" }, i18n.settingsReplicationHopsLabel || 'Hops'),
+          br(),
+          input({
+            type: "number",
+            id: "replication_hops",
+            name: "hops",
+            min: 0,
+            max: 6,
+            value: currentHops
+          }),
+          br(), br(),
+          button({ type: "submit" }, i18n.saveSettings)
+        )
+      )
+    ),
+    section(
+      div({ class: "tags-header" },
+        h2(i18n.settingsLanTitle || 'LAN Broadcasting'),
+        p(i18n.settingsLanDesc || 'Periodically announce this peer to other Oasis instances on the same local network. Disable to stop UDP broadcasts.'),
+        form(
+          { action: "/settings/lan-broadcasting", method: "POST" },
+          label({ for: "lanBroadcasting", class: "lan-checkbox-label" },
+            input({
+              type: "checkbox",
+              id: "lanBroadcasting",
+              name: "lanBroadcasting",
+              value: "on",
+              class: "lan-checkbox-input",
+              checked: currentConfig.lanBroadcasting !== false ? true : undefined
+            }),
+            span({ class: "lan-checkbox-text" }, i18n.settingsLanEnable || 'Enable LAN broadcasting')
+          ),
+          br(),
+          button({ type: "submit" }, i18n.saveSettings)
+        )
+      )
+    ),
+    section(
+      div({ class: "tags-header" },
         h2(i18n.settingsWishTitle),
         p(i18n.settingsWishDesc),
         form(
           { action: "/settings/wish", method: "POST" },
           select({ name: "wish" },
             option({ value: "whole", selected: currentWish === "whole" ? true : undefined }, i18n.settingsWishWhole),
-            option({ value: "mutuals", selected: currentWish === "mutuals" ? true : undefined }, i18n.settingsWishMutuals)
+            option({ value: "mutuals", selected: currentWish === "mutuals" ? true : undefined }, i18n.settingsWishMutuals),
+            option({ value: "only-lan", selected: currentWish === "only-lan" ? true : undefined }, i18n.settingsWishOnlyLan || "Only LAN")
           ), br(), br(),
           button({ type: "submit" }, i18n.saveSettings)
         )
@@ -175,6 +243,7 @@ const settingsView = ({ version, aiPrompt }) => {
       )
     ),
     section(
+      { id: "wallet" },
       div({ class: "tags-header" },
         h2(i18n.wallet),
 	p(
@@ -228,6 +297,39 @@ const settingsView = ({ version, aiPrompt }) => {
             required: true
           }), br(),
           button({ type: "submit" }, i18n.aiConfiguration)
+        )
+      )
+    ),
+    section(
+      { id: "fediverse" },
+      div({ class: "tags-header" },
+        h2(i18n.fediverseSettingsTitle),
+        div({ class: "fediverse-network" },
+          h3("Mastodon"),
+          p(i18n.fediverseTokenHelp),
+          fediverseError ? p({ class: "fediverse-error" }, i18n[fediverseError] || i18n.fediverseError) : "",
+          fediverseAccount
+            ? (() => {
+                const host = String(fediverseAccount.instance || "").replace(/^https?:\/\//, "");
+                const profileUrl = `${fediverseAccount.instance}/@${fediverseAccount.acct}`;
+                const link = (txt) => a({ href: profileUrl, target: "_blank", rel: "noopener noreferrer" }, txt);
+                return form(
+                  { action: "/settings/fediverse/disconnect", method: "POST" },
+                  p(
+                    `${i18n.fediverseConnectedAs}: `,
+                    link(`${fediverseAccount.acct}@${host}`)
+                  ),
+                  button({ type: "submit" }, i18n.fediverseDisconnect)
+                );
+              })()
+            : form(
+                { action: "/settings/fediverse", method: "POST" },
+                label({ for: "fediverse_instance" }, i18n.fediverseInstanceLabel), br(),
+                input({ type: "text", id: "fediverse_instance", name: "instance", placeholder: "mastodon.social", required: true }), br(),
+                label({ for: "fediverse_token" }, i18n.fediverseTokenLabel), br(),
+                input({ type: "password", id: "fediverse_token", name: "token", autocomplete: "off", required: true }), br(),
+                button({ type: "submit" }, i18n.fediverseConnect)
+              )
         )
       )
     ),

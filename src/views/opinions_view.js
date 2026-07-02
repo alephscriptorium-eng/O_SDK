@@ -1,5 +1,5 @@
 const { div, h2, p, section, button, form, a, img, video: videoHyperaxe, audio: audioHyperaxe, input, table, tr, th, td, br, span } = require("../server/node_modules/hyperaxe");
-const { template, i18n } = require('./main_views');
+const { template, i18n, userLink, renderSpreadButton} = require('./main_views');
 const { config } = require('../server/SSB_server.js');
 const { renderTextWithStyles } = require('../backend/renderTextWithStyles');
 const { renderUrl } = require('../backend/renderUrl');
@@ -215,11 +215,11 @@ const renderContentHtml = (content, key) => {
           ),
           div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.from + ':'),
-            span({ class: 'card-value' }, a({ class: 'user-link', href: `/author/${encodeURIComponent(content.from)}`, target: "_blank" }, content.from))
+            span({ class: 'card-value' }, userLink(content.from))
           ),
           div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.to + ':'),
-            span({ class: 'card-value' }, a({ class: 'user-link', href: `/author/${encodeURIComponent(content.to)}`, target: "_blank" }, content.to))
+            span({ class: 'card-value' }, userLink(content.to))
           ),
           h2({ class: 'card-field' },
             span({ class: 'card-label' }, `${i18n.transfersConfirmations}: `),
@@ -238,7 +238,7 @@ const renderContentHtml = (content, key) => {
   }
 };
 
-exports.opinionsView = (items, filter) => {
+exports.opinionsView = (items, filter, spreadMap = new Map()) => {
   seenDocumentTitles.clear();
   items = items
     .filter(item => {
@@ -270,10 +270,17 @@ exports.opinionsView = (items, filter) => {
       const allCats = opinionCategories;
 
       return div(
+        { class: 'trending-card' },
+        div({ class: 'card-chips-row' },
+          span({ class: 'pm-exposition-chip pm-exposition-whole' },
+            span({ class: 'pm-exposition-text' }, String(c.type || '').toUpperCase())
+          )
+        ),
         contentHtml,
+        div({ class: 'card-spread-left' }, renderSpreadButton(key, spreadMap.get(key))),
         p({ class: 'card-footer' },
           span({ class: 'date-link' }, `${created} ${i18n.performed} `),
-          a({ href: `/author/${encodeURIComponent(item.value.author)}`, class: 'user-link' }, item.value.author)
+          userLink(item.value.author)
         ),
         (() => {
           const entries = voteEntries.filter(([, v]) => v > 0);
@@ -282,13 +289,13 @@ exports.opinionsView = (items, filter) => {
             const maxVal = Math.max(...entries.map(([, v]) => v));
             const dominant = entries.filter(([, v]) => v === maxVal).map(([k]) => i18n['vote' + k.charAt(0).toUpperCase() + k.slice(1)] || k);
             return [
-              span({ style: 'margin:0 8px;opacity:0.5;' }, '|'),
-              span({ style: 'font-weight:700;' }, `${i18n.moreVoted || 'More Voted'}: ${dominant.join(' + ')}`)
+              span({ class: 'trending-dominant-sep' }, '|'),
+              span({ class: 'trending-dominant-text' }, `${i18n.moreVoted || 'More Voted'}: ${dominant.join(' + ')}`)
             ];
           })();
           return h2(
             `${i18n.totalOpinions || i18n.opinionsTotalCount}: `,
-            span({ style: 'font-weight:700;' }, String(total)),
+            span({ class: 'trending-total-count' }, String(total)),
             ...(dominantPart || [])
           );
         })(),

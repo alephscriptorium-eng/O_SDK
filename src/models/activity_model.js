@@ -1,6 +1,28 @@
 const pull = require('../server/node_modules/pull-stream');
+const ssbRef = require('../server/node_modules/ssb-ref');
 const { getConfig } = require('../configs/config-manager.js');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
+
+const safeFeedId = (v) => {
+  if (typeof v === 'string' && ssbRef.isFeed(v)) return v;
+  if (v && typeof v === 'object' && typeof v.link === 'string' && ssbRef.isFeed(v.link)) return v.link;
+  return null;
+};
+
+const isContentSane = (c) => {
+  if (!c || typeof c !== 'object') return false;
+  if (c.type === 'about') {
+    if (c.about === undefined) return true;
+    if (typeof c.about === 'string' && ssbRef.isFeed(c.about)) return true;
+    return false;
+  }
+  if (c.type === 'pub') {
+    const addr = c.address;
+    if (!addr || typeof addr !== 'object') return false;
+    return typeof addr.key === 'string' && ssbRef.isFeed(addr.key);
+  }
+  return true;
+};
 
 const N = s => String(s || '').toUpperCase().replace(/\s+/g, '_');
 const ORDER_MARKET = ['FOR_SALE','OPEN','RESERVED','CLOSED','SOLD'];
@@ -32,9 +54,77 @@ function inferType(c = {}) {
   return c.type || '';
 }
 
-module.exports = ({ cooler }) => {
+const HIDDEN_ENVELOPE_TYPES = new Set([
+  'tribe-keys-distrib',
+  'tribe-keys',
+  'tribe-invite-msg',
+  'tribe-invite-tombstone',
+  'aiExchangeVote',
+  'event-invite',
+  'forum-invite',
+  'larpJoinHouse',
+  'larpLeaveLarp',
+  'larpTestAttempt',
+  'larpHousePost',
+  'larpHouseInvite',
+  'larpHouseInviteRedeem',
+  'larpHouseTribeAnchor',
+  'larpHouseTribeAnchorTombstone',
+  'larpAutoInvite',
+  'karmaScore',
+  'pubAvailability',
+  'calendarReminderSent',
+  'taskReminderSent',
+  'ubiClaimResult',
+  'ubiAllocation',
+  'courts-key'
+]);
+
+module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
   let ssb;
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb };
+
+  let _feedCache = null;
+  let _feedCacheInflight = null;
+  const FEED_CACHE_MS = 15 * 1000;
+
+  const buildAccessibleTribeIds = async () => {
+    const set = new Set();
+    if (!tribesModel) return set;
+    try {
+      const list = await tribesModel.listAll();
+      for (const t of list) {
+        if (!t || !t.id) continue;
+        set.add(t.id);
+        try {
+          const chain = await tribesModel.getChainIds(t.id);
+          for (const cid of chain) set.add(cid);
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return set;
+  };
+
+  const tryDecryptPublicInviteKey = (invites) => {
+    if (!tribeCrypto || !Array.isArray(invites)) return null;
+    for (const inv of invites) {
+      if (!inv || typeof inv !== 'object' || inv.public !== true) continue;
+      if (typeof inv.code !== 'string') continue;
+      if (typeof inv.ek === 'string') {
+        try {
+          const k = tribeCrypto.decryptFromInvite(inv.ek, inv.code, inv.salt);
+          if (k) return k;
+        } catch (_) {}
+      }
+      if (typeof inv.ekChain === 'string') {
+        try {
+          const chain = tribeCrypto.decryptChainFromInvite(inv.ekChain, inv.code, inv.salt);
+          if (Array.isArray(chain) && chain.length && chain[0].key) return chain[0].key;
+        } catch (_) {}
+      }
+    }
+    return null;
+  };
   const hasBlob = async (ssbClient, url) => new Promise(resolve => ssbClient.blobs.has(url, (err, has) => resolve(!err && has)));
   const getMsg = async (ssbClient, key) => new Promise(resolve => ssbClient.get(key, (err, msg) => resolve(err ? null : msg)));
   const normNL = (s) => String(s || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -52,7 +142,19 @@ module.exports = ({ cooler }) => {
   };
 
   return {
+    invalidateCache() {
+      _feedCache = null;
+      _feedCacheInflight = null;
+    },
     async listFeed(filter = 'all') {
+      const cacheKey = filter || 'all';
+      const now = Date.now();
+      if (!_feedCache) _feedCache = new Map();
+      const entry = _feedCache.get(cacheKey);
+      if (entry && now - entry.ts < FEED_CACHE_MS) return entry.value;
+      if (!_feedCacheInflight) _feedCacheInflight = new Map();
+      if (_feedCacheInflight.has(cacheKey)) return _feedCacheInflight.get(cacheKey);
+      const promise = (async () => {
       const ssbClient = await openSsb();
       const userId = ssbClient.id;
 
@@ -67,13 +169,45 @@ module.exports = ({ cooler }) => {
       const parentOf = new Map();
       const idToAction = new Map();
       const rawById = new Map();
+      const fpIdx = tribeCrypto ? tribeCrypto.buildFingerprintIndex() : null;
+      const accessibleTribeIds = await buildAccessibleTribeIds();
 
       for (const msg of results) {
         const k = msg.key;
         const v = msg.value;
-        const c = v?.content;
-        if (!c?.type) continue;
+        let c = v?.content;
+        if (!c) continue;
+        if (typeof c === 'string' && c.endsWith('.box')) continue;
+        if (c.type && HIDDEN_ENVELOPE_TYPES.has(c.type)) continue;
+        if (typeof c.type === 'string' && /e2ee/i.test(c.type)) continue;
+        if (c.type === 'contact') continue;
+        if (tribeCrypto && tribeCrypto.isTribeMsg(c)) {
+          const r = fpIdx ? tribeCrypto.unwrapMsg(c, fpIdx) : null;
+          if (!r || !r.body) continue;
+          const inner = r.body;
+          if (inner.k !== 'tribe' || inner.op !== 'create') continue;
+          c = { ...inner, type: 'tribe', _decrypted: true, _rootId: r.rootId };
+        } else if (c.tribeId && !accessibleTribeIds.has(c.tribeId)) {
+          continue;
+        }
+        if (!c.type) continue;
         if (c.type === 'tombstone' && c.target) { tombstoned.add(c.target); continue }
+        if (c.encryptedPayload && tribeCrypto && !c.tribeId) {
+          const pubKey = tryDecryptPublicInviteKey(c.invites);
+          if (pubKey) {
+            try {
+              const dec = tribeCrypto.decryptContent(c, [[pubKey]]);
+              if (dec && !dec._undecryptable) c = dec;
+            } catch (_) {}
+          }
+        }
+        if (c.type === 'pad' && c.encrypted === true && !c.tribeId && padsModel && typeof padsModel.decryptContentPublicSync === 'function') {
+          try {
+            const dec = padsModel.decryptContentPublicSync(c);
+            if (dec) c = { ...c, title: dec.title, deadline: dec.deadline, tags: dec.tags, encrypted: false };
+          } catch (_) {}
+        }
+        if (!isContentSane(c)) continue;
         const ts = v?.timestamp || Number(c?.timestamp || 0) || (c?.updatedAt ? Date.parse(c.updatedAt) : 0) || 0;
         idToAction.set(k, { id: k, author: v?.author, ts, type: inferType(c), content: c });
         rawById.set(k, msg);
@@ -82,6 +216,24 @@ module.exports = ({ cooler }) => {
 
       const replacedIds = new Set(parentOf.values());
       const spreadVoteState = new Map();
+      const aiHelpfulCounts = new Map();
+      const aiHelpfulSeen = new Map();
+      for (const msg of results) {
+        const v = msg.value;
+        const c = v && v.content;
+        if (!c || c.type !== 'aiExchangeVote') continue;
+        const target = String(c.target || '');
+        const author = v.author;
+        if (!target || !author) continue;
+        const key = `${target} ${author}`;
+        const prev = aiHelpfulSeen.get(key);
+        const curTs = v.timestamp || 0;
+        if (!prev || curTs > prev.ts) aiHelpfulSeen.set(key, { target, ts: curTs, helpful: c.helpful !== false });
+      }
+      for (const { target, helpful } of aiHelpfulSeen.values()) {
+        if (!helpful) continue;
+        aiHelpfulCounts.set(target, (aiHelpfulCounts.get(target) || 0) + 1);
+      }
 
       for (const a of idToAction.values()) {
         const c = a.content || {};
@@ -292,13 +444,14 @@ module.exports = ({ cooler }) => {
           a.content.rootKey = rootId || a.content.rootKey || '';
         }
         const actionRoot = rootOf(a.id);
-        latest.push({ ...a, tipId: idToTipId.get(a.id) || a.id, rootId: actionRoot !== a.id ? actionRoot : null });
+        const extra = a.type === 'aiExchange' ? { helpfulVotes: aiHelpfulCounts.get(a.id) || 0 } : {};
+        latest.push({ ...a, ...extra, tipId: idToTipId.get(a.id) || a.id, rootId: actionRoot !== a.id ? actionRoot : null });
       }
 
       let deduped = latest.filter(a => !a.tipId || a.tipId === a.id || (a.type === 'tribe' && !parentOf.has(a.id)));
 
       const mediaTypes = new Set(['image','video','audio','document','bookmark','map']);
-      const perAuthorUnique = new Set(['karmaScore']);
+      const perAuthorUnique = new Set();
       const byKey = new Map();
       const norm = s => String(s || '').trim().toLowerCase();
 
@@ -352,25 +505,50 @@ module.exports = ({ cooler }) => {
       deduped = Array.from(byKey.values()).map(x => { delete x.__effTs; delete x.__hasImage; return x });
 
       const tribeInternalTypes = new Set(['tribe-content', 'tribeParliamentCandidature', 'tribeParliamentTerm', 'tribeParliamentProposal', 'tribeParliamentRule', 'tribeParliamentLaw', 'tribeParliamentRevocation']);
-      const hiddenTypes = new Set(['padEntry', 'chatMessage', 'calendarDate', 'calendarNote', 'calendarReminderSent', 'feed-action', 'pubBalance', 'pubAvailability', 'log']);
+      const hiddenTypes = new Set(['padEntry', 'chatMessage', 'calendarDate', 'calendarNote', 'calendarReminderSent', 'taskReminderSent', 'feed-action', 'pubBalance', 'pubAvailability', 'log', 'gameScore']);
       const isAllowedTribeActivity = (a) => {
         if (tribeInternalTypes.has(a.type)) return false;
         const c = a.content || {};
         if (c.tribeId) return false;
         if (a.type === 'tribe') {
-          if (c.isAnonymous === true) return false;
           const isInitial = !c.replaces;
           if (!isInitial) return false;
+          if (c.isAnonymous === true && !c._decrypted) return false;
+          const st = String(c.status || '').toUpperCase();
+          if ((st === 'PRIVATE' || st === 'INVITE-ONLY') && !(Array.isArray(c.members) && c.members.includes(userId))) return false;
         }
         return true;
       };
-      const isVisible = (a) => {
+      const itemVisible = (a) => {
         if (hiddenTypes.has(a.type)) return false;
-        if (a.type === 'pad' && (a.content || {}).status !== 'OPEN') return false;
-        if (a.type === 'chat' && (a.content || {}).status !== 'OPEN') return false;
-        if (a.type === 'calendar' && (a.content || {}).status !== 'OPEN') return false;
-        if (a.type === 'event' && String((a.content || {}).isPublic || '').toLowerCase() === 'private' && (a.content || {}).organizer !== userId && !(Array.isArray((a.content || {}).attendees) && (a.content || {}).attendees.includes(userId))) return false;
-        if (a.type === 'task' && String((a.content || {}).isPublic || '').toUpperCase() === 'PRIVATE' && a.author !== userId && !(Array.isArray((a.content || {}).assignees) && (a.content || {}).assignees.includes(userId))) return false;
+        const c = a.content || {};
+        if (c.encryptedPayload) return false;
+        if (a.type === 'pad' && c.status !== 'OPEN') return false;
+        if (a.type === 'chat' && c.status !== 'OPEN') return false;
+        if (a.type === 'calendar' && c.status !== 'OPEN') return false;
+        if (a.type === 'event' && String(c.isPublic || '').toLowerCase() === 'private' && c.organizer !== userId && !(Array.isArray(c.attendees) && c.attendees.includes(userId))) return false;
+        if (a.type === 'task' && String(c.isPublic || '').toUpperCase() === 'PRIVATE' && a.author !== userId && !(Array.isArray(c.assignees) && c.assignees.includes(userId))) return false;
+        if (a.type === 'forum' && c.isPrivate === true && a.author !== userId) return false;
+        if (a.type === 'job' && String(c.visibility || '').toUpperCase() === 'HIDDEN' && a.author !== userId && !(Array.isArray(c.subscribers) && c.subscribers.includes(userId))) return false;
+        if (a.type === 'market' && String(c.visibility || '').toUpperCase() === 'HIDDEN' && c.seller !== userId) return false;
+        if (a.type === 'shop' && String(c.visibility || '').toUpperCase() === 'CLOSED' && a.author !== userId) return false;
+        if (a.type === 'curriculum' && String(c.visibility || '').toUpperCase() === 'HIDDEN' && a.author !== userId) return false;
+        if (a.type === 'shopProduct' && c.shopVisibility && String(c.shopVisibility).toUpperCase() === 'CLOSED' && a.author !== userId) return false;
+        return true;
+      };
+      const isVisible = (a) => {
+        if (!itemVisible(a)) return false;
+        if (a.type === 'post' || a.type === 'opinion') {
+          const c = a.content || {};
+          const ref = (typeof c.root === 'string' && c.root)
+            || (typeof c.branch === 'string' && c.branch)
+            || (typeof c.target === 'string' && c.target)
+            || null;
+          if (ref) {
+            const parent = idToAction.get(ref);
+            if (parent && !itemVisible(parent)) return false;
+          }
+        }
         return true;
       };
 
@@ -378,8 +556,7 @@ module.exports = ({ cooler }) => {
       if (filter === 'mine') out = deduped.filter(a => a.author === userId && isAllowedTribeActivity(a) && isVisible(a));
       else if (filter === 'recent') { const cutoff = Date.now() - 24 * 60 * 60 * 1000; out = deduped.filter(a => (a.ts || 0) >= cutoff && isAllowedTribeActivity(a) && isVisible(a)) }
       else if (filter === 'all') out = deduped.filter(a => isAllowedTribeActivity(a) && isVisible(a));
-      else if (filter === 'banking') out = deduped.filter(a => a.type === 'bankWallet' || a.type === 'bankClaim' || a.type === 'ubiClaim' || a.type === 'ubiclaimresult');
-      else if (filter === 'karma') out = deduped.filter(a => a.type === 'karmaScore');
+      else if (filter === 'banking') out = deduped.filter(a => a.type === 'bankWallet' || a.type === 'bankClaim' || a.type === 'ubiClaim');
       else if (filter === 'tribe') out = deduped.filter(a => a.type === 'tribe' || String(a.type || '').startsWith('tribe'));
       else if (filter === 'spread') out = deduped.filter(a => a.type === 'spread');
       else if (filter === 'parliament')
@@ -393,7 +570,6 @@ module.exports = ({ cooler }) => {
         });
       else if (filter === 'task')
         out = deduped.filter(a => a.type === 'task' || a.type === 'taskAssignment');
-      else if (filter === 'gameScore') out = deduped.filter(a => a.type === 'gameScore');
       else if (filter === 'pad') out = deduped.filter(a => a.type === 'pad' && (a.content || {}).status === 'OPEN');
       else if (filter === 'chat') out = deduped.filter(a => a.type === 'chat' && (a.content || {}).status === 'OPEN');
       else if (filter === 'calendar') out = deduped.filter(a => a.type === 'calendar' && (a.content || {}).status === 'OPEN');
@@ -401,6 +577,15 @@ module.exports = ({ cooler }) => {
 
       out.sort((a, b) => (b.ts || 0) - (a.ts || 0));
       return out;
+      })();
+      _feedCacheInflight.set(cacheKey, promise);
+      try {
+        const value = await promise;
+        _feedCache.set(cacheKey, { value, ts: Date.now() });
+        return value;
+      } finally {
+        _feedCacheInflight.delete(cacheKey);
+      }
     }
   };
 };

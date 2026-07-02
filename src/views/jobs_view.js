@@ -1,21 +1,21 @@
-const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, progress, video, audio } = require("../server/node_modules/hyperaxe")
-const { template, i18n } = require("./main_views")
+const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, progress, video, audio, table, tr, td } = require("../server/node_modules/hyperaxe")
+const { template, i18n, userLink, renderStateChip, renderOpenClosedChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadButton } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderUrl } = require("../backend/renderUrl")
 const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel } = require("./maps_view")
 
-const renderMediaBlob = (value) => {
+const renderMediaBlob = (value, attrs = {}) => {
   if (!value) return null
   const s = String(value).trim()
   if (!s) return null
-  if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}` })
+  if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}`, ...attrs })
   const mVideo = s.match(/\[video:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
-  if (mVideo) return video({ controls: true, class: 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}` })
+  if (mVideo) return video({ controls: true, class: attrs.class || 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}` })
   const mAudio = s.match(/\[audio:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
-  if (mAudio) return audio({ controls: true, class: 'post-audio', src: `/blob/${encodeURIComponent(mAudio[1])}` })
+  if (mAudio) return audio({ controls: true, class: attrs.class || 'post-audio', src: `/blob/${encodeURIComponent(mAudio[1])}` })
   const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
-  if (mImg) return img({ src: `/blob/${encodeURIComponent(mImg[1])}`, class: 'post-image' })
+  if (mImg) return img({ src: `/blob/${encodeURIComponent(mImg[1])}`, class: attrs.class || 'post-image' })
   return null
 }
 
@@ -29,6 +29,7 @@ const FILTERS = [
   { key: "PRESENCIAL", i18n: "jobsFilterPresencial", title: "jobsPresencialTitle" },
   { key: "FREELANCER", i18n: "jobsFilterFreelancer", title: "jobsFreelancerTitle" },
   { key: "EMPLOYEE", i18n: "jobsFilterEmployee", title: "jobsEmployeeTitle" },
+  { key: "EXCHANGE", i18n: "jobsFilterExchange", title: "jobsExchangeTitle" },
   { key: "OPEN", i18n: "jobsFilterOpen", title: "jobsOpenTitle" },
   { key: "CLOSED", i18n: "jobsFilterClosed", title: "jobsClosedTitle" },
   { key: "RECENT", i18n: "jobsFilterRecent", title: "jobsRecentTitle" },
@@ -78,20 +79,6 @@ const renderPmButton = (recipientId) =>
       )
     : null
 
-const renderCardField = (labelText, value) =>
-  div(
-    { class: "card-field" },
-    span({ class: "card-label" }, labelText),
-    span({ class: "card-value" }, String(value ?? ""))
-  )
-
-const renderCardFieldRich = (labelText, parts) =>
-  div(
-    { class: "card-field" },
-    span({ class: "card-label" }, labelText),
-    span({ class: "card-value" }, ...(Array.isArray(parts) ? parts : [String(parts ?? "")]))
-  )
-
 const renderTags = (tags = []) => {
   const arr = safeArr(tags).map((t) => String(t || "").trim()).filter(Boolean)
   return arr.length
@@ -114,15 +101,6 @@ const renderApplicantsProgress = (subsCount, vacants) => {
       span({ class: `card-value ${colorClass}` }, `${s}/${v}`)
     ),
     progress({ class: "confirmations-progress", value: s, max: v })
-  )
-}
-
-const renderSubscribers = (subs = []) => {
-  const n = safeArr(subs).length
-  return div(
-    { class: "card-field" },
-    span({ class: "card-label" }, `${i18n.jobSubscribers}:`),
-    span({ class: "card-value" }, n > 0 ? String(n) : i18n.noSubscribers.toUpperCase())
   )
 }
 
@@ -158,122 +136,147 @@ const renderJobOwnerActions = (job, returnTo) => {
   ]
 }
 
-const renderJobTopbar = (job, filter, params = {}) => {
-  const returnTo = buildReturnTo(filter, params)
-  const isAuthor = String(job.author) === String(userId)
-  const isOpen = String(job.status || "").toUpperCase() === "OPEN"
-  const subs = safeArr(job.subscribers)
-  const isSubscribed = subs.includes(userId)
-  const isSingle = params && params.single === true
-
-  const chips = []
-  if (isSubscribed) chips.push(span({ class: "chip chip-you" }, i18n.jobsAppliedBadge))
-
-  const leftActions = []
-
-  if (!isSingle) {
-    leftActions.push(
-      form(
-        { method: "GET", action: `/jobs/${encodeURIComponent(job.id)}` },
-        input({ type: "hidden", name: "returnTo", value: returnTo }),
-        input({ type: "hidden", name: "filter", value: filter || "ALL" }),
-        params.search ? input({ type: "hidden", name: "search", value: params.search }) : null,
-        params.minSalary !== undefined ? input({ type: "hidden", name: "minSalary", value: String(params.minSalary ?? "") }) : null,
-        params.maxSalary !== undefined ? input({ type: "hidden", name: "maxSalary", value: String(params.maxSalary ?? "") }) : null,
-        params.sort ? input({ type: "hidden", name: "sort", value: params.sort }) : null,
-        button({ type: "submit", class: "filter-btn" }, i18n.viewDetailsButton)
-      )
-    )
-  }
-
-  leftActions.push(renderPmButton(job.author))
-
-  if (!isAuthor && isOpen) {
-    leftActions.push(
-      isSubscribed
-        ? form(
-            { method: "POST", action: `/jobs/unsubscribe/${encodeURIComponent(job.id)}` },
-            input({ type: "hidden", name: "returnTo", value: returnTo }),
-            button({ type: "submit", class: "filter-btn" }, i18n.jobUnsubscribeButton)
-          )
-        : form(
-            { method: "POST", action: `/jobs/subscribe/${encodeURIComponent(job.id)}` },
-            input({ type: "hidden", name: "returnTo", value: returnTo }),
-            button({ type: "submit", class: "filter-btn" }, i18n.jobSubscribeButton)
-          )
-    )
-  }
-
-  const leftChildren = []
-  if (chips.length) leftChildren.push(div({ class: "transfer-chips" }, ...chips))
-  const leftActionNodes = leftActions.filter(Boolean)
-  if (leftActionNodes.length) leftChildren.push(...leftActionNodes)
-
-  const ownerActions = renderJobOwnerActions(job, returnTo)
-  const leftNode = leftChildren.length ? div({ class: "bookmark-topbar-left transfer-topbar-left" }, ...leftChildren) : null
-  const actionsNode = ownerActions.length ? div({ class: "bookmark-actions transfer-actions" }, ...ownerActions) : null
-
-  const topbarChildren = []
-  if (leftNode) topbarChildren.push(leftNode)
-  if (actionsNode) topbarChildren.push(actionsNode)
-
-  const topbarClass = isSingle ? "bookmark-topbar transfer-topbar-single" : "bookmark-topbar"
-  return topbarChildren.length ? div({ class: topbarClass }, ...topbarChildren) : null
+const renderJobStatusChip = (status) => {
+  const s = String(status || "").toUpperCase()
+  const localized = i18n["jobStatus" + s]
+  return renderOpenClosedChip(s, { statusChipOPEN: localized || "OPEN", statusChipCLOSED: localized || "CLOSED" })
 }
 
-const renderJobList = (jobs, filter, params = {}) => {
+const renderJobAppliedChip = () =>
+  renderStateChip("whole", "★", i18n.jobsAppliedBadge)
+
+const renderJobHiddenChip = () =>
+  renderVisibilityChip("HIDDEN", i18n)
+
+const buildJobReturnInputs = (filter, params = {}) => [
+  input({ type: "hidden", name: "filter", value: filter || "ALL" }),
+  params.search ? input({ type: "hidden", name: "search", value: params.search }) : null,
+  params.minSalary !== undefined ? input({ type: "hidden", name: "minSalary", value: String(params.minSalary ?? "") }) : null,
+  params.maxSalary !== undefined ? input({ type: "hidden", name: "maxSalary", value: String(params.maxSalary ?? "") }) : null,
+  params.sort ? input({ type: "hidden", name: "sort", value: params.sort }) : null
+].filter(Boolean)
+
+const renderJobViewDetailsForm = (job, filter, params, returnTo, btnClass) =>
+  form(
+    { method: "GET", action: `/jobs/${encodeURIComponent(job.id)}` },
+    input({ type: "hidden", name: "returnTo", value: returnTo }),
+    ...buildJobReturnInputs(filter, params),
+    button({ type: "submit", class: btnClass || "filter-btn" }, i18n.viewDetailsButton)
+  )
+
+const renderJobApplyToggle = (job, returnTo) => {
+  const isAuthor = String(job.author) === String(userId)
+  const isOpen = String(job.status || "").toUpperCase() === "OPEN"
+  if (isAuthor || !isOpen) return null
+  const isSubscribed = safeArr(job.subscribers).includes(userId)
+  return isSubscribed
+    ? form(
+        { method: "POST", action: `/jobs/unsubscribe/${encodeURIComponent(job.id)}` },
+        input({ type: "hidden", name: "returnTo", value: returnTo }),
+        button({ type: "submit", class: "filter-btn" }, i18n.jobUnsubscribeButton)
+      )
+    : form(
+        { method: "POST", action: `/jobs/subscribe/${encodeURIComponent(job.id)}` },
+        input({ type: "hidden", name: "returnTo", value: returnTo }),
+        button({ type: "submit", class: "filter-btn" }, i18n.jobSubscribeButton)
+      )
+}
+
+const renderJobInfoTable = (job, opts = {}) => {
+  const rows = []
+  const typeLabel = i18n["jobType" + String(job.job_type || "").toUpperCase()] || String(job.job_type || "").toUpperCase()
+  const locLabel = String(job.location || "").toUpperCase()
+  const timeLabel = i18n["jobTime" + String(job.job_time || "").toUpperCase()] || String(job.job_time || "").toUpperCase()
+  const langLabel = String(job.languages || "").toUpperCase()
+  const pushRow = (labelText, valueNode, valueClass) =>
+    rows.push(tr(
+      td({ class: "tribe-info-label" }, labelText),
+      td({ class: `tribe-info-value${valueClass ? " " + valueClass : ""}` }, valueNode)
+    ))
+  pushRow(i18n.jobType, typeLabel || "—")
+  pushRow(i18n.jobLocation, locLabel || "—")
+  pushRow(i18n.jobTime, timeLabel || "—")
+  if (String(job.job_type || "").toLowerCase() !== "exchange") {
+    pushRow(i18n.jobSalary, `${fmtSalary(job.salary)} ECO`, "card-salary")
+  }
+  if (opts.includeVacants) pushRow(i18n.jobVacants, String(job.vacants ?? 1))
+  if (job.mapUrl) {
+    const mapNode = renderMapLocationVisitLabel(job.mapUrl)
+    if (mapNode) pushRow(i18n.mapLocationTitle || "Map", mapNode)
+  }
+  return table({ class: "tribe-info-table jobs-info-table" }, ...rows)
+}
+
+const renderJobExtraDetails = (job) => {
+  const langLabel = String(job.languages || "").toUpperCase()
+  const isExchange = String(job.job_type || "").toLowerCase() === "exchange"
+  const skill = safeText(job.exchangeSkill)
+  if (!langLabel && !isExchange) return null
+  const rows = []
+  const pushRow = (labelText, valueNode) =>
+    rows.push(tr(
+      td({ class: "tribe-info-label" }, labelText),
+      td({ class: "tribe-info-value" }, valueNode)
+    ))
+  if (langLabel) pushRow(i18n.jobLanguages, langLabel)
+  if (isExchange) {
+    pushRow(i18n.jobsHoursOffered || "Hours offered", `${Number(job.hoursOffered) || 0} h`)
+    pushRow(i18n.jobsHoursRequested || "Hours requested", `${Number(job.hoursRequested) || 0} h`)
+    if (skill) pushRow(i18n.jobsExchangeSkill || "Skill", skill)
+  }
+  return table({ class: "tribe-info-table jobs-info-table" }, ...rows)
+}
+
+const renderJobList = exports.renderJobList = (jobs, filter, params = {}) => {
   const returnTo = buildReturnTo(filter, params)
   const list = safeArr(jobs)
 
-  return list.length
-    ? list.map((job) => {
-        const topbar = renderJobTopbar(job, filter, params)
-        const subs = safeArr(job.subscribers)
-        const tagsNode = renderTags(job.tags)
-        const salaryText = `${fmtSalary(job.salary)} ECO`
+  if (!list.length) return p(i18n.noJobsMatch || i18n.noJobsFound)
 
-        return div(
-          { class: "job-card" },
-          topbar ? topbar : null,
-          safeText(job.title) ? h2(job.title) : null,
-          job.image ? div({ class: "activity-image-preview" }, renderMediaBlob(job.image)) : null,
-          br(),
-          safeText(job.description) ? renderCardFieldRich(`${i18n.jobDescription}:`, renderUrl(job.description)) : null,
-          br(),
-          renderApplicantsProgress(subs.length, job.vacants),
-          renderCardField(`${i18n.jobLanguages}:`, String(job.languages || "").toUpperCase()),
-          renderCardField(`${i18n.jobType}:`, i18n["jobType" + String(job.job_type || "").toUpperCase()] || String(job.job_type || "").toUpperCase()),
-          renderCardField(`${i18n.jobLocation}:`, String(job.location || "").toUpperCase()),
-          renderMapLocationVisitLabel(job.mapUrl),
-          renderCardField(`${i18n.jobTime}:`, i18n["jobTime" + String(job.job_time || "").toUpperCase()] || String(job.job_time || "").toUpperCase()),
-          renderCardFieldRich(`${i18n.jobSalary}:`, [span({ class: "card-salary" }, salaryText)]),
-          br(),
-          div(
-            { class: "card-comments-summary" },
-            span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
-            span({ class: "card-value" }, String(job.commentCount || 0)),
-            br(),
-            br(),
-            form(
-              { method: "GET", action: `/jobs/${encodeURIComponent(job.id)}#comments` },
-              input({ type: "hidden", name: "returnTo", value: returnTo }),
-              input({ type: "hidden", name: "filter", value: filter || "ALL" }),
-              params.search ? input({ type: "hidden", name: "search", value: params.search }) : null,
-              params.minSalary !== undefined ? input({ type: "hidden", name: "minSalary", value: String(params.minSalary ?? "") }) : null,
-              params.maxSalary !== undefined ? input({ type: "hidden", name: "maxSalary", value: String(params.maxSalary ?? "") }) : null,
-              params.sort ? input({ type: "hidden", name: "sort", value: params.sort }) : null,
-              button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
+  return div({ class: "jobs-grid" },
+    list.map((job) => {
+      const subs = safeArr(job.subscribers)
+      const isSubscribed = subs.includes(userId)
+      const heroNode = job.image
+        ? div({ class: "tribe-card-image-wrapper" },
+            a({ href: `/jobs/${encodeURIComponent(job.id)}` },
+              renderMediaBlob(job.image, { class: "tribe-card-hero-image" })
+            )
+          )
+        : null
+      const isHidden = String(job.visibility || "PUBLIC").toUpperCase() === "HIDDEN"
+      const chips = [
+        renderJobStatusChip(job.status),
+        isHidden ? renderJobHiddenChip() : null,
+        isSubscribed ? renderJobAppliedChip() : null,
+        renderLifespanChip(job.lifetime, i18n)
+      ].filter(Boolean)
+      const isExchange = String(job.job_type || "").toLowerCase() === "exchange"
+      const compensationText = isExchange
+        ? `${Number(job.hoursOffered) || 0}h ⇄ ${Number(job.hoursRequested) || 0}h`
+        : `${fmtSalary(job.salary)} ECO`
+
+      return div({ class: "tribe-card job-card" },
+        heroNode,
+        div({ class: "tribe-card-body" },
+          div({ class: "shop-title-row" },
+            h2({ class: "tribe-card-title" },
+              a({ href: `/jobs/${encodeURIComponent(job.id)}` }, safeText(job.title) || i18n.jobsTitle)
             )
           ),
-          p(
-            { class: "card-footer" },
-            span({ class: "date-link" }, `${moment(job.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
-            a({ href: `/author/${encodeURIComponent(job.author)}`, class: "user-link" }, job.author),
-            renderUpdatedLabel(job.createdAt, job.updatedAt)
+          chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
+          div({ class: "card-date-highlight" }, compensationText),
+          div({ class: "tribe-card-members" },
+            span({ class: "tribe-members-count" }, `${i18n.jobSubscribers}: ${subs.length}`)
+          ),
+          div({ class: "card-spread-centered" }, renderSpreadButton(job.id, params.spreadMap && params.spreadMap.get(job.id))),
+          div({ class: "card-visit-btn-centered" },
+            renderJobViewDetailsForm(job, filter, params, returnTo)
           )
         )
-      })
-    : p(i18n.noJobsMatch || i18n.noJobsFound)
+      )
+    })
+  )
 }
 
 const renderJobForm = (job = {}, mode = "create") => {
@@ -291,8 +294,9 @@ const renderJobForm = (job = {}, mode = "create") => {
       br(),
       select(
         { name: "job_type", required: true },
-        option({ value: "freelancer", selected: job.job_type === "freelancer" }, i18n.jobTypeFreelance),
-        option({ value: "employee", selected: job.job_type === "employee" }, i18n.jobTypeSalary)
+        option({ value: "freelancer", selected: job.job_type === "freelancer" ? "selected" : undefined }, i18n.jobTypeFreelance),
+        option({ value: "employee", selected: job.job_type === "employee" ? "selected" : undefined }, i18n.jobTypeSalary),
+        option({ value: "exchange", selected: job.job_type === "exchange" ? "selected" : undefined }, i18n.jobTypeExchange || "Hour exchange")
       ),
       br(),
       br(),
@@ -355,16 +359,48 @@ const renderJobForm = (job = {}, mode = "create") => {
       input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: job.mapUrl || "" }),
       br(),
       br(),
+      label(i18n.visibilityLabel || "Visibility"),
+      br(),
+      select(
+        { name: "visibility" },
+        option({ value: "PUBLIC", selected: (job.visibility || "PUBLIC") === "PUBLIC" }, i18n.visibilityPublic || "Public"),
+        option({ value: "HIDDEN", selected: job.visibility === "HIDDEN" }, i18n.visibilityHidden || "Hidden")
+      ),
+      br(),
+      br(),
       label(i18n.jobVacants),
       br(),
       input({ type: "number", name: "vacants", min: "1", placeholder: i18n.jobVacantsPlaceholder, value: job.vacants || 1, required: true }),
       br(),
       br(),
-      label(i18n.jobSalary),
-      br(),
-      input({ type: "number", name: "salary", step: "0.000001", min: "0", placeholder: i18n.jobSalaryPlaceholder, value: job.salary || "" }),
-      br(),
-      br(),
+      String(job.job_type || "").toLowerCase() !== "exchange"
+        ? [
+            label(i18n.jobSalary),
+            br(),
+            input({ type: "number", name: "salary", step: "0.000001", min: "0", value: job.salary || "" }),
+            br(),
+            br()
+          ]
+        : null,
+      String(job.job_type || "").toLowerCase() === "exchange"
+        ? [
+            label(i18n.jobsHoursOffered || "Hours offered"),
+            br(),
+            input({ type: "number", name: "hoursOffered", step: "0.5", min: "0", value: job.hoursOffered || "" }),
+            br(),
+            br(),
+            label(i18n.jobsHoursRequested || "Hours requested in return"),
+            br(),
+            input({ type: "number", name: "hoursRequested", step: "0.5", min: "0", value: job.hoursRequested || "" }),
+            br(),
+            br(),
+            label(i18n.jobsExchangeSkill || "Skill wanted in exchange"),
+            br(),
+            input({ type: "text", name: "exchangeSkill", value: job.exchangeSkill || "" }),
+            br(),
+            br()
+          ]
+        : null,
       button({ type: "submit" }, isEdit ? i18n.jobsUpdateButton : i18n.createJobButton)
     )
   )
@@ -383,12 +419,16 @@ const renderCVList = (inhabitants) =>
               a({ href: `/author/${encodeURIComponent(user.id)}` },
                 img({ class: "inhabitant-photo", src: resolvePhoto(user.photo) })
               ),
-              h2(user.name)
+              h2(user.name),
+              user.id
+                ? a({ href: `/author/${encodeURIComponent(user.id)}`, class: 'inhabitant-qr-link' },
+                    img({ class: 'inhabitant-qr-small', src: `/qr/${encodeURIComponent(user.id)}?size=96`, alt: 'QR' }))
+                : null
             ),
             div(
               { class: "inhabitant-details" },
               user.description ? p(...renderUrl(user.description)) : null,
-              p(a({ class: "user-link", href: `/author/${encodeURIComponent(user.id)}` }, user.id)),
+              p(userLink(user.id)),
               div(
                 { class: "cv-actions" },
                 form({ method: "GET", action: `/inhabitant/${encodeURIComponent(user.id)}` }, button({ type: "submit", class: "filter-btn" }, i18n.inhabitantviewDetails)),
@@ -408,11 +448,18 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
 
   const filterObj = FILTERS.find((f) => f.key === filter) || FILTERS[0]
   const sectionTitle = i18n[filterObj.title] || i18n.jobsTitle
+  const { renderReachChip: renderReachChipJobs } = require('./clearnet_view');
+  const viewerClearnet = !!(params.viewerPrefs && params.viewerPrefs.clearnetJobs)
 
   return template(
     i18n.jobsTitle,
     section(
-      div({ class: "tags-header" }, h2(sectionTitle), p(i18n.jobsDescription)),
+      div({ class: "tags-header" },
+        h2(sectionTitle),
+        p(i18n.jobsDescription)
+      ),
+      div({ class: "shop-title-row" }, renderReachChipJobs(viewerClearnet, i18n)),
+      br(),
       div(
         { class: "filters" },
         form(
@@ -481,11 +528,14 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
 }
 
 const renderJobCommentsSection = (jobId, returnTo, comments = []) => {
-  const list = safeArr(comments)
+  const list = safeArr(comments).filter(c => {
+    const t = c && c.value && c.value.content && c.value.content.text
+    return t && String(t).trim()
+  })
   const commentsCount = list.length
 
   return div(
-    { class: "vote-comments-section" },
+    { id: "comments", class: "vote-comments-section" },
     div(
       { class: "comments-count" },
       span({ class: "card-label" }, i18n.voteCommentsLabel + ": "),
@@ -534,12 +584,140 @@ const renderJobCommentsSection = (jobId, returnTo, comments = []) => {
   )
 }
 
+const renderCandidates = (candidates, jobId) => {
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+  return div(
+    { class: "job-candidates" },
+    h2(i18n.jobsCandidatesTitle || "Suggested candidates"),
+    p(i18n.jobsCandidatesDescription || "Inhabitants with skills matching your job. Send them a private message to invite them."),
+    div(
+      { class: "inhabitants-list" },
+      candidates.map(c => div(
+        { class: "inhabitant-card" },
+        div(
+          { class: "inhabitant-left" },
+          a({ href: `/author/${encodeURIComponent(c.id)}` },
+            img({ class: "inhabitant-photo", src: resolvePhoto(c.photo) })
+          ),
+          h2(c.name || 'Anonymous'),
+          c.id
+            ? a({ href: `/author/${encodeURIComponent(c.id)}`, class: 'inhabitant-qr-link' },
+                img({ class: 'inhabitant-qr-small', src: `/qr/${encodeURIComponent(c.id)}?size=96`, alt: 'QR' }))
+            : null
+        ),
+        div(
+          { class: "inhabitant-details" },
+          c.description ? p(...renderUrl(c.description)) : null,
+          p(userLink(c.id)),
+          div({ class: "matchskills" },
+            p(`${i18n.matchScore || 'Match score'}: ${Math.round(c.matchScore * 100)}%`),
+            p(`${i18n.commonSkills || 'Common skills'}: ${(c.commonSkills || []).join(', ')}`)
+          ),
+          c.location ? p(`${i18n.locationLabel || 'Location'}: ${c.location}`) : null,
+          c.status ? p(`${i18n.statusLabel || 'Status'}: ${c.status}`) : null,
+          c.preferences ? p(`${i18n.preferencesLabel || 'Preferences'}: ${c.preferences}`) : null,
+          div({ class: "cv-actions" },
+            form({ method: 'GET', action: `/inhabitant/${encodeURIComponent(c.id)}` },
+              button({ type: 'submit', class: 'filter-btn' }, i18n.inhabitantviewDetails)
+            ),
+            form({ method: 'GET', action: '/pm' },
+              input({ type: 'hidden', name: 'recipients', value: c.id }),
+              input({ type: 'hidden', name: 'subject', value: `${i18n.jobsTitle || 'Job'}: ${job.title || ''}`.slice(0, 150) }),
+              input({ type: 'hidden', name: 'text', value: `${i18n.jobsCandidatesPmBody || 'Hi, I think your profile matches my job opening'}: /jobs/${jobId}` }),
+              button({ type: 'submit', class: 'filter-btn' }, i18n.pmCreateButton || 'Send PM')
+            )
+          )
+        )
+      ))
+    )
+  );
+};
+
 exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {}) => {
   const returnTo = safeText(params.returnTo) || buildReturnTo(filter, params)
-  const topbar = renderJobTopbar(job, filter, { ...params, single: true })
   const subs = safeArr(job.subscribers)
   const tagsNode = renderTags(job.tags)
-  const salaryText = `${fmtSalary(job.salary)} ECO`
+  const isAuthor = String(job.author) === String(userId)
+  const isSubscribed = subs.includes(userId)
+  const { renderReachChip } = require('./clearnet_view')
+  const isClearnet = !!(params.authorPrefs && params.authorPrefs.clearnetJobs && String(job.status || '').toUpperCase() !== 'CLOSED' && String(job.visibility || 'PUBLIC').toUpperCase() !== 'HIDDEN')
+  const candidatesBlock = isAuthor ? renderCandidates(params.candidates || [], job.id) : null
+
+  const ownerActions = renderJobOwnerActions(job, returnTo)
+  const applyToggle = renderJobApplyToggle(job, returnTo)
+  const pmBtn = renderPmButton(job.author)
+  const visibility = (job.visibility || 'PUBLIC').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'PUBLIC'
+  const chips = [
+    renderJobStatusChip(job.status),
+    visibility === 'HIDDEN' ? renderJobHiddenChip() : null,
+    isSubscribed ? renderJobAppliedChip() : null,
+    renderLifespanChip(job.lifetime, i18n),
+    renderEcoTax(job.msgSize, job.id),
+    renderReachChip(isClearnet, i18n)
+  ].filter(Boolean)
+
+  const nextVisibility = visibility === 'PUBLIC' ? 'HIDDEN' : 'PUBLIC'
+  const visibilityRow = isAuthor
+    ? div({ class: "tribe-side-actions" },
+        span({ class: "card-label" }, `${i18n.visibilityLabel || 'Visibility'}: `),
+        renderVisibilityChip(visibility, i18n),
+        form({ method: "POST", action: `/jobs/visibility/${encodeURIComponent(job.id)}`, class: "inline-form" },
+          input({ type: "hidden", name: "visibility", value: nextVisibility }),
+          button({ type: "submit", class: "filter-btn" },
+            nextVisibility === 'PUBLIC' ? (i18n.visibilityMakePublic || 'Make public') : (i18n.visibilityMakeHidden || 'Make hidden')
+          )
+        )
+      )
+    : null
+
+  const sideActions = []
+  if (applyToggle) sideActions.push(applyToggle)
+  if (pmBtn) sideActions.push(pmBtn)
+  for (const a of ownerActions) sideActions.push(a)
+
+  const jobSide = div({ class: "tribe-side" },
+    div({ class: "shop-title-row" },
+      h2({ class: "tribe-card-title" }, safeText(job.title) || i18n.jobsTitle)
+    ),
+    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
+    div({ class: "card-spread-centered" }, renderSpreadButton(job.id, params.spreads)),
+    job.image
+      ? renderMediaBlob(job.image, { class: "tribe-detail-image" })
+      : null,
+    renderJobInfoTable(job, { includeVacants: true, includeSubscribers: false }),
+    div({ class: "tribe-card-members" },
+      span({ class: "tribe-members-count" }, `${i18n.jobSubscribers}: ${subs.length}`)
+    ),
+    sideActions.length
+      ? div({ class: "tribe-side-actions" }, ...sideActions)
+      : null,
+    visibilityRow,
+    tagsNode
+  )
+
+  const renderJobSection = (titleText, bodyText) =>
+    safeText(bodyText)
+      ? div({ class: "job-section" },
+          h2({ class: "job-section-title" }, titleText),
+          p({ class: "tribe-side-description" }, ...renderUrl(bodyText))
+        )
+      : null
+
+  const extraDetailsTable = renderJobExtraDetails(job)
+  const jobMain = div({ class: "tribe-main" },
+    renderJobSection(i18n.jobDescription, job.description),
+    renderJobSection(i18n.jobRequirements, job.requirements),
+    extraDetailsTable ? div({ class: "job-section" }, extraDetailsTable) : null,
+    renderJobSection(i18n.jobTasks, job.tasks),
+    job.mapUrl ? div({ class: "job-section" }, renderMapEmbed(params.mapData, job.mapUrl)) : null,
+    p({ class: "card-footer" },
+      span({ class: "date-link" }, `${moment(job.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+      userLink(job.author),
+      renderUpdatedLabel(job.createdAt, job.updatedAt)
+    ),
+    candidatesBlock ? candidatesBlock : null,
+    renderJobCommentsSection(job.id, returnTo, comments)
+  )
 
   return template(
     i18n.jobsTitle,
@@ -558,36 +736,58 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
           button({ type: "submit", name: "filter", value: "CREATE", class: "create-button" }, i18n.jobsCreateJob)
         )
       ),
-      div(
-        { class: "job-card" },
-        topbar ? topbar : null,
-        safeText(job.title) ? h2(job.title) : null,
-        job.image ? div({ class: "activity-image-preview" }, renderMediaBlob(job.image)) : null,
-        safeText(job.description) ? renderCardFieldRich(`${i18n.jobDescription}:`, renderUrl(job.description)) : null,
-        renderCardField(`${i18n.jobStatus}:`, i18n["jobStatus" + String(job.status || "").toUpperCase()] || String(job.status || "").toUpperCase()),
-        renderCardFieldRich(`${i18n.jobSalary}:`, [span({ class: "card-salary" }, salaryText)]),
-        renderCardField(`${i18n.jobVacants}:`, job.vacants),
-        renderCardField(`${i18n.jobLanguages}:`, String(job.languages || "").toUpperCase()),
-        renderCardField(`${i18n.jobType}:`, i18n["jobType" + String(job.job_type || "").toUpperCase()] || String(job.job_type || "").toUpperCase()),
-        renderCardField(`${i18n.jobLocation}:`, String(job.location || "").toUpperCase()),
-        renderMapEmbed(params.mapData, job.mapUrl),
-        renderCardField(`${i18n.jobTime}:`, i18n["jobTime" + String(job.job_time || "").toUpperCase()] || String(job.job_time || "").toUpperCase()),
-        safeText(job.requirements) ? renderCardFieldRich(`${i18n.jobRequirements}:`, renderUrl(job.requirements)) : null,
-        safeText(job.tasks) ? renderCardFieldRich(`${i18n.jobTasks}:`, renderUrl(job.tasks)) : null,
-        renderApplicantsProgress(subs.length, job.vacants),
-        renderSubscribers(subs),
-        br(),
-        tagsNode ? tagsNode : null,
-        br(),
-        p(
-          { class: "card-footer" },
-          span({ class: "date-link" }, `${moment(job.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
-          a({ href: `/author/${encodeURIComponent(job.author)}`, class: "user-link" }, job.author),
-          renderUpdatedLabel(job.createdAt, job.updatedAt)
-        )
-      ),
-      div({ id: "comments" }, renderJobCommentsSection(job.id, returnTo, comments))
+      div({ class: "tribe-details" }, jobSide, jobMain)
     )
   )
 }
+
+exports.clearnetJobView = async (job) => {
+  const { escapeHtml: esc, blobUrl: cnBlob, renderClearnetPage } = require('./clearnet_view');
+  const title = esc(job.title || 'Job');
+  const desc = esc(job.description || '');
+  const req = esc(job.requirements || '');
+  const lang = esc(String(job.languages || '').toUpperCase());
+  const loc = esc(String(job.location || '').toUpperCase());
+  const jobType = String(job.job_type || '').toLowerCase();
+  const jobTypeLabel = jobType === 'exchange' ? 'Hour exchange' : jobType === 'employee' ? 'Employee' : 'Freelancer';
+  let compensation = '';
+  if (jobType === 'exchange') {
+    compensation = `${Number(job.hoursOffered || 0)}h offered · ${Number(job.hoursRequested || 0)}h requested`;
+    if (job.exchangeSkill) compensation += ` · ${esc(job.exchangeSkill)}`;
+  } else {
+    compensation = `${parseFloat(job.salary || 0).toFixed(2)} ECO`;
+  }
+  const jobImg = cnBlob(job.image);
+  const extraCss = `
+.cn-job-title{color:var(--fg);margin:0 0 16px 0;font-size:32px;font-weight:700}
+.cn-job-meta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.cn-job-meta-item{background:var(--bg-sub);border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-size:14px;color:var(--fg-soft);display:inline-flex;align-items:center;gap:6px}
+.cn-job-comp{background:var(--bg-sub);border:1px solid var(--fg);color:var(--fg);padding:8px 16px;border-radius:6px;font-weight:600;display:inline-block;margin-bottom:20px}
+.cn-job-img{display:block;max-width:100%;border:1px solid var(--border);border-radius:8px;margin-bottom:20px}
+.cn-job-section h2{color:var(--fg);font-size:18px;text-transform:uppercase;letter-spacing:2px;margin:24px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.cn-job-section p{color:var(--fg-soft);white-space:pre-wrap;line-height:1.6;font-size:15px}
+`;
+  const body = `
+  <h1 class="cn-job-title">${title}</h1>
+  <div class="cn-job-meta">
+    <span class="cn-job-meta-item">💼 ${jobTypeLabel}</span>
+    ${job.createdAt ? `<span class="cn-job-meta-item">📅 ${esc(new Date(job.createdAt).toISOString().slice(0,10))}</span>` : ''}
+    ${loc ? `<span class="cn-job-meta-item">📍 ${loc}</span>` : ''}
+    ${lang ? `<span class="cn-job-meta-item">🗣 ${lang}</span>` : ''}
+  </div>
+  <div class="cn-job-comp">${compensation}</div>
+  ${jobImg ? `<img class="cn-job-img" src="${jobImg}" alt="${title}"/>` : ''}
+  ${desc ? `<div class="cn-job-section"><h2>Description</h2><p>${desc}</p></div>` : ''}
+  ${req ? `<div class="cn-job-section"><h2>Requirements</h2><p>${req}</p></div>` : ''}
+`;
+  return renderClearnetPage({
+    title: `${job.title || 'Job'} — Oasis`,
+    ogTitle: job.title || 'Job',
+    ogDescription: job.description || '',
+    ogImage: jobImg,
+    extraCss,
+    body,
+    hubFeedId: job.author || null
+  });
+};
 

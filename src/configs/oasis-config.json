@@ -2,6 +2,9 @@
   "themes": {
     "current": "Dark-SNH"
   },
+  "ux": {
+    "current": "blocks"
+  },
   "modules": {
     "popularMod": "on",
     "topicsMod": "on",
@@ -9,6 +12,7 @@
     "latestMod": "on",
     "threadsMod": "on",
     "multiverseMod": "on",
+    "fediverseMod": "on",
     "invitesMod": "on",
     "walletMod": "on",
     "legacyMod": "on",
@@ -32,8 +36,10 @@
     "transfersMod": "on",
     "feedMod": "on",
     "pixeliaMod": "on",
+    "melodyMod": "on",
     "agendaMod": "on",
     "aiMod": "on",
+    "aiNavMod": "on",
     "forumMod": "on",
     "gamesMod": "on",
     "jobsMod": "on",
@@ -46,7 +52,9 @@
     "logsMod": "on",
     "mapsMod": "on",
     "chatsMod": "on",
-    "torrentsMod": "on"
+    "torrentsMod": "on",
+    "graphosMod": "on",
+    "larpMod": "on"
   },
   "wallet": {
     "url": "http://localhost:7474",
@@ -66,5 +74,6 @@
   "homePage": "activity",
   "language": "en",
   "wish": "whole",
-  "pmVisibility": "whole"
+  "pmVisibility": "whole",
+  "lanBroadcasting": true
 }

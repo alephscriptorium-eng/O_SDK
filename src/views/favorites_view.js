@@ -1,6 +1,6 @@
 const { form, button, div, h2, p, section, input, a, span, img } = require("../server/node_modules/hyperaxe");
 
-const { template, i18n } = require("./main_views");
+const { template, i18n, userLink} = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { renderUrl } = require("../backend/renderUrl");
 
@@ -54,7 +54,6 @@ const renderImagePreview = (item) => {
 const renderFavoriteCard = (item, filter) => {
   const returnTo = buildReturnTo(filter);
 
-  const titlePrefix = `[${String(item.kind || "").toUpperCase()}]`;
   const title = safeText(item.title) || safeText(item.name) || safeText(item.category) || safeText(item.url) || "";
 
   const ts = item.updatedAt || item.createdAt;
@@ -62,6 +61,11 @@ const renderFavoriteCard = (item, filter) => {
 
   return div(
     { class: "tags-header bookmark-card" },
+    div({ class: 'card-chips-row' },
+      span({ class: 'pm-exposition-chip pm-exposition-whole' },
+        span({ class: 'pm-exposition-text' }, String(item.kind || '').toUpperCase())
+      )
+    ),
     div(
       { class: "bookmark-topbar" },
       div(
@@ -82,7 +86,7 @@ const renderFavoriteCard = (item, filter) => {
         )
       )
     ),
-    title ? h2(`${titlePrefix} ${title}`) : h2(titlePrefix),
+    title ? h2(title) : null,
     renderImagePreview(item),
     renderBookmarkUrl(item),
     safeText(item.description) ? p(...renderUrl(item.description)) : null,
@@ -90,7 +94,7 @@ const renderFavoriteCard = (item, filter) => {
     p(
       { class: "card-footer" },
       absDate ? span({ class: "date-link" }, `${absDate} ${i18n.performed} `) : "",
-      item.author ? a({ href: `/author/${encodeURIComponent(item.author)}`, class: "user-link" }, `${item.author}`) : ""
+      item.author ? userLink(item.author) : ""
     )
   );
 };
@@ -154,6 +158,14 @@ exports.favoritesView = async (items, filter = "all", counts = {}) => {
           button(
             { type: "submit", name: "filter", value: "torrents", class: filter === "torrents" ? "filter-btn active" : "filter-btn" },
             `${i18n.favoritesFilterTorrents || "TORRENTS"} (${c.torrents || 0})`
+          ),
+          button(
+            { type: "submit", name: "filter", value: "market", class: filter === "market" ? "filter-btn active" : "filter-btn" },
+            `${i18n.favoritesFilterMarket || "MARKET"} (${c.market || 0})`
+          ),
+          button(
+            { type: "submit", name: "filter", value: "shopProducts", class: filter === "shopProducts" ? "filter-btn active" : "filter-btn" },
+            `${i18n.favoritesFilterShopProducts || "SHOP ITEMS"} (${c.shopProducts || 0})`
           )
         )
       ),

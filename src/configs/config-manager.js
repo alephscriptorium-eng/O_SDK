@@ -2,42 +2,14 @@ const fs = require('fs');
 const path = require('path');
 
 const configFilePath = path.join(__dirname, 'oasis-config.json');
-const LOCAL_WALLET_URL = 'http://localhost:7474';
-const DEFAULT_WALLET_FEE = '5';
-
-const isBlank = (value) => typeof value !== 'string' || value.trim() === '';
-
-const getWalletDefaults = () => ({
-  url: process.env.ECOIN_RPC_URL || LOCAL_WALLET_URL,
-  user: process.env.ECOIN_RPC_USER || '',
-  pass: process.env.ECOIN_RPC_PASS || '',
-  fee: process.env.ECOIN_RPC_FEE || DEFAULT_WALLET_FEE,
-});
-
-const resolveWalletConfig = (wallet = {}) => {
-  const defaults = getWalletDefaults();
-
-  return {
-    ...wallet,
-    url: wallet.url === LOCAL_WALLET_URL && process.env.ECOIN_RPC_URL
-      ? process.env.ECOIN_RPC_URL
-      : (wallet.url || defaults.url),
-    user: isBlank(wallet.user) && process.env.ECOIN_RPC_USER
-      ? process.env.ECOIN_RPC_USER
-      : (wallet.user || defaults.user),
-    pass: isBlank(wallet.pass) && process.env.ECOIN_RPC_PASS
-      ? process.env.ECOIN_RPC_PASS
-      : (wallet.pass || defaults.pass),
-    fee: (!wallet.fee || wallet.fee === DEFAULT_WALLET_FEE) && process.env.ECOIN_RPC_FEE
-      ? process.env.ECOIN_RPC_FEE
-      : (wallet.fee || defaults.fee),
-  };
-};
 
 if (!fs.existsSync(configFilePath)) {
   const defaultConfig = {
     "themes": {
       "current": "Dark-SNH"
+    },
+    "ux": {
+      "current": "blocks"
     },
     "modules": {
       "popularMod": "on",
@@ -46,6 +18,7 @@ if (!fs.existsSync(configFilePath)) {
       "latestMod": "on",
       "threadsMod": "on",
       "multiverseMod": "on",
+      "fediverseMod": "off",
       "invitesMod": "on",
       "walletMod": "on",
       "legacyMod": "on",
@@ -69,8 +42,10 @@ if (!fs.existsSync(configFilePath)) {
       "transfersMod": "on",
       "feedMod": "on",
       "pixeliaMod": "on",
+      "melodyMod": "on",
       "agendaMod": "on",
       "aiMod": "on",
+      "aiNavMod": "on",
       "forumMod": "on",
       "gamesMod": "on",
       "jobsMod": "on",
@@ -83,9 +58,16 @@ if (!fs.existsSync(configFilePath)) {
       "logsMod": "on",
       "mapsMod": "on",
       "chatsMod": "on",
-      "torrentsMod": "on"
+      "torrentsMod": "on",
+      "graphosMod": "on",
+      "larpMod": "on"
     },
-    "wallet": getWalletDefaults(),
+    "wallet": {
+      "url": "http://localhost:7474",
+      "user": "",
+      "pass": "",
+      "fee": "5"
+    },
     "walletPub": {
       "pubId": ""
     },
@@ -98,7 +80,8 @@ if (!fs.existsSync(configFilePath)) {
     "homePage": "activity",
     "language": "en",
     "wish": "whole",
-    "pmVisibility": "whole"
+    "pmVisibility": "whole",
+    "lanBroadcasting": true
   };
   fs.writeFileSync(configFilePath, JSON.stringify(defaultConfig, null, 2));
 }
@@ -106,9 +89,13 @@ if (!fs.existsSync(configFilePath)) {
 const getConfig = () => {
   const configData = fs.readFileSync(configFilePath);
   const cfg = JSON.parse(configData);
-  if (cfg.wish !== 'whole' && cfg.wish !== 'mutuals') cfg.wish = 'whole';
+  if (!['whole', 'mutuals', 'only-lan'].includes(cfg.wish)) cfg.wish = 'whole';
   if (cfg.pmVisibility !== 'whole' && cfg.pmVisibility !== 'mutuals') cfg.pmVisibility = 'whole';
-  cfg.wallet = resolveWalletConfig(cfg.wallet);
+  if (typeof cfg.ux === 'string') cfg.ux = { current: cfg.ux };
+  if (!cfg.ux || typeof cfg.ux !== 'object') cfg.ux = { current: 'blocks' };
+  if (cfg.ux.current === 'menus') cfg.ux.current = 'blocks';
+  if (cfg.ux.current !== 'blocks' && cfg.ux.current !== 'ainav') cfg.ux.current = 'blocks';
+  if (cfg.ux.current === 'ainav' && cfg.modules && cfg.modules.aiNavMod !== 'on') cfg.ux.current = 'blocks';
   return cfg;
 };
 

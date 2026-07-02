@@ -1,10 +1,20 @@
 const { div, h2, p, section, button, form, img, a, textarea, input, br, span, strong } = require("../server/node_modules/hyperaxe");
-const { template, i18n } = require('./main_views');
+const { template, i18n, userLink, renderUserSensors } = require('./main_views');
+const { renderContentStats } = require('./clearnet_view');
 const { renderUrl } = require('../backend/renderUrl');
 const { getConfig } = require('../configs/config-manager');
 
 const DEFAULT_HASH_ENC = "%260000000000000000000000000000000000000000000%3D.sha256";
 const DEFAULT_HASH_PATH_RE = /\/image\/\d+\/%260000000000000000000000000000000000000000000%3D\.sha256$/;
+
+const formatCarbonValue = (g) => {
+  const n = Number(g) || 0;
+  if (!n) return '0 µg CO₂';
+  if (n >= 1) return `${n.toFixed(2)} g CO₂`;
+  const mg = n * 1000;
+  if (mg >= 1) return `${mg.toFixed(2)} mg CO₂`;
+  return `${(mg * 1000).toFixed(2)} µg CO₂`;
+};
 
 function isDefaultImageId(v){
   if (!v) return true;
@@ -79,26 +89,52 @@ function lastActivityBadge(user, isMe) {
 
 const lightboxId = (id) => 'inhabitant_' + String(id || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
 
-const renderInhabitantCard = (user, filter, currentUserId) => {
+const renderInhabitantCard = (user, filter, currentUserId, fediverseConfigured) => {
   const isMe = user.id === currentUserId;
+  const raw = user.visibilityPrefs || {};
+  const clearnetSubKeys = ['clearnetShops','clearnetJobs','clearnetEvents','clearnetProjects','clearnetPosts','clearnetAudios','clearnetVideos','clearnetImages','clearnetDocuments','clearnetTorrents','clearnetBookmarks'];
+  const hasClearnet = raw.clearnet === true || clearnetSubKeys.some(k => raw[k] === true);
+  const prefs = {
+    activity: raw.activity === true,
+    device:   raw.device   === true,
+    karma:    raw.karma !== false,
+    ubi:      raw.ubi      === true,
+    wallet:   raw.wallet   === true,
+    ecoTax:   raw.ecoTax   !== false,
+    larpSign: raw.larpSign === true,
+    gpg:      raw.gpg      !== false,
+    clearnet: hasClearnet,
+    fediverse: raw.fediverse === true,
+    fediverseHandle: typeof raw.fediverseHandle === 'string' ? raw.fediverseHandle : ''
+  };
   return div({ class: 'inhabitant-card' },
     div({ class: 'inhabitant-left' },
       a(
          { href: `/author/${encodeURIComponent(user.id)}` },
          img({ class: 'inhabitant-photo-details', src: resolvePhoto(user.photo, 256), alt: user.name || 'Anonymous' })
       ),
-      br(),
-      ...lastActivityBadge(user, isMe),
-      div({ class: 'inhabitant-karma-ubi' },
-        span({ class: 'karma-line' }, `${i18n.bankingUserEngagementScore}: `, strong(String(typeof user.karmaScore === 'number' ? user.karmaScore : 0))),
-        span({ class: 'ubi-line' }, `${i18n.bankUbiThisMonth}: `, strong(`${Number(user.estimatedUBI || 0).toFixed(6)} ECO`)),
-        span({ class: 'ubi-line' }, `${i18n.bankUbiLastClaimed}: `,
-          user.lastClaimedDate
-            ? a({ href: '/transfers?filter=ubi', class: 'user-link' }, new Date(user.lastClaimedDate).toLocaleDateString())
-            : strong(i18n.bankUbiNeverClaimed)
-        ),
-        span({ class: 'ubi-line' }, `${i18n.bankUbiTotalClaimed}: `, strong(`${Number(user.totalClaimed || 0).toFixed(6)} ECO`))
-      )
+      ...renderUserSensors({
+        isMe, fediverseConfigured, prefs, id: user.id,
+        karmaScore: user.karmaScore, carbonGrams: user.carbonGrams,
+        deviceSource: user.deviceSource, activityBucket: user.lastActivityBucket,
+        gpgFingerprint: user.gpgFingerprint, ecoAddress: user.ecoAddress,
+        estimatedUBI: user.estimatedUBI, lastClaimedDate: user.lastClaimedDate, totalClaimed: user.totalClaimed,
+        larpHouse: user.larpHouse, stats: user.stats
+      }, { relationshipNode: isMe ? span({ class: 'status you' }, i18n.relationshipYou) : null, excludeContent: true }),
+      !isMe
+        ? div(
+            { class: 'cv-actions' },
+            form(
+              { method: 'GET', action: `/inhabitant/${encodeURIComponent(user.id)}` },
+              button({ type: 'submit', class: 'btn' }, i18n.inhabitantviewDetails)
+            ),
+            form(
+              { method: 'GET', action: '/pm' },
+              input({ type: 'hidden', name: 'recipients', value: user.id }),
+              button({ type: 'submit', class: 'btn' }, i18n.pmCreateButton)
+            )
+          )
+        : null
     ),
     div({ class: 'inhabitant-details' },
       h2(user.name || 'Anonymous'),
@@ -106,37 +142,47 @@ const renderInhabitantCard = (user, filter, currentUserId) => {
       filter === 'MATCHSKILLS' && user.commonSkills?.length
         ? div({ class: 'matchskills' },
             p(`${i18n.commonSkills}: ${user.commonSkills.join(', ')}`),
-            p(`${i18n.matchScore}: ${Math.round(user.matchScore * 100)}%`)
+            p(`${i18n.matchScore}: ${Math.round((user.matchScore || 0) * 100)}%`)
           )
         : null,
-      filter === 'SUGGESTED' && user.mutualCount
-        ? p(`${i18n.mutualFollowers}: ${user.mutualCount}`) : null,
+      filter === 'SUGGESTED' && (user.followsYou || user.commonSkills?.length || user.mutualCount)
+        ? div({ class: 'suggested-meta' },
+            user.followsYou ? span({ class: 'suggested-badge' }, i18n.suggestedFollowsYou || 'Follows you') : null,
+            user.commonSkills?.length
+              ? p(`${i18n.commonSkills || 'Common skills'}: ${user.commonSkills.join(', ')}`)
+              : null,
+            user.mutualCount ? p(`${i18n.mutualFollowers}: ${user.mutualCount}`) : null
+          )
+        : null,
       filter === 'blocked' && user.isBlocked
         ? p(i18n.blockedLabel) : null,
-      p(a({ class: 'user-link', href: `/author/${encodeURIComponent(user.id)}` }, user.id)),
-      user.ecoAddress
-        ? div({ class: "eco-wallet" },
-            p(`${i18n.bankWalletConnected}: `, strong(user.ecoAddress))
+      p(userLink(user.id)),
+      !isMe ? (() => {
+        const rel = user.relationship || {}
+        const blockedBoth = rel.blocking && rel.blockedBy
+        const mutual = rel.following && rel.followsMe
+        const supportAction = rel.following ? 'unfollow' : (rel.blocking ? 'unblock' : 'follow')
+        return div({ class: 'relationship-status inhabitant-relationship' },
+          blockedBoth
+            ? span({ class: 'status blocked' }, i18n.relationshipMutualBlock)
+            : [
+                rel.blocking ? span({ class: 'status blocked' }, i18n.relationshipBlocking) : null,
+                rel.blockedBy ? span({ class: 'status blocked-by' }, i18n.relationshipBlockedBy) : null,
+                mutual
+                  ? span({ class: 'status mutual' }, i18n.relationshipMutuals)
+                  : [
+                      span({ class: 'status supporting' }, rel.following ? i18n.relationshipFollowing : i18n.relationshipNone),
+                      span({ class: 'status supported-by' }, rel.followsMe ? i18n.relationshipTheyFollow : i18n.relationshipNotFollowing)
+                    ]
+              ],
+          div({ class: 'relationship-actions' },
+            form({ method: 'POST', action: `/${supportAction}/${encodeURIComponent(user.id)}` },
+              button({ type: 'submit', class: 'btn' }, i18n[supportAction])
+            )
           )
-        : div({ class: "eco-wallet" },
-            p(i18n.ecoWalletNotConfigured || "ECOin Wallet not configured")
-          ),
-      div(
-        { class: 'cv-actions' },
-        !isMe
-          ? form(
-              { method: 'GET', action: `/inhabitant/${encodeURIComponent(user.id)}` },
-              button({ type: 'submit', class: 'btn' }, i18n.inhabitantviewDetails)
-            )
-          : p(i18n.relationshipYou),
-        !isMe
-          ? form(
-              { method: 'GET', action: '/pm' },
-              input({ type: 'hidden', name: 'recipients', value: user.id }),
-              button({ type: 'submit', class: 'btn' }, i18n.pmCreateButton)
-            )
-          : null
-      )
+        )
+      })() : null,
+      renderContentStats(user.stats, i18n)
     )
   );
 };
@@ -177,7 +223,7 @@ function msgIdOf(m) {
   return m && (m.key || m.value?.key || m.value?.content?.root || m.value?.content?.branch || null);
 }
 
-exports.inhabitantsView = (inhabitants, filter, query, currentUserId) => {
+exports.inhabitantsView = (inhabitants, filter, query, currentUserId, fediverseConfigured) => {
   const title = filter === 'contacts'    ? i18n.yourContacts
                : filter === 'CVs'         ? i18n.allCVs
                : filter === 'MATCHSKILLS' ? i18n.matchSkills
@@ -185,11 +231,12 @@ exports.inhabitantsView = (inhabitants, filter, query, currentUserId) => {
                : filter === 'blocked'     ? i18n.blockedSectionTitle
                : filter === 'GALLERY'     ? i18n.gallerySectionTitle
                : filter === 'TOP KARMA'    ? i18n.topkarmaSectionTitle
+               : filter === 'TOP ECO'      ? (i18n.topecoSectionTitle || 'Top Eco')
                : filter === 'TOP ACTIVITY' ? i18n.topactivitySectionTitle
                : i18n.allInhabitants;
 
   const showCVFilters = filter === 'CVs' || filter === 'MATCHSKILLS';
-  const filters = ['all', 'TOP ACTIVITY', 'TOP KARMA', 'contacts', 'SUGGESTED', 'blocked', 'CVs', 'MATCHSKILLS', 'GALLERY'];
+  const filters = ['all', 'TOP ACTIVITY', 'TOP KARMA', 'TOP ECO', 'contacts', 'SUGGESTED', 'blocked', 'CVs', 'MATCHSKILLS', 'GALLERY'];
 
   return template(
     title,
@@ -225,7 +272,7 @@ exports.inhabitantsView = (inhabitants, filter, query, currentUserId) => {
         ? renderGalleryInhabitants(inhabitants)
         : div({ class: 'inhabitants-list' },
             inhabitants.length
-              ? inhabitants.map(user => renderInhabitantCard(user, filter, currentUserId))
+              ? inhabitants.map(user => renderInhabitantCard(user, filter, currentUserId, fediverseConfigured))
               : p({ class: 'no-results' }, i18n.noInhabitantsFound)
           ),
       ...renderLightbox(inhabitants)
@@ -233,7 +280,7 @@ exports.inhabitantsView = (inhabitants, filter, query, currentUserId) => {
   );
 };
 
-exports.inhabitantsProfileView = (payload, currentUserId) => {
+exports.inhabitantsProfileView = (payload, currentUserId, fediverseConfigured) => {
   const safe = payload && typeof payload === 'object' ? payload : {};
   const about = (safe.about && typeof safe.about === 'object') ? safe.about : {};
   const cv = (safe.cv && typeof safe.cv === 'object') ? safe.cv : {};
@@ -272,9 +319,28 @@ exports.inhabitantsProfileView = (payload, currentUserId) => {
   const isMe = id && id === currentUserId;
   const title = i18n.inhabitantProfileTitle || i18n.inhabitantviewDetails;
   const karmaScore = typeof safe.karmaScore === 'number' ? safe.karmaScore : 0;
-  const estimatedUBI = Number(safe.estimatedUBI || 0);
+  const estimatedUBI = typeof safe.estimatedUBI === 'number' ? safe.estimatedUBI : 0;
   const lastClaimedDate = safe.lastClaimedDate || null;
-  const totalClaimed = Number(safe.totalClaimed || 0);
+  const totalClaimed = typeof safe.totalClaimed === 'number' ? safe.totalClaimed : 0;
+  const ecoAddress = typeof safe.ecoAddress === 'string' ? safe.ecoAddress : null;
+  const rawPrefs = safe.visibilityPrefs || {};
+  const clearnetSubKeys = ['clearnetShops','clearnetJobs','clearnetEvents','clearnetProjects','clearnetPosts','clearnetAudios','clearnetVideos','clearnetImages','clearnetDocuments','clearnetTorrents','clearnetBookmarks'];
+  const prefs = {
+    activity: rawPrefs.activity === true,
+    device:   rawPrefs.device   === true,
+    karma:    rawPrefs.karma !== false,
+    ubi:      rawPrefs.ubi      === true,
+    wallet:   rawPrefs.wallet   === true,
+    ecoTax:   rawPrefs.ecoTax   !== false,
+    larpSign: rawPrefs.larpSign === true,
+    gpg:      rawPrefs.gpg      !== false,
+    clearnet: rawPrefs.clearnet === true || clearnetSubKeys.some(k => rawPrefs[k] === true),
+    fediverse: rawPrefs.fediverse === true,
+    fediverseHandle: typeof rawPrefs.fediverseHandle === 'string' ? rawPrefs.fediverseHandle : ''
+  };
+  const gpgFingerprint = String(safe.gpgFingerprint || '');
+  const carbonGrams = typeof safe.carbonGrams === 'number' ? safe.carbonGrams : 0;
+  const larpHouse = (safe.larpHouse && safe.larpHouse.key) ? safe.larpHouse : null;
 
   const providedBucket = typeof safe.lastActivityBucket === 'string' ? safe.lastActivityBucket : null;
   const dotClass = providedBucket === 'green' ? 'green' : providedBucket === 'orange' ? 'orange' : 'red';
@@ -297,23 +363,18 @@ exports.inhabitantsProfileView = (payload, currentUserId) => {
         p(i18n.discoverPeople)
       ),
       div({ class: 'mode-buttons' },
-        ...generateFilterButtons(['all', 'TOP ACTIVITY', 'TOP KARMA', 'contacts', 'SUGGESTED', 'blocked', 'CVs', 'MATCHSKILLS', 'GALLERY'], 'all')
+        ...generateFilterButtons(['all', 'TOP ACTIVITY', 'TOP KARMA', 'TOP ECO', 'contacts', 'SUGGESTED', 'blocked', 'CVs', 'MATCHSKILLS', 'GALLERY'], 'all')
       ),
       div({ class: 'inhabitant-card' },
         div({ class: 'inhabitant-left' },
           img({ class: 'inhabitant-photo-details', src: image, alt: name || 'Anonymous' }),
           h2(name || 'Anonymous'),
-          ...lastActivityBadge({ lastActivityBucket: dotClass, deviceSource: safe.deviceSource }, isMe),
-          div({ class: 'inhabitant-karma-ubi' },
-            span({ class: 'karma-line' }, `${i18n.bankingUserEngagementScore}: `, strong(String(karmaScore))),
-            span({ class: 'ubi-line' }, `${i18n.bankUbiThisMonth}: `, strong(`${estimatedUBI.toFixed(6)} ECO`)),
-            span({ class: 'ubi-line' }, `${i18n.bankUbiLastClaimed}: `,
-              lastClaimedDate
-                ? a({ href: '/transfers?filter=ubi', class: 'user-link' }, new Date(lastClaimedDate).toLocaleDateString())
-                : strong(i18n.bankUbiNeverClaimed)
-            ),
-            span({ class: 'ubi-line' }, `${i18n.bankUbiTotalClaimed}: `, strong(`${totalClaimed.toFixed(6)} ECO`))
-          ),
+          ...renderUserSensors({
+            isMe, fediverseConfigured, prefs, id: id || viewedId,
+            karmaScore, carbonGrams, deviceSource: safe.deviceSource, activityBucket: providedBucket,
+            gpgFingerprint, ecoAddress, estimatedUBI, lastClaimedDate, totalClaimed,
+            larpHouse, stats: safe.stats
+          }, { excludeContent: true }),
           (!isMe && (id || viewedId))
             ? form(
                 { method: 'GET', action: '/pm' },
@@ -322,28 +383,32 @@ exports.inhabitantsProfileView = (payload, currentUserId) => {
               )
             : null
         ),
-        detailNodes.length ? div({ class: 'inhabitant-details' }, ...detailNodes) : null
-      ),
-      feed.length
-        ? section({ class: 'profile-feed' },
-            h2(i18n.latestInteractions),
-            ...feed.map(m => {
-              const raw = (m.value?.content?.text || '').replace(/<br\s*\/?>/g, '');
-              const parts = stripAndCollectImgs(raw);
-              const tid = msgIdOf(m);
-              const visitBtn = tid
-                ? form({ method: 'GET', action: `/thread/${encodeURIComponent(tid)}#${encodeURIComponent(tid)}` },
-                    button({ type:'submit', class:'filter-btn' }, i18n.visitContent)
-                  )
-                : null;
-              return div({ class: 'post' },
-                visitBtn,
-                parts.clean && parts.clean.trim() ? p(...renderUrl(parts.clean)) : null,
-                ...(parts.imgs || []).map(src => img({ src, class: 'post-image', alt: 'image' }))
-              );
-            })
-          )
-        : null
+        (() => {
+          const feedNodes = feed.length
+            ? [ section({ class: 'profile-feed' },
+                  h2(i18n.latestInteractions),
+                  ...feed.map(m => {
+                    const raw = (m.value?.content?.text || '').replace(/<br\s*\/?>/g, '');
+                    const parts = stripAndCollectImgs(raw);
+                    const tid = msgIdOf(m);
+                    const visitBtn = tid
+                      ? form({ method: 'GET', action: `/thread/${encodeURIComponent(tid)}#${encodeURIComponent(tid)}` },
+                          button({ type:'submit', class:'filter-btn' }, i18n.visitContent)
+                        )
+                      : null;
+                    return div({ class: 'post' },
+                      visitBtn,
+                      parts.clean && parts.clean.trim() ? p(...renderUrl(parts.clean)) : null,
+                      ...(parts.imgs || []).map(src => img({ src, class: 'post-image', alt: 'image' }))
+                    );
+                  })
+                ) ]
+            : [];
+          const contentStatsNode = renderContentStats(safe.stats, i18n);
+          const rightNodes = [...detailNodes, contentStatsNode, ...feedNodes].filter(Boolean);
+          return rightNodes.length ? div({ class: 'inhabitant-details' }, ...rightNodes) : null;
+        })()
+      )
     )
   );
 };

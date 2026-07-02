@@ -1,5 +1,5 @@
 const { div, h2, p, section, button, form, a, span, textarea, br, input, h1, label } = require("../server/node_modules/hyperaxe");
-const { template, i18n } = require("./main_views");
+const { template, i18n, userLink } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
 const { renderTextWithStyles } = require("../backend/renderTextWithStyles");
 const opinionCategories = require("../backend/opinion_categories");
@@ -193,8 +193,20 @@ const renderFeedCard = (feed) => {
                 p(
                     { class: "card-footer" },
                     span({ class: "date-link" }, `${createdAt} ${i18n.performed} `),
-                    a({ href: `/author/${encodeURIComponent(authorId)}`, class: "user-link" }, `${authorId}`),
+                    userLink(authorId),
                     content._textEdited ? span({ class: "edited-badge" }, ` · ${i18n.edited || "edited"}`) : null
+                )
+            )
+        ),
+        div(
+            { class: "voting-buttons" },
+            opinionCategories.map((cat) =>
+                form(
+                    { method: "POST", action: `/feed/opinions/${encodeURIComponent(feed.key)}/${cat}` },
+                    button(
+                        { class: alreadyVoted ? "vote-btn disabled" : "vote-btn", type: "submit", ...(alreadyVoted ? { disabled: true } : {}) },
+                        `${i18n["vote" + cat.charAt(0).toUpperCase() + cat.slice(1)] || cat} [${content.opinions?.[cat] || 0}]`
+                    )
                 )
             )
         ),
@@ -361,7 +373,7 @@ exports.singleFeedView = (feed, comments = []) => {
             p(
               { class: "card-footer" },
               span({ class: "date-link" }, `${createdAt} ${i18n.performed} `),
-              a({ href: `/author/${encodeURIComponent(authorId)}`, class: "user-link" }, authorId),
+              userLink(authorId),
               content._textEdited ? span({ class: "edited-badge" }, ` · ${i18n.edited || "edited"}`) : null
             )
           )

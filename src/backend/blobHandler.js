@@ -126,7 +126,7 @@ const handleBlobUpload = async function (ctx, fileFieldName) {
   return `\n[${blob.name}](${blob.id})`;
 };
 
-function waitForBlob(ssbClient, blobId, timeoutMs = 60000) {
+function waitForBlob(ssbClient, blobId, timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
     let done = false;
 
@@ -183,7 +183,7 @@ const serveBlob = async function (ctx) {
   const ssbClient = await cooler.open();
 
   try {
-    await waitForBlob(ssbClient, blobId, 60000);
+    await waitForBlob(ssbClient, blobId, 8000);
   } catch (err) {
     ctx.status = 504;
     ctx.body = 'Blob not available';
@@ -218,6 +218,15 @@ const serveBlob = async function (ctx) {
   if (mime === 'application/octet-stream' && buffer.length > 10 && buffer[0] === 0x64) {
     const head = buffer.slice(0, 128).toString('ascii');
     if (head.includes('announce') || head.includes('8:announce') || head.includes('4:info')) mime = 'application/x-bittorrent';
+  }
+
+  if (mime === 'application/octet-stream' || mime === 'text/plain' || mime === 'application/xml' || mime === 'text/xml') {
+    let head = buffer.slice(0, 512).toString('utf8');
+    if (head.charCodeAt(0) === 0xFEFF) head = head.slice(1);
+    const trimmed = head.replace(/^\s+/, '').toLowerCase();
+    if (trimmed.startsWith('<?xml') || trimmed.startsWith('<svg')) {
+      if (trimmed.includes('<svg')) mime = 'image/svg+xml';
+    }
   }
 
   const isSvg = mime === 'image/svg+xml';

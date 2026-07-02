@@ -1,5 +1,5 @@
 const { div, h2, p, section, button, form, img, textarea, a, br, h1, span } = require("../server/node_modules/hyperaxe");
-const { template, i18n } = require('./main_views');
+const { template, i18n, userLink} = require('./main_views');
 const moment = require('../server/node_modules/moment');
 const { config } = require('../server/SSB_server.js');
 
@@ -36,7 +36,7 @@ const renderAgendaItem = (item, userId, filter) => {
   const commonFields = [
     p({ class: 'card-footer' },
       span({ class: 'date-link' }, `${item.createdAt ? moment(item.createdAt).format('YYYY/MM/DD HH:mm:ss') : ''} ${i18n.performed} `),
-      author ? a({ href: `/author/${encodeURIComponent(author)}`, class: 'user-link' }, `${author}`) : ''
+      author ? userLink(author) : ''
     )
   ];
 
@@ -67,7 +67,7 @@ const renderAgendaItem = (item, userId, filter) => {
       const maxBid = bids.length ? Math.max(...bids) : 0;
       details.push(renderCardField(i18n.marketItemHighestBid + ":", `${maxBid} ECO`));
     }
-    const seller = author ? p(a({ class: "user-link", href: `/author/${encodeURIComponent(author)}` }, author)) : '';
+    const seller = author ? p(userLink(author)) : '';
     details.push(br(), div({ class: 'members-list' }, i18n.marketItemSeller + ': ', seller));
   }
 
@@ -75,12 +75,11 @@ const renderAgendaItem = (item, userId, filter) => {
     details = [
       renderCardField(i18n.agendaAnonymousLabel + ":", item.isAnonymous ? i18n.agendaYes : i18n.agendaNo),
       renderCardField(i18n.agendaInviteModeLabel + ":", (item.inviteMode ? String(item.inviteMode).toUpperCase() : i18n.noInviteMode)),
-      renderCardField(i18n.agendaLARPLabel + ":", item.isLARP ? i18n.agendaYes : i18n.agendaNo),
       renderCardField(i18n.agendaLocationLabel + ":", item.location || i18n.noLocation),
       renderCardField(i18n.agendaMembersCount + ":", Array.isArray(item.members) ? item.members.length : 0),
       br()
     ];
-    const membersList = Array.isArray(item.members) ? item.members.map(member => p(a({ class: "user-link", href: `/author/${encodeURIComponent(member)}` }, member))) : [];
+    const membersList = Array.isArray(item.members) ? item.members.map(member => p(userLink(member))) : [];
     details.push(div({ class: 'members-list' }, `${i18n.agendaMembersLabel}:`, membersList));
   }
 
@@ -128,7 +127,7 @@ const renderAgendaItem = (item, userId, filter) => {
       renderCardField(i18n.agendaTransferDeadline + ":", item.deadline ? fmt(item.deadline) : ''),
       br()
     ];
-    const membersList = item.to ? p(a({ class: "user-link", href: `/author/${encodeURIComponent(item.to)}` }, item.to)) : '';
+    const membersList = item.to ? p(userLink(item.to)) : '';
     details.push(div({ class: 'members-list' }, i18n.to + ': ', membersList));
   }
   
@@ -160,7 +159,7 @@ const renderAgendaItem = (item, userId, filter) => {
               : []));
 
     const subsInterleaved = subs
-      .map((id, i) => [i > 0 ? ', ' : '', a({ class: 'user-link', href: `/author/${encodeURIComponent(id)}` }, id)])
+      .map((id, i) => [i > 0 ? ', ' : '', userLink(id)])
       .flat();
 
     details = [
@@ -180,21 +179,27 @@ const renderAgendaItem = (item, userId, filter) => {
 
     const subscribed = subs.includes(userId);
     if (!subscribed && String(item.status).toUpperCase() !== 'CLOSED' && item.author !== userId) {
-      actionButton = form({ method: 'GET', action: `/jobs/subscribe/${encodeURIComponent(item.id)}` },
+      actionButton = form({ method: 'POST', action: `/jobs/subscribe/${encodeURIComponent(item.id)}` },
         button({ type: 'submit', class: 'subscribe-btn' }, i18n.jobSubscribeButton)
       );
     }
   }
 
-  return div({ class: 'agenda-item card' },
-    h2(`[${String(item.type || '').toUpperCase()}] ${item.title || item.name || item.concept || ''}`),
-    form({ method: "GET", action: getViewDetailsAction(item) },
-      button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
+  return div({ class: 'agenda-item trending-card' },
+    div({ class: 'card-chips-row' },
+      span({ class: 'pm-exposition-chip pm-exposition-whole' },
+        span({ class: 'pm-exposition-text' }, String(item.type || '').toUpperCase())
+      )
     ),
-    actionButton,
-    br(),
-    ...details,
-    br(),
+    div({ class: 'card-section' },
+      form({ method: "GET", action: getViewDetailsAction(item) },
+        button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
+      ),
+      actionButton,
+      br(),
+      h2(item.title || item.name || item.concept || ''),
+      ...details
+    ),
     ...commonFields
   );
 };
@@ -213,6 +218,12 @@ exports.agendaView = async (data, filter) => {
         form({ method: 'GET', action: '/agenda' },
           button({ type: 'submit', name: 'filter', value: 'all', class: filter === 'all' ? 'filter-btn active' : 'filter-btn' },
             `${i18n.agendaFilterAll} (${counts.all})`),
+          button({ type: 'submit', name: 'filter', value: 'today', class: filter === 'today' ? 'filter-btn active' : 'filter-btn' },
+            `${i18n.agendaFilterToday || 'TODAY'} (${counts.today || 0})`),
+          button({ type: 'submit', name: 'filter', value: 'upcoming', class: filter === 'upcoming' ? 'filter-btn active' : 'filter-btn' },
+            `${i18n.agendaFilterUpcoming || 'UPCOMING'} (${counts.upcoming || 0})`),
+          button({ type: 'submit', name: 'filter', value: 'overdue', class: filter === 'overdue' ? 'filter-btn active' : 'filter-btn' },
+            `${i18n.agendaFilterOverdue || 'OVERDUE'} (${counts.overdue || 0})`),
           button({ type: 'submit', name: 'filter', value: 'open', class: filter === 'open' ? 'filter-btn active' : 'filter-btn' },
             `${i18n.agendaFilterOpen} (${counts.open})`),
           button({ type: 'submit', name: 'filter', value: 'closed', class: filter === 'closed' ? 'filter-btn active' : 'filter-btn' },

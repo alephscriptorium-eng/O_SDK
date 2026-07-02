@@ -1,13 +1,39 @@
 const pull = require('../server/node_modules/pull-stream');
 const moment = require('../server/node_modules/moment');
 const { getConfig } = require('../configs/config-manager.js');
+const { buildValidatedTombstoneSet } = require('./tombstone_validator');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 
-module.exports = ({ cooler, padsModel }) => {
+module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
   let ssb;
   const openSsb = async () => {
     if (!ssb) ssb = await cooler.open();
     return ssb;
+  };
+
+  const STANDALONE_ENCRYPTED_TYPES = new Set(['chat', 'pad', 'map', 'calendar']);
+
+  const tryDecryptStandalone = (content) => {
+    if (!tribeCrypto || !content || !content.encryptedPayload) return null;
+    const rootCandidates = [content.calendarId, content.chatId, content.padId, content.mapId, content.roomId, content.parentId, content.dateId, content.rootId].filter(Boolean);
+    for (const cand of rootCandidates) {
+      const keys = tribeCrypto.getKeys(cand);
+      if (!keys || !keys.length) continue;
+      try {
+        const dec = tribeCrypto.decryptContent(content, keys.map(k => [k]));
+        if (dec && !dec._undecryptable) return dec;
+      } catch (_) {}
+    }
+    return null;
+  };
+
+  const tryDecryptTribe = async (content) => {
+    if (!tribeCrypto || !tribesModel || !content || !content.encryptedPayload || !content.tribeId) return null;
+    try {
+      const dec = await tribeCrypto.decryptFromTribe(content, tribesModel);
+      if (dec && !dec._undecryptable) return dec;
+    } catch (_) {}
+    return null;
   };
 
   const searchableTypes = [
@@ -30,7 +56,7 @@ module.exports = ({ cooler, padsModel }) => {
       case 'votes':
         return [content?.question, content?.deadline, content?.status, ...(Object.values(content?.votes || {})), content?.totalVotes];
       case 'tribe':
-        return [content?.title, content?.description, content?.image, content?.location, ...(content?.tags || []), content?.isLARP, content?.isAnonymous, content?.members?.length, content?.createdAt, content?.author];
+        return [content?.title, content?.description, content?.image, content?.location, ...(content?.tags || []), content?.isAnonymous, content?.members?.length, content?.createdAt, content?.author];
       case 'audio':
         return [content?.url, content?.mimeType, content?.title, content?.description, ...(content?.tags || [])];
       case 'image':
@@ -250,6 +276,7 @@ module.exports = ({ cooler, padsModel }) => {
 
   const search = async ({ query, types = [], resultsPerPage = "10" }) => {
     const ssbClient = await openSsb();
+    const viewerId = ssbClient.id;
     const queryLower = String(query || '').toLowerCase();
 
     const messages = await new Promise((res, rej) => {
@@ -259,7 +286,7 @@ module.exports = ({ cooler, padsModel }) => {
       );
     });
 
-    const tombstoned = new Set(messages.filter(m => m.value?.content?.type === 'tombstone').map(m => m.value.content.target));
+    const tombstoned = buildValidatedTombstoneSet(messages);
     const replacesMap = new Map();
     const latestByKey = new Map();
 
@@ -275,6 +302,39 @@ module.exports = ({ cooler, padsModel }) => {
 
     for (const oldId of replacesMap.keys()) {
       latestByKey.delete(oldId);
+    }
+
+    const viewerTribeIds = new Set();
+    if (tribesModel && typeof tribesModel.listTribesForViewer === 'function') {
+      try {
+        const myTribes = await tribesModel.listTribesForViewer(viewerId);
+        for (const tr of (myTribes || [])) viewerTribeIds.add(String(tr.rootId || tr.id || tr.key));
+      } catch (_) {}
+    }
+
+    for (const [k, msg] of Array.from(latestByKey.entries())) {
+      const c = msg?.value?.content;
+      if (!c) { latestByKey.delete(k); continue; }
+      if (c.tribeId && !viewerTribeIds.has(String(c.tribeId))) {
+        latestByKey.delete(k);
+        continue;
+      }
+      if (c.encryptedPayload) {
+        let dec = null;
+        if (c.tribeId) dec = await tryDecryptTribe(c);
+        if (!dec && STANDALONE_ENCRYPTED_TYPES.has(c.type)) {
+          const keys = tribeCrypto && tribeCrypto.getKeys ? tribeCrypto.getKeys(k) : [];
+          if (keys && keys.length) {
+            try {
+              const out = tribeCrypto.decryptContent(c, keys.map(kk => [kk]));
+              if (out && !out._undecryptable) dec = out;
+            } catch (_) {}
+          }
+        }
+        if (!dec) dec = tryDecryptStandalone(c);
+        if (!dec) { latestByKey.delete(k); continue; }
+        msg.value.content = { ...c, ...dec, encryptedPayload: undefined };
+      }
     }
 
     if (padsModel) {

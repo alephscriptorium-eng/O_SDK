@@ -8,12 +8,6 @@ const remoteUrl2 = 'https://raw.githubusercontent.com/epsylon/oasis/refs/heads/m
 
 let printed = false;
 
-const notifyUpdateAvailable = () => {
-  if (printed) return;
-  printed = true;
-  console.log("\noasis@version: upstream Oasis updates are available.\n\nThis Dockerized deployment should be updated from the host repository and rebuilt. In-app auto-update is disabled.\n");
-};
-
 async function extractVersionFromText(text) {
   try {
     const versionMatch = text.match(/"version":\s*"([^"]+)"/);
@@ -79,47 +73,49 @@ async function checkMirror(callback) {
 }
 
 exports.getRemoteVersion = async () => {
-  if (!existsSync(localpackage)) return;
+  if (existsSync('../../.git')) {
+    try {
+      const response = await fetch(remoteUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Referer': 'https://code.03c8.net',
+          'Origin': 'https://code.03c8.net'
+        }
+      });
 
-  try {
-    const response = await fetch(remoteUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Referer': 'https://code.03c8.net',
-        'Origin': 'https://code.03c8.net'
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
       }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
+      const data = await response.text();
+      diffVersion(data, (status) => {
+        if (status === "required" && !printed) {
+          printed = true; 
+          console.log("\noasis@version: upstream Oasis updates are available.\n\nThis Dockerized deployment should be updated from the host repository and rebuilt. In-app auto-update is disabled.\n");
+        } else if (status === "") {
+          console.log("\noasis@version: no updates requested.\n");
+        }
+      });
+    } catch (error) {
+      checkMirror((err, data) => {
+        if (err) {
+          console.error("\noasis@version: no updates requested.\n");
+        } else {
+          diffVersion(data, (status) => {
+            if (status === "required" && !printed) {
+              printed = true; 
+              console.log("\noasis@version: upstream Oasis updates are available.\n\nThis Dockerized deployment should be updated from the host repository and rebuilt. In-app auto-update is disabled.\n");
+            } else {
+              console.log("oasis@version: no updates requested.\n");
+            }
+          });
+        }
+      });
     }
-    const data = await response.text();
-    diffVersion(data, (status) => {
-      if (status === "required") {
-        notifyUpdateAvailable();
-      } else if (status === "") {
-        console.log("\noasis@version: no updates requested.\n");
-      }
-    });
-  } catch (error) {
-    checkMirror((err, data) => {
-      if (err) {
-        console.error("\noasis@version: no updates requested.\n");
-      } else {
-        diffVersion(data, (status) => {
-          if (status === "required") {
-            notifyUpdateAvailable();
-          } else {
-            console.log("oasis@version: no updates requested.\n");
-          }
-        });
-      }
-    });
   }
 };
 

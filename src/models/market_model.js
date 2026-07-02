@@ -1,6 +1,7 @@
 const pull = require("../server/node_modules/pull-stream")
 const moment = require("../server/node_modules/moment")
 const { getConfig } = require("../configs/config-manager.js")
+const { buildValidatedTombstoneSet } = require('./tombstone_validator')
 const logLimit = getConfig().ssbLogStream?.limit || 1000
 
 const N = (s) => String(s || "").toUpperCase().replace(/\s+/g, "_")
@@ -70,17 +71,14 @@ module.exports = ({ cooler, tribeCrypto }) => {
     const ssbClient = await openSsb()
     const messages = await readAll(ssbClient)
 
-    const tomb = new Set()
+    const tomb = buildValidatedTombstoneSet(messages)
     const fwd = new Map()
     const parent = new Map()
 
     for (const m of messages) {
       const c = m.value && m.value.content
       if (!c) continue
-      if (c.type === "tombstone" && c.target) {
-        tomb.add(c.target)
-        continue
-      }
+      if (c.type === "tombstone") continue
       if (c.type !== "market") continue
       if (c.replaces) {
         fwd.set(c.replaces, m.key)
@@ -94,7 +92,7 @@ module.exports = ({ cooler, tribeCrypto }) => {
   return {
     type: "market",
 
-    async createItem(item_type, title, description, image, price, tagsRaw = [], item_status, deadline, includesShipping = false, stock = 0, mapUrl = "", shopOpts = {}) {
+    async createItem(item_type, title, description, image, price, tagsRaw = [], item_status, deadline, includesShipping = false, stock = 0, mapUrl = "", shopOpts = {}, visibility = "PUBLIC") {
       const ssbClient = await openSsb()
 
       const formattedDeadline = deadline ? moment(deadline, moment.ISO_8601, true) : null
@@ -134,7 +132,8 @@ module.exports = ({ cooler, tribeCrypto }) => {
         mapUrl: String(mapUrl || "").trim(),
         shopProductId: shopOpts.shopProductId || "",
         shopId: shopOpts.shopId || "",
-        shopTitle: shopOpts.shopTitle || ""
+        shopTitle: shopOpts.shopTitle || "",
+        visibility: String(visibility || "PUBLIC").toUpperCase() === "HIDDEN" ? "HIDDEN" : "PUBLIC"
       }
 
       return new Promise((resolve, reject) => {
@@ -195,6 +194,10 @@ module.exports = ({ cooler, tribeCrypto }) => {
         normalized.includesShipping = !!normalized.includesShipping
       }
 
+      if (normalized.visibility !== undefined) {
+        normalized.visibility = String(normalized.visibility || "PUBLIC").toUpperCase() === "HIDDEN" ? "HIDDEN" : "PUBLIC"
+      }
+
       return new Promise((resolve, reject) => {
         ssbClient.get(tipId, (err, item) => {
           if (err || !item || !item.content) return reject(new Error("Item not found"))
@@ -242,7 +245,7 @@ module.exports = ({ cooler, tribeCrypto }) => {
       const userId = ssbClient.id
       const messages = await readAll(ssbClient)
 
-      const tomb = new Set()
+      const tomb = buildValidatedTombstoneSet(messages)
       const nodes = new Map()
       const parent = new Map()
       const child = new Map()
@@ -251,10 +254,7 @@ module.exports = ({ cooler, tribeCrypto }) => {
         const k = m.key
         const c = m.value && m.value.content
         if (!c) continue
-        if (c.type === "tombstone" && c.target) {
-          tomb.add(c.target)
-          continue
-        }
+        if (c.type === "tombstone") continue
         if (c.type !== "market") continue
         nodes.set(k, { key: k, ts: (m.value && m.value.timestamp) || m.timestamp || 0, c })
         if (c.replaces) {
@@ -316,6 +316,9 @@ module.exports = ({ cooler, tribeCrypto }) => {
 
         if (status === "FOR SALE" && (Number(c.stock) || 0) === 0) continue
 
+        const visibility = String(c.visibility || "PUBLIC").toUpperCase() === "HIDDEN" ? "HIDDEN" : "PUBLIC"
+        if (visibility === "HIDDEN" && c.seller !== userId) continue
+
         items.push({
           id: leaf,
           rootId,
@@ -327,6 +330,7 @@ module.exports = ({ cooler, tribeCrypto }) => {
           item_type: c.item_type,
           item_status: c.item_status || "NEW",
           status,
+          visibility,
           createdAt: c.createdAt || new Date(best.ts).toISOString(),
           updatedAt: c.updatedAt,
           seller: c.seller,
@@ -385,9 +389,10 @@ module.exports = ({ cooler, tribeCrypto }) => {
 
     async getItemById(itemId) {
       const ssbClient = await openSsb()
+      const userId = ssbClient.id
       const messages = await readAll(ssbClient)
 
-      const tomb = new Set()
+      const tomb = buildValidatedTombstoneSet(messages)
       const nodes = new Map()
       const parent = new Map()
       const child = new Map()
@@ -396,10 +401,7 @@ module.exports = ({ cooler, tribeCrypto }) => {
         const k = m.key
         const c = m.value && m.value.content
         if (!c) continue
-        if (c.type === "tombstone" && c.target) {
-          tomb.add(c.target)
-          continue
-        }
+        if (c.type === "tombstone") continue
         if (c.type !== "market") continue
         nodes.set(k, { key: k, ts: (m.value && m.value.timestamp) || m.timestamp || 0, c })
         if (c.replaces) {
@@ -440,6 +442,9 @@ module.exports = ({ cooler, tribeCrypto }) => {
       const c = best.c
       let status = D(bestS)
 
+      const visibility = String(c.visibility || "PUBLIC").toUpperCase() === "HIDDEN" ? "HIDDEN" : "PUBLIC"
+      if (visibility === "HIDDEN" && c.seller !== userId) return null
+
       const now = moment()
       if (c.deadline) {
         const dl = moment(c.deadline)
@@ -465,6 +470,7 @@ module.exports = ({ cooler, tribeCrypto }) => {
         item_type: c.item_type,
         item_status: c.item_status,
         status,
+        visibility,
         createdAt: c.createdAt || new Date(best.ts).toISOString(),
         updatedAt: c.updatedAt,
         seller: c.seller,

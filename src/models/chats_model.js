@@ -1,6 +1,7 @@
 const pull = require("../server/node_modules/pull-stream")
 const crypto = require("crypto")
 const { getConfig } = require("../configs/config-manager.js")
+const { buildValidatedTombstoneSet } = require('./tombstone_validator')
 const logLimit = getConfig().ssbLogStream?.limit || 1000
 
 const safeArr = (v) => (Array.isArray(v) ? v : [])
@@ -14,9 +15,61 @@ const normalizeTags = (raw) => {
 const INVITE_CODE_BYTES = 16
 const VALID_STATUS = ["OPEN", "INVITE-ONLY", "CLOSED"]
 
-module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
+module.exports = ({ cooler, tribeCrypto, chatCrypto, tribesModel }) => {
   let ssb
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb }
+
+  const ownCrypto = chatCrypto || tribeCrypto
+  const lookupKey = (rid) => (ownCrypto && ownCrypto.getKey(rid)) || (tribeCrypto && tribeCrypto.getKey(rid)) || null
+  const lookupKeys = (rid) => {
+    const a = (ownCrypto && ownCrypto.getKeys(rid)) || []
+    if (a.length) return a
+    return (tribeCrypto && tribeCrypto.getKeys(rid)) || []
+  }
+  const lookupGen = (rid) => ((ownCrypto && ownCrypto.getGen(rid)) || (tribeCrypto && tribeCrypto.getGen(rid)) || 0)
+
+  const rotateChatKey = async (rootId, remainingMembers) => {
+    if (!ownCrypto || !tribeCrypto || !rootId) return
+    const existing = lookupKey(rootId)
+    if (!existing) return
+    const newKey = ownCrypto.generateTribeKey()
+    const newGen = ownCrypto.addNewKey(rootId, newKey)
+    if (!Array.isArray(remainingMembers) || !remainingMembers.length) return
+    const ssbClient = await openSsb()
+    const ssbKeys = require("../server/node_modules/ssb-keys")
+    const memberKeys = {}
+    for (const m of remainingMembers) {
+      try { memberKeys[m] = tribeCrypto.boxKeyForMember(newKey, m, ssbKeys) } catch (_) {}
+    }
+    if (Object.keys(memberKeys).length) {
+      await new Promise((resolve) => {
+        ssbClient.publish({ type: "tribe-keys", tribeId: rootId, generation: newGen, memberKeys }, () => resolve())
+      })
+    }
+  }
+
+  const ingestOwnTribeKeys = async () => {
+    if (!ownCrypto) return
+    try {
+      const ssbClient = await openSsb()
+      const ssbKeys = require("../server/node_modules/ssb-keys")
+      const config = require("../server/ssb_config")
+      const msgs = await readAll(ssbClient)
+      for (const m of msgs) {
+        const c = m.value && m.value.content
+        if (!c || c.type !== "tribe-keys") continue
+        const memberKeys = c.memberKeys
+        if (!memberKeys || typeof memberKeys !== "object") continue
+        const boxed = memberKeys[ssbClient.id]
+        if (!boxed) continue
+        try {
+          const unboxed = ssbKeys.unbox(boxed, config.keys)
+          const key = typeof unboxed === "string" ? unboxed : (unboxed && unboxed.toString ? unboxed.toString() : null)
+          if (key && c.tribeId) ownCrypto.addNewKey(c.tribeId, key)
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
 
   const getTribeKeysFor = async (tribeId) => {
     if (!tribeCrypto || !tribesModel || !tribeId) return []
@@ -42,19 +95,28 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
     const parent = new Map()
     const child = new Map()
     const msgNodes = new Map()
+    const authorByKey = new Map()
+    const tombRequests = []
 
     for (const m of messages) {
       const k = m.key
       const v = m.value || {}
       const c = v.content
       if (!c) continue
-      if (c.type === "tombstone" && c.target) { tomb.add(c.target); continue }
+      if (c.type === "tombstone" && c.target) { tombRequests.push({ target: c.target, author: v.author }); continue }
       if (c.type === "chat") {
         nodes.set(k, { key: k, ts: v.timestamp || m.timestamp || 0, c, author: v.author })
+        authorByKey.set(k, v.author)
         if (c.replaces) { parent.set(k, c.replaces); child.set(c.replaces, k) }
       } else if (c.type === "chatMessage") {
         msgNodes.set(k, { key: k, ts: v.timestamp || m.timestamp || 0, c, author: v.author })
+        authorByKey.set(k, v.author)
       }
+    }
+
+    for (const t of tombRequests) {
+      const targetAuthor = authorByKey.get(t.target)
+      if (targetAuthor && t.author === targetAuthor) tomb.add(t.target)
     }
 
     const rootOf = (id) => { let cur = id; while (parent.has(cur)) cur = parent.get(cur); return cur }
@@ -70,8 +132,29 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
 
   const resolveKeyChainSets = (chatRootId) => {
     if (!tribeCrypto) return []
-    const keys = tribeCrypto.getKeys(chatRootId)
+    const keys = lookupKeys(chatRootId)
     return keys.map(k => [k])
+  }
+
+  const tryDecryptPublicInviteKey = (invites) => {
+    if (!tribeCrypto || !Array.isArray(invites)) return null
+    for (const inv of invites) {
+      if (!inv || typeof inv !== "object" || inv.public !== true) continue
+      if (typeof inv.code !== "string") continue
+      if (typeof inv.ek === "string") {
+        try {
+          const k = tribeCrypto.decryptFromInvite(inv.ek, inv.code, inv.salt)
+          if (k) return k
+        } catch (_) {}
+      }
+      if (typeof inv.ekChain === "string") {
+        try {
+          const chain = tribeCrypto.decryptChainFromInvite(inv.ekChain, inv.code, inv.salt)
+          if (Array.isArray(chain) && chain.length && chain[0].key) return chain[0].key
+        } catch (_) {}
+      }
+    }
+    return null
   }
 
   const buildChat = (node, rootId) => {
@@ -79,10 +162,26 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
     if (rawC.type !== "chat") return null
 
     let c = rawC
+    let undecryptable = false
     if (tribeCrypto && c.encryptedPayload) {
       const keyChainSets = resolveKeyChainSets(rootId)
       c = tribeCrypto.decryptContent(c, keyChainSets)
+      undecryptable = !!c._undecryptable
+      if (undecryptable) {
+        const pubKey = tryDecryptPublicInviteKey(rawC.invites)
+        if (pubKey) {
+          const retry = tribeCrypto.decryptContent(rawC, [[pubKey]])
+          if (retry && !retry._undecryptable) {
+            c = retry
+            undecryptable = false
+          }
+        }
+      }
     }
+
+    const invites = safeArr(c.invites)
+    const hasPublicInvite = invites.some(inv => typeof inv === "object" && inv && inv.public === true)
+    const inferredStatus = c.status || (undecryptable ? (hasPublicInvite ? "OPEN" : "INVITE-ONLY") : "OPEN")
 
     return {
       key: node.key,
@@ -91,15 +190,16 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
       description: c.description || "",
       image: c.image || null,
       category: c.category || "",
-      status: c.status || "OPEN",
+      status: inferredStatus,
       tags: safeArr(c.tags),
       members: safeArr(c.members),
-      invites: safeArr(c.invites),
+      invites,
       author: c.author || node.author,
       createdAt: c.createdAt || new Date(node.ts).toISOString(),
       updatedAt: c.updatedAt || null,
       encrypted: !!c.encrypted,
-      tribeId: c.tribeId || null
+      tribeId: c.tribeId || null,
+      undecryptable
     }
   }
 
@@ -109,7 +209,7 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
 
     let text = c.text || ""
     if (tribeCrypto && c.encryptedText) {
-      const candidateKeys = [...tribeKeys, ...tribeCrypto.getKeys(chatRootId)]
+      const candidateKeys = [...tribeKeys, ...lookupKeys(chatRootId)]
       for (const keyHex of candidateKeys) {
         try {
           text = tribeCrypto.decryptWithKey(c.encryptedText, keyHex)
@@ -183,18 +283,48 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
         ...(tribeId ? { tribeId } : {})
       }
 
-      if (tribeCrypto && !tribeId) {
-        const chatKey = tribeCrypto.generateTribeKey()
-        const result = await new Promise((resolve, reject) => {
+      if (!tribeCrypto) {
+        return new Promise((resolve, reject) => {
           ssbClient.publish(content, (err, msg) => err ? reject(err) : resolve(msg))
         })
-        tribeCrypto.setKey(result.key, chatKey, 1)
-        return result
       }
 
-      return new Promise((resolve, reject) => {
+      if (tribeId) {
+        try {
+          const ancestryIds = await tribesModel.getAncestryChain(tribeId)
+          const chain = []
+          for (const rid of ancestryIds || []) {
+            const k = tribeCrypto.getKey(rid)
+            if (!k) { chain.length = 0; break }
+            chain.push(k)
+          }
+          if (chain.length) content = tribeCrypto.encryptContent(content, chain, true)
+        } catch (_) {}
+        return new Promise((resolve, reject) => {
+          ssbClient.publish(content, (err, msg) => err ? reject(err) : resolve(msg))
+        })
+      }
+
+      if (st === "OPEN") {
+        return new Promise((resolve, reject) => {
+          ssbClient.publish(content, (err, msg) => err ? reject(err) : resolve(msg))
+        })
+      }
+
+      const chatKey = ownCrypto.generateTribeKey()
+      content = tribeCrypto.encryptContent(content, [chatKey], true)
+      const result = await new Promise((resolve, reject) => {
         ssbClient.publish(content, (err, msg) => err ? reject(err) : resolve(msg))
       })
+      ownCrypto.setKey(result.key, chatKey, 1)
+      try {
+        const ssbKeys = require("../server/node_modules/ssb-keys")
+        const boxedKey = tribeCrypto.boxKeyForMember(chatKey, userId, ssbKeys)
+        await new Promise((resolve) => {
+          ssbClient.publish({ type: "tribe-keys", tribeId: result.key, generation: 1, memberKeys: { [userId]: boxedKey } }, () => resolve())
+        })
+      } catch (_) {}
+      return result
     },
 
     async updateChatById(id, data, { skipAuthorCheck = false } = {}) {
@@ -202,40 +332,60 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
       const ssbClient = await openSsb()
       const userId = ssbClient.id
 
+      const item = await new Promise((resolve, reject) => {
+        ssbClient.get(tipId, (err, item) => err || !item?.content ? reject(new Error("Chat not found")) : resolve(item))
+      })
+      const c = item.content
+      const rawAuthor = c.author || (c.encryptedPayload ? null : undefined)
+      if (!skipAuthorCheck && rawAuthor && rawAuthor !== userId) throw new Error("Not the author")
+
+      const messages = await readAll(ssbClient)
+      const idx = buildIndex(messages)
+      let rootId = tipId
+      while (idx.parent.has(rootId)) rootId = idx.parent.get(rootId)
+      const node = { key: tipId, c, author: item.author, ts: item.timestamp || 0 }
+      const chat = buildChat(node, rootId)
+      if (!chat) throw new Error("Invalid chat")
+
+      let updated = {
+        type: "chat",
+        replaces: tipId,
+        title: data.title !== undefined ? safeText(data.title) : chat.title,
+        description: data.description !== undefined ? safeText(data.description) : chat.description,
+        image: data.image !== undefined ? (data.image ? String(data.image).trim() || null : chat.image) : chat.image,
+        category: data.category !== undefined ? safeText(data.category) : chat.category,
+        status: data.status !== undefined ? (VALID_STATUS.includes(String(data.status).toUpperCase()) ? String(data.status).toUpperCase() : chat.status) : chat.status,
+        tags: data.tags !== undefined ? normalizeTags(data.tags) : chat.tags,
+        members: data.members !== undefined ? safeArr(data.members) : chat.members,
+        invites: data.invites !== undefined ? safeArr(data.invites) : chat.invites,
+        author: chat.author,
+        createdAt: chat.createdAt,
+        updatedAt: new Date().toISOString(),
+        ...(chat.tribeId ? { tribeId: chat.tribeId } : {})
+      }
+
+      if (tribeCrypto) {
+        if (chat.tribeId) {
+          try {
+            const ancestryIds = await tribesModel.getAncestryChain(chat.tribeId)
+            const chain = []
+            for (const rid of ancestryIds || []) {
+              const k = tribeCrypto.getKey(rid)
+              if (!k) { chain.length = 0; break }
+              chain.push(k)
+            }
+            if (chain.length) updated = tribeCrypto.encryptContent(updated, chain, true)
+          } catch (_) {}
+        } else {
+          const chatKey = lookupKey(rootId)
+          if (chatKey) updated = tribeCrypto.encryptContent(updated, [chatKey], true)
+        }
+      }
+
       return new Promise((resolve, reject) => {
-        ssbClient.get(tipId, (err, item) => {
-          if (err || !item?.content) return reject(new Error("Chat not found"))
-          const c = item.content
-
-          const rawAuthor = c.author || (c.encryptedPayload ? null : undefined)
-          if (!skipAuthorCheck && rawAuthor && rawAuthor !== userId) return reject(new Error("Not the author"))
-
-          const rootId = tipId
-          const messages = []
-          const node = { key: tipId, c, author: item.author, ts: item.timestamp || 0 }
-          const chat = buildChat(node, rootId)
-          if (!chat) return reject(new Error("Invalid chat"))
-
-          const updated = {
-            type: "chat",
-            replaces: tipId,
-            title: data.title !== undefined ? safeText(data.title) : chat.title,
-            description: data.description !== undefined ? safeText(data.description) : chat.description,
-            image: data.image !== undefined ? (data.image ? String(data.image).trim() || null : chat.image) : chat.image,
-            category: data.category !== undefined ? safeText(data.category) : chat.category,
-            status: data.status !== undefined ? (VALID_STATUS.includes(String(data.status).toUpperCase()) ? String(data.status).toUpperCase() : chat.status) : chat.status,
-            tags: data.tags !== undefined ? normalizeTags(data.tags) : chat.tags,
-            members: data.members !== undefined ? safeArr(data.members) : chat.members,
-            invites: data.invites !== undefined ? safeArr(data.invites) : chat.invites,
-            author: chat.author,
-            createdAt: chat.createdAt,
-            updatedAt: new Date().toISOString()
-          }
-
-          ssbClient.publish({ type: "tombstone", target: tipId, deletedAt: new Date().toISOString(), author: userId }, (e1) => {
-            if (e1) return reject(e1)
-            ssbClient.publish(updated, (e2, res) => e2 ? reject(e2) : resolve(res))
-          })
+        ssbClient.publish({ type: "tombstone", target: tipId, deletedAt: new Date().toISOString(), author: userId }, (e1) => {
+          if (e1) return reject(e1)
+          ssbClient.publish(updated, (e2, res) => e2 ? reject(e2) : resolve(res))
         })
       })
     },
@@ -327,6 +477,8 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
         if (!node || node.c.type !== "chat") continue
         const chat = buildChat(node, rootId)
         if (!chat) continue
+        const isMember = chat.author === uid || safeArr(chat.members).includes(uid)
+        if (chat.undecryptable && !isMember && chat.status === "INVITE-ONLY") continue
         items.push(chat)
       }
 
@@ -363,10 +515,16 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
       let invite = code
 
       if (tribeCrypto) {
-        const chatKey = tribeCrypto.getKey(chat.rootId)
-        if (chatKey) {
-          const ek = tribeCrypto.encryptForInvite(chatKey, code)
-          invite = { code, ek, gen: tribeCrypto.getGen(chat.rootId) }
+        const inviteSalt = tribeCrypto.generateInviteSalt()
+        const ekChain = tribeCrypto.encryptChainForInvite([chat.rootId], code, inviteSalt)
+        if (ekChain) {
+          invite = { code, ekChain, salt: inviteSalt, gen: lookupGen(chat.rootId) }
+        } else {
+          const chatKey = lookupKey(chat.rootId)
+          if (chatKey) {
+            const ek = tribeCrypto.encryptForInvite(chatKey, code, inviteSalt)
+            invite = { code, ek, salt: inviteSalt, gen: lookupGen(chat.rootId) }
+          }
         }
       }
 
@@ -405,18 +563,51 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
       if (!matchedChat) throw new Error("Invalid or expired invite code")
       if (matchedChat.members.includes(userId)) throw new Error("Already a participant")
 
-      if (tribeCrypto && typeof matchedInvite === "object" && matchedInvite.ek) {
-        const chatKey = tribeCrypto.decryptFromInvite(matchedInvite.ek, code)
-        tribeCrypto.setKey(matchedChat.rootId, chatKey, matchedInvite.gen || 1)
+      let chatKey = null
+      if (tribeCrypto && typeof matchedInvite === "object") {
+        if (matchedInvite.ekChain) {
+          const chain = tribeCrypto.decryptChainFromInvite(matchedInvite.ekChain, code, matchedInvite.salt)
+          if (Array.isArray(chain) && chain.length) {
+            for (const entry of chain) {
+              if (Array.isArray(entry.keys) && entry.keys.length) {
+                tribeCrypto.setKeys(entry.rootId, entry.keys, entry.gen || entry.keys.length)
+              } else if (entry.key) {
+                tribeCrypto.setKey(entry.rootId, entry.key, entry.gen || 1)
+              }
+            }
+            chatKey = chain[0].key
+          }
+        } else if (matchedInvite.ek) {
+          chatKey = tribeCrypto.decryptFromInvite(matchedInvite.ek, code, matchedInvite.salt)
+          ownCrypto.setKey(matchedChat.rootId, chatKey, matchedInvite.gen || 1)
+        }
       }
 
       const members = [...matchedChat.members, userId]
-      const invites = matchedChat.invites.filter(inv => {
+      const isPublicInvite = typeof matchedInvite === "object" && matchedInvite.public === true
+      const invites = isPublicInvite ? matchedChat.invites : matchedChat.invites.filter(inv => {
         if (typeof inv === "string") return inv !== code
         return inv.code !== code
       })
 
       await this.updateChatById(matchedChat.key, { members, invites, status: matchedChat.status, title: matchedChat.title, description: matchedChat.description, image: matchedChat.image, category: matchedChat.category, tags: matchedChat.tags }, { skipAuthorCheck: true })
+
+      if (tribeCrypto && chatKey) {
+        try {
+          const ssbKeys = require("../server/node_modules/ssb-keys")
+          const memberKeys = {}
+          try { memberKeys[userId] = tribeCrypto.boxKeyForMember(chatKey, userId, ssbKeys) } catch (_) {}
+          if (matchedChat.author && matchedChat.author !== userId) {
+            try { memberKeys[matchedChat.author] = tribeCrypto.boxKeyForMember(chatKey, matchedChat.author, ssbKeys) } catch (_) {}
+          }
+          if (Object.keys(memberKeys).length) {
+            await new Promise((resolve) => {
+              ssbClient.publish({ type: "tribe-keys", tribeId: matchedChat.rootId, generation: lookupGen(matchedChat.rootId) || 1, memberKeys }, () => resolve())
+            })
+          }
+        } catch (_) {}
+      }
+
       return matchedChat.key
     },
 
@@ -428,17 +619,12 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
       if (chat.status === "CLOSED") throw new Error("Chat is closed")
       if (chat.members.includes(userId)) return chat.key
 
-      const members = [...chat.members, userId]
-
-      if (tribeCrypto) {
-        const chatKey = tribeCrypto.getKey(chat.rootId)
-        if (chatKey && ssbClient.keys) {
-          try {
-            tribeCrypto.boxKeyForMember(chatKey, userId, ssbClient.keys)
-          } catch (_) {}
-        }
+      if (tribeCrypto && Array.isArray(chat.invites)) {
+        const pub = chat.invites.find(inv => typeof inv === "object" && inv.public === true && inv.code && (inv.ek || inv.ekChain))
+        if (pub) return await this.joinByInvite(pub.code)
       }
 
+      const members = [...chat.members, userId]
       await this.updateChatById(chatId, { members, invites: chat.invites, status: chat.status, title: chat.title, description: chat.description, image: chat.image, category: chat.category, tags: chat.tags }, { skipAuthorCheck: true })
       return chat.key
     },
@@ -451,6 +637,32 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
       if (chat.author === userId) throw new Error("Author cannot leave their own chat")
       const members = chat.members.filter(m => m !== userId)
       await this.updateChatById(chatId, { members, invites: chat.invites, status: chat.status, title: chat.title, description: chat.description, image: chat.image, category: chat.category, tags: chat.tags }, { skipAuthorCheck: true })
+      try { await rotateChatKey(chat.rootId, members) } catch (_) {}
+    },
+
+    async ingestKeys() { await ingestOwnTribeKeys() },
+
+    async pruneOrphanKeys() {
+      if (!ownCrypto || typeof ownCrypto.getAllRootIds !== "function") return 0
+      try {
+        const ssbClient = await openSsb()
+        const messages = await readAll(ssbClient)
+        const live = new Set()
+        for (const m of messages) {
+          const c = m.value && m.value.content
+          if (!c) continue
+          if (c.type === "chat") live.add(m.key)
+        }
+        const tomb = buildValidatedTombstoneSet(messages)
+        const all = ownCrypto.getAllRootIds()
+        let removed = 0
+        for (const rid of all) {
+          if (!live.has(rid) || tomb.has(rid)) {
+            try { ownCrypto.dropKey(rid); removed += 1 } catch (_) {}
+          }
+        }
+        return removed
+      } catch (_) { return 0 }
     },
 
     async sendMessage(chatId, text, image = null) {
@@ -481,16 +693,14 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
       }
       if (image) content.image = image
 
-      if (tribeCrypto) {
+      const chatIsEncrypted = !!(chat.tribeId) || !!lookupKey(chat.rootId)
+      if (chatIsEncrypted && tribeCrypto) {
         let encKey = null
         if (chat.tribeId) encKey = await getTribeFirstKeyFor(chat.tribeId)
-        if (!encKey) encKey = tribeCrypto.getKey(chat.rootId)
-        if (encKey) {
-          content.encryptedText = tribeCrypto.encryptWithKey(safeText(text), encKey)
-          if (chat.tribeId) content.tribeId = chat.tribeId
-        } else {
-          content.text = safeText(text)
-        }
+        if (!encKey) encKey = lookupKey(chat.rootId)
+        if (!encKey) throw new Error(`Missing chat key for ${chat.rootId} — cannot send message`)
+        content.encryptedText = tribeCrypto.encryptWithKey(safeText(text), encKey)
+        if (chat.tribeId) content.tribeId = chat.tribeId
       } else {
         content.text = safeText(text)
       }

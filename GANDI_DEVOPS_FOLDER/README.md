@@ -194,7 +194,7 @@ Una vez el pub está en marcha, hay dos mensajes SSB que necesitas publicar para
 
 > **IMPORTANTE**: los mensajes SSB son **inmutables** — no hay botón de deshacer. Usa `--dry-run` para ver exactamente qué se va a publicar antes de confirmar.
 
-El script `pub-federation.sh` orquesta estas operaciones desde tu máquina local, verificando siempre antes de publicar que el `caps.shs` remoto sea el correcto (`zTmidAb7t+tKi7W93FIHbOvlbd936x6G/vm8e8Td//A=`). Si no coincide, aborta sin publicar nada.
+El script `pub-federation.sh` orquesta estas operaciones desde tu máquina local, verificando siempre antes de publicar que el `caps.shs` remoto sea el correcto del ciclo 6 (`H5EC+V5BU9s0lWxCkt4z8a095Sj8a6TgiLKPYi1JD7s=`). Si no coincide, aborta sin publicar nada.
 
 ```bash
 # 1. Verificar estado del pub y caps.shs antes de tocar nada
@@ -218,7 +218,7 @@ bash GANDI_DEVOPS_FOLDER/scripts/pub-federation.sh follow @feedId=.ed25519
 
 Todas las operaciones se registran en `GANDI_DEVOPS_FOLDER/logs/federation.log` (ignorado por git).
 
-El peer inicial recomendado es `solarnethub.com` / `@mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519` porque ya aparece configurado como seed en `OASIS_PUB/config/ssb/config` y está documentado en `docs/PUB/deploy.md`.
+El peer inicial recomendado es `solarnethub.com` / `@0qSCyK3xyL71X4qKkmf84Cb2riP6OeUqxCvbP2Z6HWs=.ed25519` (seed ciclo 6 / Oasis 0.8.3), documentado en `docs/PUB/deploy.md`.
 
 ## Por qué una carpeta separada
 

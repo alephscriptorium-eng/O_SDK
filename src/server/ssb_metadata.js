@@ -6,7 +6,34 @@ const config = require('./ssb_config');
 const updater = require('../backend/updater.js');
 
 let printed = false;
-let checkedForUpdate = false; 
+let checkedForUpdate = false;
+let pendingClearnetModules = null;
+let clearnetReady = false;
+let pendingWarmup = null;
+let warmupReady = false;
+
+function setClearnetModules(modules) {
+  pendingClearnetModules = Array.isArray(modules) ? modules : [];
+  clearnetReady = true;
+}
+
+function setWarmupTime(str) {
+  pendingWarmup = str;
+  warmupReady = true;
+}
+
+function waitForWarmup(timeoutMs = 120000) {
+  return new Promise((resolve) => {
+    if (warmupReady) return resolve(pendingWarmup);
+    const started = Date.now();
+    const tick = () => {
+      if (warmupReady) return resolve(pendingWarmup);
+      if (Date.now() - started >= timeoutMs) return resolve(null);
+      setTimeout(tick, 250);
+    };
+    tick();
+  });
+}
 
 function getModules() {
   const nodeModulesPath = path.resolve(__dirname, 'node_modules');
@@ -37,6 +64,19 @@ async function checkForUpdate() {
   await updater.getRemoteVersion();
 }
 
+function waitForClearnet(timeoutMs = 25000) {
+  return new Promise((resolve) => {
+    if (clearnetReady) return resolve(pendingClearnetModules || []);
+    const started = Date.now();
+    const tick = () => {
+      if (clearnetReady) return resolve(pendingClearnetModules || []);
+      if (Date.now() - started >= timeoutMs) return resolve(null);
+      setTimeout(tick, 250);
+    };
+    tick();
+  });
+}
+
 async function printMetadata(mode, modeColor = colors.cyan, httpPort = 3000, httpHost = 'localhost', offline = false, isPublic = false) {
   if (printed) return;
   printed = true;
@@ -65,9 +105,19 @@ async function printMetadata(mode, modeColor = colors.cyan, httpPort = 3000, htt
     list && list.some(i => !i.internal && i.family === 'IPv4')
   );
   console.log(`- Protocol (port): ${ssbPort}`);
-  console.log(`- LAN broadcasting (UDP): ${localDiscovery ? 'enabled' : 'disabled'}`);
-  console.log(`- Replication (hops): ${hops}`);
   console.log(`- Mode: ${isOnline ? 'online' : 'offline'}`);
+  console.log(`- Replication (hops): ${hops}`);
+  console.log(`- LAN Broadcasting (UDP): ${localDiscovery ? 'enabled' : 'disabled'}`);
+  const clearnetModules = await waitForClearnet();
+  const clearnetStatus = (clearnetModules && clearnetModules.length > 0) ? clearnetModules.join(', ') : 'disabled';
+  let fediverseConnected = false;
+  try {
+    const acc = JSON.parse(fs.readFileSync(path.join(__dirname, '../configs/fediverse-accounts.json'), 'utf8'));
+    fediverseConnected = !!(acc && acc.mastodon);
+  } catch (_) {}
+  console.log(`- Internet Broadcasting:`);
+  console.log(`  - Clearnet: ${clearnetStatus}`);
+  console.log(`  - Fediverse: ${fediverseConnected ? 'enabled' : 'disabled'}`);
   console.log("");
   console.log("=========================");
   console.log("Modules loaded: [", modules.length, "]");
@@ -76,9 +126,16 @@ async function printMetadata(mode, modeColor = colors.cyan, httpPort = 3000, htt
   // Check for updates
   await checkForUpdate();
   console.log("=========================");
+
+  if (/gui/i.test(mode)) {
+    const warmup = await waitForWarmup();
+    if (warmup) console.log(`- Warmup-time: ${warmup}`);
+  }
 }
 
 module.exports = {
   printMetadata,
+  setClearnetModules,
+  setWarmupTime,
   colors
 };

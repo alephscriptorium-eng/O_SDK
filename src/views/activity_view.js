@@ -1,22 +1,36 @@
 const { div, h2, p, section, button, form, a, input, img, textarea, br, span, video: videoHyperaxe, audio: audioHyperaxe, table, tr, td, th } = require("../server/node_modules/hyperaxe");
-const { template, i18n } = require('./main_views');
+const { template, i18n, userLink, userLinkLabel, renderSpreadButton } = require('./main_views');
+const opinionCategories = require('../backend/opinion_categories');
+
+const OPINION_TYPES = new Set(['bookmark','votes','feed','image','audio','video','document','torrent','transfer']);
+const OPINION_ROUTES = {
+  feed:        (id) => `/feed/opinions/${encodeURIComponent(id)}`,
+  bookmark:    (id) => `/bookmarks/opinions/${encodeURIComponent(id)}`,
+  image:       (id) => `/images/opinions/${encodeURIComponent(id)}`,
+  audio:       (id) => `/audios/opinions/${encodeURIComponent(id)}`,
+  torrent:     (id) => `/torrents/opinions/${encodeURIComponent(id)}`,
+  video:       (id) => `/videos/opinions/${encodeURIComponent(id)}`,
+  document:    (id) => `/documents/opinions/${encodeURIComponent(id)}`,
+  votes:       (id) => `/votes/opinions/${encodeURIComponent(id)}`,
+  transfer:    (id) => `/transfers/opinions/${encodeURIComponent(id)}`
+};
 const moment = require("../server/node_modules/moment");
 const { renderUrl } = require('../backend/renderUrl');
 const { getConfig } = require("../configs/config-manager.js");
 const { sanitizeHtml } = require('../backend/sanitizeHtml');
 
 const renderMediaBlob = (value, fallbackSrc = null) => {
-  if (!value) return fallbackSrc ? img({ src: fallbackSrc }) : null
+  if (!value) return fallbackSrc ? img({ src: fallbackSrc, class: 'post-image' }) : null
   const s = String(value).trim()
-  if (!s) return fallbackSrc ? img({ src: fallbackSrc }) : null
-  if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}` })
+  if (!s) return fallbackSrc ? img({ src: fallbackSrc, class: 'post-image' }) : null
+  if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}`, class: 'post-image' })
   const mVideo = s.match(/\[video:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
   if (mVideo) return videoHyperaxe({ controls: true, class: 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}` })
   const mAudio = s.match(/\[audio:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
   if (mAudio) return audioHyperaxe({ controls: true, class: 'post-audio', src: `/blob/${encodeURIComponent(mAudio[1])}` })
   const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
   if (mImg) return img({ src: `/blob/${encodeURIComponent(mImg[1])}`, class: 'post-image' })
-  return fallbackSrc ? img({ src: fallbackSrc }) : null
+  return fallbackSrc ? img({ src: fallbackSrc, class: 'post-image' }) : null
 }
 
 const FEED_TEXT_MIN = Number(getConfig().feed?.minLength ?? 1);
@@ -213,7 +227,8 @@ function buildActivityItemsWithPostThreads(deduped, allActions) {
   return out;
 }
 
-function renderActionCards(actions, userId, allActions) {
+exports.renderActionCards = renderActionCards;
+function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
   const all = Array.isArray(allActions) ? allActions : actions;
   const byIdAll = new Map();
   for (const a0 of all) {
@@ -308,9 +323,6 @@ function renderActionCards(actions, userId, allActions) {
 
   const cards = items.map(action => {
     const date = action.ts ? new Date(action.ts).toLocaleString() : "";
-    const userLink = action.author
-      ? a({ href: `/author/${encodeURIComponent(action.author)}` }, action.author)
-      : 'unknown';
     const type = action.type || 'unknown';
     let skip = false;
     let headerText;
@@ -443,11 +455,11 @@ function renderActionCards(actions, userId, allActions) {
         div({ class: 'card-section banking-ubi' },
           div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.bankUbiInhabitant + ':'),
-            span({ class: 'card-value' }, a({ href: `/author/${encodeURIComponent(inhabitantId)}`, class: 'user-link' }, inhabitantId))
+            span({ class: 'card-value' }, userLink(inhabitantId))
           ),
           pubId ? div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.bankUbiPub + ':'),
-            span({ class: 'card-value' }, a({ href: `/author/${encodeURIComponent(pubId)}`, class: 'user-link' }, pubId))
+            span({ class: 'card-value' }, userLink(pubId))
           ) : "",
           div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.bankUbiClaimedAmount + ':'),
@@ -507,7 +519,8 @@ function renderActionCards(actions, userId, allActions) {
     }
 
     if (type === 'tribe') {
-      const { title, image, description, location, tags, isLARP, inviteMode, isAnonymous, members } = content;
+      const { title, image, description, location, tags, inviteMode, isAnonymous } = content;
+      if (isAnonymous === true) { skip = true; }
       const validTags = Array.isArray(tags) ? tags : [];
       cardBody.push(
         div({ class: 'card-section tribe' },
@@ -517,11 +530,9 @@ function renderActionCards(actions, userId, allActions) {
            div({ style: 'display:flex; gap:.6em; flex-wrap:wrap;' },
             location ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.tribeLocationLabel.toUpperCase()) + ':'), span({ class: 'card-value' }, ...renderUrl(location))) : "",
             typeof isAnonymous === 'boolean' ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.tribeIsAnonymousLabel+ ':'), span({ class: 'card-value' }, isAnonymous ? i18n.tribePrivate : i18n.tribePublic)) : "",
-            inviteMode ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.tribeModeLabel) + ':'), span({ class: 'card-value' }, inviteMode.toUpperCase())) : "",
-            typeof isLARP === 'boolean' ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.tribeLARPLabel+ ':'), span({ class: 'card-value' }, isLARP ? i18n.tribeYes : i18n.tribeNo)) : ""
-         ), 
-          Array.isArray(members) ? h2(`${i18n.tribeMembersCount}: ${members.length}`) : "",
-          image  
+            inviteMode ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.tribeModeLabel) + ':'), span({ class: 'card-value' }, inviteMode.toUpperCase())) : ""
+         ),
+          image
             ? renderMediaBlob(image, '/assets/images/default-tribe.png')
             : img({ src: '/assets/images/default-tribe.png', class: 'feed-image tribe-image' }),
           p({ class: 'tribe-description' }, ...renderUrl(description || '')),
@@ -536,7 +547,7 @@ function renderActionCards(actions, userId, allActions) {
       const { author, name, description, photo, personalSkills, oasisSkills, educationalSkills, languages, professionalSkills, status, preferences, createdAt, updatedAt} = content;
       cardBody.push(
         div({ class: 'card-section curriculum' },
-          h2(a({ href: `/author/${encodeURIComponent(author)}`, class: "user-link" }, `@`, name)),
+          h2(userLink(author, name)),
           div(
             { class: 'card-fields-container' },
             createdAt ?
@@ -595,9 +606,11 @@ function renderActionCards(actions, userId, allActions) {
     }
 
     if (type === 'map') {
-      const { lat, lng, mapType } = content;
+      const { lat, lng, mapType, title } = content;
+      const mapKey = action.id || action.key || '';
       cardBody.push(
         div({ class: 'card-section map' },
+          title ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.mapTitle || 'Map') + ':'), span({ class: 'card-value' }, mapKey ? a({ href: `/maps/${encodeURIComponent(mapKey)}`, class: 'user-link' }, title) : title)) : "",
           div({ class: 'map-card-info' },
             span({ class: 'map-type-badge' }, mapType || 'SINGLE'),
             span({ class: 'map-coords' }, `${(parseFloat(lat) || 0).toFixed(4)}, ${(parseFloat(lng) || 0).toFixed(4)}`)
@@ -706,7 +719,7 @@ function renderActionCards(actions, userId, allActions) {
           typeof isPublic === 'boolean' ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.isPublic || 'Public') + ':'), span({ class: 'card-value' }, isPublic ? 'Yes' : 'No')) : "",
           price ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.price || 'Price') + ':'), span({ class: 'card-value' }, price + " ECO")) : "",
           br(),
-          organizer ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.organizer || 'Organizer') + ': '), a({ class: "user-link", href: `/author/${encodeURIComponent(organizer)}` }, organizer)) : "",
+          organizer ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.organizer || 'Organizer') + ': '), userLink(organizer)) : "",
           Array.isArray(attendees) ? h2({ class: 'card-label' }, (i18n.attendees || 'Attendees') + ': ' + attendees.length) : ""
         )
       );
@@ -730,7 +743,7 @@ function renderActionCards(actions, userId, allActions) {
         const addList = Array.isArray(added) ? added : [];
         const remList = Array.isArray(removed) ? removed : [];
         const renderUserList = (ids) =>
-            ids.map((id, i) => [i > 0 ? ', ' : '', a({ class: 'user-link', href: `/author/${encodeURIComponent(id)}` }, id)]).flat();
+            ids.map((id, i) => [i > 0 ? ', ' : '', userLink(id)]).flat();
         cardBody.push(
             div({ class: 'card-section task' },
                 div({ class: 'card-field' },
@@ -810,7 +823,7 @@ function renderActionCards(actions, userId, allActions) {
                 { class: 'reply-context', style: 'border-left:3px solid #666;padding-left:10px;margin-bottom:8px;opacity:0.85;' },
                 span({ style: 'font-size:0.85em;' },
                   a({ href: ctxHref, class: 'tag-link' }, i18n.inReplyTo || 'IN REPLY TO'),
-                  parentAuthor ? span(' ', a({ href: `/author/${encodeURIComponent(parentAuthor)}`, class: 'user-link', style: 'font-weight:bold;' }, parentName)) : ''
+                  parentAuthor ? span(' ', userLink(parentAuthor, parentName)) : ''
                 ),
                 parentText ? p({ class: 'post-text reply-context-text post-text-pre', style: 'font-size:0.85em;max-height:80px;overflow:hidden;margin-top:4px;' }, ...renderUrlPreserveNewlines(parentText)) : ''
               )
@@ -861,7 +874,7 @@ function renderActionCards(actions, userId, allActions) {
 			),
 			div({ class: 'card-footer thread-reply-footer' },
 			    span({ class: 'date-link' }, rDate),
-			    a({ href: `/author/${encodeURIComponent(r.author)}`, class: 'user-link' }, `${r.author}`),
+			    userLink(r.author),
 			    form({ method: 'GET', action: commentHref, class: 'inline-form' },
 				button({ type: 'submit', class: 'filter-btn' }, i18n.viewDetails)
 			    )
@@ -872,7 +885,7 @@ function renderActionCards(actions, userId, allActions) {
         ),
         p({ class: 'card-footer' },
             span({ class: 'date-link' }, `${action.ts ? new Date(action.ts).toLocaleString() : ''} ${i18n.performed} `),
-            a({ href: `/author/${encodeURIComponent(action.author)}`, class: 'user-link' }, `${action.author}`)
+            userLink(action.author)
         )
         );
     }
@@ -904,7 +917,7 @@ function renderActionCards(actions, userId, allActions) {
               { class: 'reply-context', style: 'border-left:3px solid #666;padding-left:10px;margin-bottom:8px;opacity:0.85;' },
               span({ style: 'font-size:0.85em;' },
                 a({ href: `/forum/${encodeURIComponent(hrefKey)}`, class: 'tag-link' }, i18n.inReplyTo || 'IN REPLY TO'),
-                parentAuthor ? span(' ', a({ href: `/author/${encodeURIComponent(parentAuthor)}`, class: 'user-link', style: 'font-weight:bold;' }, parentName)) : ''
+                parentAuthor ? span(' ', userLink(parentAuthor, parentName)) : ''
               ),
               parentTitle ? p({ class: 'post-text reply-context-text', style: 'font-size:0.85em;max-height:60px;overflow:hidden;margin-top:4px;font-weight:bold;color:#4fc3f7;' }, parentTitle) : ''
             ),
@@ -957,7 +970,7 @@ function renderActionCards(actions, userId, allActions) {
       spreadOriginalAuthor
         ? div({ class: 'card-field' },
             span({ class: 'card-label' }, (i18n.spreadBy || 'By') + ': '),
-            span({ class: 'card-value' }, a({ href: `/author/${encodeURIComponent(spreadOriginalAuthor)}`, class: 'user-link' }, spreadOriginalAuthor))
+            span({ class: 'card-value' }, userLink(spreadOriginalAuthor))
           )
         : '',
       value
@@ -990,33 +1003,10 @@ function renderActionCards(actions, userId, allActions) {
       const { about, name, image } = content;
       cardBody.push(
         div({ class: 'card-section about' },
-          h2(a({ href: `/author/${encodeURIComponent(about)}`, class: "user-link" }, `@`, name)),
+          h2(userLink(about, name)),
           image
             ? img({ src: `/blob/${encodeURIComponent(image)}`, alt: name, class: 'activity-avatar' })
             : img({ src: '/assets/images/default-avatar.png', alt: name, class: 'activity-avatar' })
-        )
-      );
-    }
-
-    if (type === 'contact') {
-      const { contact } = content || {};
-      const aId = action.author || '';
-      const bId = contact || '';
-      const pa = getProfile(aId);
-      const pb = getProfile(bId);
-      const srcA = pa.image ? `/blob/${encodeURIComponent(pa.image)}` : '/assets/images/default-avatar.png';
-      const srcB = pb.image ? `/blob/${encodeURIComponent(pb.image)}` : '/assets/images/default-avatar.png';
-      cardBody.push(
-        div({ class: 'card-section contact' },
-          div({ class: 'activity-contact' },
-            a({ href: `/author/${encodeURIComponent(aId)}`, class: 'activity-contact-avatar-link' },
-              img({ src: srcA, alt: pa.name || pa.id, class: 'activity-contact-avatar' })
-            ),
-            span({ class: 'activity-contact-arrow' }, ''),
-            a({ href: `/author/${encodeURIComponent(bId)}`, class: 'activity-contact-avatar-link' },
-              img({ src: srcB, alt: pb.name || pb.id, class: 'activity-contact-avatar' })
-            )
-          )
         )
       );
     }
@@ -1029,7 +1019,7 @@ function renderActionCards(actions, userId, allActions) {
       cardBody.push(
         div({ class: 'card-section pub activity-pub' },
           br(),
-          a({ href: `/author/${encodeURIComponent(pr.id)}`, class: 'user-link' }, pr.name || pr.id),
+          userLink(pr.id, pr.name),
           br(),
           img({ src, alt: pr.name || pr.id, class: 'activity-avatar' })
         )
@@ -1049,7 +1039,7 @@ function renderActionCards(actions, userId, allActions) {
           br(),
           image
             ? renderMediaBlob(image, '/assets/images/default-market.png')
-            : img({ src: '/assets/images/default-market.png', alt: title }),
+            : img({ src: '/assets/images/default-market.png', alt: title, class: 'post-image' }),
           br(),
           div({ class: "market-card price" },
             p(`${i18n.marketItemPrice}: ${price} ECO`)
@@ -1201,8 +1191,9 @@ function renderActionCards(actions, userId, allActions) {
               ? (i18n.unfollowing || 'UNFOLLOWING')
               : 'ACTION';
 
+        const actorId = activity.activityActor || '';
         const msgHtml = tmpl
-          .replace('%OASIS%', `<a class="user-link" href="/author/${encodeURIComponent(activity.activityActor || '')}">${activity.activityActor || ''}</a>`)
+          .replace('%OASIS%', `<a class="user-link" href="/author/${encodeURIComponent(actorId)}">${userLinkLabel(actorId)}</a>`)
           .replace('%PROJECT%', `<a class="user-link" href="/projects/${encodeURIComponent(action.tipId || action.id)}">${title || ''}</a>`)
           .replace('%ACTION%', `<strong>${actionWord}</strong>`);
 
@@ -1218,7 +1209,7 @@ function renderActionCards(actions, userId, allActions) {
           ),
           p({ class: 'card-footer' },
             span({ class: 'date-link' }, `${action.ts ? new Date(action.ts).toLocaleString() : ''} ${i18n.performed} `),
-            a({ href: `/author/${encodeURIComponent(action.author)}`, class: 'user-link' }, `${action.author}`)
+            userLink(action.author)
           )
         );
       }
@@ -1274,12 +1265,33 @@ function renderActionCards(actions, userId, allActions) {
     }
       
     if (type === 'aiExchange') {
-      const { ctx } = content;
+      const { ctx, lang, tags, rating } = content;
+      const helpful = Number(action.helpfulVotes || 0);
       cardBody.push(
         div({ class: 'card-section ai-exchange' },
           Array.isArray(ctx) && ctx.length
             ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.aiSnippetsLearned || 'Snippets learned') + ':'), span({ class: 'card-value' }, String(ctx.length)))
-            : ""
+            : null,
+          lang
+            ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.aiExchangeLang || 'Language') + ':'), span({ class: 'card-value' }, String(lang).toUpperCase()))
+            : null,
+          Array.isArray(tags) && tags.length
+            ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.aiExchangeTags || 'Tags') + ':'),
+                span({ class: 'card-value' }, tags.map(t => span({ class: 'ai-exchange-tag' }, '#' + t))))
+            : null,
+          rating > 0
+            ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.aiExchangeRating || 'Rating') + ':'), span({ class: 'card-value' }, '★'.repeat(rating) + '☆'.repeat(Math.max(0, 5 - rating))))
+            : null,
+          div({ class: 'card-field' },
+            span({ class: 'card-label' }, (i18n.aiExchangeHelpful || 'Helpful') + ':'),
+            span({ class: 'card-value' }, String(helpful)),
+            form({ method: 'POST', action: '/ai/exchange/vote', class: 'ai-exchange-vote-form' },
+              input({ type: 'hidden', name: 'target', value: action.id }),
+              input({ type: 'hidden', name: 'helpful', value: 'yes' }),
+              input({ type: 'hidden', name: 'returnTo', value: '/activity' }),
+              button({ type: 'submit', class: 'filter-btn' }, i18n.aiExchangeMarkHelpful || '+1 helpful')
+            )
+          )
         )
       );
     }
@@ -1291,22 +1303,6 @@ function renderActionCards(actions, userId, allActions) {
           div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.bankingUserEngagementScore + ':'),
             span({ class: 'card-value' }, karmaScore)
-          )
-        )
-      );
-    }
-
-    if (type === 'gameScore') {
-      const { game, score } = content;
-      cardBody.push(
-        div({ class: 'card-section ai-exchange' },
-          game ? div({ class: 'card-field' },
-            span({ class: 'card-label' }, (i18n.gamesTitle || 'Game') + ':'),
-            span({ class: 'card-value' }, String(game).toUpperCase())
-          ) : null,
-          div({ class: 'card-field' },
-            span({ class: 'card-label' }, (i18n.gamesHallScore || 'Score') + ':'),
-            span({ class: 'card-value' }, String(score || 0))
           )
         )
       );
@@ -1356,7 +1352,7 @@ function renderActionCards(actions, userId, allActions) {
       const { targetType, targetId, targetTitle, method, votes, proposer } = content;
       const link = targetType === 'tribe'
         ? a({ href: `/tribe/${encodeURIComponent(targetId)}`, class: 'user-link' }, targetTitle || targetId)
-        : a({ href: `/author/${encodeURIComponent(targetId)}`, class: 'user-link' }, targetId);
+        : userLink(targetId);
 
       const methodUpper = String(
         i18n['parliamentMethod' + String(method || '').toUpperCase()] || method
@@ -1381,7 +1377,7 @@ function renderActionCards(actions, userId, allActions) {
           ? a({ href: `/tribe/${encodeURIComponent(powerId)}`, class: 'user-link' }, powerTitle || powerId)
           : powerTypeNorm === 'none' || !powerTypeNorm
             ? a({ href: `/parliament?filter=government`, class: 'user-link' }, (i18n.parliamentAnarchy || 'ANARCHY'))
-            : a({ href: `/author/${encodeURIComponent(powerId)}`, class: 'user-link' }, powerTitle || powerId);
+            : userLink(powerId, powerTitle);
 
       const methodUpper = String(
         i18n['parliamentMethod' + String(method || '').toUpperCase()] || method
@@ -1449,7 +1445,7 @@ function renderActionCards(actions, userId, allActions) {
           question ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentLawQuestion || 'Question') + ':'), span({ class: 'card-value' }, question)) : '',
           description ? p({ style: 'margin:.4rem 0' }, description) : '',
           div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentLawMethod || 'Method') + ':'), span({ class: 'card-value' }, methodUpper)),
-          proposer ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentLawProposer || 'Proposer') + ':'), span({ class: 'card-value' }, a({ href: `/author/${encodeURIComponent(proposer)}`, class: 'user-link' }, proposer))) : '',
+          proposer ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentLawProposer || 'Proposer') + ':'), span({ class: 'card-value' }, userLink(proposer))) : '',
           enactedAt ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentLawEnacted || 'Enacted at') + ':'), span({ class: 'card-value' }, new Date(enactedAt).toLocaleString())) : '',
           (total || yes) ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentLawVotes || 'Votes') + ':'), span({ class: 'card-value' }, `${yes}/${total}`)) : ''
         )
@@ -1467,7 +1463,7 @@ function renderActionCards(actions, userId, allActions) {
             answerBy ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.courtsThAnswerBy + ':'), span({ class: 'card-value' }, new Date(answerBy).toLocaleString())) : '',
             evidenceBy ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.courtsThEvidenceBy + ':'), span({ class: 'card-value' }, new Date(evidenceBy).toLocaleString())) : '',
             decisionBy ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.courtsThDecisionBy + ':'), span({ class: 'card-value' }, new Date(decisionBy).toLocaleString())) : '',
-            accuser ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.courtsAccuser + ':'), span({ class: 'card-value' }, a({ href: `/author/${encodeURIComponent(accuser)}`, class: 'user-link' }, accuser))) : '',
+            accuser ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.courtsAccuser + ':'), span({ class: 'card-value' }, userLink(accuser))) : '',
             typeof needed !== 'undefined' ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.courtsVotesNeeded + ':'), span({ class: 'card-value' }, String(needed))) : '',
             (typeof yes !== 'undefined' || typeof total !== 'undefined') ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.courtsVotesSlashTotal + ':'), span({ class: 'card-value' }, `${Number(yes || 0)}/${Number(total || 0)}`)) : '',
             voteId ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.courtsOpenVote + ':'), a({ href: `/votes/${encodeURIComponent(voteId)}`, class: 'tag-link' }, i18n.viewDetails || 'View details')) : ''
@@ -1477,7 +1473,7 @@ function renderActionCards(actions, userId, allActions) {
         const { judgeId } = content;
         cardBody.push(
           div({ class: 'card-section courts' },
-            judgeId ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.courtsJudge + ':'), span({ class: 'card-value' }, a({ href: `/author/${encodeURIComponent(judgeId)}`, class: 'user-link' }, judgeId))) : ''
+            judgeId ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.courtsJudge + ':'), span({ class: 'card-value' }, userLink(judgeId))) : ''
           )
         );
       } else {
@@ -1509,34 +1505,74 @@ function renderActionCards(actions, userId, allActions) {
       return null;
     }
 
-    return div({ class: 'card card-rpg' },
-      div({ class: 'card-header' },
-        h2({ class: 'card-label' }, headerText),
-        type !== 'feed' && type !== 'aiExchange' && type !== 'bankWallet' && (!action.tipId || action.tipId === action.id)
-          ? (
-              isParliamentTarget
-                ? form(
-                    { method: "GET", action: "/parliament" },
-                    input({ type: "hidden", name: "filter", value: parliamentFilter }),
-                    button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
-                  )
-                : isCourtsTarget
-                  ? form(
-                      { method: "GET", action: "/courts" },
-                      input({ type: "hidden", name: "filter", value: courtsFilter }),
-                      button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
-                    )
-                  : form(
-                      { method: "GET", action: viewHref },
-                      button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
-                    )
-            )
-          : ''
+    const viewDetailsForm = type !== 'feed' && type !== 'aiExchange' && type !== 'bankWallet' && (!action.tipId || action.tipId === action.id)
+      ? (
+          isParliamentTarget
+            ? form(
+                { method: "GET", action: "/parliament" },
+                input({ type: "hidden", name: "filter", value: parliamentFilter }),
+                button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
+              )
+            : isCourtsTarget
+              ? form(
+                  { method: "GET", action: "/courts" },
+                  input({ type: "hidden", name: "filter", value: courtsFilter }),
+                  button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
+                )
+              : form(
+                  { method: "GET", action: viewHref },
+                  button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
+                )
+        )
+      : null;
+    if (viewDetailsForm && cardBody.length > 0 && cardBody[0] && typeof cardBody[0].insertBefore === 'function') {
+      const host = cardBody[0];
+      const spacer = br();
+      const firstChild = host.childNodes && host.childNodes[0];
+      if (firstChild) {
+        host.insertBefore(spacer, firstChild);
+        host.insertBefore(viewDetailsForm, spacer);
+      } else {
+        host.appendChild(viewDetailsForm);
+        host.appendChild(spacer);
+      }
+    } else if (viewDetailsForm) {
+      cardBody.unshift(div({ class: 'card-section' }, viewDetailsForm, br()));
+    }
+    return div({ class: 'trending-card' },
+      div({ class: 'card-chips-row' },
+        span({ class: 'pm-exposition-chip pm-exposition-whole' },
+          span({ class: 'pm-exposition-text' }, String(type || '').toUpperCase())
+        )
       ),
-      div({ class: 'card-body' }, ...cardBody),
+      ...cardBody,
+      (() => {
+        if (!OPINION_TYPES.has(type)) return null;
+        const routeFn = OPINION_ROUTES[type];
+        if (!routeFn) return null;
+        const ops = (action.value?.content?.opinions) || (action.content?.opinions) || {};
+        return div({ class: 'voting-buttons' },
+          opinionCategories.map(cat =>
+            form({ method: 'POST', action: `${routeFn(action.id)}/${cat}` },
+              button({ class: 'vote-btn' }, `${i18n['vote' + cat.charAt(0).toUpperCase() + cat.slice(1)] || cat} [${ops[cat] || 0}]`)
+            )
+          )
+        );
+      })(),
+      (() => {
+        const SPREADABLE = new Set([
+          'post','audio','video','image','document','torrent','bookmark',
+          'event','calendar','task','votes','vote','market','shop','shopProduct',
+          'project','transfer','job','report',
+          'chat','chatMessage','pad','padEntry','forum','map'
+        ]);
+        if (!SPREADABLE.has(type)) return null;
+        const btn = renderSpreadButton(action.id, spreadMap.get(action.id));
+        return btn ? div({ class: 'card-spread-left' }, btn) : null;
+      })(),
       p({ class: 'card-footer' },
         span({ class: 'date-link' }, `${date} ${i18n.performed} `),
-        a({ href: `/author/${encodeURIComponent(action.author)}`, class: 'user-link' }, `${action.author}`)
+        userLink(action.author)
       )
     );
   });
@@ -1590,7 +1626,6 @@ function getViewDetailsAction(type, action) {
     case 'task':       return `/tasks/${id}`;
     case 'taskAssignment': return `/tasks/${encodeURIComponent(action.content?.taskId || action.tipId || action.id)}`;
     case 'about':      return `/author/${encodeURIComponent(action.author)}`;
-    case 'contact':    return `/inhabitants`;
     case 'pub':        return `/invites`;
     case 'market':     return `/market/${id}`;
     case 'shop':       return `/shops/${id}`;
@@ -1604,12 +1639,12 @@ function getViewDetailsAction(type, action) {
     case 'bankWallet': return `/wallet`;
     case 'bankClaim':  return `/banking${action.content?.epochId ? `/epoch/${encodeURIComponent(action.content.epochId)}` : ''}`;
     case 'ubiClaim':   return action.content?.transferId ? `/transfers/${encodeURIComponent(action.content.transferId)}` : `/transfers?filter=ubi`;
-    case 'gameScore':  return `/games?filter=scoring`;
     default:           return `/activity`;
   }
 }
 
-exports.activityView = (actions, filter, userId, q = '') => {
+exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
+  const spreadMap = (extras && extras.spreadMap) || new Map();
   const title = filter === 'mine' ? i18n.yourActivity : i18n.globalActivity;
   const desc = i18n.activityDesc;
 
@@ -1617,19 +1652,16 @@ exports.activityView = (actions, filter, userId, q = '') => {
     { type: 'recent',    label: i18n.typeRecent },
     { type: 'all',       label: i18n.allButton },
     { type: 'mine',      label: i18n.mineButton },
-    { type: 'report',    label: i18n.typeReport },
-    { type: 'karmaScore',label: i18n.typeKarmaScore },
-    { type: 'about',     label: i18n.typeAbout },
     { type: 'tribe',     label: i18n.typeTribe },
     { type: 'parliament',label: i18n.typeParliament },
     { type: 'courts',    label: i18n.typeCourts },
-    { type: 'votes',     label: i18n.typeVotes },
-    { type: 'calendar',  label: i18n.typeCalendar || 'Calendar' },
     { type: 'event',     label: i18n.typeEvent },
+    { type: 'calendar',  label: i18n.typeCalendar },
     { type: 'task',      label: i18n.typeTask },
-    { type: 'feed',      label: i18n.typeFeed },
+    { type: 'votes',     label: i18n.typeVotes },
+    { type: 'report',    label: i18n.typeReport },
     { type: 'post',      label: i18n.typePost },
-    { type: 'spread',    label: i18n.typeSpread },
+    { type: 'feed',      label: i18n.typeFeed },
     { type: 'chat',      label: i18n.typeChat },
     { type: 'pad',       label: i18n.typePad },
     { type: 'forum',     label: i18n.typeForum },
@@ -1638,19 +1670,32 @@ exports.activityView = (actions, filter, userId, q = '') => {
     { type: 'market',    label: i18n.typeMarket },
     { type: 'shop',      label: i18n.typeShop },
     { type: 'project',   label: i18n.typeProject },
+    { type: 'transfer',  label: i18n.typeTransfer },
     { type: 'job',       label: i18n.typeJob },
     { type: 'curriculum',label: i18n.typeCurriculum },
-    { type: 'transfer',  label: i18n.typeTransfer },
-    { type: 'aiExchange',label: i18n.typeAiExchange },
-    { type: 'gameScore', label: i18n.typeGameScore },
-    { type: 'pixelia',   label: i18n.typePixelia },
     { type: 'audio',     label: i18n.typeAudio },
     { type: 'bookmark',  label: i18n.typeBookmark },
-    { type: 'image',     label: i18n.typeImage },
     { type: 'document',  label: i18n.typeDocument },
-    { type: 'video',     label: i18n.typeVideo },
-    { type: 'torrent',   label: i18n.typeTorrent }
+    { type: 'image',     label: i18n.typeImage },
+    { type: 'torrent',   label: i18n.typeTorrent },
+    { type: 'video',     label: i18n.typeVideo }
   ];
+
+  const FILTER_META = new Set(['recent', 'all', 'mine']);
+  const GROUP_SUBTYPES = {
+    parliament: ['parliamentCandidature', 'parliamentTerm', 'parliamentProposal', 'parliamentRevocation', 'parliamentLaw'],
+    courts:     ['courtsCase', 'courtsNomination', 'courtsNominationVote'],
+    banking:    ['bankWallet', 'bankClaim', 'ubiClaim'],
+    task:       ['task', 'taskAssignment'],
+    shop:       ['shop', 'shopProduct']
+  };
+  const ALLOWED_TYPES = new Set();
+  for (const { type } of activityTypes) {
+    if (FILTER_META.has(type)) continue;
+    if (GROUP_SUBTYPES[type]) GROUP_SUBTYPES[type].forEach(t => ALLOWED_TYPES.add(t));
+    else ALLOWED_TYPES.add(type);
+  }
+  actions = actions.filter(action => ALLOWED_TYPES.has(action.type));
 
   let filteredActions;
   if (filter === 'mine') {
@@ -1659,7 +1704,7 @@ exports.activityView = (actions, filter, userId, q = '') => {
     const now = Date.now();
     filteredActions = actions.filter(action => action.type !== 'tombstone' && action.ts && now - action.ts < 24 * 60 * 60 * 1000);
   } else if (filter === 'banking') {
-    filteredActions = actions.filter(action => action.type !== 'tombstone' && (action.type === 'bankWallet' || action.type === 'bankClaim' || action.type === 'ubiClaim' || action.type === 'ubiclaimresult'));
+    filteredActions = actions.filter(action => action.type !== 'tombstone' && (action.type === 'bankWallet' || action.type === 'bankClaim' || action.type === 'ubiClaim'));
   } else if (filter === 'tribe') {
     filteredActions = actions.filter(action => action.type === 'tribe');
   } else if (filter === 'parliament') {
@@ -1671,10 +1716,6 @@ exports.activityView = (actions, filter, userId, q = '') => {
     });
   } else if (filter === 'task') {
     filteredActions = actions.filter(action => action.type !== 'tombstone' && (action.type === 'task' || action.type === 'taskAssignment'));
-  } else if (filter === 'spread') {
-    filteredActions = actions.filter(action => action.type === 'spread');
-  } else if (filter === 'gameScore') {
-    filteredActions = actions.filter(action => action.type === 'gameScore');
   } else if (filter === 'torrent') {
     filteredActions = actions.filter(action => action.type === 'torrent');
   } else {
@@ -1701,6 +1742,32 @@ exports.activityView = (actions, filter, userId, q = '') => {
     });
   }
 
+  const MODULE_SUB_FILTERS = {
+    audio:   { url: '/audios',     filters: ['all', 'mine', 'recent', 'top', 'favorites'] },
+    video:   { url: '/videos',     filters: ['all', 'mine', 'recent', 'top', 'favorites'] },
+    image:   { url: '/images',     filters: ['all', 'mine', 'recent', 'top', 'favorites'] },
+    document:{ url: '/documents',  filters: ['all', 'mine', 'recent', 'top', 'favorites'] },
+    bookmark:{ url: '/bookmarks',  filters: ['all', 'mine', 'recent', 'top', 'favorites'] },
+    torrent: { url: '/torrents',   filters: ['all', 'mine', 'recent', 'top', 'favorites'] },
+    map:     { url: '/maps',       filters: ['all', 'mine', 'recent'] },
+    forum:   { url: '/forum',      filters: ['all', 'mine', 'recent', 'top'] },
+    event:   { url: '/events',     filters: ['all', 'mine', 'recent', 'top'] },
+    task:    { url: '/tasks',      filters: ['all', 'mine', 'assigned', 'open', 'closed'] },
+    votes:   { url: '/votes',      filters: ['all', 'mine', 'recent', 'top'] },
+    transfer:{ url: '/transfers',  filters: ['all', 'mine', 'pending', 'unconfirmed', 'closed'] },
+    market:  { url: '/market',     filters: ['all', 'mine', 'exchange', 'auctions', 'for sale', 'sold'] },
+    shop:    { url: '/shops',      filters: ['all', 'mine', 'recent'] },
+    job:     { url: '/jobs',       filters: ['ALL', 'MINE', 'REMOTE', 'PRESENCIAL', 'OPEN', 'CLOSED'] },
+    project: { url: '/projects',   filters: ['all', 'mine', 'active', 'completed'] },
+    chat:    { url: '/chats',      filters: ['all', 'mine'] },
+    pad:     { url: '/pads',       filters: ['all', 'mine'] },
+    calendar:{ url: '/calendars',  filters: ['all', 'mine'] },
+    report:  { url: '/reports',    filters: ['all', 'mine', 'recent'] },
+    curriculum:{ url: '/cv',       filters: ['view', 'edit'] }
+  };
+
+  const sub = MODULE_SUB_FILTERS[filter];
+
   let html = template(
     title,
     section(
@@ -1710,12 +1777,12 @@ exports.activityView = (actions, filter, userId, q = '') => {
       ),
       div({ class: 'activity-filter-grid' },
         ...[
-          activityTypes.slice(0, 4),
-          activityTypes.slice(4, 12),
-          activityTypes.slice(12, 19),
-          activityTypes.slice(19, 26),
-          activityTypes.slice(26, 29),
-          activityTypes.slice(29)
+          activityTypes.slice(0, 3),
+          activityTypes.slice(3, 6),
+          activityTypes.slice(6, 11),
+          activityTypes.slice(11, 17),
+          activityTypes.slice(17, 24),
+          activityTypes.slice(24)
         ].map(col =>
           div({ class: 'activity-filter-col' },
             col.map(({ type, label }) =>
@@ -1727,7 +1794,12 @@ exports.activityView = (actions, filter, userId, q = '') => {
           )
         )
       ),
-    section({ class: 'feed-container' }, renderActionCards(filteredActions, userId, actions))
+      sub
+        ? div({ class: 'activity-sub-filter' },
+            sub.filters.map(f => a({ href: `${sub.url}?filter=${encodeURIComponent(f)}`, class: 'filter-btn' }, String(f).toUpperCase()))
+          )
+        : null,
+    section({ class: 'feed-container' }, renderActionCards(filteredActions, userId, actions, spreadMap))
     )
   );
 

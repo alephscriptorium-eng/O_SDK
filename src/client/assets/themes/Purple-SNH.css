@@ -440,6 +440,12 @@ a.user-link:focus {
   color: #9B1C96 !important;
 }
 
+.stats-kpi-label { color: #B86ADE !important; }
+.stats-kpi-value { color: #FFEEDB !important; }
+.carbon-bar-note, .carbon-bar-formula { color: #FFEEDB !important; }
+.graphos-node-label { fill: #FFEEDB !important; }
+.graphos-node-label-me { fill: #ffa500 !important; }
+.graphos-legend { color: #FFEEDB !important; }
 /* Blockexplorer */
 .blockchain-view { background-color: #2D0B47 !important; color: #FFEEDB !important; }
 .block { background: #3C1360 !important; border: 1px solid #B86ADE !important; }
@@ -474,7 +480,6 @@ a.user-link:focus {
 .tribe-info-label { color: #B86ADE !important; background: #3C1360 !important; }
 .tribe-info-value { color: #FFEEDB !important; background: #3C1360 !important; }
 .tribe-info-empty { color: #8844aa !important; }
-.tribe-card-subtribes { border-color: #B86ADE !important; background: #2D0B47 !important; }
 .tribe-card-members { border-color: #B86ADE !important; background: #2D0B47 !important; }
 .tribe-members-count { color: #FFD600 !important; }
 .tribe-card-actions { border-color: #B86ADE !important; background: #2D0B47 !important; }
@@ -486,5 +491,3 @@ a.user-link:focus {
 .tribe-subtribe-link:hover { background: #5A1A85 !important; }
 .tribe-parent-image { border-color: #B86ADE !important; }
 .tribe-parent-box { background: #3C1360 !important; }
-.tribe-card-parent { background: #4B1A72 !important; border-color: #B86ADE !important; }
-.tribe-parent-card-link { color: #FFD600 !important; }
