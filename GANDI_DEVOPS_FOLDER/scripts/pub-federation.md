@@ -1,3 +1,5 @@
+> **Nota operativa (2026-07-02 · ciclo 6):** transcript histórico. Valores vigentes: `caps.shs` **`H5EC+V5BU9s0lWxCkt4z8a095Sj8a6TgiLKPYi1JD7s=`**, seed **`@0qSCyK3xyL71X4qKkmf84Cb2riP6OeUqxCvbP2Z6HWs=.ed25519`**, preflight en `pub-federation.sh`. Menciones a `zTmid…` / `@mGrev…` = ciclo 5 (obsoleto).
+
 User: Me ayudas a hacer esto en GANDI_DEVOPS_FOLDER:
 
 te falta hacer un ---follow a alguno de los PUBS en prod, asi se federa tu pu

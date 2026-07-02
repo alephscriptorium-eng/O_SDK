@@ -13,7 +13,7 @@ Objetivo: desplegar un pub Oasis/SSB siempre encendido para el ecosistema Script
 - La web pública puede vivir en `pub.escrivivir.co` sin romper el uso actual de `escrivivir.co` en WordPress.com o Bluesky.
 - La administración del pub no se expondrá públicamente: se accederá por SSH, VS Code Remote SSH o túnel local.
 - El layout del host queda fijado: código en `/opt/oasis-scriptorium` y estado persistente en `/srv/oasis`.
-- La red por defecto será la red Oasis existente usando `caps.shs = zTmidAb7t+tKi7W93FIHbOvlbd936x6G/vm8e8Td//A=`. Si se decide red propia, se cambia en `config/ssb/config` antes del primer arranque.
+- La red por defecto es la red Oasis **6º ciclo** (Oasis 0.8.3) con `caps.shs = H5EC+V5BU9s0lWxCkt4z8a095Sj8a6TgiLKPYi1JD7s=`. Seed recomendado: `@0qSCyK3xyL71X4qKkmf84Cb2riP6OeUqxCvbP2Z6HWs=.ed25519`. El ciclo 5 (`zTmidAb7…`) quedó obsoleto en julio 2026. Si se decide red propia, se cambia en `config/ssb/config` antes del primer arranque.
 - El objetivo de validación no es levantar un pub SSB genérico: el pub debe poder ser aceptado desde el cliente Oasis en `/invites` y quedar como red federada usable para Oasis.
 
 ## Fuera de alcance del feature
@@ -158,7 +158,7 @@ Regla de enfoque: **no tocar arquitectura** hasta aislar esto. El problema a cer
 Hipótesis a verificar, en este orden:
 
 1. **Cliente local desactualizado o imagen stale**: el contenedor `oasis-server-dev` puede no estar ejecutando el `src/server` actual que carga `ssb-invite-client`, `ssb-ebt` y `caps.shs` Oasis.
-2. **`caps.shs` runtime distinto al esperado**: aunque `src/configs/server-config.json` declare `zTmidAb7t+tKi7W93FIHbOvlbd936x6G/vm8e8Td//A=`, hay que comprobar lo que ve realmente `require('/app/src/server/ssb_config').caps.shs` dentro del contenedor local.
+2. **`caps.shs` runtime distinto al esperado**: comprobar que `require('/app/src/server/ssb_config').caps.shs` dentro del contenedor coincide con el ciclo activo (`H5EC+V5BU9s0lWxCkt4z8a095Sj8a6TgiLKPYi1JD7s=` en ciclo 6 / Oasis 0.8.3).
 3. **Formato de invite incompatible con el flujo Oasis**: el cliente pasa por `meta.acceptInvite()` y `toLegacyInvite()` en `src/models/main_models.js`; hay que validar que acepta tanto `host:port:@key.ed25519~secret` como formatos multiserver `net:host:port~shs:key~invite:secret` si aparecen.
 4. **Ruido por protocolo equivocado contra `8008` local**: los errores desde `net:::ffff:172.18.0.1:*~shs:` pueden venir de probes HTTP/TCP contra el puerto SSB local; distinguir ruido de fallo real mirando `gossip.json`, retorno HTTP de `/settings/invite/accept` y logs del pub remoto.
 5. **Diferencia con Oasis upstream de epsylon**: comparar el flujo actual de `/invites`, `acceptInvite`, `toLegacyInvite`, `ssb_config` y carga de plugins contra el repo Oasis de epsylon que usa el cliente Docker, porque probablemente ya existe ahí el comportamiento correcto.

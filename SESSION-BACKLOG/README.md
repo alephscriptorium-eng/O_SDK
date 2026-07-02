@@ -1,9 +1,11 @@
 # SESSION-BACKLOG · actualización 2026-04-28
 
+> **Supersedido parcialmente (2026-07-02):** el upgrade vigente es **Oasis 0.8.3 · 6º ciclo** (`caps.shs H5EC+V5…`, seed `@0qSCyK3…`). Ver commits `8be2415` / `068dcad`, `GANDI_DEVOPS_FOLDER/README.md` y `docs/PUB/deploy.md`. Lo siguiente documenta el salto histórico a 0.7.4.
+
 ## Estado actual verificado
 
-- Rama de trabajo actual: `upgrade/oasis-0.7.4`
-- Oasis Docker actualizado y verificado en `0.7.4`
+- Rama de trabajo histórica: `upgrade/oasis-0.7.4` (supersedida por ciclo 6 en `integration/beta/scriptorium`)
+- Oasis Docker actualizado y verificado en `0.7.4` en esa ventana
 - `oasis-dev` levantado en Docker en estado `healthy`
 - Auto-update destructivo desde la UI desactivado para despliegue Docker
 - Modelo `42` reutilizado desde `volumes-dev/ai-models` sin redescarga

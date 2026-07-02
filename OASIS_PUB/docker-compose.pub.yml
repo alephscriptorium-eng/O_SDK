@@ -23,7 +23,7 @@ services:
       - "${OASIS_PUB_LOGS_DIR:-../volumes-dev/oasis-pub/logs}:/app/logs"
       - "${OASIS_PUB_SSB_CONFIG_FILE:-./config/ssb/config}:/home/oasis/.ssb/config:ro"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"const net=require('net');const port=Number(process.env.OASIS_PUB_INTERNAL_SSB_PORT||8008);const s=net.connect(port,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),3000)\""]
+      test: ["CMD-SHELL", "node -e \"const net=require('net');const sock='/home/oasis/.ssb/socket';const s=net.connect(sock,()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),3000)\""]
       interval: 30s
       timeout: 5s
       retries: 5

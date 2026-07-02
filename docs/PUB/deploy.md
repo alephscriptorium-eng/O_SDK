@@ -194,7 +194,7 @@ sh oasis.sh announce mypub.example.com 8008
 Federate so both replicate each other:
 
 ```
-sh oasis.sh follow "@mGrevRCSX4E5dLgmflWBc50Qkn/1RXUAtDaGHOJ8xB4=.ed25519"
+sh oasis.sh follow "@0qSCyK3xyL71X4qKkmf84Cb2riP6OeUqxCvbP2Z6HWs=.ed25519"
 ```
 
 ## 12) Health checks

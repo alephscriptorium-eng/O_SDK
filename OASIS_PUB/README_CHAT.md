@@ -1,3 +1,5 @@
+> **Nota operativa (2026-07-02 · ciclo 6):** transcript histórico de diseño. Producción Escrivivir Pub: **Oasis 0.8.3**, `caps.shs` **`H5EC+V5BU9s0lWxCkt4z8a095Sj8a6TgiLKPYi1JD7s=`**, seed **`@0qSCyK3xyL71X4qKkmf84Cb2riP6OeUqxCvbP2Z6HWs=.ed25519`**. Referencias a `zTmidAb7…` o `@mGrev…` son del ciclo 5 y ya no aplican.
+
 User: En el contexto de esta codebase, veo que mis amigos ya han empezado a desplegar pubs, quiero crear uno muy parecido a https://pub.artivismo.net pero para mi proyecto https://escrivivir-co.github.io/para-la-voz-sdk/, el pub ofrecería una interfaz web simple para operar en la red Oasis mediante el /engine-panel log. pero eso es secundario, entiendo, sería, la parte de la web de mi pub. Ya tengo recopilado de como poner a oasis en modo pub, sino buscamos en la web... por ejemplo, artivismo.net que te enlazo, donde estará corriendo?
 
 ¿Puedo montar uno local para , etniendo luego mover a un VPS? ya tengo el dockker arrancado con oasis-dev-server y ecoin? seria el mismo server que hace doble funcion de mi app para navegar y otro docker para el pub? ¿pero es el mismo codigo que arranca diferente? O tengo que hacer yo mi server.
