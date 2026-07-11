@@ -1,0 +1,7 @@
+# Claves GPG del cliente Oasis y cualquier credencial local.
+# Esta carpeta NO debe versionarse jamás (salvo README + scripts).
+*
+!.gitignore
+!README.md
+!scripts/
+!scripts/**

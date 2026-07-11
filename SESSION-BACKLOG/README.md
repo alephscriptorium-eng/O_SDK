@@ -2,6 +2,35 @@
 
 > **Supersedido parcialmente (2026-07-02):** el upgrade vigente es **Oasis 0.8.3 · 6º ciclo** (`caps.shs H5EC+V5…`, seed `@0qSCyK3…`). Ver commits `8be2415` / `068dcad`, `GANDI_DEVOPS_FOLDER/README.md` y `docs/PUB/deploy.md`. Lo siguiente documenta el salto histórico a 0.7.4.
 
+## Protocolo de upgrade cliente Docker → Oasis 0.8.3 / ciclo 6
+
+### Objetivo
+
+Actualizar el contenedor `oasis-dev` (cliente GUI en `:3000` / SSB `:8008`) a la red ciclo 6 **sin perder identidad SSB** (`volumes-dev/ssb-data/secret` o volumen Docker equivalente).
+
+### Valores ciclo 6
+
+- `caps.shs`: `H5EC+V5BU9s0lWxCkt4z8a095Sj8a6TgiLKPYi1JD7s=`
+- Seed: `@0qSCyK3xyL71X4qKkmf84Cb2riP6OeUqxCvbP2Z6HWs=.ed25519`
+- Pub Escrivivir: `pub.escrivivir.co:8008`
+
+### Secuencia
+
+1. Backup: `npm run backup-keys` o copia de `volumes-dev/ssb-data/` / volumen `*_oasis-ssb-data-dev`.
+2. `git checkout integration/beta/scriptorium && git pull`
+3. Migrar identidad al volumen/bind mount activo si el compose recrea volúmenes (Windows: rutas `//c/Users/...` en `docker run -v`).
+4. Alinear `caps.shs` en `~/.ssb/config` on-disk; archivar `gossip.json` del ciclo anterior.
+5. `docker compose build --no-cache oasis-dev && docker compose up -d oasis-dev`
+6. Verificar: `0.8.3`, caps runtime ciclo 6, `healthy`, misma Oasis ID en logs.
+7. Unir red: invite de producción en `/invites` o `npm run pub:join-prod-client -- 'host:port:@key~secret'`
+8. Confirmar `pub.escrivivir.co` en `gossip.json`.
+
+### Notas
+
+- **No** usar `downDELETEVOLS` / `cleanDELETEVOLS`.
+- El invite ciclo 5 queda invalidado; HTTP 500 en re-invite puede ser idempotencia si ya federado.
+- `docker-entrypoint.sh` siembra `caps.shs` desde `server-config.json` en primer arranque (no aleatorio).
+
 ## Estado actual verificado
 
 - Rama de trabajo histórica: `upgrade/oasis-0.7.4` (supersedida por ciclo 6 en `integration/beta/scriptorium`)

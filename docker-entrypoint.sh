@@ -36,9 +36,14 @@ mkdir -p "$CURRENT_DIR/logs"
 # =============================================================================
 generate_shs_key() {
     node -e "
+    const fs = require('fs');
+    const path = '/app/src/configs/server-config.json';
+    try {
+      const cap = JSON.parse(fs.readFileSync(path, 'utf8')).caps.shs;
+      if (cap) { console.log(cap); process.exit(0); }
+    } catch (_) {}
     const crypto = require('crypto');
-    const cap = crypto.randomBytes(32).toString('base64');
-    console.log(cap);
+    console.log(crypto.randomBytes(32).toString('base64'));
     "
 }
 

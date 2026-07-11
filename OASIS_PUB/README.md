@@ -102,7 +102,28 @@ Puedes probar el pub en local sin tocar el despliegue del VPS.
 - `npm run pub:local:status` muestra el estado.
 - `npm run pub:local:join` imprime URL local, feed ID e invite de un solo uso.
 - `npm run pub:local:join-client` intenta unir tu cliente Oasis local en `http://localhost:3000` usando un invite recién generado.
+- `npm run pub:local:maint-ui:up` levanta la UI Oasis temporal para editar avatar/perfil del **pub** (para el pub SSB, no el cliente personal).
+- `npm run pub:local:maint-ui:urls` imprime `http://localhost:3001/profile/edit`.
+- `npm run pub:local:maint-ui:down` baja la UI y vuelve a arrancar el pub SSB.
 - `npm run pub:local:down` baja el stack.
+
+### Editar avatar y perfil del pub (local)
+
+El contenedor del pub corre en modo `server` (sin GUI). Para avatar, nombre y descripción:
+
+```bash
+npm run pub:local:maint-ui:up    # para oasis-pub-scriptorium y abre UI en :3001
+npm run pub:local:maint-ui:urls  # → http://localhost:3001/profile/edit
+npm run pub:local:maint-ui:down  # restaura el pub SSB
+```
+
+No hace falta parar `oasis-server-dev` (cliente en `:3000`): la UI de mantenimiento usa **`3001` por defecto**. Sí hay que parar el **pub SSB** (`--stop-pub`, incluido en `maint-ui:up`).
+
+**Identidad:** este flujo edita el pub **local** (`volumes-dev/oasis-pub/ssb-data`), no `pub.escrivivir.co` en el VPS. Para el pub de producción (`@/snvahva…`) usa `GANDI_DEVOPS_FOLDER/scripts/pub-maint-ui.sh` + túnel SSH (README DevOps).
+
+En **Git Bash / Windows**, el script fija `MSYS_NO_PATHCONV=1` para que Docker monte bien `/home/oasis/.ssb` (sin eso el entrypoint crea una identidad nueva vacía).
+
+En producción (VPS): `bash GANDI_DEVOPS_FOLDER/scripts/pub-maint-ui.sh up --stop-pub` + túnel SSH (ver README DevOps).
 
 Valores locales por defecto:
 

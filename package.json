@@ -44,6 +44,7 @@
     "pub:announce": "bash ./OASIS_PUB/scripts/announce-pub.sh",
     "pub:join": "bash ./OASIS_PUB/scripts/join-info.sh",
     "pub:join-client": "bash ./OASIS_PUB/scripts/join-client.sh",
+    "pub:join-prod-client": "bash ./OASIS_PUB/scripts/join-prod-client.sh",
     "pub:local:up": "bash ./OASIS_PUB/scripts/env-run.sh .env.local deploy.sh",
     "pub:local:down": "bash ./OASIS_PUB/scripts/env-run.sh .env.local down.sh",
     "pub:local:status": "bash ./OASIS_PUB/scripts/env-run.sh .env.local status.sh",
@@ -54,6 +55,11 @@
     "pub:local:announce": "bash ./OASIS_PUB/scripts/env-run.sh .env.local announce-pub.sh",
     "pub:local:join": "bash ./OASIS_PUB/scripts/env-run.sh .env.local join-info.sh",
     "pub:local:join-client": "bash ./OASIS_PUB/scripts/env-run.sh .env.local join-client.sh",
+    "pub:local:maint-ui:up": "bash ./OASIS_PUB/scripts/env-run.sh .env.local maint-ui.sh up --stop-pub",
+    "pub:local:maint-ui:down": "bash ./OASIS_PUB/scripts/env-run.sh .env.local maint-ui.sh down --restart-pub",
+    "pub:local:maint-ui:status": "bash ./OASIS_PUB/scripts/env-run.sh .env.local maint-ui.sh status",
+    "pub:local:maint-ui:logs": "bash ./OASIS_PUB/scripts/env-run.sh .env.local maint-ui.sh logs",
+    "pub:local:maint-ui:urls": "bash ./OASIS_PUB/scripts/env-run.sh .env.local maint-ui.sh urls",
     "pub:site:deploy": "bash ./GANDI_DEVOPS_FOLDER/scripts/deploy-site.sh"
   },
   "dependencies": {
