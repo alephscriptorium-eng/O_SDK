@@ -90,14 +90,20 @@ export default defineConfig({
     outline: { level: [2, 3] },
     search: { provider: 'local' },
     footer: {
-      // VPFooter hace v-html de message → enlaces desde la misma fuente única
-      message: backLinks
-        .map(
-          (l) =>
-            `<a href="${l.link}" target="_blank" rel="noreferrer">${l.text}</a>`
-        )
-        .join('<span aria-hidden="true"> · </span>'),
-      copyright: 'Oasis SDK · fork dockerizado FOSS'
+      // Marca Scriptorium (misma línea que Z_SDK/S_SDK). VPFooter hace v-html
+      // de message → enlaces desde la fuente única BACK.
+      message: [
+        'Back:',
+        `<a href="${BACK.repo}">repo</a>`,
+        '·',
+        `<a href="${BACK.registry}">registry</a>`,
+        '·',
+        `<a href="${BACK.actions}">CI</a>`,
+        '·',
+        '<a href="/proyecto">proyecto</a>',
+        '· Animus Iocandi AIPLv1'
+      ].join(' '),
+      copyright: 'Scriptorium · Oasis SDK'
     }
   }
 });
