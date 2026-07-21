@@ -124,11 +124,11 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      o: bind
+      o: bind
       device: ./volumes-dev/ecoin-data
 
-# Red compartida para comunicación Oasis <-> ECOin
+
+# Red compartida Oasis <-> ECOin
 networks:
   oasis-network:
-    name: oasis-network-dev
     driver: bridge

@@ -1,8 +1,7 @@
 const { div, h2, p, section, button, form, a, input, br, span, label, select, option, progress, table, tr, td } = require("../server/node_modules/hyperaxe")
-const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton } = require("./main_views")
+const { template, i18n, renderOpinionsVoting, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
-const opinionCategories = require("../backend/opinion_categories")
 
 const userId = config.keys.id
 
@@ -168,9 +167,16 @@ const generateTransferCard = (transfer, filter, params = {}) => {
 
   const otherParty = transfer.from === userId ? transfer.to : transfer.from
   const partyDir = transfer.from === userId ? "→" : "←"
+  const returnTo = buildReturnTo(filter, params)
 
-  return div({ class: "tribe-card transfer-card" },
-    div({ class: "tribe-card-body" },
+  const isOwn = transfer.from && String(transfer.from) === String(userId)
+  return div({ class: "trending-card transfer-card" + (isOwn ? " own-content" : "") },
+    div(
+      { class: "card-header activity-card-header" },
+      span(),
+      renderContentActions(transfer.id, `/transfers/${encodeURIComponent(transfer.id)}`)
+    ),
+    div({ class: "card-section transfer-card-body" },
       div({ class: "shop-title-row" },
         h2({ class: "tribe-card-title" },
           a({ href: `/transfers/${encodeURIComponent(transfer.id)}` }, transfer.concept || i18n.transfersTitle)
@@ -186,12 +192,16 @@ const generateTransferCard = (transfer, filter, params = {}) => {
       div({ class: "tribe-card-members" },
         span({ class: "tribe-members-count" }, `${i18n.transfersConfirmations}: ${confirmedCount}/${required}`)
       ),
-      div({ class: "card-spread-centered" }, renderSpreadButton(transfer.id, params.spreadMap && params.spreadMap.get(transfer.id))),
-      div({ class: "card-visit-btn-centered" },
-        form({ method: "GET", action: `/transfers/${encodeURIComponent(transfer.id)}` },
-          button({ type: "submit", class: "filter-btn" }, i18n.viewTransfer || "View Transfer")
-        )
-      )
+            div(
+        { class: "card-comments-summary feed-opinions-section" },
+        div(
+          { class: "comments-count" },
+          span({ class: "card-label" }, (i18n.opinionsTitle || "Opinions") + ": "),
+          span({ class: "card-value" }, String(Object.values(transfer.opinions || {}).reduce((s, n) => s + (Number(n) || 0), 0)))
+        ),
+        renderOpinionsVoting('/transfers/opinions', transfer.id, transfer.opinions, returnTo, transfer.opinions_inhabitants)
+      ),
+      div({ class: "card-spread-centered" }, renderSpreadButton(transfer.id, params.spreadMap && params.spreadMap.get(transfer.id)))
     )
   )
 }
@@ -417,7 +427,7 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
   const isExpired = dl && dl.isValid() ? dl.isBefore(moment()) : false
   const tags = Array.isArray(transfer.tags) ? transfer.tags.map(t => String(t).toUpperCase()) : []
   const isUbi = tags.includes("UBI")
-  const showConfirm = isUnconfirmed && transfer.to === userId && !confirmedBy.includes(userId) && !isExpired
+  const showConfirm = isUnconfirmed && transfer.to === userId && !confirmedBy.includes(userId) && !isExpired && !tags.includes("PENDING")
 
   const tagsNode = renderTags(transfer.tags)
   const cat = categoryOf(transfer)
@@ -485,11 +495,11 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
           span({ class: "card-label" }, `${i18n.blockchainBlockID || "Block ID"}: `),
           span({ class: "card-value" }, a({ class: "user-link", href: `/blockexplorer/block/${encodeURIComponent(params.block.id)}` }, params.block.id))
         )
-      : null
+      : null,
+    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
   )
 
   const transferMain = div({ class: "tribe-main" },
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
     div({ class: "job-section" },
       div({ class: "card-field" },
         span({ class: "card-label" }, `${i18n.transfersFrom}: `),
@@ -525,16 +535,7 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
       userLink(transfer.from),
       renderUpdatedLabel(transfer.createdAt, transfer.updatedAt)
     ),
-    div({ class: "voting-buttons transfer-voting-buttons" },
-      opinionCategories.map(category =>
-        form({ method: "POST", action: `/transfers/opinions/${encodeURIComponent(transfer.id)}/${category}` },
-          input({ type: "hidden", name: "returnTo", value: returnTo }),
-          button({ class: "vote-btn" },
-            `${i18n[`vote${category.charAt(0).toUpperCase() + category.slice(1)}`] || category} [${transfer.opinions?.[category] || 0}]`
-          )
-        )
-      )
-    )
+    renderOpinionsVoting('/transfers/opinions', transfer.id, transfer.opinions, returnTo, transfer.opinions_inhabitants)
   )
 
   return template(

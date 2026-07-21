@@ -159,6 +159,7 @@ const GovernmentCard = (g, meta) => {
       applyEl(table, { class: 'table table--centered gov-overview' }, [
         thead(tr(
           th(i18n.parliamentGovMethod),
+          th(i18n.parliamentThPresented || 'CANDIDATURES'),
           th(i18n.parliamentPoliciesProposal || 'LAWS PROPOSAL'),
           th(i18n.parliamentPoliciesApproved || 'LAWS APPROVED'),
           th(i18n.parliamentPoliciesDeclined || 'LAWS DECLINED'),
@@ -168,6 +169,7 @@ const GovernmentCard = (g, meta) => {
         )),
         tbody(tr(
           td(methodLabel),
+          td(String(g.presented || 0)),
           td(String(g.proposed || 0)),
           td(String(g.approved || 0)),
           td(String(g.declined || 0)),
@@ -236,13 +238,14 @@ const pickLeader = (arr) => {
   return sorted[0];
 };
 
-const CandidatureStats = (cands, govCard, leaderMeta) => {
+const CandidatureStats = (cands, govCard, leaderMeta, electionQuorum = 2) => {
   if (!cands || !cands.length) return null;
   const leader = pickLeader(cands || []);
   if (!leader) return null;
   const methodKey = String(leader.method || '').toUpperCase();
   const methodLabel = String(i18n[`parliamentMethod${methodKey}`] || methodKey).toUpperCase();
   const votes = String(leader.votes || 0);
+  const hasQuorum = Number(leader.votes || 0) >= electionQuorum;
   const avatarSrc = (leaderMeta && leaderMeta.avatarUrl) ? leaderMeta.avatarUrl : '/assets/images/default-avatar.png';
   const winLbl = (i18n.parliamentWinningCandidature || i18n.parliamentCurrentLeader || 'WINNING CANDIDATURE').toUpperCase();
   const idLink = leader
@@ -250,36 +253,50 @@ const CandidatureStats = (cands, govCard, leaderMeta) => {
         ? userLink(leader.targetId)
         : a({ class: 'tag-link', href: `/tribe/${encodeURIComponent(leader.targetId)}?` }, leader.targetTitle || leader.targetId))
     : null;
+  const avatarHref = leader
+    ? (leader.targetType === 'inhabitant'
+        ? `/author/${encodeURIComponent(leader.targetId)}`
+        : `/tribe/${encodeURIComponent(leader.targetId)}?`)
+    : null;
   return div(
     { class: 'card' },
     h2(i18n.parliamentElectionsStatusTitle),
     div({ class: 'card-field card-field--spaced' },
       span({ class: 'card-label' }, winLbl + ': '),
-      span({ class: 'card-value' }, idLink)
+      span({ class: 'card-value' }, hasQuorum ? idLink : span({ style: 'color:#ffcc00;font-weight:bold;' }, i18n.voteNoQuorum || 'NO QUORUM'))
     ),
-    div({ class: 'card-field card-field--spaced' },
-      span({ class: 'card-label' }, (i18n.parliamentGovMethod + ': ').toUpperCase()),
-      span({ class: 'card-value' }, methodLabel)
-    ),
-    div(
-      { class: 'table-wrap mt-2' },
-      applyEl(table, [
-        thead(tr(
-          th(i18n.parliamentThLeader),
-          th({ class: 'parliament-method-col' }, i18n.parliamentGovMethod),
-          th({ class: 'parliament-votes-col'  }, i18n.parliamentVotesReceived)
-        )),
-        tbody(tr(
-          td(
-            img({ src: avatarSrc })
-          ),
-          td({ class: 'parliament-method-col' },
-            img({ src: methodImageSrc(methodKey), alt: methodLabel, class: 'method-hero__icon' })
-          ),
-          td({ class: 'parliament-votes-col'  }, span({ class: 'votes-value' }, votes))
-        ))
-      ])
-    )
+    hasQuorum
+      ? div({ class: 'card-field card-field--spaced' },
+          span({ class: 'card-label' }, (i18n.parliamentGovMethod + ': ').toUpperCase()),
+          span({ class: 'card-value' }, methodLabel)
+        )
+      : null,
+    hasQuorum
+      ? div(
+          { class: 'table-wrap mt-2' },
+          applyEl(table, { class: 'parliament-gov-table' }, [
+            thead(tr(
+              th(i18n.parliamentThLeader),
+              th({ class: 'parliament-method-col' }, i18n.parliamentGovMethod),
+              th({ class: 'parliament-votes-col'  }, i18n.parliamentVotesReceived)
+            )),
+            tbody(tr(
+              td(
+                div({ class: 'parliament-avatar-cell' },
+                  avatarHref
+                    ? a({ href: avatarHref }, img({ src: avatarSrc, class: 'parliament-leader-avatar' }))
+                    : img({ src: avatarSrc, class: 'parliament-leader-avatar' }),
+                  idLink ? div({ class: 'parliament-avatar-name' }, idLink) : null
+                )
+              ),
+              td({ class: 'parliament-method-col' },
+                img({ src: methodImageSrc(methodKey), alt: methodLabel, class: 'parliament-method-img' })
+              ),
+              td({ class: 'parliament-votes-col'  }, span({ class: 'votes-value' }, votes))
+            ))
+          ])
+        )
+      : null
   );
 };
 
@@ -289,12 +306,16 @@ const CandidaturesTable = (candidatures) => {
       c.targetType === 'inhabitant'
         ? p(userLink(c.targetId))
         : p(a({ class: 'tag-link', href: `/tribe/${encodeURIComponent(c.targetId)}?` }, c.targetTitle || c.targetId));
+    const voters = Array.isArray(c.voters) ? c.voters : [];
     return tr(
       td(idLink),
       td(fmt(c.createdAt)),
       td({ class: 'nowrap' }, c.method),
       td(c.targetType === 'inhabitant' ? String(c.karma || 0) : '-'),
-      td(String(c.votes || 0)),
+      td(
+        span({ class: 'candidature-votes-count' }, String(c.votes || 0)),
+        voters.length ? div({ class: 'candidature-voters' }, ...voters.map(v => div({ class: 'candidature-voter' }, userLink(v)))) : null
+      ),
       td(form({ method: 'POST', action: `/parliament/candidatures/${encodeURIComponent(c.id)}/vote` }, button({ class: 'vote-btn' }, i18n.parliamentVoteBtn)))
     );
   });
@@ -386,7 +407,7 @@ const ProposalsList = (proposals) => {
         ? div(
             { class: 'card-field' },
             span({ class: 'card-label' }, i18n.parliamentVotesSlashTotal.toUpperCase() + ': '),
-            span({ class: 'card-value' }, `${Number(pItem.yes || 0)}/${Number(pItem.total || 0)}`)
+            span({ class: 'card-value' }, `${Number(pItem.total || 0)}/${Number(pItem.needed || 0)}`)
           )
         : null,
       showVoteMetrics(pItem.method)
@@ -518,7 +539,7 @@ const RevocationsList = (revocations) => {
         ? div(
             { class: 'card-field' },
             span({ class: 'card-label' }, i18n.parliamentVotesSlashTotal.toUpperCase() + ': '),
-            span({ class: 'card-value' }, `${Number(pItem.yes || 0)}/${Number(pItem.total || 0)}`)
+            span({ class: 'card-value' }, `${Number(pItem.total || 0)}/${Number(pItem.needed || 0)}`)
           )
         : null,
       showVoteMetrics(pItem.method)
@@ -623,17 +644,40 @@ const HistoricalGovsSummary = (rows = []) => {
   const byMethod = new Map();
   for (const g of rows) {
     const k = String(g.method || 'ANARCHY').toUpperCase();
-    byMethod.set(k, (byMethod.get(k) || 0) + 1);
+    if (!byMethod.has(k)) byMethod.set(k, { cycles: 0, proposed: 0, approved: 0, declined: 0, discarded: 0, revocated: 0 });
+    const rec = byMethod.get(k);
+    rec.cycles += 1;
+    rec.proposed += Number(g.proposed || 0);
+    rec.approved += Number(g.approved || 0);
+    rec.declined += Number(g.declined || 0);
+    rec.discarded += Number(g.discarded || 0);
+    rec.revocated += Number(g.revocated || 0);
   }
   const entries = Array.from(byMethod.entries()).sort((a,b) => String(a[0]).localeCompare(String(b[0])));
-  const lines = entries.map(([method, count]) =>
-    tr(td(method), td(String(count)))
+  const lines = entries.map(([method, rec]) =>
+    tr(
+      td(method),
+      td(String(rec.proposed)),
+      td(String(rec.approved)),
+      td(String(rec.declined)),
+      td(String(rec.discarded)),
+      td(String(rec.revocated)),
+      td(String(rec.cycles))
+    )
   );
   return div(
     { class: 'table-wrap' },
     h2(i18n.parliamentHistoricalGovernmentsTitle || 'Governments'),
     applyEl(table, { class: 'table table--centered' }, [
-      thead(tr(th(i18n.parliamentGovMethod), th(i18n.parliamentThCycles))),
+      thead(tr(
+        th(String(i18n.parliamentGovMethod).toUpperCase()),
+        th(i18n.parliamentPoliciesProposal),
+        th(i18n.parliamentPoliciesApproved),
+        th(i18n.parliamentPoliciesDeclined),
+        th(i18n.parliamentPoliciesDiscarded),
+        th(i18n.parliamentPoliciesRevocated),
+        th(i18n.parliamentThCycles)
+      )),
       applyEl(tbody, null, lines)
     ])
   );
@@ -722,30 +766,17 @@ const HistoricalList = (rows, metasByKey = {}) => {
   );
 };
 
-const countCandidaturesByActor = (cands = []) => {
-  const m = new Map();
-  for (const c of cands) {
-    const key = `${c.targetType}:${c.targetId}`;
-    m.set(key, (m.get(key) || 0) + 1);
-  }
-  return m;
-};
-
-const LeadersSummary = (leaders = [], candidatures = []) => {
-  const candCounts = countCandidaturesByActor(candidatures);
-  const totals = leaders.reduce((acc, l) => {
-    const key = `${l.powerType}:${l.powerId}`;
-    const candsFromMap = candCounts.get(key) || 0;
-    const presentedNorm = Math.max(Number(l.presented || 0), Number(l.inPower || 0), candsFromMap);
-    acc.presented += presentedNorm;
-    acc.inPower += Number(l.inPower || 0);
-    acc.proposed += Number(l.proposed || 0);
-    acc.approved += Number(l.approved || 0);
-    acc.declined += Number(l.declined || 0);
-    acc.discarded += Number(l.discarded || 0);
-    acc.revocated += Number(l.revocated || 0);
+const LeadersSummary = (leaders = [], candidatures = [], allGovCards = [], totalCandidatures = null) => {
+  const timesInPower = leaders.reduce((s, l) => s + Number(l.inPower || 0), 0);
+  const totals = (allGovCards || []).reduce((acc, g) => {
+    acc.proposed += Number(g.proposed || 0);
+    acc.approved += Number(g.approved || 0);
+    acc.declined += Number(g.declined || 0);
+    acc.discarded += Number(g.discarded || 0);
+    acc.revocated += Number(g.revocated || 0);
     return acc;
-  }, { presented:0, inPower:0, proposed:0, approved:0, declined:0, discarded:0, revocated:0 });
+  }, { proposed:0, approved:0, declined:0, discarded:0, revocated:0 });
+  const presented = totalCandidatures != null ? Number(totalCandidatures) : (candidatures || []).length;
   const efficiencyPct = totals.proposed > 0 ? Math.round((totals.approved / totals.proposed) * 100) : 0;
   return div(
     { class: 'table-wrap' },
@@ -763,8 +794,8 @@ const LeadersSummary = (leaders = [], candidatures = []) => {
       )),
       tbody(
         tr(
-          td(String(totals.presented)),
-          td(String(totals.inPower)),
+          td(String(presented)),
+          td(String(timesInPower)),
           td(String(totals.proposed)),
           td(String(totals.approved)),
           td(String(totals.declined)),
@@ -782,11 +813,16 @@ const LeadersList = (leaders, metas = {}, candidatures = []) => {
   const rows = leaders.map(l => {
     const key = `${l.powerType}:${l.powerId}`;
     const meta = metas[key] || {};
-    const avatar = meta.avatarUrl ? img({ src: meta.avatarUrl, alt: '', class: 'leader-table__avatar' }) : null;
+    const avatarHref = l.powerType === 'tribe'
+      ? `/tribe/${encodeURIComponent(l.powerId)}`
+      : `/author/${encodeURIComponent(l.powerId)}`;
+    const avatar = meta.avatarUrl
+      ? a({ href: avatarHref }, img({ src: meta.avatarUrl, alt: '', class: 'leader-table__avatar' }))
+      : null;
     const link = l.powerType === 'tribe'
       ? a({ class: 'user-link', href: `/tribe/${encodeURIComponent(l.powerId)}` }, l.powerTitle || l.powerId)
       : userLink(l.powerId, l.powerTitle);
-    const leaderCell = div({ class: 'leader-cell' }, avatar, link);
+    const leaderCell = div({ class: 'leader-cell parliament-avatar-cell' }, avatar, div({ class: 'parliament-avatar-name' }, link));
     return tr(
       td(leaderCell),
       td(String(l.proposed || 0)),
@@ -802,7 +838,7 @@ const LeadersList = (leaders, metas = {}, candidatures = []) => {
     h2(i18n.parliamentHistoricalLeadersTitle),
     applyEl(table, { class: 'table table--centered gov-overview' }, [
       thead(tr(
-        th(i18n.parliamentActorInPowerInhabitant),
+        th(i18n.parliamentThLeader),
         th(i18n.parliamentPoliciesProposal),
         th(i18n.parliamentPoliciesApproved),
         th(i18n.parliamentPoliciesDeclined),
@@ -815,32 +851,41 @@ const LeadersList = (leaders, metas = {}, candidatures = []) => {
   );
 };
 
-const RulesContent = () =>
-  div(
+const RulesContent = () => {
+  const points = [
+    i18n.parliamentRulesIntro,
+    i18n.parliamentRulesTerm,
+    i18n.parliamentRulesMethods,
+    i18n.parliamentRulesAnarchy,
+    i18n.parliamentRulesCandidates,
+    i18n.parliamentRulesElection,
+    i18n.parliamentRulesTies,
+    i18n.parliamentRulesProposals,
+    i18n.parliamentRulesLimit,
+    i18n.parliamentRulesLaws,
+    i18n.parliamentRulesRevocations,
+    i18n.parliamentRulesHistorical,
+    i18n.parliamentRulesLeaders
+  ];
+  return div(
     { class: 'card' },
     h2(i18n.parliamentRulesTitle),
-    ul(
-      li(i18n.parliamentRulesIntro),
-      li(i18n.parliamentRulesTerm),
-      li(i18n.parliamentRulesMethods),
-      li(i18n.parliamentRulesAnarchy),
-      li(i18n.parliamentRulesCandidates),
-      li(i18n.parliamentRulesElection),
-      li(i18n.parliamentRulesTies),
-      li(i18n.parliamentRulesProposals),
-      li(i18n.parliamentRulesLimit),
-      li(i18n.parliamentRulesLaws),
-      li(i18n.parliamentRulesRevocations),
-      li(i18n.parliamentRulesHistorical),
-      li(i18n.parliamentRulesLeaders)
+    div({ class: 'rules-points' },
+      points.filter(Boolean).map((t, i) =>
+        div({ class: 'rules-point' },
+          span({ class: 'rules-point-num' }, String(i + 1)),
+          span({ class: 'rules-point-text' }, t)
+        )
+      )
     )
   );
+};
 
-const CandidaturesSection = (governmentCard, candidatures, leaderMeta) => {
+const CandidaturesSection = (governmentCard, candidatures, leaderMeta, electionQuorum = 2) => {
   return div(
     h2(i18n.parliamentGovernmentCard),
     GovHeader(governmentCard || {}),
-    CandidatureStats(candidatures || [], governmentCard || null, leaderMeta || null),
+    CandidatureStats(candidatures || [], governmentCard || null, leaderMeta || null, electionQuorum),
     CandidatureForm(),
     candidatures && candidatures.length ? CandidaturesTable(candidatures) : null
   );
@@ -911,6 +956,9 @@ const parliamentView = async (state) => {
   };
 
   const gov = normalizeGovCard(governmentCard, inhabitantsTotal) || fallbackGov;
+  const electionQuorum = Math.max(2, Math.ceil((Number(inhabitantsTotal) || 0) * 0.25));
+  const leadersGovCards = [...(historical || []), ...(governmentCard ? [governmentCard] : [])];
+  const leadersTotalCandidatures = governmentCard && governmentCard.presented != null ? governmentCard.presented : null;
 
   const LawsSectionWrap = () =>
     div(
@@ -923,12 +971,12 @@ const parliamentView = async (state) => {
     section(div({ class: 'tags-header' }, h2(i18n.parliamentTitle), p(i18n.parliamentDescription)), Tabs(filter)),
     section(
       filter === 'government' ? GovernmentCard(gov, powerMeta) : null,
-      filter === 'candidatures' ? CandidaturesSection(gov, candidatures, leaderMeta) : null,
+      filter === 'candidatures' ? CandidaturesSection(gov, candidatures, leaderMeta, electionQuorum) : null,
       filter === 'proposals' ? ProposalsSection(gov, proposals, futureLaws, canPropose) : null,
       filter === 'laws' ? LawsSectionWrap() : null,
       filter === 'revocations' ? RevocationsSection(gov, laws, revocations, futureRevocations) : null,
       filter === 'historical' ? div(HistoricalGovsSummary(historical || []), HistoricalList(historical || [], historicalMetas)) : null,
-      filter === 'leaders' ? div(LeadersSummary(leaders || [], candidatures || []), LeadersList(leaders || [], leadersMetas, candidatures || [])) : null,
+      filter === 'leaders' ? div(LeadersSummary(leaders || [], candidatures || [], leadersGovCards, leadersTotalCandidatures), LeadersList(leaders || [], leadersMetas, candidatures || [])) : null,
       filter === 'rules' ? RulesContent() : null
     )
   );

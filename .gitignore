@@ -60,3 +60,17 @@ OASIS_CLIENT_DEV/*
 !OASIS_CLIENT_DEV/README.md
 !OASIS_CLIENT_DEV/scripts/
 !OASIS_CLIENT_DEV/scripts/**
+
+# Mismo patrón para la variante de caso real de la carpeta (con 'd' minúscula)
+OASIS_CLIENT_dEV/*
+!OASIS_CLIENT_dEV/.gitignore
+!OASIS_CLIENT_dEV/README.md
+!OASIS_CLIENT_dEV/scripts/
+!OASIS_CLIENT_dEV/scripts/**
+
+# Backups forenses de archivos dañados por el incidente NVMe (no versionar)
+*.nul-damaged-bak
+
+# Volcados/paste-dumps accidentales y tarballs de export (no versionar)
+Opci_n_A__*
+OASIS_PUB/*.tar.gz

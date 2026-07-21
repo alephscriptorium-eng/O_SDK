@@ -28,7 +28,7 @@ module.exports = ({ cooler }) => {
   return {
     type: 'post',
 
-    async sendMessage(recipients = [], subject = '', text = '') {
+    async sendMessage(recipients = [], subject = '', text = '', crypter = false) {
       const ssbClient = await openSsb();
       const recps = uniqueRecps([userId, ...recipients]);
       const content = {
@@ -38,7 +38,27 @@ module.exports = ({ cooler }) => {
         subject,
         text,
         sentAt: new Date().toISOString(),
-        private: true
+        private: true,
+        ...(crypter ? { crypter: true } : {})
+      };
+      const publishAsync = util.promisify(ssbClient.private.publish);
+      return publishAsync(content, recps);
+    },
+
+    async sendFileShare(recipients = [], subject = '', fileShare = null, crypter = false) {
+      const ssbClient = await openSsb();
+      const recps = uniqueRecps([userId, ...recipients]);
+      if (!fileShare || typeof fileShare !== 'object') throw new Error('Invalid file share');
+      const content = {
+        type: 'post',
+        from: userId,
+        to: recps,
+        subject,
+        text: '',
+        sentAt: new Date().toISOString(),
+        private: true,
+        fileShare,
+        ...(crypter ? { crypter: true } : {})
       };
       const publishAsync = util.promisify(ssbClient.private.publish);
       return publishAsync(content, recps);

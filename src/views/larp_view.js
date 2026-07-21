@@ -78,12 +78,12 @@ const renderHousePanel = (house, members, posts, { canPost, viewerHouseKey, cycl
       canLeaveToAcademia
         ? form({ method: 'POST', action: '/larp/join' },
             input({ type: 'hidden', name: 'house', value: 'academia' }),
-            button({ type: 'submit', class: 'filter-btn' }, i18n.larpLeaveToAcademia || 'Leave House')
+            button({ type: 'submit', class: 'filter-btn danger-btn' }, i18n.larpLeaveToAcademia || 'Leave House')
           )
         : null,
       canLeaveLarp
         ? form({ method: 'POST', action: '/larp/leave' },
-            button({ type: 'submit', class: 'filter-btn' }, i18n.larpLeaveToAcademia || 'Leave House')
+            button({ type: 'submit', class: 'filter-btn danger-btn' }, i18n.larpLeaveToAcademia || 'Leave House')
           )
         : null,
       canJoinAcademia
@@ -277,7 +277,8 @@ const renderHousesGrid = (houses, myHouseKey, governingKey) => {
           ),
           p({ class: 'larp-card-motto' }, '“' + h.motto + '”'),
           p({ class: 'larp-card-roles' }, h.roles),
-          p({ class: 'larp-card-count' }, `${i18n.larpMembersCount || 'Members'}: ${h.memberCount || 0}`)
+          p({ class: 'larp-card-count' }, `${i18n.larpMembersCount || 'Members'}: ${h.memberCount || 0}`),
+          h.openInviteCode ? p({ class: 'larp-card-count' }, i18n.tribeInviteCodeText, span({ class: 'tribe-open-invite-code' }, h.openInviteCode)) : null
         )
       );
     })

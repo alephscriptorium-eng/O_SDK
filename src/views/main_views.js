@@ -33,7 +33,9 @@ const nameCache = require('../backend/nameCache');
 const userLinkLabel = (feedId, knownName) => {
   const id = String(feedId || '');
   if (!id) return '';
-  const name = (knownName && String(knownName).trim()) || nameCache.get(id);
+  let kn = (knownName && String(knownName).trim()) || '';
+  if (kn === id || /^@[A-Za-z0-9+/_-]{43}=\.ed25519$/.test(kn)) kn = '';
+  const name = kn || nameCache.get(id);
   if (name && name.length) return '@' + name;
   return id;
 };
@@ -45,6 +47,10 @@ const userLink = (feedId, knownName) => {
 
 exports.userLink = userLink;
 exports.userLinkLabel = userLinkLabel;
+
+const renderInviteQrCard = ({ qrDataUrl }) =>
+  qrDataUrl ? div({ class: 'invite-qr-card' }, img({ src: qrDataUrl, alt: 'QR', class: 'invite-qr-img' })) : null;
+exports.renderInviteQrCard = renderInviteQrCard;
 
 const renderStateChip = (variant, icon, text) =>
   span({ class: `pm-exposition-chip pm-exposition-${variant}` },
@@ -92,6 +98,19 @@ const renderLifespanChip = (lifetime, i18nObj) => {
     span({ class: "pm-exposition-text" }, (i18nObj && i18nObj.lifespanLabel) || "Lifespan")
   );
 };
+
+const renderContentActions = (msgId, viewHref) => {
+  const blockId = (typeof msgId === 'string' && msgId.startsWith('%')) ? msgId : null;
+  const chainBtn = blockId
+    ? a({ href: `/blockexplorer/block/${encodeURIComponent(blockId)}`, class: 'btn-singleview', title: i18n.blockchainViewBlockexplorer || 'View blockexplorer' }, '⦿')
+    : null;
+  const contentBtn = viewHref
+    ? a({ href: viewHref, class: 'btn-singleview btn-content', title: i18n.visitContent || 'Visit content' }, '↗')
+    : null;
+  if (!chainBtn && !contentBtn) return null;
+  return div({ class: 'content-actions' }, chainBtn, contentBtn);
+};
+exports.renderContentActions = renderContentActions;
 
 exports.renderStateChip = renderStateChip;
 exports.renderOpenClosedChip = renderOpenClosedChip;
@@ -234,6 +253,29 @@ exports.setLanguage = (language) => {
 };
 exports.i18n = i18n;
 Object.defineProperty(exports, 'selectedLanguage', { get: () => selectedLanguage });
+
+const opinionCategoriesList = require('../backend/opinion_categories');
+const renderOpinionsVoting = (basePath, id, opinions, returnTo, voters) => {
+  const ops = opinions || {};
+  const total = Object.values(ops).reduce((s, n) => s + (Number(n) || 0), 0);
+  const myId = (config.keys && config.keys.id) ? config.keys.id : '';
+  const alreadyVoted = Array.isArray(voters) && myId ? voters.includes(myId) : false;
+  return details({ class: 'opinions-voting-collapse' },
+    summary({ class: 'opinions-summary' },
+      `${i18n.opinionsTitle || 'Opinions'} (${total})`),
+    div({ class: 'voting-buttons' },
+      opinionCategoriesList.map((category) =>
+        form({ method: 'POST', action: `${basePath}/${encodeURIComponent(id)}/${category}` },
+          returnTo ? input({ type: 'hidden', name: 'returnTo', value: returnTo }) : null,
+          button({ class: alreadyVoted ? 'vote-btn disabled' : 'vote-btn', type: 'submit', ...(alreadyVoted ? { disabled: true } : {}) },
+            `${i18n['vote' + category.charAt(0).toUpperCase() + category.slice(1)] || category} [${ops[category] || 0}]`)
+        )
+      )
+    ),
+    alreadyVoted ? p({ class: 'muted' }, i18n.alreadyVoted) : null
+  );
+};
+exports.renderOpinionsVoting = renderOpinionsVoting;
 
 // markdown
 const markdownUrl = "https://commonmark.org/help/";
@@ -1976,7 +2018,7 @@ const post = ({ msg, aside = false, preview = false, spreadInfo = null }) => {
                 span(
                     { class: "created-at" },
                     `${i18n.createdBy} `,
-                    a({ href: url.author }, "@", name),
+                    userLink(authorIdForName, msg.value?.meta?.author?.name),
                     ` | ${timeAbsolute} | ${i18n.sendTime} `,
                     a({ href: url.link }, timeAgo)
                 ),
@@ -2325,7 +2367,7 @@ exports.clearnetInhabitantView = async ({ feedId, name, description, image, pref
 };
 
 const renderUserSensors = (u, opts = {}) => {
-  const { renderReachChip, renderClearnetUrlBlock, renderFediverseReach, renderContentStats } = require('./clearnet_view');
+  const { renderReachChip, renderFediverseReach, renderContentStats } = require('./clearnet_view');
   const prefs = u.prefs || {};
   const isMe = !!u.isMe;
   const show = (k) => prefs[k];
@@ -2387,7 +2429,7 @@ const renderUserSensors = (u, opts = {}) => {
         const path = `/c/inhabitant/${encodeURIComponent(u.id)}`;
         return div({ class: 'profile-reach' },
           renderReachChip(true, i18n, path),
-          renderClearnetUrlBlock({ path, i18nObj: i18n }),
+          renderInviteQrCard({ qrDataUrl: `/qr-clearnet/${encodeURIComponent(u.id)}` }),
           isMe ? form({ method: 'POST', action: '/profile/clearnet-toggle', class: 'profile-reach-toggle' }, button({ type: 'submit', class: 'btn' }, i18n.profileSwitchToOasis || 'Return to Oasis')) : null
         );
       })()
@@ -2405,6 +2447,7 @@ exports.authorView = async ({
   firstPost,
   lastPost,
   name,
+  oasisVersion,
   relationship,
   ecoAddress,
   karmaScore = 0,
@@ -2510,7 +2553,11 @@ exports.authorView = async ({
     div({ class: "profile-side-mention" },
       a({ href: `/author/${encodeURIComponent(feedId)}` }, strong(feedId))
     ),
-    qrSrc ? img({ src: qrSrc, alt: feedId, class: "profile-side-qr", width: "180", height: "180" }) : null,
+    oasisVersion ? div({ class: "profile-side-version" },
+      '🌴 ' + (i18n.oasisVersionLabel || 'Oasis Version') + ': ',
+      strong(oasisVersion)
+    ) : null,
+    feedId ? renderInviteQrCard({ qrDataUrl: `/qr/${encodeURIComponent(feedId)}` }) : null,
     description !== ""
       ? div({ class: "profile-side-description", innerHTML: sanitizeHtml(markdown(description)) })
       : null,
@@ -2855,7 +2902,12 @@ exports.mentionsView = ({ messages, myFeedId }) => {
   );
 };
 
-exports.privateView = async (messagesInput, filter) => {
+exports.privateView = async (messagesInput, filter, decrypted = null, notice = '') => {
+  const noticeText = notice === 'unavailable'
+    ? (i18n.fileShareUnavailable || 'This file is not available right now. Try again later.')
+    : notice === 'badkey'
+      ? (i18n.pmCrypterBadKey || 'Your shared key is incorrect!')
+      : ''
   const messagesRaw = Array.isArray(messagesInput) ? messagesInput : messagesInput.messages
   const messages = (messagesRaw || []).filter(m => m && m.key && m.value && m.value.content && m.value.content.type === 'post' && m.value.content.private === true)
   const userId = await getUserId()
@@ -2883,7 +2935,25 @@ exports.privateView = async (messagesInput, filter) => {
 
   const chip = (txt) => span({ class: 'chip' }, txt)
 
-  function headerLine({ sentAt, from, toLinks, subject, msgKey, msgSize }) {
+  const fmtBytes = (n) => {
+    const b = Number(n) || 0
+    if (b < 1024) return `${b} B`
+    const units = ['KB', 'MB', 'GB', 'TB']
+    let v = b / 1024, i = 0
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++ }
+    return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${units[i]}`
+  }
+
+  const e2eChip = () => span({ class: 'pm-exposition-chip pm-exposition-encrypted' },
+    span({ class: 'pm-exposition-icon' }, '🔒'),
+    span({ class: 'pm-exposition-text' }, i18n.encryptedChipLabel || 'E2E')
+  );
+  const doubleEncChip = () => span({ class: 'pm-exposition-chip pm-exposition-encrypted pm-double-enc-chip' },
+    span({ class: 'pm-exposition-icon' }, '🔒'),
+    span({ class: 'pm-exposition-text' }, i18n.pmCrypterChip || '2xE2E')
+  );
+
+  function headerLine({ sentAt, from, toLinks, subject, msgKey, msgSize, crypter }) {
     const ecoChip = msgSize ? renderEcoTax(msgSize, msgKey) : null;
     return table({ class: 'pm-info-table' },
       tr(
@@ -2907,7 +2977,11 @@ exports.privateView = async (messagesInput, filter) => {
             td({ class: 'card-label' }, i18n.ecoTaxLabel || 'ECO Tax'),
             td({ class: 'card-value' }, ecoChip)
           )
-        : null
+        : null,
+      tr(
+        td({ class: 'card-label' }, i18n.pmEncryptionLabel || 'Encryption'),
+        td({ class: 'card-value pm-encryption-cell' }, crypter ? [e2eChip(), doubleEncChip()] : [e2eChip()])
+      )
     )
   }
 
@@ -2915,7 +2989,7 @@ exports.privateView = async (messagesInput, filter) => {
     try { return Buffer.byteLength(JSON.stringify(m && m.value), 'utf8'); } catch (_) { return 0; }
   }
 
-  function actions({ key, replyId, subjectRaw, text }) {
+  function actions({ key, replyId, subjectRaw, text, extra = null }) {
     const stop = { onclick: 'event.stopPropagation()' }
     const subjectReply = /^(\s*RE:\s*)/i.test(subjectRaw || '') ? (subjectRaw || '') : `RE: ${subjectRaw || ''}`
     const isSelf = replyId === userId
@@ -2926,8 +3000,9 @@ exports.privateView = async (messagesInput, filter) => {
         input({ type: 'hidden', name: 'quote', value: text || '' }),
         button({ type: 'submit', class: 'pm-btn reply-btn' }, i18n.pmReply.toUpperCase())
       ),
+      extra || null,
       form({ method: 'POST', action: `/inbox/delete/${encodeURIComponent(key)}`, class: 'pm-action-form', ...stop },
-        button({ type: 'submit', class: 'pm-btn delete-btn' }, i18n.privateDelete.toUpperCase())
+        button({ type: 'submit', class: 'pm-btn delete-btn danger-btn' }, i18n.privateDelete.toUpperCase())
       )
     )
   }
@@ -3139,6 +3214,7 @@ exports.privateView = async (messagesInput, filter) => {
         div({ class: 'title-with-chip' }, h2(i18n.private), renderEncryptedChip(i18n)),
         p(i18n.privateDescription)
       ),
+      noticeText ? div({ class: 'pm-form-error-msg' }, p('✗ ' + noticeText)) : null,
       (() => {
         const pmVis = getConfig().pmVisibility === 'mutuals' ? 'mutuals' : 'whole'
         const pmVisLabel = pmVis === 'mutuals' ? i18n.settingsPmVisibilityMutuals : i18n.settingsPmVisibilityWhole
@@ -3203,6 +3279,35 @@ exports.privateView = async (messagesInput, filter) => {
             const level = threadLevel(subjectRaw)
             const msgSize = msgSizeBytes(msg)
 
+            if (content.fileShare && typeof content.fileShare === 'object') {
+              const fsp = content.fileShare
+              const dblKey = (decrypted && decrypted.key === msg.key) ? decrypted : null
+              return div(
+                { class: 'pm-card normal-pm pm-fileshare-card' },
+                headerLine({ sentAt, from: fromResolved, toLinks, subject: subjectRaw, msgKey: msg.key, msgSize, crypter: !!fsp.crypter }),
+                div({ class: 'pm-fileshare-info' },
+                  span({ class: 'pm-fileshare-icon' }, '📎'),
+                  span({ class: 'pm-fileshare-name' }, String(fsp.filename || 'file')),
+                  span({ class: 'pm-fileshare-meta' }, `${fmtBytes(fsp.size)} · ${String(fsp.mime || 'application/octet-stream')}`)
+                ),
+                fsp.crypter
+                  ? form({ method: 'POST', action: `/inbox/file/${encodeURIComponent(msg.key)}`, class: 'pm-fileshare-download-form' },
+                      dblKey && dblKey.error ? div({ class: 'pm-form-error-msg' }, p('✗ ' + (i18n.pmCrypterBadKey || 'Your shared key is incorrect!'))) : null,
+                      input({ type: 'text', name: 'key', placeholder: 'd66d7d32f4d30f34812aee3d01347154', minlength: 32, maxlength: 32, size: 34, required: true, class: 'pm-crypter-key-input' }),
+                      button({ type: 'submit', class: 'pm-btn pm-fileshare-download' }, (i18n.fileShareDownload || 'Download').toUpperCase())
+                    )
+                  : null,
+                actions({
+                  key: msg.key, replyId: fromResolved, subjectRaw, text: '',
+                  extra: fsp.crypter
+                    ? null
+                    : form({ method: 'GET', action: `/inbox/file/${encodeURIComponent(msg.key)}`, class: 'pm-action-form', onclick: 'event.stopPropagation()' },
+                        button({ type: 'submit', class: 'pm-btn pm-fileshare-download' }, (i18n.fileShareDownload || 'Download').toUpperCase())
+                      )
+                })
+              )
+            }
+
             if (subjectU === 'JOB_SUBSCRIBED' || subjectU === 'JOB_UNSUBSCRIBED') {
               return JobCard({ type: subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key, msgSize })
             }
@@ -3214,6 +3319,29 @@ exports.privateView = async (messagesInput, filter) => {
             }
             if (subjectU === 'PROJECT_PLEDGE' || content.meta?.type === 'project-pledge') {
               return ProjectPledgeCard({ sentAt, from: fromResolved, toLinks, content, text, key: msg.key, msgSize })
+            }
+
+            if (content.crypter === true) {
+              const dec = (decrypted && decrypted.key === msg.key) ? decrypted : null
+              const shownText = dec && typeof dec.text === 'string' ? dec.text : ''
+              return div(
+                { class: 'pm-card normal-pm pm-crypter-card' },
+                headerLine({ sentAt, from: fromResolved, toLinks, subject: subjectRaw, msgKey: msg.key, msgSize, crypter: true }),
+                dec && typeof dec.text === 'string'
+                  ? div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(dec.text)) })
+                  : dec && dec.error
+                    ? div({ class: 'pm-form-error-msg' }, p('✗ ' + i18n.pmCrypterBadKey))
+                    : null,
+                dec && typeof dec.text === 'string'
+                  ? null
+                  : form({ method: 'POST', action: '/inbox/decrypt', class: 'pm-crypter-decrypt-form' },
+                      input({ type: 'hidden', name: 'id', value: msg.key }),
+                      input({ type: 'hidden', name: 'returnFilter', value: filter || 'all' }),
+                      input({ type: 'text', name: 'key', placeholder: 'd66d7d32f4d30f34812aee3d01347154', minlength: 32, maxlength: 32, size: 34, required: true, class: 'pm-crypter-key-input' }),
+                      button({ type: 'submit', class: 'pm-btn pm-crypter-decrypt-btn' }, (i18n.pmCrypterDecryptButton || 'Decrypt').toUpperCase())
+                    ),
+                actions({ key: msg.key, replyId: fromResolved, subjectRaw, text: shownText })
+              )
             }
 
             return div(

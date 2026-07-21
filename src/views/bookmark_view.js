@@ -1,11 +1,10 @@
 const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option } =
   require("../server/node_modules/hyperaxe");
 
-const { template, i18n, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl");
-const opinionCategories = require("../backend/opinion_categories");
 
 const userId = config.keys.id;
 
@@ -99,7 +98,6 @@ const renderBookmarkCommentsSection = (bookmarkId, rootId, comments = [], return
             const ts = c?.value?.timestamp || c?.timestamp;
             const absDate = ts ? moment(ts).format("YYYY/MM/DD HH:mm:ss") : "";
             const relDate = ts ? moment(ts).fromNow() : "";
-            const userName = author && author.includes("@") ? author.split("@")[1] : author;
 
             const content = c?.value?.content || {};
             const text = content.text || "";
@@ -110,7 +108,7 @@ const renderBookmarkCommentsSection = (bookmarkId, rootId, comments = [], return
               span(
                 { class: "created-at" },
                 span(i18n.createdBy),
-                author ? a({ href: `/author/${encodeURIComponent(author)}` }, `@${userName}`) : span("(unknown)"),
+                author ? userLink(author) : span("(unknown)"),
                 absDate ? span(" | ") : "",
                 absDate ? span({ class: "votations-comment-date" }, absDate) : "",
                 relDate ? span({ class: "votations-comment-date" }, " | ", i18n.sendTime) : "",
@@ -176,63 +174,76 @@ const renderBookmarkList = (filteredBookmarks, filter, params = {}) => {
           ? a({ href: bookmark.url, target: "_blank", rel: "noreferrer noopener", class: "bookmark-url" }, bookmark.url)
           : i18n.noUrl;
 
+        const isOwn = bookmark.author && String(bookmark.author) === String(userId);
         return div(
-          { class: "tags-header bookmark-card" },
+          { class: "trending-card bookmark-card" + (isOwn ? " own-content" : "") },
           div(
-            { class: "bookmark-topbar" },
+            { class: "card-header activity-card-header" },
+            span(),
+            renderContentActions(bookmark.id, `/bookmarks/${encodeURIComponent(bookmark.id)}`)
+          ),
+          div(
+            { class: "card-section bookmark-card-body" },
             div(
-              { class: "bookmark-topbar-left" },
+              { class: "bookmark-topbar" },
+              div(
+                { class: "bookmark-topbar-left" },
+                renderPMButton(bookmark.author),
+                renderFavoriteToggle(bookmark, returnTo)
+              ),
+              div(
+                { class: "bookmark-topbar-right" },
+                renderBookmarkActions(filter, bookmark, params)
+              )
+            ),
+            h2({ class: "bookmark-title" }, bookmark.category || bookmark.url || ""),
+            bookmark.lifetime ? div({ class: "card-chips-row" }, renderLifespanChip(bookmark.lifetime, i18n)) : null,
+            renderCardField(i18n.bookmarkUrlLabel + ":", urlLink),
+            renderCardField(i18n.bookmarkLastVisitLabel + ":", lastVisitTxt),
+            br,
+            div(
+              { class: "card-comments-summary" },
+              span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
+              span({ class: "card-value" }, String(commentCount)),
+              br(),
+              br(),
               form(
                 { method: "GET", action: `/bookmarks/${encodeURIComponent(bookmark.id)}` },
                 input({ type: "hidden", name: "returnTo", value: returnTo }),
                 input({ type: "hidden", name: "filter", value: filter || "all" }),
                 params.q ? input({ type: "hidden", name: "q", value: params.q }) : null,
                 params.sort ? input({ type: "hidden", name: "sort", value: params.sort }) : null,
-                button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
-              ),
-              renderPMButton(bookmark.author),
-              renderFavoriteToggle(bookmark, returnTo)
+                button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
+              )
             ),
-            renderBookmarkActions(filter, bookmark, params)
-          ),
-          h2({ class: "bookmark-title" }, bookmark.category || bookmark.url || ""),
-          bookmark.lifetime ? div({ class: "card-chips-row" }, renderLifespanChip(bookmark.lifetime, i18n)) : null,
-          renderCardField(i18n.bookmarkUrlLabel + ":", urlLink),
-          renderCardField(i18n.bookmarkLastVisitLabel + ":", lastVisitTxt),
-          br,
-          div(
-            { class: "card-comments-summary" },
-            span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
-            span({ class: "card-value" }, String(commentCount)),
-            br(),
-            br(),
-            form(
-              { method: "GET", action: `/bookmarks/${encodeURIComponent(bookmark.id)}` },
-              input({ type: "hidden", name: "returnTo", value: returnTo }),
-              input({ type: "hidden", name: "filter", value: filter || "all" }),
-              params.q ? input({ type: "hidden", name: "q", value: params.q }) : null,
-              params.sort ? input({ type: "hidden", name: "sort", value: params.sort }) : null,
-              button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
-            )
-          ),
-          div({ class: "card-spread-left" }, renderSpreadButton(bookmark.id, (params.spreadMap && params.spreadMap.get(bookmark.id)) || params.spreads)),
-          (() => {
-            const createdTs = bookmark.createdAt ? new Date(bookmark.createdAt).getTime() : NaN;
-            const updatedTs = bookmark.updatedAt ? new Date(bookmark.updatedAt).getTime() : NaN;
-            const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
+                        div(
+              { class: "card-comments-summary feed-opinions-section" },
+              div(
+                { class: "comments-count" },
+                span({ class: "card-label" }, (i18n.opinionsTitle || "Opinions") + ": "),
+                span({ class: "card-value" }, String(Object.values(bookmark.opinions || {}).reduce((s, n) => s + (Number(n) || 0), 0)))
+              ),
+              renderOpinionsVoting('/bookmarks/opinions', bookmark.id, bookmark.opinions, returnTo, bookmark.opinions_inhabitants)
+            ),
+            div({ class: "card-spread-left" }, renderSpreadButton(bookmark.id, (params.spreadMap && params.spreadMap.get(bookmark.id)) || params.spreads)),
+            (() => {
+              const createdTs = bookmark.createdAt ? new Date(bookmark.createdAt).getTime() : NaN;
+              const updatedTs = bookmark.updatedAt ? new Date(bookmark.updatedAt).getTime() : NaN;
+              const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
 
-            return p(
-              { class: "card-footer" },
-              span({ class: "date-link" }, `${moment(bookmark.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
-              userLink(bookmark.author),
-              showUpdated
-                ? span(
-                    { class: "votations-comment-date" },
-                    ` | ${i18n.bookmarkUpdatedAt}: ${moment(bookmark.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`
-                  )
-                : null
-            );
-          })()
+              return p(
+                { class: "card-footer" },
+                span({ class: "date-link" }, `${moment(bookmark.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
+                userLink(bookmark.author),
+                showUpdated
+                  ? span(
+                      { class: "votations-comment-date" },
+                      ` | ${i18n.bookmarkUpdatedAt}: ${moment(bookmark.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`
+                    )
+                  : null
+              );
+            })()
+          )
         );
       })
     : p(params.q ? i18n.bookmarkNoMatch : i18n.noBookmarks);
@@ -445,25 +456,13 @@ exports.singleBookmarkView = async (bookmark, filter = "all", comments = [], par
       ? renderCardField(i18n.bookmarkCategoryLabel + ":", safeText(bookmark.category))
       : null,
     tagsNode,
-    div({ class: "card-spread-centered" }, renderSpreadButton(bookmark.id, params.spreads))
+    div({ class: "card-spread-centered" }, renderSpreadButton(bookmark.id, params.spreads)),
+    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
   );
 
   const bookmarkMain = div({ class: "tribe-main" },
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
     renderCardField(i18n.bookmarkUrlLabel + ":", urlLink),
     renderCardField(i18n.bookmarkLastVisitLabel + ":", lastVisitTxt),
-    div({ class: "voting-buttons" },
-      opinionCategories.map((category) =>
-        form(
-          { method: "POST", action: `/bookmarks/opinions/${encodeURIComponent(bookmark.id)}/${category}` },
-          input({ type: "hidden", name: "returnTo", value: returnTo }),
-          button(
-            { class: "vote-btn" },
-            `${i18n[`vote${category.charAt(0).toUpperCase() + category.slice(1)}`] || category} [${bookmark.opinions?.[category] || 0}]`
-          )
-        )
-      )
-    ),
     (() => {
       const createdTs = bookmark.createdAt ? new Date(bookmark.createdAt).getTime() : NaN;
       const updatedTs = bookmark.updatedAt ? new Date(bookmark.updatedAt).getTime() : NaN;
@@ -480,6 +479,7 @@ exports.singleBookmarkView = async (bookmark, filter = "all", comments = [], par
           : null
       );
     })(),
+    renderOpinionsVoting('/bookmarks/opinions', bookmark.id, bookmark.opinions, returnTo, bookmark.opinions_inhabitants),
     renderBookmarkCommentsSection(bookmark.id, bookmark.rootId, comments, returnTo)
   );
 

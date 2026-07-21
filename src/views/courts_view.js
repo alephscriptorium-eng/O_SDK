@@ -1,6 +1,8 @@
 const { form, button, div, h2, p, section, input, label, br, a, span, table, thead, tbody, tr, th, td, textarea, select, option, ul, li, img } = require('../server/node_modules/hyperaxe');
 const moment = require('../server/node_modules/moment');
-const { template, i18n, userLink } = require('./main_views');
+const { template, i18n, userLink, renderStateChip } = require('./main_views');
+
+const CourtsE2EChip = () => renderStateChip('encrypted', '🔒', i18n.encryptedChipLabel || 'E2E');
 
 const fmt = (d) => moment(d).format('YYYY-MM-DD HH:mm:ss');
 
@@ -309,6 +311,18 @@ const SupportCaseForm = (caseId) =>
     button({ type: 'submit', class: 'vote-btn' }, i18n.courtsSupportCase)
   );
 
+const OpenVoteForm = (caseId) =>
+  form(
+    { method: 'POST', action: `/courts/cases/${encodeURIComponent(caseId)}/openVote` },
+    button({ type: 'submit', class: 'create-button' }, i18n.courtsOpenVote)
+  );
+
+const AcceptSettlementForm = (caseId) =>
+  form(
+    { method: 'POST', action: `/courts/cases/${encodeURIComponent(caseId)}/settlements/accept` },
+    button({ type: 'submit', class: 'create-button' }, i18n.courtsSettlementAcceptBtn)
+  );
+
 const VerdictVoteForm = (caseId) =>
   div(
     { class: 'div-center' },
@@ -437,7 +451,9 @@ const CaseCard = (c) => {
     )
   );
   const showPublicPrefForm =
-    (c.status === 'SOLVED' ||
+    (c.status === 'DECIDED' ||
+      c.status === 'CLOSED' ||
+      c.status === 'SOLVED' ||
       c.status === 'UNSOLVED' ||
       c.status === 'DISCARDED') &&
     (c.isAccuser || c.isRespondent);
@@ -473,17 +489,25 @@ const CaseCard = (c) => {
     c.isAccuser || c.isRespondent || c.isMediator || c.isJudge || c.isDictator;
   const canAnswer = c.isRespondent;
   const canIssueVerdict =
-    (c.isJudge || c.isDictator || c.isMediator) &&
-    c.status === 'OPEN' &&
+    ((methodKey(c.method) === 'JUDGE' && c.isJudge) ||
+      (methodKey(c.method) === 'MEDIATION' && c.isMediator) ||
+      (methodKey(c.method) === 'DICTATOR' && c.isDictator)) &&
+    (c.status === 'OPEN' || c.status === 'IN_PROGRESS') &&
     !c.hasVerdict;
   const canProposeSettlement =
     (c.isAccuser || c.isRespondent || c.isMediator) &&
     methodKey(c.method) === 'MEDIATION' &&
     c.status === 'OPEN';
-  const canVoteVerdict =
-    c.hasVerdict &&
+  const canOpenVote =
     (c.isAccuser || c.isRespondent) &&
-    c.status === 'OPEN';
+    (methodKey(c.method) === 'POPULAR' || methodKey(c.method) === 'KARMATOCRACY') &&
+    (c.status === 'OPEN' || c.status === 'IN_PROGRESS') &&
+    !c.voteId;
+  const canAcceptSettlement =
+    (c.isAccuser || c.isRespondent) &&
+    methodKey(c.method) === 'MEDIATION' &&
+    (c.status === 'OPEN' || c.status === 'IN_PROGRESS') &&
+    !!c.hasSettlement;
   const isNormalUser =
     !c.isAccuser &&
     !c.isRespondent &&
@@ -504,6 +528,7 @@ const CaseCard = (c) => {
       div(
         { class: 'card-header__meta' },
         h2(c.title || ''),
+        div({ class: 'card-chips-row' }, CourtsE2EChip()),
         div(
           { class: 'card-field' },
           span({ class: 'card-label' }, i18n.courtsCaseMethod + ': '),
@@ -592,8 +617,9 @@ const CaseCard = (c) => {
     canAddEvidence ? EvidenceForm(c.id || '') : null,
     canAnswer ? AnswerForm(c.id || '') : null,
     canIssueVerdict ? VerdictForm(c.id || '') : null,
-    canVoteVerdict ? VerdictVoteForm(c.id || '') : null,
-    canProposeSettlement ? SettlementForm(c.id || '') : null
+    canProposeSettlement ? SettlementForm(c.id || '') : null,
+    canOpenVote ? OpenVoteForm(c.id || '') : null,
+    canAcceptSettlement ? AcceptSettlementForm(c.id || '') : null
   );
 };
 
@@ -639,7 +665,9 @@ const MyCaseCard = (c) => {
       !!c.judgeId);
 
   const showPublicPrefForm =
-    (c.status === 'SOLVED' ||
+    (c.status === 'DECIDED' ||
+      c.status === 'CLOSED' ||
+      c.status === 'SOLVED' ||
       c.status === 'UNSOLVED' ||
       c.status === 'DISCARDED') &&
     (c.isAccuser || c.isRespondent);
@@ -678,17 +706,25 @@ const MyCaseCard = (c) => {
     c.isAccuser || c.isRespondent || c.isMediator || c.isJudge || c.isDictator;
   const canAnswer = c.isRespondent;
   const canIssueVerdict =
-    (c.isJudge || c.isDictator || c.isMediator) &&
-    c.status === 'OPEN' &&
+    ((methodKey(c.method) === 'JUDGE' && c.isJudge) ||
+      (methodKey(c.method) === 'MEDIATION' && c.isMediator) ||
+      (methodKey(c.method) === 'DICTATOR' && c.isDictator)) &&
+    (c.status === 'OPEN' || c.status === 'IN_PROGRESS') &&
     !c.hasVerdict;
   const canProposeSettlement =
     (c.isAccuser || c.isRespondent || c.isMediator) &&
     methodKey(c.method) === 'MEDIATION' &&
     c.status === 'OPEN';
-  const canVoteVerdict =
-    c.hasVerdict &&
+  const canOpenVote =
     (c.isAccuser || c.isRespondent) &&
-    c.status === 'OPEN';
+    (methodKey(c.method) === 'POPULAR' || methodKey(c.method) === 'KARMATOCRACY') &&
+    (c.status === 'OPEN' || c.status === 'IN_PROGRESS') &&
+    !c.voteId;
+  const canAcceptSettlement =
+    (c.isAccuser || c.isRespondent) &&
+    methodKey(c.method) === 'MEDIATION' &&
+    (c.status === 'OPEN' || c.status === 'IN_PROGRESS') &&
+    !!c.hasSettlement;
   const isNormalUser =
     !c.isAccuser &&
     !c.isRespondent &&
@@ -711,6 +747,7 @@ const MyCaseCard = (c) => {
       span({ class: 'card-label' }, i18n.courtsThCase + ': '),
       span({ class: 'card-value' }, c.title || '')
     ),
+    div({ class: 'card-chips-row' }, CourtsE2EChip()),
     div(
       { class: 'card-field' },
       span({ class: 'card-label' }, i18n.courtsThStatus + ': '),
@@ -831,8 +868,9 @@ const MyCaseCard = (c) => {
     canAddEvidence ? EvidenceForm(c.id || '') : null,
     canAnswer ? AnswerForm(c.id || '') : null,
     canIssueVerdict ? VerdictForm(c.id || '') : null,
-    canVoteVerdict ? VerdictVoteForm(c.id || '') : null,
-    canProposeSettlement ? SettlementForm(c.id || '') : null
+    canProposeSettlement ? SettlementForm(c.id || '') : null,
+    canOpenVote ? OpenVoteForm(c.id || '') : null,
+    canAcceptSettlement ? AcceptSettlementForm(c.id || '') : null
   );
 };
 
@@ -998,23 +1036,32 @@ const HistoryList = (rows = []) => {
   return div({ class: 'cards' }, ...cards);
 };
 
-const RulesContent = () =>
-  div(
+const RulesContent = () => {
+  const points = [
+    i18n.courtsRulesIntro,
+    i18n.courtsRulesLifecycle,
+    i18n.courtsRulesRoles,
+    i18n.courtsRulesEvidence,
+    i18n.courtsRulesDeliberation,
+    i18n.courtsRulesVerdict,
+    i18n.courtsRulesAppeals,
+    i18n.courtsRulesPrivacy,
+    i18n.courtsRulesMisconduct,
+    i18n.courtsRulesGlossary
+  ];
+  return div(
     { class: 'card' },
     h2(i18n.courtsRulesTitle),
-    ul(
-      li(i18n.courtsRulesIntro),
-      li(i18n.courtsRulesLifecycle),
-      li(i18n.courtsRulesRoles),
-      li(i18n.courtsRulesEvidence),
-      li(i18n.courtsRulesDeliberation),
-      li(i18n.courtsRulesVerdict),
-      li(i18n.courtsRulesAppeals),
-      li(i18n.courtsRulesPrivacy),
-      li(i18n.courtsRulesMisconduct),
-      li(i18n.courtsRulesGlossary)
+    div({ class: 'rules-points' },
+      points.filter(Boolean).map((t, i) =>
+        div({ class: 'rules-point' },
+          span({ class: 'rules-point-num' }, String(i + 1)),
+          span({ class: 'rules-point-text' }, t)
+        )
+      )
     )
   );
+};
 
 const CaseSearch = (filter, search = '') =>
   div(
@@ -1069,7 +1116,7 @@ const CaseDetailsBlock = (c) => {
   const settlements = Array.isArray(c.settlements) ? c.settlements : [];
 
   const evidenceSideLabel = (e) => {
-    const side = String((e && e.side) || '').toUpperCase();
+    const side = String((e && (e.side || e.role)) || '').toUpperCase();
     if (side === 'ACCUSER') {
       return i18n.courtsEvidenceSideAccuser || 'Accuser evidence';
     }
@@ -1087,6 +1134,7 @@ const CaseDetailsBlock = (c) => {
       div(
         { class: 'card-header__meta' },
         h2(c.title || ''),
+        div({ class: 'card-chips-row' }, CourtsE2EChip()),
         c.method
           ? div(
               { class: 'card-field' },

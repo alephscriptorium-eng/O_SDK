@@ -1,5 +1,5 @@
 const { div, h2, p, section, button, form, a, span, textarea, br, input, label, select, option, img, progress, video, table, tr, td } = require("../server/node_modules/hyperaxe")
-const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton } = require("./main_views")
+const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton, renderOpinionsVoting, renderInviteQrCard } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderUrl } = require("../backend/renderUrl")
@@ -159,7 +159,7 @@ const renderCommentsSection = (parentId, returnTo, comments = []) => {
             return div({ class: "votations-comment-card" },
               span({ class: "created-at" },
                 span(i18n.createdBy),
-                author ? a({ href: `/author/${encodeURIComponent(author)}` }, `@${author.split("@")[1] || author}`) : span("(unknown)"),
+                author ? userLink(author) : span("(unknown)"),
                 ts ? span(" | ", span({ class: "votations-comment-date" }, moment(ts).format("YYYY/MM/DD HH:mm:ss"))) : "",
                 ts && rootId ? span(" | ", a({ href: `/thread/${encodeURIComponent(rootId)}#${encodeURIComponent(c.key)}` }, moment(ts).fromNow())) : ""
               ),
@@ -393,6 +393,22 @@ exports.singleShopView = async (shop, filter, products = [], comments = [], para
             ? form({ method: "POST", action: `/shops/generate-invite/${encodeURIComponent(shop.key)}` },
                 button({ type: "submit", class: "tribe-action-btn" }, i18n.tribeGenerateInvite))
             : null,
+          (shop.encrypted && shop.author === userId && !shop.openInviteCode)
+            ? form({ method: "POST", action: `/shops/open-invite/create/${encodeURIComponent(shop.key)}` },
+                button({ type: "submit", class: "tribe-action-btn" }, i18n.tribeOpenInvitation))
+            : null,
+          (shop.encrypted && shop.author === userId && shop.openInviteCode)
+            ? span({ class: "tribe-open-invite" },
+                span({ class: "card-label" }, i18n.tribeInviteCodeText),
+                span({ class: "tribe-open-invite-code" }, shop.openInviteCode))
+            : null,
+          (shop.encrypted && shop.author === userId && shop.openInviteCode)
+            ? renderInviteQrCard({ qrDataUrl: shop.openInviteQr, name: shop.title })
+            : null,
+          (shop.encrypted && shop.author === userId && shop.openInviteCode)
+            ? form({ method: "POST", action: `/shops/open-invite/remove/${encodeURIComponent(shop.key)}` },
+                button({ type: "submit", class: "tribe-action-btn danger-btn" }, i18n.tribeRemoveInvitation))
+            : null,
           form({ method: "POST", action: `/shops/visibility/${encodeURIComponent(shop.key)}`, class: "inline-form" },
             input({ type: "hidden", name: "returnTo", value: returnTo }),
             input({ type: "hidden", name: "visibility", value: shop.encrypted ? "OPEN" : "CLOSED" }),
@@ -502,15 +518,8 @@ exports.singleProductView = async (product, shop, comments = [], params = {}) =>
           " ",
           userLink(product.author)
         ),
-        !isAuthor && params.canRate && !safeArr(product.opinions_inhabitants).includes(userId)
-          ? div({ class: "voting-buttons transfer-voting-buttons" },
-              opinionCategories.map(category =>
-                form({ method: "POST", action: `/shops/product/opinions/${encodeURIComponent(product.key)}/${category}` },
-                  input({ type: "hidden", name: "returnTo", value: returnTo }),
-                  button({ class: "vote-btn" }, `${i18n[`vote${category.charAt(0).toUpperCase() + category.slice(1)}`] || category} [${product.opinions?.[category] || 0}]`)
-                )
-              )
-            )
+        !isAuthor && params.canRate
+          ? renderOpinionsVoting('/shops/product/opinions', product.key, product.opinions, returnTo, product.opinions_inhabitants)
           : null
       ),
       renderCommentsSection(product.key, returnTo, comments)

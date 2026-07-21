@@ -1,0 +1,32 @@
+# Fragmento de servicio para docker-compose.pub.yml — DELIBERADAMENTE separado:
+# el compose vivo NO se toca hasta el tick de deploy (así ningún `deploy.sh` del pub
+# arrastra este servicio por sorpresa). En el tick: copiar el bloque bajo `services:`,
+# añadir BLOBSTORE_TOKEN al .env.prod si se quiere token (respuesta ②: opcional),
+# y `docker compose --env-file .env.prod -f docker-compose.pub.yml up -d --build --no-deps pub-blobstore`.
+#
+# Notas ops:
+# - Monta el MISMO ssb-data del pub para hablar por el socket unix (respuesta ⑤);
+#   el sidecar solo conecta al socket (~noauth vía ssb-unix-socket), no toca claves.
+# - Publica SOLO en 127.0.0.1: el alcance LAN/túnel hacia zeus es decisión ops
+#   (las ZEUS_BLOB_* de zeus apuntarán aquí).
+
+  pub-blobstore:
+    build:
+      context: ./blobstore-sidecar
+      dockerfile: Dockerfile
+    image: oasis-pub-blobstore:latest
+    container_name: oasis-pub-blobstore
+    restart: unless-stopped
+    environment:
+      BLOBSTORE_PORT: 8790
+      OASIS_SOCKET: /ssb/socket
+      BLOBSTORE_TOKEN: ${BLOBSTORE_TOKEN:-}
+      BLOBSTORE_MAX_TAMANO: ${BLOBSTORE_MAX_TAMANO:-1073741824}
+    ports:
+      - "127.0.0.1:${BLOBSTORE_PORT:-8790}:8790"
+    volumes:
+      - "${OASIS_PUB_SSB_DATA_DIR:-../volumes-dev/oasis-pub/ssb-data}:/ssb"
+    depends_on:
+      - oasis-pub
+    networks:
+      - oasis_pub_net

@@ -2,11 +2,10 @@ const { form, button, div, h2, p, section, input, label, br, a, img, span, texta
   require("../server/node_modules/hyperaxe");
 
 const moment = require("../server/node_modules/moment");
-const { template, i18n, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderStateChip } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderStateChip, renderContentActions } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl")
 const { renderMapLocationVisitLabel } = require("./maps_view");
-const opinionCategories = require("../backend/opinion_categories");
 
 const userId = config.keys.id;
 
@@ -114,66 +113,76 @@ const renderImageList = exports.renderImageList = (images, filter, params = {}) 
         const title = safeText(imgObj.title);
         const ownerActions = renderImageOwnerActions(filter, imgObj, params);
 
+        const isOwn = imgObj.author && String(imgObj.author) === String(userId);
         return div(
-          { class: "tags-header image-card" },
+          { class: "trending-card image-card" + (isOwn ? " own-content" : "") },
           div(
-            { class: "bookmark-topbar" },
+            { class: "card-header activity-card-header" },
+            span(),
+            renderContentActions(imgObj.key, `/images/${encodeURIComponent(imgObj.key)}`)
+          ),
+          div(
+            { class: "card-section image-card-body" },
             div(
-              { class: "bookmark-topbar-left" },
+              { class: "bookmark-topbar" },
+              div(
+                { class: "bookmark-topbar-left" },
+                renderImageFavoriteToggle(imgObj, returnTo),
+                renderPMButton(imgObj.author)
+              ),
+              ownerActions.length ? div({ class: "bookmark-actions" }, ...ownerActions) : null
+            ),
+            title ? h2(title) : null,
+            (imgObj.meme || imgObj.lifetime) ? div({ class: "card-chips-row" },
+              imgObj.meme ? a({ href: "/images?filter=meme", class: "chip-link" }, renderStateChip("mutuals", null, i18n.imageFilterMeme || "MEME")) : null,
+              imgObj.lifetime ? renderLifespanChip(imgObj.lifetime, i18n) : null
+            ) : null,
+            renderImageMedia(imgObj, filter, params),
+            div(
+              { class: "card-comments-summary" },
+              span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
+              span({ class: "card-value" }, String(commentCount)),
+              br(),
+              br(),
               form(
                 { method: "GET", action: `/images/${encodeURIComponent(imgObj.key)}` },
                 input({ type: "hidden", name: "returnTo", value: returnTo }),
                 input({ type: "hidden", name: "filter", value: filter || "all" }),
                 params.q ? input({ type: "hidden", name: "q", value: params.q }) : null,
                 params.sort ? input({ type: "hidden", name: "sort", value: params.sort }) : null,
-                button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
-              ),
-              renderImageFavoriteToggle(imgObj, returnTo),
-              renderPMButton(imgObj.author)
+                button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
+              )
             ),
-            ownerActions.length ? div({ class: "bookmark-actions" }, ...ownerActions) : null
-          ),
-          title ? h2(title) : null,
-          (imgObj.meme || imgObj.lifetime) ? div({ class: "card-chips-row" },
-            imgObj.meme ? a({ href: "/images?filter=meme", class: "chip-link" }, renderStateChip("mutuals", null, i18n.imageFilterMeme || "MEME")) : null,
-            imgObj.lifetime ? renderLifespanChip(imgObj.lifetime, i18n) : null
-          ) : null,
-          renderImageMedia(imgObj, filter, params),
-          div(
-            { class: "card-comments-summary" },
-            span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
-            span({ class: "card-value" }, String(commentCount)),
+                        div(
+              { class: "card-comments-summary feed-opinions-section" },
+              div(
+                { class: "comments-count" },
+                span({ class: "card-label" }, (i18n.opinionsTitle || "Opinions") + ": "),
+                span({ class: "card-value" }, String(Object.values(imgObj.opinions || {}).reduce((s, n) => s + (Number(n) || 0), 0)))
+              ),
+              renderOpinionsVoting('/images/opinions', imgObj.key, imgObj.opinions, returnTo, imgObj.opinions_inhabitants)
+            ),
+            div({ class: "card-spread-left" }, renderSpreadButton(imgObj.key, (params.spreadMap && params.spreadMap.get(imgObj.key)) || params.spreads)),
+            renderMapLocationVisitLabel(imgObj.mapUrl),
             br(),
-            br(),
-            form(
-              { method: "GET", action: `/images/${encodeURIComponent(imgObj.key)}` },
-              input({ type: "hidden", name: "returnTo", value: returnTo }),
-              input({ type: "hidden", name: "filter", value: filter || "all" }),
-              params.q ? input({ type: "hidden", name: "q", value: params.q }) : null,
-              params.sort ? input({ type: "hidden", name: "sort", value: params.sort }) : null,
-              button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
-            )
-          ),
-          div({ class: "card-spread-left" }, renderSpreadButton(imgObj.key, (params.spreadMap && params.spreadMap.get(imgObj.key)) || params.spreads)),
-          renderMapLocationVisitLabel(imgObj.mapUrl),
-          br(),
-          (() => {
-            const createdTs = imgObj.createdAt ? new Date(imgObj.createdAt).getTime() : NaN;
-            const updatedTs = imgObj.updatedAt ? new Date(imgObj.updatedAt).getTime() : NaN;
-            const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
+            (() => {
+              const createdTs = imgObj.createdAt ? new Date(imgObj.createdAt).getTime() : NaN;
+              const updatedTs = imgObj.updatedAt ? new Date(imgObj.updatedAt).getTime() : NaN;
+              const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
 
-            return p(
-              { class: "card-footer" },
-              span({ class: "date-link" }, `${moment(imgObj.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
-              userLink(imgObj.author),
-              showUpdated
-                ? span(
-                    { class: "votations-comment-date" },
-                    ` | ${i18n.imageUpdatedAt}: ${moment(imgObj.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`
-                  )
-                : null
-            );
-          })()
+              return p(
+                { class: "card-footer" },
+                span({ class: "date-link" }, `${moment(imgObj.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
+                userLink(imgObj.author),
+                showUpdated
+                  ? span(
+                      { class: "votations-comment-date" },
+                      ` | ${i18n.imageUpdatedAt}: ${moment(imgObj.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`
+                    )
+                  : null
+              );
+            })()
+          )
         );
       })
     : p(params.q ? i18n.imageNoMatch : i18n.noImages);
@@ -299,7 +308,6 @@ const renderImageCommentsSection = (imageKey, comments = [], returnTo = null) =>
             const ts = c?.value?.timestamp || c?.timestamp;
             const absDate = ts ? moment(ts).format("YYYY/MM/DD HH:mm:ss") : "";
             const relDate = ts ? moment(ts).fromNow() : "";
-            const userName = author && author.includes("@") ? author.split("@")[1] : author;
 
             const content = c?.value?.content || {};
             const text = content.text || "";
@@ -310,7 +318,7 @@ const renderImageCommentsSection = (imageKey, comments = [], returnTo = null) =>
               span(
                 { class: "created-at" },
                 span(i18n.createdBy),
-                author ? a({ href: `/author/${encodeURIComponent(author)}` }, `@${userName}`) : span("(unknown)"),
+                author ? userLink(author) : span("(unknown)"),
                 absDate ? span(" | ") : "",
                 absDate ? span({ class: "votations-comment-date" }, absDate) : "",
                 relDate ? span({ class: "votations-comment-date" }, " | ", i18n.sendTime) : "",
@@ -460,11 +468,11 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
       : null,
     tagsNode,
     div({ class: "card-spread-centered" }, renderSpreadButton(imageObj.key, params.spreads)),
-    renderMapLocationVisitLabel(imageObj.mapUrl)
+    renderMapLocationVisitLabel(imageObj.mapUrl),
+    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
   );
 
   const imageMain = div({ class: "tribe-main" },
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
     imageObj?.url
       ? div(
           { class: "image-container" },
@@ -476,20 +484,6 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
           })
         )
       : p(i18n.imageNoFile),
-    div({ class: "voting-buttons" },
-      opinionCategories.map((category) =>
-        form(
-          { method: "POST", action: `/images/opinions/${encodeURIComponent(imageObj.key)}/${category}` },
-          input({ type: "hidden", name: "returnTo", value: returnTo }),
-          button(
-            { class: "vote-btn" },
-            `${i18n[`vote${category.charAt(0).toUpperCase() + category.slice(1)}`] || category} [${
-              imageObj.opinions?.[category] || 0
-            }]`
-          )
-        )
-      )
-    ),
     (() => {
       const createdTs = imageObj.createdAt ? new Date(imageObj.createdAt).getTime() : NaN;
       const updatedTs = imageObj.updatedAt ? new Date(imageObj.updatedAt).getTime() : NaN;
@@ -507,6 +501,7 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
           : null
       );
     })(),
+    renderOpinionsVoting('/images/opinions', imageObj.key, imageObj.opinions, returnTo, imageObj.opinions_inhabitants),
     renderImageCommentsSection(imageObj.key, comments, returnTo)
   );
 

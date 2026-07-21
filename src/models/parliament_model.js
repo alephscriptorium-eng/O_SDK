@@ -7,6 +7,9 @@ const logLimit = getConfig().ssbLogStream?.limit || 1000;
 const TERM_DAYS = 60;
 const PROPOSAL_DAYS = 7;
 const REVOCATION_DAYS = 15;
+const PROPOSAL_QUORUM = 2;
+const QUORUM_RATIO = 0.25;
+const VOTE_METHODS = new Set(['DEMOCRACY', 'ANARCHY', 'MAJORITY', 'MINORITY']);
 const METHODS = ['DEMOCRACY', 'MAJORITY', 'MINORITY', 'DICTATORSHIP', 'KARMATOCRACY'];
 const FEED_ID_RE = /^@.+\.ed25519$/;
 
@@ -16,7 +19,6 @@ module.exports = ({ cooler, services = {} }) => {
 
   const CACHE_MS = 250;
   let logCache = { at: 0, arr: null };
-  let myCache = new Map();
 
   let electionInFlight = null;
   let sweepInFlight = null;
@@ -51,7 +53,6 @@ module.exports = ({ cooler, services = {} }) => {
       ssbClient.publish(content, (e, r) => (e ? reject(e) : resolve(r)))
     );
     logCache = { at: 0, arr: null };
-    myCache.clear();
     return res;
   }
 
@@ -66,28 +67,6 @@ module.exports = ({ cooler, services = {} }) => {
       );
     });
     logCache = { at: now, arr };
-    return arr;
-  }
-
-  async function readMyByTypes(types = [], limit = logLimit) {
-    const ssbClient = await openSsb();
-    const key = `${String(userId)}|${String(limit)}|${types.slice().sort().join(',')}`;
-    const now = Date.now();
-    const hit = myCache.get(key);
-    if (hit && hit.arr && now - hit.at < CACHE_MS) return hit.arr;
-    const set = new Set(types);
-    const arr = await new Promise((res, rej) => {
-      pull(
-        ssbClient.createUserStream({ id: userId, reverse: true }),
-        pull.filter(m => {
-          const c = m && m.value && m.value.content;
-          return c && set.has(c.type);
-        }),
-        pull.take(Number(limit) || logLimit),
-        pull.collect((err, out) => (err ? rej(err) : res(out || [])))
-      );
-    });
-    myCache.set(key, { at: now, arr });
     return arr;
   }
 
@@ -127,8 +106,7 @@ if (c.type === type) {
   }
 
   async function listByType(type) {
-    const isParl = String(type || '').startsWith('parliament') || type === 'tombstone';
-    const msgs = isParl ? await readMyByTypes([type, 'tombstone'], logLimit) : await readLog();
+    const msgs = await readLog();
     return listByTypeFromMsgs(msgs, type);
   }
 
@@ -243,19 +221,32 @@ if (c.type === type) {
   function majorityThreshold(total) { return Math.ceil(Number(total || 0) * 0.8); }
   function minorityThreshold(total) { return Math.ceil(Number(total || 0) * 0.2); }
   function democracyThreshold(total) { return Math.floor(Number(total || 0) / 2) + 1; }
-  function passesThreshold(method, total, yes) {
+  let _inhCache = { at: 0, n: 0 };
+  async function inhabitantsCount() {
+    const now = Date.now();
+    if (_inhCache.at && now - _inhCache.at < 30000) return _inhCache.n;
+    let n = 0;
+    try {
+      if (services.inhabitants?.listInhabitants) {
+        const list = await services.inhabitants.listInhabitants({ filter: 'all', includeInactive: true });
+        n = Array.isArray(list) ? list.length : 0;
+      }
+    } catch {}
+    _inhCache = { at: now, n };
+    return n;
+  }
+  async function proposalQuorum() {
+    const n = await inhabitantsCount();
+    return Math.max(PROPOSAL_QUORUM, Math.ceil(n * QUORUM_RATIO));
+  }
+  async function passesThreshold(method, total, yes) {
     const m = String(method || '').toUpperCase();
+    const quorum = await proposalQuorum();
+    if (Number(total || 0) < quorum) return false;
     if (m === 'DEMOCRACY' || m === 'ANARCHY') return yes >= democracyThreshold(total);
     if (m === 'MAJORITY') return yes >= majorityThreshold(total);
     if (m === 'MINORITY') return yes >= minorityThreshold(total);
     return false;
-  }
-  function requiredVotes(method, total) {
-    const m = String(method || '').toUpperCase();
-    if (m === 'DEMOCRACY' || m === 'ANARCHY') return democracyThreshold(total);
-    if (m === 'MAJORITY') return majorityThreshold(total);
-    if (m === 'MINORITY') return minorityThreshold(total);
-    return 0;
   }
 
   async function listCandidaturesOpenRaw() {
@@ -298,16 +289,32 @@ if (c.type === type) {
     return Date.now();
   }
 
+  async function getCandidatureVotesMap() {
+    const msgs = await readLog();
+    const byTarget = new Map();
+    for (const m of msgs || []) {
+      const c = m.value && m.value.content;
+      if (!c || c.type !== 'parliamentCandidatureVote' || !c.target) continue;
+      if (!byTarget.has(c.target)) byTarget.set(c.target, new Set());
+      byTarget.get(c.target).add(m.value.author);
+    }
+    return byTarget;
+  }
+
   async function listCandidaturesOpen() {
     const rows = await listCandidaturesOpenRaw();
+    const votesMap = await getCandidatureVotesMap();
     const enriched = await Promise.all(rows.map(async c => {
+      const signedVoters = [...(votesMap.get(c.id) || [])];
+      const cleanVoters = signedVoters.filter(v => !(c.targetType === 'inhabitant' && String(v) === String(c.targetId)));
+      const base = { ...c, voters: cleanVoters, votes: cleanVoters.length };
       if (c.targetType === 'inhabitant') {
         const karma = await getInhabitantKarma(c.targetId);
         const since = await getFirstUserTimestamp(c.targetId);
-        return { ...c, karma, profileSince: since };
+        return { ...base, karma, profileSince: since };
       } else {
         const since = await getTribeSince(c.targetId);
-        return { ...c, karma: 0, profileSince: since };
+        return { ...base, karma: 0, profileSince: since };
       }
     }));
     return enriched;
@@ -316,15 +323,18 @@ if (c.type === type) {
   async function listTermsBase(filter = 'all') {
     const all = await listByType('parliamentTerm');
     const collapsed = collapseOverlappingTerms(all);
-    let arr = collapsed.map(t => ({ ...t, status: isExpiredTerm(t) ? 'EXPIRED' : 'ACTIVE' }));
+    const latestStart = collapsed.reduce((mx, t) => Math.max(mx, new Date(t.startAt).getTime() || 0), 0);
+    let arr = collapsed.map(t => {
+      const superseded = (new Date(t.startAt).getTime() || 0) < latestStart;
+      return { ...t, status: (isExpiredTerm(t) || superseded) ? 'EXPIRED' : 'ACTIVE' };
+    });
     if (filter === 'active') arr = arr.filter(t => t.status === 'ACTIVE');
     if (filter === 'expired') arr = arr.filter(t => t.status === 'EXPIRED');
     return arr.sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
   }
 
   async function getLatestTermAny() {
-    const msgs = await readMyByTypes(['parliamentTerm', 'tombstone'], Math.max(50, Math.min(500, logLimit)));
-    const terms = listByTypeFromMsgs(msgs, 'parliamentTerm');
+    const terms = await listByType('parliamentTerm');
     const collapsed = collapseOverlappingTerms(terms);
     return collapsed[0] || null;
   }
@@ -342,8 +352,8 @@ if (c.type === type) {
   async function archiveAllCandidatures() {
     const all = await listCandidaturesOpenRaw();
     for (const c of all) {
-      const tomb = { type: 'tombstone', target: c.id, deletedAt: nowISO(), author: userId };
-      await publishMsg(tomb);
+      const updated = { ...stripId(c), replaces: c.id, status: 'DISCARDED', updatedAt: nowISO() };
+      await publishMsg(updated);
     }
   }
 
@@ -381,13 +391,26 @@ if (c.type === type) {
 
   async function summarizePoliciesForTerm(termOrId) {
     let termId = null;
+    let termStart = null;
+    let termStartMs = null;
+    let termEndMs = Infinity;
     if (termOrId && typeof termOrId === 'object') {
       termId = termOrId.id || termOrId.startAt;
+      termStart = termOrId.startAt || null;
+      termStartMs = termStart ? new Date(termStart).getTime() : null;
+      termEndMs = termOrId.endAt ? new Date(termOrId.endAt).getTime() : (termStartMs != null ? termStartMs + TERM_DAYS * 86400000 : Infinity);
     } else {
       termId = termOrId;
     }
+    const matchesTerm = (x) => {
+      if (termStartMs != null && x.createdAt) {
+        const t = new Date(x.createdAt).getTime();
+        if (Number.isFinite(t) && t >= termStartMs && t < termEndMs) return true;
+      }
+      return x.termId === termId || (termStart && x.termId === termStart);
+    };
     const proposals = await listByType('parliamentProposal');
-    const mine = termId ? proposals.filter(p => p.termId === termId) : [];
+    const mine = termId ? proposals.filter(matchesTerm) : [];
     const proposed = mine.length;
     let approved = 0;
     let declined = 0;
@@ -405,7 +428,7 @@ if (c.type === type) {
           const yes = Number(votesMap.YES ?? votesMap.Yes ?? votesMap.yes ?? 0);
           const dl = v.deadline || v.endAt || v.expiresAt || null;
           const closed = v.status === 'CLOSED' || (dl && moment(dl).isBefore(moment()));
-          const reached = passesThreshold(p.method, total, yes);
+          const reached = await passesThreshold(p.method, total, yes);
           if (!closed) {
             if (dl && moment(dl).isBefore(moment()) && !reached) isDiscarded = true;
             else finalStatus = 'OPEN';
@@ -431,7 +454,7 @@ if (c.type === type) {
     }
     const revs = await listByType('parliamentRevocation');
     const revocated = termId
-      ? revs.filter(r => r.status === 'ENACTED' && r.termId === termId).length
+      ? revs.filter(r => r.status === 'ENACTED' && matchesTerm(r)).length
       : 0;
     return { proposed, approved, declined, discarded, revocated };
   }
@@ -450,6 +473,8 @@ if (c.type === type) {
     }
     const pol = await summarizePoliciesForTerm({ ...term });
     const eff = pol.proposed > 0 ? Math.round((pol.approved / pol.proposed) * 100) : 0;
+    const cands = await listByType('parliamentCandidature');
+    const presented = cands.length;
     return {
       method,
       powerType: term.powerType,
@@ -460,6 +485,7 @@ if (c.type === type) {
       members,
       since: term.startAt,
       end: term.endAt,
+      presented,
       proposed: pol.proposed,
       approved: pol.approved,
       declined: pol.declined,
@@ -626,10 +652,7 @@ if (c.type === type) {
     const sum = Object.values(votesMap).reduce((s, n) => s + Number(n || 0), 0);
     const total = Number(v.totalVotes ?? v.total ?? sum);
     const yes = Number(votesMap.YES ?? votesMap.Yes ?? votesMap.yes ?? 0);
-    let ok = false;
-    if (method === 'DEMOCRACY' || method === 'ANARCHY') ok = yes >= democracyThreshold(total);
-    else if (method === 'MAJORITY') ok = yes >= majorityThreshold(total);
-    else if (method === 'MINORITY') ok = yes >= minorityThreshold(total);
+    const ok = await passesThreshold(method, total, yes);
     const desiredStatus = ok ? 'APPROVED' : 'REJECTED';
     if (currentStatus === desiredStatus) return p;
     const updated = { ...p, replaces: revId, status: desiredStatus, updatedAt: nowISO() };
@@ -667,8 +690,9 @@ if (c.type === type) {
 
   async function voteCandidature(candidatureMsgId) {
     const ssbClient = await openSsb();
+    const votesMap = await getCandidatureVotesMap();
     const open = await listCandidaturesOpenRaw();
-    const already = open.some(c => ensureArray(c.voters).includes(userId));
+    const already = open.some(c => (votesMap.get(c.id) || new Set()).has(userId));
     if (already) throw new Error('Already voted this cycle');
     const msg = await new Promise((resolve, reject) =>
       ssbClient.get(candidatureMsgId, (e, m) => (e || !m) ? reject(new Error('Candidate not found')) : resolve(m))
@@ -676,8 +700,10 @@ if (c.type === type) {
     if (msg.content?.type !== 'parliamentCandidature') throw new Error('Candidate not found');
     const c = msg.content;
     if ((c.status || 'OPEN') !== 'OPEN') throw new Error('Closed');
-    const updated = { ...c, replaces: candidatureMsgId, votes: Number(c.votes || 0) + 1, voters: [...ensureArray(c.voters), userId], updatedAt: nowISO() };
-    return await publishMsg(updated);
+    if (c.targetType === 'inhabitant' && String(c.targetId) === String(userId)) throw new Error('You cannot vote for yourself');
+    if ((votesMap.get(candidatureMsgId) || new Set()).has(userId)) throw new Error('Already voted this cycle');
+    const content = { type: 'parliamentCandidatureVote', target: candidatureMsgId, createdAt: nowISO() };
+    return await publishMsg(content);
   }
 
   async function createProposal({ title, description }) {
@@ -726,10 +752,7 @@ if (c.type === type) {
     const sum = Object.values(votesMap).reduce((s, n) => s + Number(n || 0), 0);
     const total = Number(v.totalVotes ?? v.total ?? sum);
     const yes = Number(votesMap.YES ?? votesMap.Yes ?? votesMap.yes ?? 0);
-    let ok = false;
-    if (method === 'DEMOCRACY' || method === 'ANARCHY') ok = yes >= democracyThreshold(total);
-    else if (method === 'MAJORITY') ok = yes >= majorityThreshold(total);
-    else if (method === 'MINORITY') ok = yes >= minorityThreshold(total);
+    const ok = await passesThreshold(method, total, yes);
     const desiredStatus = ok ? 'APPROVED' : 'REJECTED';
     if (currentStatus === desiredStatus) return p;
     const updated = { ...p, replaces: proposalId, status: desiredStatus, updatedAt: nowISO() };
@@ -761,10 +784,6 @@ if (c.type === type) {
           const deadline = v.deadline || v.endAt || v.expiresAt || null;
           const closed = v.status === 'CLOSED' || (deadline && moment(deadline).isBefore(moment()));
           if (closed) { try { await closeProposal(p.id); } catch {} ; continue; }
-          if ((p.status || 'OPEN') === 'OPEN' && passesThreshold(p.method, total, yes)) {
-            const updated = { ...stripId(p), replaces: p.id, status: 'APPROVED', updatedAt: nowISO() };
-            await publishMsg(updated);
-          }
         } catch {}
       }
 
@@ -787,10 +806,6 @@ if (c.type === type) {
           const deadline = v.deadline || v.endAt || v.expiresAt || null;
           const closed = v.status === 'CLOSED' || (deadline && moment(deadline).isBefore(moment()));
           if (closed) { try { await closeRevocation(p.id); } catch {} ; continue; }
-          if ((p.status || 'OPEN') === 'OPEN' && passesThreshold(p.method, total, yes)) {
-            const updated = { ...stripId(p), replaces: p.id, status: 'APPROVED', updatedAt: nowISO() };
-            await publishMsg(updated);
-          }
         } catch {}
       }
     })().finally(() => { sweepInFlight = null; });
@@ -835,7 +850,7 @@ if (c.type === type) {
     const cands = await listByType('parliamentCandidature');
     for (const c of cands) {
       const k = `${c.targetType}:${c.targetId}`;
-      if (!map.has(k)) map.set(k, { powerType: c.targetType, powerId: c.targetId, powerTitle: c.targetTitle, inPower: 0, presented: 0, proposed: 0, approved: 0, declined: 0, discarded: 0, revocated: 0 });
+      if (!map.has(k)) continue;
       const rec = map.get(k);
       rec.presented = (rec.presented || 0) + 1;
     }
@@ -869,7 +884,7 @@ if (c.type === type) {
           yes = Number(votesMap.YES ?? votesMap.Yes ?? votesMap.yes ?? 0);
           deadline = deadline || v.deadline || v.endAt || v.expiresAt || null;
           const closed = v.status === 'CLOSED' || (deadline && moment(deadline).isBefore(moment()));
-          const reached = passesThreshold(p.method, total, yes);
+          const reached = await passesThreshold(p.method, total, yes);
           if (closed) derivedStatus = reached ? 'APPROVED' : 'REJECTED';
           else derivedStatus = 'OPEN';
         } catch {
@@ -879,11 +894,27 @@ if (c.type === type) {
         if (baseStatus === 'OPEN' && p.deadline && moment(p.deadline).isBefore(moment())) derivedStatus = 'DISCARDED';
       }
       if (derivedStatus === 'ENACTED' || derivedStatus === 'REJECTED' || derivedStatus === 'DISCARDED') continue;
-      const needed = requiredVotes(p.method, total);
-      const onTrack = passesThreshold(p.method, total, yes);
+      const needed = await proposalQuorum();
+      const onTrack = await passesThreshold(p.method, total, yes);
       out.push({ ...p, deadline, yes, total, needed, onTrack, derivedStatus });
     }
     return out;
+  }
+
+  async function deriveProposalStatus(method, voteId) {
+    const m = String(method || '').toUpperCase();
+    if (!voteId || !(m === 'DEMOCRACY' || m === 'ANARCHY' || m === 'MAJORITY' || m === 'MINORITY')) return null;
+    try {
+      const v = await services.votes.getVoteById(voteId);
+      const votesMap = v.votes || {};
+      const sum = Object.values(votesMap).reduce((s, n) => s + Number(n || 0), 0);
+      const total = Number(v.totalVotes ?? v.total ?? sum);
+      const yes = Number(votesMap.YES ?? votesMap.Yes ?? votesMap.yes ?? 0);
+      const deadline = v.deadline || v.endAt || v.expiresAt || null;
+      const closed = v.status === 'CLOSED' || (deadline && moment(deadline).isBefore(moment()));
+      if (!closed) return 'OPEN';
+      return (await passesThreshold(m, total, yes)) ? 'APPROVED' : 'REJECTED';
+    } catch { return null; }
   }
 
   async function listFutureLawsCurrent() {
@@ -911,9 +942,10 @@ if (c.type === type) {
           deadline = deadline || v.deadline || v.endAt || v.expiresAt || null;
           voteClosed = v.status === 'CLOSED' || (deadline && moment(deadline).isBefore(moment()));
           if (!voteClosed) continue;
+          if (VOTE_METHODS.has(String(p.method || '').toUpperCase()) && !(await passesThreshold(p.method, total, yes))) continue;
         } catch {}
       }
-      const needed = requiredVotes(p.method, total);
+      const needed = await proposalQuorum();
       out.push({ ...p, deadline, yes, total, needed });
     }
     return out;
@@ -938,7 +970,7 @@ if (c.type === type) {
           yes = Number(votesMap.YES ?? votesMap.Yes ?? votesMap.yes ?? 0);
           deadline = deadline || v.deadline || v.endAt || v.expiresAt || null;
           const closed = v.status === 'CLOSED' || (deadline && moment(deadline).isBefore(moment()));
-          const reached = passesThreshold(p.method, total, yes);
+          const reached = await passesThreshold(p.method, total, yes);
           if (closed) derivedStatus = reached ? 'APPROVED' : 'REJECTED';
           else derivedStatus = 'OPEN';
         } catch {
@@ -948,8 +980,8 @@ if (c.type === type) {
         if (baseStatus === 'OPEN' && p.deadline && moment(p.deadline).isBefore(moment())) derivedStatus = 'DISCARDED';
       }
       if (derivedStatus === 'ENACTED' || derivedStatus === 'REJECTED' || derivedStatus === 'DISCARDED') continue;
-      const needed = requiredVotes(p.method, total);
-      const onTrack = passesThreshold(p.method, total, yes);
+      const needed = await proposalQuorum();
+      const onTrack = await passesThreshold(p.method, total, yes);
       out.push({ ...p, deadline, yes, total, needed, onTrack, derivedStatus });
     }
     return out;
@@ -980,9 +1012,10 @@ if (c.type === type) {
           deadline = deadline || v.deadline || v.endAt || v.expiresAt || null;
           voteClosed = v.status === 'CLOSED' || (deadline && moment(deadline).isBefore(moment()));
           if (!voteClosed) continue;
+          if (VOTE_METHODS.has(String(p.method || '').toUpperCase()) && !(await passesThreshold(p.method, total, yes))) continue;
         } catch {}
       }
-      const needed = requiredVotes(p.method, total);
+      const needed = await proposalQuorum();
       out.push({ ...p, deadline, yes, total, needed });
     }
     return out;
@@ -1025,6 +1058,14 @@ if (c.type === type) {
         (p.votes && Object.keys(p.votes).length ? p.votes : null) ||
         snap ||
         { YES: 1, NO: 0, ABSTENTION: 0, total: 1 };
+
+      const totalFinal = Number(votesFinal.total ?? Object.entries(votesFinal).reduce((s, [k, n]) => s + (k === 'total' ? 0 : Number(n || 0)), 0));
+      const yesFinal = Number(votesFinal.YES ?? votesFinal.Yes ?? votesFinal.yes ?? 0);
+      if (VOTE_METHODS.has(String(p.method || '').toUpperCase()) && !(await passesThreshold(p.method, totalFinal, yesFinal))) {
+        const rej = { ...stripId(p), replaces: p.id, status: 'REJECTED', updatedAt: nowISO() };
+        await publishMsg(rej);
+        continue;
+      }
 
       const law = {
         type: 'parliamentLaw',
@@ -1081,6 +1122,12 @@ if (c.type === type) {
       chosen = pick && pick.chosen;
       totalVotes = (pick && pick.totalVotes) || 0;
       winnerVotes = (pick && pick.winnerVotes) || 0;
+      const quorum = await proposalQuorum();
+      if (winnerVotes < quorum) {
+        chosen = null;
+        totalVotes = 0;
+        winnerVotes = 0;
+      }
     }
 
     const startAt = now.toISOString();
@@ -1261,17 +1308,34 @@ if (c.type === type) {
     return await publishMsg(term);
   }
 
+  async function tribeElectionQuorum(tribeId) {
+    let n = 0;
+    try {
+      if (services.tribes && services.tribes.getTribeById) {
+        const t = await services.tribes.getTribeById(tribeId);
+        n = Array.isArray(t && t.members) ? t.members.length : 0;
+      }
+    } catch {}
+    return Math.max(2, Math.ceil(n * 0.25));
+  }
+
   async function tribeResolveElectionImpl(tribeId) {
     const latest = await tribeGetCurrentTerm(tribeId);
     if (latest && !isExpiredTerm(latest)) return latest;
-    const opens = (await tribeListCandidatures(tribeId)).filter(c => (c.status || 'OPEN') === 'OPEN');
+    const opens = (await tribeListCandidatures(tribeId))
+      .filter(c => (c.status || 'OPEN') === 'OPEN')
+      .map(c => {
+        const voters = ensureArray(c.voters).filter(v => String(v) !== String(c.candidateId));
+        return { ...c, voters, votes: voters.length };
+      });
     let chosen = null, totalVotes = 0, winnerVotes = 0;
     if (opens.length) {
       opens.sort((a, b) => Number(b.votes || 0) - Number(a.votes || 0) || new Date(a.createdAt) - new Date(b.createdAt));
       chosen = opens[0];
       totalVotes = opens.reduce((s, c) => s + Number(c.votes || 0), 0);
       winnerVotes = Number(chosen.votes || 0);
-      if (winnerVotes <= 0) chosen = null;
+      const quorum = await tribeElectionQuorum(tribeId);
+      if (winnerVotes < quorum) chosen = null;
     }
     const startAt = moment().toISOString();
     const endAt = moment(startAt).add(TERM_DAYS, 'days').toISOString();
@@ -1338,12 +1402,14 @@ if (c.type === type) {
     if (alreadyThisCycle) throw new Error('Already voted this cycle');
     const cand = all.find(c => c.id === candidatureId);
     if (!cand) throw new Error('Candidate not found');
+    if (String(cand.candidateId) === String(client.id)) throw new Error('You cannot vote for yourself');
+    const cleanVoters = ensureArray(cand.voters).filter(v => String(v) !== String(cand.candidateId));
     const updated = {
       type: 'tribeParliamentCandidature',
       tribeId, replaces: candidatureId,
       candidateId: cand.candidateId, method: cand.method,
-      votes: Number(cand.votes || 0) + 1,
-      voters: [...(cand.voters || []), client.id],
+      votes: cleanVoters.length + 1,
+      voters: [...cleanVoters, client.id],
       proposer: cand.proposer, status: cand.status || 'OPEN',
       createdAt: cand.createdAt, updatedAt: nowISO()
     };
@@ -1391,6 +1457,7 @@ if (c.type === type) {
     listHistorical,
     canPropose,
     listProposalsCurrent,
+    deriveProposalStatus,
     listFutureLawsCurrent,
     createProposal,
     closeProposal,

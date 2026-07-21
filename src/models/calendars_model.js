@@ -2,6 +2,8 @@ const pull = require("../server/node_modules/pull-stream")
 const crypto = require("crypto")
 const { getConfig } = require("../configs/config-manager.js")
 const { buildValidatedTombstoneSet } = require('./tombstone_validator')
+const { collabContent, openInviteOf } = require('../backend/collab_content')
+const calCollab = collabContent({ membersField: 'participants', undecField: 'encrypted', contentFields: ['title', 'deadline', 'status'], listFields: ['tags', 'invites'] })
 const logLimit = getConfig().ssbLogStream?.limit || 1000
 const INVITE_CODE_BYTES = 16
 
@@ -114,6 +116,21 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
     return tribeCrypto.decryptContent(content, keys.map(k => [k]))
   }
 
+  const tryDecryptPublicInviteKey = (invites) => {
+    if (!tribeCrypto || !Array.isArray(invites)) return null
+    for (const inv of invites) {
+      if (!inv || typeof inv !== "object" || inv.public !== true) continue
+      if (typeof inv.code !== "string") continue
+      if (typeof inv.ek === "string") {
+        try { const k = tribeCrypto.decryptFromInvite(inv.ek, inv.code, inv.salt); if (k) return k } catch (_) {}
+      }
+      if (typeof inv.ekChain === "string") {
+        try { const chain = tribeCrypto.decryptChainFromInvite(inv.ekChain, inv.code, inv.salt); if (Array.isArray(chain) && chain.length && chain[0].key) return chain[0].key } catch (_) {}
+      }
+    }
+    return null
+  }
+
   const decryptIndexNodes = async (idx) => {
     if (!tribeCrypto) return
     for (const [k, n] of idx.nodes.entries()) {
@@ -131,6 +148,12 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
         const r = decryptCalendarRoot(n.c, root)
         if (r && !r._undecryptable) dec = r
       }
+      if (!dec) {
+        const pubKey = tryDecryptPublicInviteKey(n.c.invites)
+        if (pubKey) {
+          try { const r = tribeCrypto.decryptContent(n.c, [[pubKey]]); if (r && !r._undecryptable) dec = r } catch (_) {}
+        }
+      }
       if (dec) {
         idx.nodes.set(k, { ...n, c: { ...dec, _decrypted: true } })
       } else {
@@ -144,8 +167,10 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
     const nodes = new Map()
     const parent = new Map()
     const child = new Map()
+    const strictChild = new Map()
     const authorByKey = new Map()
     const tombRequests = []
+    const participantMsgs = []
 
     for (const m of messages) {
       const k = m.key
@@ -153,6 +178,7 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
       const c = v.content
       if (!c) continue
       if (c.type === "tombstone" && c.target) { tombRequests.push({ target: c.target, author: v.author }); continue }
+      if (c.type === "calendarParticipant" && c.target) { participantMsgs.push({ target: c.target, author: v.author, on: c.on !== false, ts: v.timestamp || m.timestamp || 0 }); continue }
       if (c.type === "calendar") {
         nodes.set(k, { key: k, ts: v.timestamp || m.timestamp || 0, c, author: v.author })
         authorByKey.set(k, v.author)
@@ -165,18 +191,64 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
       if (targetAuthor && t.author === targetAuthor) tomb.add(t.target)
     }
 
+    for (const [k, node] of nodes.entries()) {
+      const t = node.c.replaces
+      if (!t) continue
+      const orig = nodes.get(t)
+      if (orig && orig.author === node.author) strictChild.set(t, k)
+    }
+
     const rootOf = (id) => { let cur = id; while (parent.has(cur)) cur = parent.get(cur); return cur }
     const tipOf = (id) => { let cur = id; while (child.has(cur)) cur = child.get(cur); return cur }
+    const contentTipOf = (root) => {
+      const rn = nodes.get(root)
+      if (!rn) return root
+      let cur = root
+      let best = root
+      const seen = new Set()
+      while (child.has(cur) && !seen.has(cur)) {
+        seen.add(cur)
+        const next = child.get(cur)
+        const n = nodes.get(next)
+        if (!n) break
+        if (n.author === rn.author && !tomb.has(next)) best = next
+        cur = next
+      }
+      return best
+    }
 
     const roots = new Set()
     for (const id of nodes.keys()) roots.add(rootOf(id))
+
+    const participantsByRoot = new Map()
+    for (const pm of participantMsgs) {
+      if (!nodes.has(pm.target)) continue
+      const r = rootOf(pm.target)
+      if (!participantsByRoot.has(r)) participantsByRoot.set(r, new Map())
+      const m2 = participantsByRoot.get(r)
+      const prev = m2.get(pm.author)
+      if (!prev || pm.ts >= prev.ts) m2.set(pm.author, { on: pm.on, ts: pm.ts })
+    }
+
+    const resolveParticipants = (root) => {
+      const ownerNode = nodes.get(root)
+      const oc = ownerNode ? ownerNode.c : {}
+      const set = new Set(Array.isArray(oc.participants) ? oc.participants : [])
+      for (const [au, st] of (participantsByRoot.get(root) || new Map())) {
+        if (st.on) set.add(au); else set.delete(au)
+      }
+      return [...set]
+    }
+
     const tipByRoot = new Map()
     for (const r of roots) tipByRoot.set(r, tipOf(r))
+    const contentTipByRoot = new Map()
+    for (const r of roots) contentTipByRoot.set(r, contentTipOf(r))
 
-    return { tomb, nodes, parent, child, rootOf, tipOf, tipByRoot }
+    return { tomb, nodes, parent, child, rootOf, tipOf, contentTipOf, tipByRoot, contentTipByRoot, resolveParticipants }
   }
 
-  const buildCalendar = (node, rootId) => {
+  const buildCalendar = (node, rootId, participants) => {
     const c = node.c || {}
     if (c.type !== "calendar") return null
     const undec = c.encryptedPayload && c._decrypted === false
@@ -188,7 +260,7 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
       deadline: undec ? "" : (c.deadline || ""),
       tags: Array.isArray(c.tags) ? c.tags : [],
       author: c.author || node.author,
-      participants: Array.isArray(c.participants) ? c.participants : [],
+      participants: Array.isArray(participants) ? participants : (Array.isArray(c.participants) ? c.participants : []),
       invites: Array.isArray(c.invites) ? c.invites : [],
       createdAt: c.createdAt || new Date(node.ts).toISOString(),
       updatedAt: c.updatedAt || null,
@@ -202,6 +274,25 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
     if (calendar.status === "CLOSED") return true
     if (!calendar.deadline) return false
     return new Date(calendar.deadline).getTime() <= Date.now()
+  }
+
+  const collectCalendars = async () => {
+    const ssbClient = await openSsb()
+    const messages = await readAll(ssbClient)
+    const idx = buildIndex(messages)
+    await decryptIndexNodes(idx)
+    const items = []
+    for (const rootId of idx.contentTipByRoot.keys()) {
+      const contentTip = idx.contentTipByRoot.get(rootId) || rootId
+      if (idx.tomb.has(contentTip)) continue
+      const node = idx.nodes.get(contentTip)
+      if (!node || node.c.type !== "calendar") continue
+      const cal = buildCalendar(node, rootId, idx.resolveParticipants(rootId))
+      if (!cal) continue
+      cal.isClosed = isClosed(cal)
+      items.push(cal)
+    }
+    return items
   }
 
   return {
@@ -419,78 +510,33 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
     },
 
     async joinCalendar(calendarId) {
-      const tipId = await this.resolveCurrentId(calendarId)
       const rootId = await this.resolveRootId(calendarId)
       const ssbClient = await openSsb()
       const userId = ssbClient.id
-      const item = await new Promise((resolve, reject) => ssbClient.get(tipId, (e, it) => e ? reject(e) : resolve(it)))
-      if (!item || !item.content) throw new Error("Calendar not found")
-      const dec = item.content.tribeId
-        ? await decryptIfTribe(item.content)
-        : decryptCalendarRoot(item.content, rootId)
-      assertReadable(dec, "Calendar")
-      const participants = Array.isArray(dec.participants) ? dec.participants : []
+      const cal = await this.getCalendarById(rootId)
+      if (!cal) throw new Error("Calendar not found")
+      const participants = Array.isArray(cal.participants) ? cal.participants : []
       if (participants.includes(userId)) return
-      if (tribeCrypto && Array.isArray(dec.invites)) {
-        const pub = dec.invites.find(inv => typeof inv === "object" && inv.public === true && inv.code && (inv.ek || inv.ekChain))
+      if (tribeCrypto && Array.isArray(cal.invites)) {
+        const pub = cal.invites.find(inv => typeof inv === "object" && inv.public === true && inv.code && (inv.ek || inv.ekChain))
         if (pub) return await this.joinByInvite(pub.code)
       }
-      let updated = {
-        type: "calendar",
-        title: dec.title || "",
-        status: dec.status || "OPEN",
-        deadline: dec.deadline || "",
-        tags: Array.isArray(dec.tags) ? dec.tags : [],
-        author: dec.author,
-        participants: [...participants, userId],
-        invites: Array.isArray(dec.invites) ? dec.invites : [],
-        ...(item.content.tribeId ? { tribeId: item.content.tribeId } : {}),
-        createdAt: dec.createdAt,
-        updatedAt: new Date().toISOString(),
-        replaces: tipId
-      }
-      if (item.content.tribeId) updated = await encryptIfTribe(updated)
-      else updated = encryptStandalone(updated, rootId)
-      const result = await new Promise((resolve, reject) => ssbClient.publish(updated, (e, res) => e ? reject(e) : resolve(res)))
-      const tombstone = { type: "tombstone", target: tipId, deletedAt: new Date().toISOString(), author: userId }
-      await new Promise((resolve, reject) => ssbClient.publish(tombstone, e => e ? reject(e) : resolve()))
-      return result
+      const content = { type: "calendarParticipant", target: rootId, on: true, createdAt: new Date().toISOString() }
+      return new Promise((resolve, reject) => ssbClient.publish(content, (e, res) => e ? reject(e) : resolve(res)))
     },
 
     async leaveCalendar(calendarId) {
-      const tipId = await this.resolveCurrentId(calendarId)
       const rootId = await this.resolveRootId(calendarId)
       const ssbClient = await openSsb()
       const userId = ssbClient.id
-      const item = await new Promise((resolve, reject) => ssbClient.get(tipId, (e, it) => e ? reject(e) : resolve(it)))
-      if (!item || !item.content) throw new Error("Calendar not found")
-      const dec = item.content.tribeId
-        ? await decryptIfTribe(item.content)
-        : decryptCalendarRoot(item.content, rootId)
-      assertReadable(dec, "Calendar")
-      if ((dec.author || item.content.author) === userId) throw new Error("Author cannot leave")
-      const participants = Array.isArray(dec.participants) ? dec.participants : []
+      const cal = await this.getCalendarById(rootId)
+      if (!cal) throw new Error("Calendar not found")
+      if (cal.author === userId) throw new Error("Author cannot leave")
+      const participants = Array.isArray(cal.participants) ? cal.participants : []
       if (!participants.includes(userId)) return
-      let updated = {
-        type: "calendar",
-        title: dec.title || "",
-        status: dec.status || "OPEN",
-        deadline: dec.deadline || "",
-        tags: Array.isArray(dec.tags) ? dec.tags : [],
-        author: dec.author,
-        participants: participants.filter(p => p !== userId),
-        invites: Array.isArray(dec.invites) ? dec.invites : [],
-        ...(item.content.tribeId ? { tribeId: item.content.tribeId } : {}),
-        createdAt: dec.createdAt,
-        updatedAt: new Date().toISOString(),
-        replaces: tipId
-      }
-      if (item.content.tribeId) updated = await encryptIfTribe(updated)
-      else updated = encryptStandalone(updated, rootId)
-      const result = await new Promise((resolve, reject) => ssbClient.publish(updated, (e, res) => e ? reject(e) : resolve(res)))
-      try { await rotateCalendarKey(rootId, updated.participants) } catch (_) {}
-      const tombstone = { type: "tombstone", target: tipId, deletedAt: new Date().toISOString(), author: userId }
-      await new Promise((resolve, reject) => ssbClient.publish(tombstone, e => e ? reject(e) : resolve()))
+      const content = { type: "calendarParticipant", target: rootId, on: false, createdAt: new Date().toISOString() }
+      const result = await new Promise((resolve, reject) => ssbClient.publish(content, (e, res) => e ? reject(e) : resolve(res)))
+      try { await rotateCalendarKey(rootId, participants.filter(p => p !== userId)) } catch (_) {}
       return result
     },
 
@@ -515,36 +561,22 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
       const messages = await readAll(ssbClient)
       const idx = buildIndex(messages)
       await decryptIndexNodes(idx)
-      let tip = id
-      while (idx.child.has(tip)) tip = idx.child.get(tip)
-      if (idx.tomb.has(tip)) return null
-      const node = idx.nodes.get(tip)
-      if (!node || node.c.type !== "calendar") return null
-      let root = tip
+      let root = id
       while (idx.parent.has(root)) root = idx.parent.get(root)
-      const cal = buildCalendar(node, root)
+      const contentTip = idx.contentTipOf(root)
+      if (idx.tomb.has(contentTip)) return null
+      const node = idx.nodes.get(contentTip)
+      if (!node || node.c.type !== "calendar") return null
+      const cal = buildCalendar(node, root, idx.resolveParticipants(root))
       if (!cal) return null
       cal.isClosed = isClosed(cal)
-      return cal
+      return calCollab.fold(cal, await collectCalendars())
     },
 
     async listAll({ filter = "all", viewerId } = {}) {
       const ssbClient = await openSsb()
       const uid = viewerId || ssbClient.id
-      const messages = await readAll(ssbClient)
-      const idx = buildIndex(messages)
-      await decryptIndexNodes(idx)
-      const items = []
-      for (const [rootId, tipId] of idx.tipByRoot.entries()) {
-        if (idx.tomb.has(tipId)) continue
-        const node = idx.nodes.get(tipId)
-        if (!node || node.c.type !== "calendar") continue
-        const cal = buildCalendar(node, rootId)
-        if (!cal) continue
-        cal.isClosed = isClosed(cal)
-        items.push(cal)
-      }
-      let list = items
+      let list = calCollab.visibleThenCollapsed(await collectCalendars(), uid)
       if (filter === "mine") list = list.filter(c => c.author === uid)
       else if (filter === "recent") {
         const now = Date.now()
@@ -876,7 +908,7 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
       }
     },
 
-    async generateInvite(calendarId) {
+    async generateInvite(calendarId, opts = {}) {
       const ssbClient = await openSsb()
       const userId = ssbClient.id
       const cal = await this.getCalendarById(calendarId)
@@ -884,11 +916,13 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
       if (cal.author !== userId) throw new Error("Only the author can generate invites")
       const code = crypto.randomBytes(INVITE_CODE_BYTES).toString("hex")
       let invite = code
+      const pubFlag = opts.public ? { public: true } : {}
       if (tribeCrypto && !cal.tribeId) {
         const inviteSalt = tribeCrypto.generateInviteSalt()
         const ekChain = tribeCrypto.encryptChainForInvite([cal.rootId], code, inviteSalt)
-        if (ekChain) invite = { code, ekChain, salt: inviteSalt, gen: lookupGen(cal.rootId) }
+        if (ekChain) invite = { code, ekChain, salt: inviteSalt, gen: lookupGen(cal.rootId), ...pubFlag }
       }
+      if (opts.public && typeof invite !== "object") invite = { code, public: true }
       const tipId = await this.resolveCurrentId(calendarId)
       const item = await new Promise((resolve, reject) => ssbClient.get(tipId, (e, it) => e ? reject(e) : resolve(it)))
       const dec = item.content.tribeId
@@ -917,10 +951,55 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
       return code
     },
 
+    async getOpenInvite(calendarId) {
+      return openInviteOf(await this.getCalendarById(calendarId).catch(() => null))
+    },
+
+    async generateOpenInvite(calendarId) {
+      const cal = await this.getCalendarById(calendarId)
+      if (!cal) throw new Error("Calendar not found")
+      const existing = (Array.isArray(cal.invites) ? cal.invites : []).find(inv => typeof inv === "object" && inv.public === true)
+      if (existing) throw new Error("An open invitation already exists")
+      return this.generateInvite(calendarId, { public: true })
+    },
+
+    async removeOpenInvite(calendarId) {
+      const ssbClient = await openSsb()
+      const userId = ssbClient.id
+      const cal = await this.getCalendarById(calendarId)
+      if (!cal) throw new Error("Calendar not found")
+      if (cal.author !== userId) throw new Error("Only the author can remove invites")
+      const tipId = await this.resolveCurrentId(calendarId)
+      const item = await new Promise((resolve, reject) => ssbClient.get(tipId, (e, it) => e ? reject(e) : resolve(it)))
+      const dec = item.content.tribeId
+        ? await decryptIfTribe(item.content)
+        : decryptCalendarRoot(item.content, cal.rootId)
+      const invites = (Array.isArray(dec.invites) ? dec.invites : []).filter(inv => !(typeof inv === "object" && inv.public === true))
+      let updated = {
+        type: "calendar",
+        title: dec.title || "",
+        status: dec.status || "OPEN",
+        deadline: dec.deadline || "",
+        tags: Array.isArray(dec.tags) ? dec.tags : [],
+        author: dec.author,
+        participants: Array.isArray(dec.participants) ? dec.participants : [userId],
+        invites,
+        ...(item.content.tribeId ? { tribeId: item.content.tribeId } : {}),
+        createdAt: dec.createdAt,
+        updatedAt: new Date().toISOString(),
+        replaces: tipId
+      }
+      if (item.content.tribeId) updated = await encryptIfTribe(updated)
+      else updated = encryptStandalone(updated, cal.rootId)
+      await new Promise((resolve, reject) => ssbClient.publish(updated, (e, res) => e ? reject(e) : resolve(res)))
+      const tombstone = { type: "tombstone", target: tipId, deletedAt: new Date().toISOString(), author: userId }
+      await new Promise((resolve, reject) => ssbClient.publish(tombstone, e => e ? reject(e) : resolve()))
+    },
+
     async joinByInvite(code) {
       const ssbClient = await openSsb()
       const userId = ssbClient.id
-      const calendars = await this.listAll()
+      const calendars = await collectCalendars()
       let matched = null
       let matchedInvite = null
       for (const cal of calendars) {
@@ -998,6 +1077,7 @@ module.exports = ({ cooler, pmModel, tribeCrypto, calendarCrypto, tribesModel })
           }
         } catch (_) {}
       }
+      await new Promise((resolve, reject) => ssbClient.publish({ type: "calendarParticipant", target: matched.rootId, on: true, createdAt: new Date().toISOString() }, (e, res) => e ? reject(e) : resolve(res)))
       return matched.rootId
     }
   }

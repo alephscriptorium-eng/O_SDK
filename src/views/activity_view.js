@@ -1,5 +1,5 @@
-const { div, h2, p, section, button, form, a, input, img, textarea, br, span, video: videoHyperaxe, audio: audioHyperaxe, table, tr, td, th } = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink, userLinkLabel, renderSpreadButton } = require('./main_views');
+const { div, h2, p, section, button, form, a, input, img, textarea, br, span, video: videoHyperaxe, audio: audioHyperaxe, table, tr, td, th, details, summary } = require("../server/node_modules/hyperaxe");
+const { template, i18n, userLink, userLinkLabel, renderSpreadButton, renderContentActions } = require('./main_views');
 const opinionCategories = require('../backend/opinion_categories');
 
 const OPINION_TYPES = new Set(['bookmark','votes','feed','image','audio','video','document','torrent','transfer']);
@@ -241,6 +241,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
     const c0 = a0.value?.content || a0.content || {};
     const id0 = c0.about || a0.author || '';
     if (!id0) continue;
+    if (a0.author && String(a0.author) !== String(id0)) continue;
     const name0 = (typeof c0.name === 'string' && c0.name.trim()) ? c0.name.trim() : id0;
     const image0 = (typeof c0.image === 'string' && c0.image.trim()) ? c0.image.trim() : '';
     const ts0 = a0.ts || 0;
@@ -368,6 +369,19 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
         ? Object.entries(votes).map(([option, count]) => ({ option, count }))
         : [];
 
+      const voteOutcome = (() => {
+        const totalNum = Number(totalVotes || 0);
+        const noResult = { text: i18n.voteNoQuorum || 'NO QUORUM', color: '#ffcc00' };
+        if (totalNum < 2) return noResult;
+        const entries = Object.entries(votes || {}).filter(([o]) => o !== 'FOLLOW_MAJORITY');
+        const maxCount = entries.reduce((m, [, c]) => Math.max(m, Number(c) || 0), 0);
+        const top = entries.filter(([, c]) => (Number(c) || 0) === maxCount);
+        if (maxCount === 0 || top.length > 1) return noResult;
+        const w = top[0][0];
+        const label = i18n['vote' + w.split('_').map(x => x.charAt(0) + x.slice(1).toLowerCase()).join('')] || w;
+        return { text: label, color: w === 'YES' ? '#4caf50' : w === 'NO' ? '#e53935' : '#ffcc00' };
+      })();
+
       cardBody.push(
         div({ class: 'card-section votes' },
           div(
@@ -384,6 +398,11 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
             { class: 'card-field' },
             span({ class: 'card-label' }, i18n.voteTotalVotes + ':'),
             span({ class: 'card-value' }, totalVotes)
+          ),
+          div(
+            { class: 'card-field' },
+            span({ class: 'card-label' }, (i18n.voteResults || 'Results') + ':'),
+            span({ class: 'card-value', style: `color:${voteOutcome.color};font-weight:bold;` }, voteOutcome.text)
           ),
           div(
             { class: 'card-field' },
@@ -518,6 +537,19 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
       );
     }
 
+    if (type === 'larpHousePost') {
+      const { text, house } = content;
+      cardBody.push(
+        div({ class: 'card-section post' },
+          house ? a({ href: `/larp/${encodeURIComponent(house)}`, class: 'larp-house-link' },
+            img({ src: `/assets/larp/images/${encodeURIComponent(String(house).toLowerCase())}.jpg`, alt: house, class: 'larp-house-mini' }),
+            span(`L.A.R.P · ${String(house).toUpperCase()}`)
+          ) : null,
+          text ? p({ class: 'post-text post-text-pre' }, ...renderUrlPreserveNewlines(String(text))) : null
+        )
+      );
+    }
+
     if (type === 'tribe') {
       const { title, image, description, location, tags, inviteMode, isAnonymous } = content;
       if (isAnonymous === true) { skip = true; }
@@ -533,8 +565,10 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
             inviteMode ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.tribeModeLabel) + ':'), span({ class: 'card-value' }, inviteMode.toUpperCase())) : ""
          ),
           image
-            ? renderMediaBlob(image, '/assets/images/default-tribe.png')
-            : img({ src: '/assets/images/default-tribe.png', class: 'feed-image tribe-image' }),
+            ? (/^(\/|https?:)/.test(String(image))
+                ? img({ src: image, class: 'feed-image tribe-image' })
+                : renderMediaBlob(image, null))
+            : null,
           p({ class: 'tribe-description' }, ...renderUrl(description || '')),
           validTags.length
             ? div({ class: 'card-tags' }, validTags.map(tag =>
@@ -684,10 +718,11 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
 
     if (type === 'document') {
       const { url, title, key } = content;
-      if (title && seenDocumentTitles.has(title.trim())) {
+      const docKey = title ? `${action.author || ''}::${title.trim()}` : null;
+      if (docKey && seenDocumentTitles.has(docKey)) {
         return null;
       }
-      if (title) seenDocumentTitles.add(title.trim());
+      if (docKey) seenDocumentTitles.add(docKey);
       cardBody.push(
         div({ class: 'card-section document' },
           title?.trim() ? h2({ class: 'document-title' }, title) : "",
@@ -814,7 +849,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
       const parent = isReply ? (byIdAll.get(replyToId) || byIdAll.get(threadId)) : null;
       const parentContent = parent ? (parent.value?.content || parent.content || {}) : {};
       const parentAuthor = parent?.author || '';
-      const parentName = parent?.authorName || parentAuthor;
+      const parentName = parent?.authorName || '';
       const parentText = parent ? excerptPostText(parentContent, 220) : '';
       cardBody.push(
         div({ class: 'card-section post' },
@@ -851,12 +886,14 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
         const show = repliesAsc.slice(Math.max(0, repliesAsc.length - limit));
         const lastId = repliesAsc.length ? repliesAsc[repliesAsc.length - 1].id : threadId;
         const viewMoreHref = `/thread/${encodeURIComponent(threadId)}#${encodeURIComponent(lastId)}`;
-        return div({ class: 'card card-rpg post-thread' },
-            div({ class: 'card-header' },
-                h2({ class: 'card-label' }, `[${String(i18n.typePost || 'POST').toUpperCase()} · THREAD]`),
-                form({ method: 'GET', action: href },
-                    button({ type: 'submit', class: 'filter-btn' }, i18n.viewDetails)
-                )
+        return div({ class: 'trending-card post-thread' + (String(action.author) === String(userId) ? ' own-content' : '') },
+            div({ class: 'card-header activity-card-header' },
+                div({ class: 'card-chips-row' },
+                    span({ class: 'pm-exposition-chip pm-exposition-whole' },
+                        span({ class: 'pm-exposition-text' }, `${String(i18n.typePost || 'POST').toUpperCase()} · THREAD`)
+                    )
+                ),
+                renderContentActions(threadId, href)
             ),
             div({ class: 'card-body' },
 		root && root.text
@@ -866,7 +903,6 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
 		    : '',
 		div({ class: 'card-section' },
 		show.map(r => {
-		    const commentHref = `/thread/${encodeURIComponent(threadId)}#${encodeURIComponent(r.id)}`;
 		    const rDate = r.ts ? new Date(r.ts).toLocaleString() : '';
 		    return div({ class: 'thread-reply-item' },
 			div({ class: 'thread-reply' },
@@ -874,10 +910,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
 			),
 			div({ class: 'card-footer thread-reply-footer' },
 			    span({ class: 'date-link' }, rDate),
-			    userLink(r.author),
-			    form({ method: 'GET', action: commentHref, class: 'inline-form' },
-				button({ type: 'submit', class: 'filter-btn' }, i18n.viewDetails)
-			    )
+			    userLink(r.author, action.authorNames && action.authorNames[r.author])
 			)
 		    );
 		}),
@@ -885,7 +918,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
         ),
         p({ class: 'card-footer' },
             span({ class: 'date-link' }, `${action.ts ? new Date(action.ts).toLocaleString() : ''} ${i18n.performed} `),
-            userLink(action.author)
+            userLink(action.author, action.authorNames && action.authorNames[action.author])
         )
         );
     }
@@ -909,7 +942,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
         const parentContent = parentForum ? (parentForum.value?.content || parentForum.content || {}) : {};
         const parentTitle = (parentContent?.title && String(parentContent.title).trim()) ? parentContent.title : ((rootTitle && String(rootTitle).trim()) ? rootTitle : '');
         const parentAuthor = parentForum?.author || '';
-        const parentName = parentForum?.authorName || parentAuthor;
+        const parentName = parentForum?.authorName || '';
         const hrefKey = rootKey || rootId;
         cardBody.push(
           div({ class: 'card-section forum' },
@@ -1000,13 +1033,15 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
     }
 
     if (type === 'about') {
-      const { about, name, image } = content;
+      const { about, name, image, description } = content;
+      const imgId = image ? (typeof image === 'string' ? image : (image.link || '')) : '';
       cardBody.push(
         div({ class: 'card-section about' },
+          imgId
+            ? img({ src: `/blob/${encodeURIComponent(imgId)}`, alt: name, class: 'activity-avatar' })
+            : img({ src: '/assets/images/default-avatar.png', alt: name, class: 'activity-avatar' }),
           h2(userLink(about, name)),
-          image
-            ? img({ src: `/blob/${encodeURIComponent(image)}`, alt: name, class: 'activity-avatar' })
-            : img({ src: '/assets/images/default-avatar.png', alt: name, class: 'activity-avatar' })
+          description ? p({ class: 'tribe-side-description' }, ...renderUrlPreserveNewlines(String(description))) : null
         )
       );
     }
@@ -1209,7 +1244,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
           ),
           p({ class: 'card-footer' },
             span({ class: 'date-link' }, `${action.ts ? new Date(action.ts).toLocaleString() : ''} ${i18n.performed} `),
-            userLink(action.author)
+            userLink(action.author, action.authorNames && action.authorNames[action.author])
           )
         );
       }
@@ -1349,7 +1384,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
     }
 
     if (type === 'parliamentCandidature') {
-      const { targetType, targetId, targetTitle, method, votes, proposer } = content;
+      const { targetType, targetId, targetTitle, method } = content;
       const link = targetType === 'tribe'
         ? a({ href: `/tribe/${encodeURIComponent(targetId)}`, class: 'user-link' }, targetTitle || targetId)
         : userLink(targetId);
@@ -1360,11 +1395,8 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
 
       cardBody.push(
         div({ class: 'card-section parliament' },
-          div({ class: 'card-field' }, span({ class: 'card-label' }, (String(i18n.parliamentCandidatureId || 'Candidature').toUpperCase()) + ':'), span({ class: 'card-value' }, link)),
-          div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentGovMethod || 'METHOD') + ':'), span({ class: 'card-value' }, methodUpper)),
-          typeof votes !== 'undefined'
-            ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentVotesReceived || 'VOTES RECEIVED') + ':'), span({ class: 'card-value' }, String(votes)))
-            : ''
+          div({ class: 'card-field' }, span({ class: 'card-label' }, String(i18n.parliamentGovMethod || 'METHOD').toUpperCase() + ':'), span({ class: 'card-value' }, methodUpper)),
+          div({ class: 'card-field' }, span({ class: 'card-value' }, link))
         )
       );
     }
@@ -1505,45 +1537,23 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
       return null;
     }
 
-    const viewDetailsForm = type !== 'feed' && type !== 'aiExchange' && type !== 'bankWallet' && (!action.tipId || action.tipId === action.id)
-      ? (
-          isParliamentTarget
-            ? form(
-                { method: "GET", action: "/parliament" },
-                input({ type: "hidden", name: "filter", value: parliamentFilter }),
-                button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
-              )
-            : isCourtsTarget
-              ? form(
-                  { method: "GET", action: "/courts" },
-                  input({ type: "hidden", name: "filter", value: courtsFilter }),
-                  button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
-                )
-              : form(
-                  { method: "GET", action: viewHref },
-                  button({ type: "submit", class: "filter-btn" }, i18n.viewDetails)
-                )
-        )
+    const detailHref = (type !== 'feed' && type !== 'aiExchange' && type !== 'bankWallet')
+      ? (isParliamentTarget
+          ? `/parliament?filter=${encodeURIComponent(parliamentFilter)}`
+          : isCourtsTarget
+            ? `/courts?filter=${encodeURIComponent(courtsFilter)}`
+            : viewHref)
       : null;
-    if (viewDetailsForm && cardBody.length > 0 && cardBody[0] && typeof cardBody[0].insertBefore === 'function') {
-      const host = cardBody[0];
-      const spacer = br();
-      const firstChild = host.childNodes && host.childNodes[0];
-      if (firstChild) {
-        host.insertBefore(spacer, firstChild);
-        host.insertBefore(viewDetailsForm, spacer);
-      } else {
-        host.appendChild(viewDetailsForm);
-        host.appendChild(spacer);
-      }
-    } else if (viewDetailsForm) {
-      cardBody.unshift(div({ class: 'card-section' }, viewDetailsForm, br()));
-    }
-    return div({ class: 'trending-card' },
-      div({ class: 'card-chips-row' },
-        span({ class: 'pm-exposition-chip pm-exposition-whole' },
-          span({ class: 'pm-exposition-text' }, String(type || '').toUpperCase())
-        )
+    const msgId = safeMsgId(action.tipId || action.id || action.key);
+    const isOwn = action.author && String(action.author) === String(userId);
+    return div({ class: 'trending-card' + (isOwn ? ' own-content' : '') },
+      div({ class: 'card-header activity-card-header' },
+        div({ class: 'card-chips-row' },
+          span({ class: 'pm-exposition-chip pm-exposition-whole' },
+            span({ class: 'pm-exposition-text' }, String(type || '').toUpperCase())
+          )
+        ),
+        renderContentActions(msgId, detailHref)
       ),
       ...cardBody,
       (() => {
@@ -1551,10 +1561,14 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
         const routeFn = OPINION_ROUTES[type];
         if (!routeFn) return null;
         const ops = (action.value?.content?.opinions) || (action.content?.opinions) || {};
-        return div({ class: 'voting-buttons' },
-          opinionCategories.map(cat =>
-            form({ method: 'POST', action: `${routeFn(action.id)}/${cat}` },
-              button({ class: 'vote-btn' }, `${i18n['vote' + cat.charAt(0).toUpperCase() + cat.slice(1)] || cat} [${ops[cat] || 0}]`)
+        const opsTotal = Object.values(ops).reduce((s, n) => s + (Number(n) || 0), 0);
+        return details({ class: 'opinions-voting-collapse' },
+          summary({ class: 'opinions-summary' }, `${i18n.opinionsTitle || 'Opinions'} (${opsTotal})`),
+          div({ class: 'voting-buttons' },
+            opinionCategories.map(cat =>
+              form({ method: 'POST', action: `${routeFn(action.id)}/${cat}` },
+                button({ class: 'vote-btn' }, `${i18n['vote' + cat.charAt(0).toUpperCase() + cat.slice(1)] || cat} [${ops[cat] || 0}]`)
+              )
             )
           )
         );
@@ -1570,10 +1584,13 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map()) {
         const btn = renderSpreadButton(action.id, spreadMap.get(action.id));
         return btn ? div({ class: 'card-spread-left' }, btn) : null;
       })(),
-      p({ class: 'card-footer' },
-        span({ class: 'date-link' }, `${date} ${i18n.performed} `),
-        userLink(action.author)
-      )
+      (() => {
+        const footerAuthorId = action.author || (content && content.proposer) || '';
+        return p({ class: 'card-footer' },
+          span({ class: 'date-link' }, `${date} ${i18n.performed} `),
+          userLink(footerAuthorId, (action.authorNames && action.authorNames[footerAuthorId]) || getProfile(footerAuthorId).name)
+        );
+      })()
     );
   });
 
@@ -1610,6 +1627,7 @@ function getViewDetailsAction(type, action) {
     case 'votes':      return `/votes/${id}`;
     case 'transfer':   return `/transfers/${id}`;
     case 'pixelia':    return `/pixelia`;
+    case 'larpHousePost': return action.content?.house ? `/larp/${encodeURIComponent(action.content.house)}` : `/activity`;
     case 'tribe':      return `/tribe/${id}`;
     case 'curriculum': return `/inhabitant/${encodeURIComponent(action.author)}`;
     case 'karmaScore': return `/author/${encodeURIComponent(action.author)}`;
@@ -1652,13 +1670,15 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     { type: 'recent',    label: i18n.typeRecent },
     { type: 'all',       label: i18n.allButton },
     { type: 'mine',      label: i18n.mineButton },
+    { type: 'inhabitants', label: i18n.typeInhabitants },
     { type: 'tribe',     label: i18n.typeTribe },
+    { type: 'larp',      label: i18n.typeLarp },
     { type: 'parliament',label: i18n.typeParliament },
     { type: 'courts',    label: i18n.typeCourts },
+    { type: 'votes',     label: i18n.typeVotes },
     { type: 'event',     label: i18n.typeEvent },
     { type: 'calendar',  label: i18n.typeCalendar },
     { type: 'task',      label: i18n.typeTask },
-    { type: 'votes',     label: i18n.typeVotes },
     { type: 'report',    label: i18n.typeReport },
     { type: 'post',      label: i18n.typePost },
     { type: 'feed',      label: i18n.typeFeed },
@@ -1668,10 +1688,10 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     { type: 'map',       label: i18n.typeMap },
     { type: 'banking',   label: i18n.typeBanking },
     { type: 'market',    label: i18n.typeMarket },
-    { type: 'shop',      label: i18n.typeShop },
     { type: 'project',   label: i18n.typeProject },
-    { type: 'transfer',  label: i18n.typeTransfer },
     { type: 'job',       label: i18n.typeJob },
+    { type: 'shop',      label: i18n.typeShop },
+    { type: 'transfer',  label: i18n.typeTransfer },
     { type: 'curriculum',label: i18n.typeCurriculum },
     { type: 'audio',     label: i18n.typeAudio },
     { type: 'bookmark',  label: i18n.typeBookmark },
@@ -1687,7 +1707,9 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     courts:     ['courtsCase', 'courtsNomination', 'courtsNominationVote'],
     banking:    ['bankWallet', 'bankClaim', 'ubiClaim'],
     task:       ['task', 'taskAssignment'],
-    shop:       ['shop', 'shopProduct']
+    shop:       ['shop', 'shopProduct'],
+    larp:       ['larpHousePost'],
+    inhabitants:['about']
   };
   const ALLOWED_TYPES = new Set();
   for (const { type } of activityTypes) {
@@ -1707,6 +1729,10 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     filteredActions = actions.filter(action => action.type !== 'tombstone' && (action.type === 'bankWallet' || action.type === 'bankClaim' || action.type === 'ubiClaim'));
   } else if (filter === 'tribe') {
     filteredActions = actions.filter(action => action.type === 'tribe');
+  } else if (filter === 'larp') {
+    filteredActions = actions.filter(action => action.type === 'larpHousePost');
+  } else if (filter === 'inhabitants') {
+    filteredActions = actions.filter(action => action.type === 'about');
   } else if (filter === 'parliament') {
     filteredActions = actions.filter(action => ['parliamentCandidature','parliamentTerm','parliamentProposal','parliamentRevocation','parliamentLaw'].includes(action.type));
   } else if (filter === 'courts') {
@@ -1720,6 +1746,46 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     filteredActions = actions.filter(action => action.type === 'torrent');
   } else {
     filteredActions = actions.filter(action => (action.type === filter || filter === 'all' || (filter === 'shop' && action.type === 'shopProduct')) && action.type !== 'tombstone');
+  }
+
+  const larpEarliest = new Map();
+  for (const action of filteredActions) {
+    if (action.type !== 'tribe') continue;
+    const c = action.value?.content || action.content || {};
+    const larpTag = (Array.isArray(c.tags) ? c.tags : []).find(x => String(x).startsWith('larp-'));
+    if (!larpTag) continue;
+    const ts = action.ts || 0;
+    const prev = larpEarliest.get(larpTag);
+    if (!prev || ts < prev.ts) larpEarliest.set(larpTag, { id: action.id, ts });
+  }
+  if (larpEarliest.size) {
+    filteredActions = filteredActions.filter(action => {
+      if (action.type !== 'tribe') return true;
+      const c = action.value?.content || action.content || {};
+      const larpTag = (Array.isArray(c.tags) ? c.tags : []).find(x => String(x).startsWith('larp-'));
+      if (!larpTag) return true;
+      return larpEarliest.get(larpTag).id === action.id;
+    });
+  }
+
+  const aboutLatest = new Map();
+  for (const action of filteredActions) {
+    if (action.type !== 'about') continue;
+    const c = action.value?.content || action.content || {};
+    const subject = c.about || action.author;
+    if (!subject) continue;
+    const ts = action.ts || 0;
+    const prev = aboutLatest.get(subject);
+    if (!prev || ts > prev.ts) aboutLatest.set(subject, { id: action.id, ts });
+  }
+  if (aboutLatest.size) {
+    filteredActions = filteredActions.filter(action => {
+      if (action.type !== 'about') return true;
+      const c = action.value?.content || action.content || {};
+      const subject = c.about || action.author;
+      if (!subject) return true;
+      return aboutLatest.get(subject).id === action.id;
+    });
   }
 
   const qs = String(q || '').trim();
@@ -1778,11 +1844,11 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
       div({ class: 'activity-filter-grid' },
         ...[
           activityTypes.slice(0, 3),
-          activityTypes.slice(3, 6),
-          activityTypes.slice(6, 11),
-          activityTypes.slice(11, 17),
-          activityTypes.slice(17, 24),
-          activityTypes.slice(24)
+          activityTypes.slice(3, 8),
+          activityTypes.slice(8, 13),
+          activityTypes.slice(13, 19),
+          activityTypes.slice(19, 26),
+          activityTypes.slice(26)
         ].map(col =>
           div({ class: 'activity-filter-col' },
             col.map(({ type, label }) =>
