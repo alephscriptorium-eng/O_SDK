@@ -60,10 +60,17 @@
     "pub:local:maint-ui:status": "bash ./OASIS_PUB/scripts/env-run.sh .env.local maint-ui.sh status",
     "pub:local:maint-ui:logs": "bash ./OASIS_PUB/scripts/env-run.sh .env.local maint-ui.sh logs",
     "pub:local:maint-ui:urls": "bash ./OASIS_PUB/scripts/env-run.sh .env.local maint-ui.sh urls",
-    "pub:site:deploy": "bash ./GANDI_DEVOPS_FOLDER/scripts/deploy-site.sh"
+    "pub:site:deploy": "bash ./GANDI_DEVOPS_FOLDER/scripts/deploy-site.sh",
+    "skills:sync": "node scripts/sync-claude-skills.mjs",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
     "@types/node": "^24.5.2"
+  },
+  "devDependencies": {
+    "@alephscript/skills-scriptorium": "0.x",
+    "vitepress": "^1.6.4"
   }
 }
