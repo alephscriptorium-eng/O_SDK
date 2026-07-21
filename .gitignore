@@ -74,3 +74,6 @@ OASIS_CLIENT_dEV/*
 # Volcados/paste-dumps accidentales y tarballs de export (no versionar)
 Opci_n_A__*
 OASIS_PUB/*.tar.gz
+
+# VitePress build
+docs/.vitepress/dist/

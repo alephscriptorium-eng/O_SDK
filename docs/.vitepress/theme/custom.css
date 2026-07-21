@@ -1,0 +1,36 @@
+/* Procedencia: copia-release desde plantilla skill site-web (custom.css.tpl)
+   Fecha: 2026-07-21 · mundo=oasis-sdk
+   Piel zine mínima — tipografía local del sistema, monocromo, sin CDN
+   ni @import de fuentes web. */
+
+:root {
+  --zine-ink: #111111;
+  --zine-paper: #ffffff;
+  --vp-font-family-base: 'Courier New', Courier, ui-monospace, monospace;
+  --vp-font-family-mono: 'Courier New', Courier, ui-monospace, monospace;
+  --vp-c-bg: var(--zine-paper);
+  --vp-c-text-1: var(--zine-ink);
+  --vp-c-brand-1: var(--zine-ink);
+  --vp-c-brand-2: #333333;
+  --vp-c-brand-3: #000000;
+}
+
+.dark {
+  --zine-ink: #eaeaea;
+  --zine-paper: #0d0d0d;
+  --vp-c-brand-1: var(--zine-ink);
+  --vp-c-brand-2: #cccccc;
+  --vp-c-brand-3: #ffffff;
+}
+
+/* Titulares en versalitas de máquina de escribir */
+.vp-doc h1,
+.vp-doc h2 {
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+/* Enlaces del footer (fuente única B11) legibles en la piel zine */
+.VPFooter .message a {
+  text-decoration: underline;
+}
