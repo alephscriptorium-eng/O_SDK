@@ -2,9 +2,11 @@
 
 ![](./OASIS_SCRIPTORIUM_PUB.png)
 
-# Oasis
+# Oasis SDK
 
-[Tutorial para correr OASIS en Docker: acceso visita](https://escrivivir-co.github.io/alephscript-network-sdk/)  
+**🌐 Web &amp; docs: <https://o-sdk.escrivivir.co>** — **código FOSS: <https://github.com/alephscriptorium-eng/O_SDK>**
+
+[Tutorial para correr OASIS en Docker — portal de documentación](https://o-sdk.escrivivir.co)  
 
 > *Proyecto no oficial · Creado durante hackathon 2025*
 Oasis is a **libre, open-source, encrypted, peer-to-peer, distributed (not decentralized!) & federated**... project networking application 
