@@ -1,23 +1,32 @@
-# Oasis SDK
-
-Fork **dockerizado** de Oasis: una red social descentralizada sobre **SSB**
-(Secure Scuttlebutt) que corres tú, en tu máquina o en tu VPS. Sin nube, sin
-cuentas, sin servidor central. Tu identidad es una clave que solo tú tienes.
-
-Una línea: `docker compose up -d` y tienes tu nodo — cliente web, replicación
-P2P e IA local — hablando con el resto de la red.
-
-## Qué es
-
-- **Cliente + pub, misma imagen, dos modos.** El mismo contenedor sirve como
-  cliente personal (GUI web en `:3000`) o como *pub* de federación en un VPS.
-- **Identidad soberana (SSB).** Tu feed es tuyo: la clave `secret` nunca sale
-  del volumen. El log se replica desde tus pares; si pierdes el nodo, lo
-  recuperas de la red.
-- **IA local opcional.** Modelo `gguf` servido en el propio nodo (GPU si hay),
-  sin enviar nada a terceros.
-- **Fork endurecido.** *Guards* sobre el upstream para que el auto-update
-  destructivo no corra dentro de Docker; overrides de config por entorno.
+---
+layout: home
+hero:
+  name: O_SDK
+  text: Oasis dockerizado
+  tagline: |-
+    Red social P2P sobre SSB que corres tú: cliente + pub + IA local.
+    Tu nodo, tu identidad. Sin nube, sin cuentas, sin servidor central.
+  actions:
+    - theme: brand
+      text: Proyecto · DevOps
+      link: /proyecto
+    - theme: alt
+      text: Protocolo de upgrade
+      link: /PUB/UPGRADE-PROTOCOL
+    - theme: alt
+      text: Recuperación
+      link: /PUB/RECOVERY-PROTOCOL
+features:
+  - title: Cliente + Pub
+    details: Misma imagen, dos modos — GUI web personal en :3000 o pub de federación en un VPS.
+    link: /proyecto
+  - title: Identidad soberana (SSB)
+    details: Tu clave nunca sale del volumen; el log se re-replica desde la red si pierdes el nodo.
+    link: /proyecto
+  - title: Operación verificada
+    details: Protocolos de upgrade y recuperación reutilizables, probados en producción.
+    link: /PUB/UPGRADE-PROTOCOL
+---
 
 ## Empezar
 
@@ -28,20 +37,5 @@ docker compose up -d oasis-dev      # cliente + SSB + IA
 # GUI en http://localhost:3000
 ```
 
-Para desplegar un **pub** de federación en un VPS, ver
-[Proyecto · DevOps](/proyecto) y el
-[protocolo de upgrade](/PUB/UPGRADE-PROTOCOL).
-
-## Operación
-
-Dos manuales operativos, reutilizables y verificados en producción:
-
-- **[Protocolo de upgrade](/PUB/UPGRADE-PROTOCOL)** — subir el fork a una nueva
-  versión upstream sin perder identidad ni los *fork-guards*.
-- **[Protocolo de recuperación](/PUB/RECOVERY-PROTOCOL)** — recuperar repo,
-  imagen e identidad SSB tras un fallo de disco o pérdida del log.
-
----
-
-*Portal FOSS. Todo lo que se afirma aquí se puede comprobar en el
-[repositorio](https://github.com/alephscriptorium-eng/O_SDK).*
+Fork dockerizado de Oasis 0.8.8. Código **FOSS**:
+[github.com/alephscriptorium-eng/O_SDK](https://github.com/alephscriptorium-eng/O_SDK).
