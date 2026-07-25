@@ -7,7 +7,7 @@ portal — aquí va el **flujo**, no las direcciones duplicadas.
 ## Flujo: código → registry → CI → Pages
 
 1. **Código.** Fork dockerizado de Oasis en la forja. La app upstream vive bajo
-   `src/`; la capa fork (Docker, compose, entrypoint, `OASIS_PUB/`, devops) se
+   `src/`; la capa fork (Docker, compose, entrypoint, `pub/`, devops) se
    mantiene *wholesale* sobre ella.
 2. **Skills / tooling.** Las skills de agente (`@alephscript/skills-scriptorium`)
    se instalan desde el **registry privado** y se materializan a
@@ -21,8 +21,8 @@ portal — aquí va el **flujo**, no las direcciones duplicadas.
 
 | Rol | Cómo | Persistencia |
 | --- | ---- | ------------ |
-| **Cliente** | `docker compose up -d oasis-dev` | volumen `.ssb` (identidad) + modelos IA |
-| **Pub** (VPS) | `OASIS_PUB/scripts/deploy.sh` | `.ssb` del pub + backup previo obligatorio |
+| **Cliente** | `docker compose up -d oasis-client` | volumen `.ssb` (identidad) + modelos IA |
+| **Pub** (VPS) | `pub/scripts/deploy.sh` | `.ssb` del pub + backup previo obligatorio |
 
 El invariante en ambos: **preservar el `.ssb`** (la clave `secret` es la
 identidad). Todo lo demás — índices, blobs, log — es derivable y se

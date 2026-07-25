@@ -1,1 +1,0 @@
-SSH_PASSPHRASE='algo-largo-y-aleatorio' bash GANDI_DEVOPS_FOLDER/scripts/init-ssh-key.sh

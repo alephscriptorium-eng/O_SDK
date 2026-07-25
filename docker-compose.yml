@@ -1,21 +1,24 @@
 # =============================================================================
-# OASIS Docker Compose - Configuración Limpia Integrada
-# Versión unificada que integra todos los scripts nativos
+# OASIS Docker Compose — rol CLIENTE (nodo personal)
 # =============================================================================
 # Componentes:
-#   - oasis-dev: Red social descentralizada SSB
-#   - ecoin-wallet: Wallet cryptocurrency P2P ECOin
+#   - oasis-client: Red social descentralizada SSB (GUI :3000 + sbot :8008)
+#   - ecoin-wallet: Wallet cryptocurrency P2P ECOin (opcional, profile "ecoin")
+#
+# El rol PUB vive en pub/docker-compose.pub.yml (misma imagen, modo server).
 # =============================================================================
+
+name: o-sdk
 
 services:
   # ===========================================================================
   # OASIS - Red Social Descentralizada
   # ===========================================================================
-  oasis-dev:
+  oasis-client:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: oasis-server-dev
+    container_name: oasis-client
     ports:
       - "8008:8008"   # Puerto SSB
       - "3000:3000"   # Puerto cliente web
@@ -73,8 +76,9 @@ services:
   # ECOIN WALLET - Cryptocurrency P2P
   # ===========================================================================
   ecoin-wallet:
+    profiles: ["ecoin"]
     build:
-      context: ./ECOIN_DOCKERIZE
+      context: ./ecoin
       dockerfile: Dockerfile
     container_name: ecoin-wallet
     ports:
@@ -124,7 +128,7 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      o: bind
+      o: bind
       device: ./volumes-dev/ecoin-data
 
 

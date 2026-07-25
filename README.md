@@ -58,7 +58,7 @@ empaqueta en Docker para que la levantes en un comando.
 ```bash
 git clone https://github.com/alephscriptorium-eng/O_SDK.git
 cd O_SDK
-docker compose up -d oasis-dev      # cliente + SSB + IA
+docker compose up -d oasis-client      # cliente + SSB + IA
 # GUI en http://localhost:3000
 ```
 
@@ -67,7 +67,7 @@ docker compose up -d oasis-dev      # cliente + SSB + IA
 Para desplegar un **pub** de federación en un VPS:
 
 ```bash
-bash OASIS_PUB/scripts/deploy.sh
+bash pub/scripts/deploy.sh
 ```
 
 ---
@@ -82,8 +82,27 @@ operativos, reutilizables y verificados en producción:
 | [Portal (web)](https://o-sdk.escrivivir.co) | Portada + Proyecto/DevOps |
 | [Protocolo de upgrade](docs/PUB/UPGRADE-PROTOCOL.md) | Subir el fork a una versión upstream sin perder identidad ni _guards_ |
 | [Protocolo de recuperación](docs/PUB/RECOVERY-PROTOCOL.md) | Recuperar repo, imagen e identidad SSB tras un fallo de disco |
-| [GPU_SIMPLE.md](GPU_SIMPLE.md) | Configuración de GPU para la IA local |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
+
+---
+
+## 🗂 Estructura
+
+Una carpeta por responsabilidad — misma imagen, dos roles (cliente y pub):
+
+| Carpeta | Responsabilidad |
+|---------|-----------------|
+| [src/](src/) | Código Oasis (overlay 1-1 con upstream + 5 fork-guards) |
+| [client/](client/) | Rol **cliente**: identidad del usuario (GPG/SSB) y entorno local |
+| [pub/](pub/) | Rol **pub**: compose, config SSB, panel, site y scripts del nodo de federación |
+| [devops/](devops/) | Operación remota por SSH del host que corre un pub (`devops/hosts/` = instancias) |
+| [ecoin/](ecoin/) | Sub-proyecto: wallet ECOin dockerizada (opcional, profile `ecoin`) |
+| [docs/](docs/) | Portal VitePress + protocolos de operación |
+| [scripts/](scripts/) | Tooling transversal del repo (skills, parches, packaging) |
+| [archive/](archive/) | Histórico: bitácoras de sesión y transcripts (rutas pre-2026-07) |
+
+La imagen Docker se define en la raíz (`Dockerfile` + `docker-entrypoint.sh`)
+y el compose raíz levanta el rol cliente.
 
 ---
 

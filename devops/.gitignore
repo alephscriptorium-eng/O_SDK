@@ -1,0 +1,16 @@
+# Deny-by-default: en devops/ solo se versiona lo listado explícitamente.
+# Claves (.ssh/), backups/ y logs/ quedan fuera SIEMPRE.
+*
+!.gitignore
+!README.md
+!MIGRATION-2026-07.md
+!scripts/
+!scripts/**
+!docs/
+!docs/**
+!hosts/
+!hosts/**
+
+# Re-denegar material sensible dentro de las excepciones
+hosts/*/.ssh/
+hosts/*/*.local

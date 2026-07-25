@@ -17,11 +17,11 @@ Categoría pública: **red social auto-alojada (FOSS, SSB)**.
 
 | Elemento | Qué es | Imagen | Referencia real |
 | -------- | ------ | ------ | --------------- |
-| Cliente | GUI web + sbot, modo `full` | pantalla `:3000` | `docker-compose.yml` `oasis-dev` |
-| Pub | nodo de federación en VPS | terminal deploy | `OASIS_PUB/scripts/deploy.sh` |
+| Cliente | GUI web + sbot, modo `full` | pantalla `:3000` | `docker-compose.yml` `oasis-client` |
+| Pub | nodo de federación en VPS | terminal deploy | `pub/scripts/deploy.sh` |
 | Identidad | clave SSB soberana | `secret` | volumen `.ssb`, `SSB_server.js` |
 | IA local | modelo `gguf` en el nodo | prompt | `src/AI/`, `download_ai_model` |
-| ECOin | wallet P2P opcional | wallet | `ECOIN_DOCKERIZE/`, servicio `ecoin-wallet` |
+| ECOin | wallet P2P opcional | wallet | `ecoin/`, servicio `ecoin-wallet` |
 | Fork-guards | 4 divergencias vs upstream | — | ver `docs/PUB/UPGRADE-PROTOCOL.md` §2 |
 
 ## 3 · Lecturas cruzadas

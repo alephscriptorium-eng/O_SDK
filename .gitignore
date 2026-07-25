@@ -11,7 +11,7 @@ node_modules/
 volumes/
 volumes-dev/
 backups/
-OASIS_PUB/data/
+pub/data/
 
 # Logs
 logs/
@@ -25,8 +25,9 @@ temp/
 .ssb/
 **/.ssb/
 
-# Docker
-.dockerignore
+# Identidades - NUNCA versionar material de claves
+**/.ssh/
+**/.gpg/
 
 # Sistema
 .DS_Store
@@ -42,38 +43,28 @@ Thumbs.db
 .env
 .env.local
 config.local.json
-BlockchainComPort.mov
 .update_required
 packages/
 cache/
-volumes-dev
-ECOIN_DOCKERIZE/ecoin.conf
-ECOIN_DOCKERIZE/ecoin_0.0.4-1_amd64.deb
-GANDI_DEVOPS_FOLDER/*
-!GANDI_DEVOPS_FOLDER/.gitignore
-!GANDI_DEVOPS_FOLDER/README.md
-!GANDI_DEVOPS_FOLDER/scripts/
-!GANDI_DEVOPS_FOLDER/scripts/**
+ecoin/ecoin_0.0.4-1_amd64.deb
 
-OASIS_CLIENT_DEV/*
-!OASIS_CLIENT_DEV/.gitignore
-!OASIS_CLIENT_DEV/README.md
-!OASIS_CLIENT_DEV/scripts/
-!OASIS_CLIENT_DEV/scripts/**
+# devops/: deny-by-default reforzado en devops/.gitignore
+devops/backups/
+devops/logs/
+devops/hosts/*/.ssh/
+devops/hosts/*/*.local
 
-# Mismo patrón para la variante de caso real de la carpeta (con 'd' minúscula)
-OASIS_CLIENT_dEV/*
-!OASIS_CLIENT_dEV/.gitignore
-!OASIS_CLIENT_dEV/README.md
-!OASIS_CLIENT_dEV/scripts/
-!OASIS_CLIENT_dEV/scripts/**
+# client/: deny-by-default reforzado en client/.gitignore
+client/.gpg/
+client/identity/.gpg/
+client/identity/identity.env
 
 # Backups forenses de archivos dañados por el incidente NVMe (no versionar)
 *.nul-damaged-bak
 
 # Volcados/paste-dumps accidentales y tarballs de export (no versionar)
 Opci_n_A__*
-OASIS_PUB/*.tar.gz
+pub/*.tar.gz
 
 # VitePress build
 docs/.vitepress/dist/
@@ -83,3 +74,6 @@ docs/.vitepress/dist/
 .claude/skills/
 .cursor/skills/
 .openai/skills/
+
+# Python bytecode
+__pycache__/

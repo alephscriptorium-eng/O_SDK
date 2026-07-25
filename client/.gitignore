@@ -1,0 +1,14 @@
+# Deny-by-default: en client/ solo se versiona lo listado explícitamente.
+# El keyring GPG (.gpg/) y la identidad local (identity.env) NUNCA se versionan.
+*
+!.gitignore
+!README.md
+!identity/
+!identity/init-gpg-key.sh
+!identity/identity.env.example
+!scripts/
+!scripts/**
+
+# Re-denegar material sensible dentro de las excepciones
+identity/.gpg/
+identity/identity.env

@@ -33,7 +33,7 @@ features:
 ```bash
 git clone https://github.com/alephscriptorium-eng/O_SDK.git
 cd O_SDK
-docker compose up -d oasis-dev      # cliente + SSB + IA
+docker compose up -d oasis-client      # cliente + SSB + IA
 # GUI en http://localhost:3000
 ```
 

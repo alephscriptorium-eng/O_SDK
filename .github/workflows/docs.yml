@@ -32,6 +32,10 @@ jobs:
           cache: npm
       - name: Install (npm ci)
         run: npm ci
+      # El espejo .claude/skills/ NO está versionado: se materializa desde
+      # el paquete @alephscript/skills-scriptorium (package-lock manda).
+      - name: Materializar skills (gate depende de site-web)
+        run: npm run skills:sync
       - name: Build VitePress portal
         run: npm run docs:build
       - name: Verify links (gate)

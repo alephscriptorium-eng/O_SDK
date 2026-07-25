@@ -13,7 +13,7 @@ usuario auto-aloja como cliente o como pub, con IA local opcional.**
 
 - **Upstream**: KrakensLab/oasis (app SSB) ⟨`src/`⟩.
 - **El fork**: capa de dockerización + endurecimiento + operación
-  ⟨`docker-entrypoint.sh` · `OASIS_PUB/` · `GANDI_DEVOPS_FOLDER/`⟩.
+  ⟨`docker-entrypoint.sh` · `pub/` · `devops/`⟩.
 - **El usuario**: dueño de su identidad y su nodo ⟨volumen `.ssb/secret`⟩.
 
 ## 2 · A quién

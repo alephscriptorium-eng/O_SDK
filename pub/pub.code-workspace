@@ -1,0 +1,25 @@
+{
+  "folders": [
+    {
+      "name": "O_SDK",
+      "path": ".."
+    },
+    {
+      "name": "pub",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "data": true
+    },
+    "terminal.integrated.cwd": "${workspaceFolder:pub}"
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-vscode-remote.remote-ssh",
+      "ms-vscode-remote.remote-containers",
+      "ms-azuretools.vscode-docker"
+    ]
+  }
+}

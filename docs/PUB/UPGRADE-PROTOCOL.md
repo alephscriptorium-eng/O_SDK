@@ -16,7 +16,7 @@ upgrade y de lo aprendido en el ciclo 0.8.3→0.8.8.
 ## 0. Antes de nada — ¿qué hay desplegado?
 
 ```bash
-bash scripts/deploy-status.sh        # journal + pub vivo (SSH) + presencia en el directorio
+bash devops/scripts/deploy-status.sh        # journal + pub vivo (SSH) + presencia en el directorio
 ```
 
 No asumas el estado. Este comando lo dice: versión/cap/feed del pub vivo y verde/rojo(motivo).
@@ -24,7 +24,7 @@ No asumas el estado. Este comando lo dice: versión/cap/feed del pub vivo y verd
 ## 1. Preflight (check-warning)
 
 ```bash
-bash scripts/upgrade-preflight.sh    # drift de versión + drift de ciclo + estado del árbol
+bash devops/scripts/upgrade-preflight.sh    # drift de versión + drift de ciclo + estado del árbol
 ```
 
 - Compara `src/server/package.json` local vs `oasis-upstream/master`.
@@ -58,7 +58,7 @@ git checkout HEAD -- src/server/ssb_config.js src/backend/updater.js src/views/s
 | `src/configs/blockchain-cycle.json` | fork-only (marcador de ciclo; preservar) |
 
 Fuera de `src/` se mantiene **wholesale** (nunca overlay): `Dockerfile`, `docker-compose*.yml`,
-`docker-entrypoint.sh`, `scripts/patch-node-modules.js`, `OASIS_PUB/**`, `GANDI_DEVOPS_FOLDER/**`,
+`docker-entrypoint.sh`, `scripts/patch-node-modules.js`, `pub/**`, `devops/**`,
 `caddy/**`. `install.sh`/`oasis.sh` son bare-metal → sync con upstream opcional.
 
 ### Verificación de invariantes (crítica)
@@ -84,29 +84,29 @@ ls src/configs/blockchain-cycle.json              # preservado
 y `ai-models`.
 
 - **Cliente** (`docker-compose.yml`, modo `full`): `docker compose build && docker compose up -d`.
-- **Pub** (VPS): `bash OASIS_PUB/scripts/env-run.sh .env.prod deploy.sh`.
-  - **Backup previo obligatorio**: `bash GANDI_DEVOPS_FOLDER/scripts/backup-oasis-pub.sh`.
+- **Pub** (VPS): `bash pub/scripts/env-run.sh .env.prod deploy.sh`.
+  - **Backup previo obligatorio**: `bash devops/scripts/backup-oasis-pub.sh`.
   - ⚠️ **Caddy compartido**: `oasis-pub-web` frontea también los hosts de ScriptoriumVps. Para un
     upgrade de solo Oasis, reconstruir **solo el servicio de la app**
     (`docker compose -f docker-compose.pub.yml up -d --build oasis-pub`) para no recrear `pub-web`.
     Si tocas el `Caddyfile`: `caddy validate` + `caddy reload --config /dev/stdin`, **nunca**
     `restart pub-web` a ciegas.
-- El `deploy.sh` del pub **apenda al journal** (A0b) al terminar (`scripts/deploy-log.sh`).
+- El `deploy.sh` del pub **apenda al journal** (A0b) al terminar (`devops/scripts/deploy-log.sh`).
 
 ## 5. Ciclo de red — dos casos
 
 - **Mantener** (bump de versión normal): no tocar `caps.shs`/seed. Feeds/invites/identidad intactos.
 - **Rotar** (solo si el proyecto rota a un cap nuevo): editar en lockstep `caps.shs` + `autofollow.feeds`
-  en `OASIS_PUB/config/ssb/config(.local)`, `src/configs/server-config.json`, `docs/PUB/*.example` +
-  `deploy.md`, `GANDI_DEVOPS_FOLDER/scripts/pub-federation.sh` (`EXPECTED_SHS`/`SNH_FEED`),
-  `OASIS_PUB/site/index.html`; luego `pub-federation.sh announce` + `follow-solarnethub` + re-emitir
+  en `pub/config/ssb/config(.local)`, `src/configs/server-config.json`, `docs/PUB/*.example` +
+  `deploy.md`, `devops/scripts/pub-federation.sh` (`EXPECTED_SHS`/`SNH_FEED`),
+  `pub/site/index.html`; luego `pub-federation.sh announce` + `follow-solarnethub` + re-emitir
   invites. Cambiar `caps.shs` = red SSB distinta (los del cap viejo dejan de hacer handshake).
 
 ## 6. Healthcheck post-upgrade + rollback
 
 - **Cliente**: `docker ps` healthy; `/settings` muestra la versión nueva; AI `:4001` responde;
   enviar+descargar un fileShare por `/pm/file`; `whoami` = mismo feed id.
-- **Pub**: `bash scripts/deploy-status.sh` → contenedor healthy, `caps.shs` OK, feed id sin cambios;
+- **Pub**: `bash devops/scripts/deploy-status.sh` → contenedor healthy, `caps.shs` OK, feed id sin cambios;
   `pub:invite` funciona (canario del override `OASIS_SERVER_CONFIG_OVERRIDE`).
 - **Discoverability** (aparte): para pasar a verde en el directorio hace falta **follow-back** de un
   pub raíz (redimir invite de La Plaza / pedir follow). Progreso: `followersBack` sube de 0.
@@ -116,5 +116,5 @@ y `ai-models`.
 ## 7. Cierre — registrar
 
 `deploy-status.sh` debe mostrar la versión nueva y el pub healthy en su cap. El journal
-(`GANDI_DEVOPS_FOLDER/logs/deploy-history.jsonl`) tiene la línea del deploy. Si se rotó ciclo o se
+(`devops/logs/deploy-history.jsonl`) tiene la línea del deploy. Si se rotó ciclo o se
 consiguió follow-back, re-`announce` y verificar la fila de `pub.escrivivir.co` en el directorio.

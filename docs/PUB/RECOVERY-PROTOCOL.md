@@ -81,9 +81,9 @@ git ... commit-tree $WTREE -p <base> -m "recover: ..." && git ... update-ref ...
 
 ```bash
 # SIEMPRE desde un árbol verificado (el working tree dañado hornea el daño en la imagen)
-docker compose build oasis-dev
+docker compose build oasis-client
 docker rm <contenedor-viejo>           # los datos viven en los bind mounts, no se pierden
-docker compose up -d oasis-dev
+docker compose up -d oasis-client
 ```
 
 - Un `docker-compose.override.yml` (no versionado) permite apuntar los bind-volumes al
@@ -107,7 +107,7 @@ Secuencia correcta:
 #    y borrar socket y manifest.json residuales.
 
 # 2) Arrancar sbot PURO (sin GUI → nada puede publicar):
-docker compose run -d --rm --no-deps --entrypoint "" --name oasis-sync-only oasis-dev \
+docker compose run -d --rm --no-deps --entrypoint "" --name oasis-sync-only oasis-client \
   sh -c 'export HOME=/home/oasis SSB_PATH=/home/oasis/.ssb; cd /app/src/server && node SSB_server.js start'
 
 # 3) Vigilar la re-replicación (termómetro = log.offset creciendo):
@@ -121,7 +121,7 @@ watch stat -c%s volumes-dev/ssb-data/flume/log.offset
 
 # 5) Solo entonces: parar el sbot puro y arrancar la GUI normal.
 #    Su auto-publish caerá en seq N+1 = continuación legítima, sin fork.
-docker stop oasis-sync-only && docker start oasis-server-dev
+docker stop oasis-sync-only && docker start oasis-client
 ```
 
 **Tips de diagnóstico SSB:**
@@ -145,7 +145,7 @@ docker stop oasis-sync-only && docker start oasis-server-dev
 - Log local en el mismo seq que el pub (paso 4.4) y mensajes nuevos apendizando en seq
   siguientes (sin errores de fork en logs).
 - Perfil con nombre y avatar visibles.
-- Anotar en el journal (`GANDI_DEVOPS_FOLDER/logs/deploy-history.jsonl`) qué se restauró,
+- Anotar en el journal (`devops/logs/deploy-history.jsonl`) qué se restauró,
   desde qué fuente y hasta qué seq.
 
 ## 6. Después: reducir la superficie de la próxima
