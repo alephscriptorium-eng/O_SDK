@@ -10,6 +10,7 @@
 
 | fecha | nota | tema |
 | ----- | ---- | ---- |
+| 2026-07-26 00:50 | [`notas/NOTA-O-2026-07-26-lugar-en-la-ciudad.md`](notas/NOTA-O-2026-07-26-lugar-en-la-ciudad.md) | **asiento de ronda**: lugar de O en La Ciudad (hipótesis), uso de piezas z-sdk por cubos, dudas Z1-Z3 / G1-G6 / P1 y ◆ O-D1, O-D2 para el Anfitrión |
 | 2026-07-26 00:24 | [`notas/NOTA-O-2026-07-26-timbre-estacion.md`](notas/NOTA-O-2026-07-26-timbre-estacion.md) | tick T-O1 ejecutado: timbre + estación v0 + PING a S · GO-GIT-O local |
 | 2026-07-25 21:25 | [`notas/NOTA-SINCRONIA-O-V-2026-07-25.md`](notas/NOTA-SINCRONIA-O-V-2026-07-25.md) | sincronía O ↔ V · congelar interfaz `aleph0.*` + contrato Z v1 + puertos LAN · P1–P3 abiertas a V |
 
