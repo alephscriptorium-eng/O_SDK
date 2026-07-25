@@ -77,3 +77,9 @@ OASIS_PUB/*.tar.gz
 
 # VitePress build
 docs/.vitepress/dist/
+
+# Skills: espejo derivado del paquete (@alephscript/skills-scriptorium)
+# Fuente de verdad: node_modules/.../skills/ — regenerar con npm run skills:sync
+.claude/skills/
+.cursor/skills/
+.openai/skills/

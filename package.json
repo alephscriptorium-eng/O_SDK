@@ -61,7 +61,8 @@
     "pub:local:maint-ui:logs": "bash ./OASIS_PUB/scripts/env-run.sh .env.local maint-ui.sh logs",
     "pub:local:maint-ui:urls": "bash ./OASIS_PUB/scripts/env-run.sh .env.local maint-ui.sh urls",
     "pub:site:deploy": "bash ./GANDI_DEVOPS_FOLDER/scripts/deploy-site.sh",
-    "skills:sync": "node scripts/sync-claude-skills.mjs",
+    "skills:sync": "alephscript-skills-sync --runtime claude && alephscript-skills-sync --runtime cursor",
+    "postinstall": "alephscript-skills-sync --runtime claude && alephscript-skills-sync --runtime cursor",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs"
   },
@@ -70,7 +71,7 @@
     "@types/node": "^24.5.2"
   },
   "devDependencies": {
-    "@alephscript/skills-scriptorium": "0.x",
+    "@alephscript/skills-scriptorium": "0.11.0",
     "vitepress": "^1.6.4"
   }
 }

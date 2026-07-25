@@ -15,6 +15,12 @@ publicable.
 | `mundo.registry` | `(ninguno en el ejemplo)` |
 | `mundo.ceguera` | `nexo-secreto\|atlas-interno` |
 | `mundo.lexico_no` | `milicia\|municiones` |
+| `mundo.brand.footer` | `nexo-atlas · fixture` |
+| `mundo.brand.license` | `/licencia` |
+| `mundo.brand.favicon` | `/favicon.ico` + `/favicon.png` (head) |
+
+Pack marca: ver `reference/pack-marca.md`. Banner opcional en la
+fixture (sin inventar bytes de imagen).
 
 ## Cómo usar
 

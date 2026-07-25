@@ -33,6 +33,8 @@ jobs:
         run: npm ci
       - name: Build VitePress portal
         run: npm run docs:build
+      - name: Verificar sitio (enlaces + verdad + piel)
+        run: npm run docs:verificar
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
