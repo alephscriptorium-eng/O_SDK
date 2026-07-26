@@ -1,155 +1,43 @@
-# DRAFT · borrador de backlog — carril O
+# DRAFT · carril O — **puente al backlog real**
 
 | dato | valor |
 | ---- | ----- |
 | Emisor | **O** · `WORLD_ROOT = C:\S_LAB\o-sdk` |
-| Rango | **borrador** (§9.5) — nada se encola sin check final del custodio |
-| Fuente normativa | `INFORME-R3.md` (R2 → [cita inerte]) |
-| Compactado | 2026-07-26 · GATE POST-R3 — sustituye, no acumula (§2.d) |
-
-## Nuevo de R3 que toca a O
-
-- ◆ **Pregunta de Z a O + custodio**: ¿el ancla (git/rad/IPFS) **sustituye**
-  al volumen o lo **alimenta**? El contrato de montaje asume lo segundo, y
-  el firehose es **flujo**, no artefacto — hay que decidir **unidad de
-  anclaje antes de tocar transporte**. O responde en su próximo tick.
-- **CERCO EXTERIOR** (§10.8, asiento nuevo): los world_roots no cargan
-  recursos externos; se importa **una vez** y queda todo dentro de `C:\S` +
-  `C:\S_LAB`. URLs externas = metadato inerte. **Aplica a mi diseño**: nada
-  de anclas vivas (git/rad/IPFS) como dependencia de arranque. Esto acota
-  `O-b` — el seed web de rad no puede ser prerequisito de que la demo
-  levante.
-- **VOLUMES**: verificado por dos vías que en el lab **no hay datos reales
-  montados** (solo fixtures). La fuente histórica existe y está censada, con
-  ⚠️ drift de envase y `registry.yaml` stale → tratar el registry como
-  incompleto antes de importar. Cierra mi `O-e` como duda: ya no es «¿hay
-  algo montado?» sino **porte one-off** (`Z-D8`) + anclaje (`Z-D9`).
-- **Canal de packs `Z-D6`**: reencuadrado; **O es consumidor, no decide
-  canal**. Lo que O necesita del resultado: el contrato de import al root
-  cercado.
-- **Relay**: el modelo de O **se sostiene** contra la obra de Z (el contenido
-  no se puede tocar; sí el sobre). Dos avisos vivos: **corte silencioso**
-  (mi riesgo #1 realizado → cubierto por el punto 5 de `CA-ANTI-AUTORIDAD`)
-  y **colapso de identidad** en el bridge (`Z-D7`, material del hilo
-  peercard).
+| Estado | **puente** (INFORME-R4 §2.5) — el borrador ya no vive aquí |
+| Backlog real | **[`plan/BACKLOG.md`](../plan/BACKLOG.md)** |
+| Fuente normativa | `INFORME-R4.md` · consenso H-01 sellado |
 
 ---
 
-## Candidatos vivos
+Este fichero deja de ser el borrador de O. El backlog proyectado —10 lanes,
+64 WPs con BRIEF y CA tentativo— vive en `plan/BACKLOG.md`, que es el
+gobierno del mundo.
 
-### WP-O01 · Entrada real al grafo (edificio-2, arista A2 `O → Z`) — `BLOQUEA:`
+| lane | qué cubre | WPs |
+| ---- | --------- | --- |
+| **L0** | gobierno y método (plan, mapas, ceguera, estación) | 6 |
+| **L1** | el **nodo**: modelo, relay, zonas, anuncio, observabilidad | 9 |
+| **L2** | playground · molde local · env único · compose · offline | 7 |
+| **L3** | volúmenes: montaje, separación física, drivers, import | 10 |
+| **L4** | superficies: hackería · parlamento · node-red · Admin UI | 6 |
+| **L5** | pub / L1 permanente: blobstore, cristalización, panel | 5 |
+| **L6** | soberanía: forja, seed web, imágenes, CI propio | 6 |
+| **L7** | seguridad y deuda: gate de claves, cuenta anulada, edge | 6 |
+| **L8** | upstream del fork: protocolo, parches, devolución | 4 |
+| **L9** | horizonte: instancia remota, LAN→WAN, segundo nodo | 5 |
 
-`BLOQUEA:` el **holón-7** — convergencia de los 6 según cherry-pick R2 §1.
-Grafo hoy **0/7 marcas**.
+Prioridad: **P0** 11 · **P1** 32 · **P2** 21.
 
-- **Alcance**: entrar de verdad con cliente MCP y marcar **solo mi fila**
-  con evidencia literal (ruta/log, no prosa).
-- **Política de nodo** (asiento R2 §2.a, cerrado): **apertura anónima
-  base + peercard opt-in**. El nodo no convierte la card en requisito.
-- **CA**: fila O marcada con evidencia verificable · modalidad de entrada
-  declarada · el contrato de O admite ambas vías · cero marca sin entrada
-  real (falsedad de interfaz).
-- **Necesita**: tick + ficha Z-runtime (§4: prerequisito de marcas honestas)
-  — endpoint del nodo y qué cliente MCP usa O.
+Trazabilidad de los antiguos candidatos `O-a`…`O-j` → tabla al final de
+`plan/BACKLOG.md`. Nada se perdió; uno se retiró con motivo escrito.
 
-### WP-O02 · Contrato de los 3 servicios del grafo en LAN (docs-only)
+## Deudas de O con la mesa (siguen vivas, ahora como WP)
 
-Consume la ficha Z-runtime cuando llegue; prepara el terreno de O sin
-programar (§régimen: crear backlog, no código).
-
-- **Alcance**: por servicio — comando · puerto/env · disco · dependencia de
-  arranque · relación con peercard. Sin compose escrito.
-- **CA**: tabla sin `<pendiente>` inventados; los huecos se marcan.
-- **Necesita**: ficha de Z (§4). No bloquea a nadie hoy.
-
-### WP-O03 · ~~Patrón de contenedor genérico~~ — **RETIRADO por O**
-
-Abstracción de infra que no nacía de obra de Zeus. Sustituido por el foco
-de la nota vigente: hackería · parlamento · node-red + Admin UI. Regla:
-*o-sdk se adapta y crece con z-sdk, no al revés.*
-
-### WP-O-j · Modelo nodo/pub/relay + reconciliación + WebRTC — `BLOQUEA:`
-
-`BLOQUEA:` el diseño de O entero. Sin este modelo cerrado, hackería,
-parlamento y node-red se construirían sobre supuestos de transporte.
-Proyectado por tick R4-O en tres puntos.
-
-**j.1 · Modelo nodo / pub / relay + WebRTC**
-
-- **Alcance**: escribir el modelo operativo con el vocabulario ya corregido
-  por auditoría — barrio y ciudad son **pubs L2** de encuentro, relay,
-  reconciliación y reenganche; **no** padres obligatorios ni escalones de
-  mando. Un edificio puede publicar directo, federar en horizontal o ampliar
-  alcance vía pubs L2: **no hay camino obligatorio**. Incluye las dos vías de
-  señalización WebRTC ya existentes en Z (`@zeus/rooms` + socket-server en L2;
-  DMs SSB `webrtc-signal` mediando ciphertext sin signaling dedicado) y el
-  papel de STUN/TURN como facilitadores **sin autoridad**.
-- **CA**: cero uso de «jerarquía» como cadena de mando (solo composición de
-  ámbitos) · las dos vías de señalización descritas y trazadas a su evidencia
-  · STUN/TURN declarados como facilitación, no como control · el modelo no
-  presupone que el VPS sea autoridad por co-ubicar servicios.
-- **Necesita**: validación de mesa (Z+S+G+O). ⏳ verificación operativa
-  contra sbot vivo y coturn sigue pendiente en Z — **no la doy por hecha**.
-
-**j.2 · CA anti-autoridad-por-topología**
-
-Criterio de aceptación transversal: **ninguna pieza de O puede convertir una
-posición en la red en poder sobre otros.** Se verifica, no se declara:
-
-```
-CA-ANTI-AUTORIDAD (se comprueba en cualquier entregable de O)
-  1. Dos nodos que se alcanzan siguen hablando si cae cualquier tercero
-     → si no, hay nodo obligatorio = árbol con dueño.
-  2. El transporte no exige credencial: apertura anónima base sigue viva
-     → fail-closed aplica a CAPACIDADES, no al cable.
-  3. Ningún relay reescribe payload; solo ámbito (zona/scope).
-  4. Ningún pub L2 emite ni eleva credenciales por el hecho de transportar.
-  5. Toda decisión de relay deja rastro observable (Admin UI).
-```
-
-- **CA**: los 5 puntos comprobables con un caso positivo y uno negativo
-  (control), no por inspección de intenciones.
-- **Corrección de vocabulario adoptada**: no emite «cada nivel» — emite cada
-  **contexto de autoridad** que conceda capacidades limitadas.
-
-**j.3 · U93 como dependencia de Z** — ⛔ discrepancia registrada
-
-- **Hecho**: el torno de `@zeus/webrtc-signaling` (`peer-card-gate.mjs`,
-  WP-U93) **exige peer-card** para `room-join`, offer, answer e ICE.
-- **Choque**: la política normativa de R2 §2.a es **apertura anónima base +
-  peer-card opt-in**. Tal como está, la card habilita el cable — exactamente
-  la falsa equivalencia entre conectividad y permiso que el CA de j.2 prohíbe.
-- **O no diseña sobre esto hasta que Z se pronuncie.** Lo que O necesita de Z:
-  cómo se separan (a) transporte y signaling anónimos, (b) capacidades
-  privilegiadas por opt-in, (c) verificación fuerte **cuando** haya card.
-- **Dependencia dura**: j.1 y j.2 no cierran sin la respuesta de Z sobre U93.
-  Registrado como discrepancia de facto, no como decisión.
-
-### Candidatos abiertos por la nota vigente
-
-`O-a` gate de claves · `O-b` Forgejo + remote rad + seed web · `O-c`
-fichero de env de la demo · `O-d` UI de edición (**V**) · `O-e` inventario
-de juegos con datos (duda de equipo) · `O-f` molde local · `O-g` hackería ·
-`O-h` parlamento · `O-i` node-red + Admin UI · `O-j` modelo de nodo.
-Detalle y dependencias: `notas/NOTA-O-2026-07-26-consensuada.md` §G.
-
----
-
-## Cerrado — no se re-abre ni se re-pregunta
-
-| qué | dónde quedó |
-| --- | ----------- |
-| WP-O02 anterior (bitácora en CUADERNOS) | ✅ hecho · `o_sdk-vigilancia` `9b94422` · gate §10.5 cumplido (R2 §1) |
-| Vía de peercard | R2 §2.a — anónimo base, card opt-in |
-| Nombre de rama | R2 §3 — patrón `<mundo>-vigilancia` |
-| R-1 (falso positivo regla 15) | R2 §3 — registrado; watchers parados; fix va al porte del skill (L) |
-| Emisor de peercard / env central | resuelto en R1, vigente |
-
-## En espera (no son candidatos míos)
-
-- **REFACTOR O↔V**: decidido (R2 §2.b); lo emite V y se propaga a O. Hasta
-  entonces **nadie mueve claves, puertos ni contrato** — mi P1 a V queda
-  absorbida por este asiento y la retiro como duda propia.
-- **Watchers**: parados por asiento R2 §2.c. El custodio es el timbre.
+| deuda | WP |
+| ----- | -- |
+| **T5** ¿el ancla sustituye o alimenta? (compromiso R4 §1) | `WP-O35` |
+| **T6** representación local de FIREHOSE | `WP-O34` |
+| **T9** verificación de réplica por un tercero | `WP-O37` |
+| **U93** transporte vs permiso (⛔ dep. Z) | `WP-O13` |
 
 — **O**
