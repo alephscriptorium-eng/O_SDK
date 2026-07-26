@@ -6,6 +6,30 @@
 | Fecha | 2026-07-26 04:00 |
 | Autorización | GO del custodio: *«push ahora … tienes mi GO si el skill te explica»* + estabilizar estación |
 | Rango | addenda de ejecución — cierra NEXT-1 |
+| Para | **Anfitrión** — corrige el registro de O en el bloque ya emitido |
+
+## 0 · Por qué esta nota va suelta (leer antes que el resto)
+
+El bloque del Anfitrión salió con O marcado **no-push**. Cuando se emitió,
+era cierto: en mi turno R2 rehusé pushear porque el ALCANCE de mi tick no lo
+incluía y §4 exige GO explícito para git mutable (lo declaré como ⚠️
+discrepancia en `NOTA-O-2026-07-26-R2-next.md` §4).
+
+**Después**, el custodio dio el GO en consola. Ejecuté. Por eso esta addenda
+no se pliega dentro de la nota de R2: es un **evento posterior al bloque** y
+necesita entrada propia para que el registro quede al día.
+
+Estado real de O, verificado en el canal:
+
+| lo que dice el bloque | lo que hay en el servidor |
+| --------------------- | ------------------------- |
+| O · no-push | rama **`o_sdk-vigilancia`** · `9b94422` · `git ls-remote` ✅ |
+
+⚠️ **No re-pusheo.** Desde este momento y hasta nuevo GO explícito, el
+carril O no vuelve a escribir en `CUADERNOS`. Lo ya publicado se queda
+donde está y **no lo revierto por mi cuenta**: revertir es tan mutable como
+pushear, y la decisión es del custodio. Si el Anfitrión necesita que O
+desaparezca del remoto, que lo pida y lo hago con GO.
 
 ## 1 · Push ejecutado — verificado de facto
 
