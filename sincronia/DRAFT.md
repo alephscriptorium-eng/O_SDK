@@ -42,6 +42,63 @@ Abstracción de infra que no nacía de obra de Zeus. Sustituido por el foco
 de la nota vigente: hackería · parlamento · node-red + Admin UI. Regla:
 *o-sdk se adapta y crece con z-sdk, no al revés.*
 
+### WP-O-j · Modelo nodo/pub/relay + reconciliación + WebRTC — `BLOQUEA:`
+
+`BLOQUEA:` el diseño de O entero. Sin este modelo cerrado, hackería,
+parlamento y node-red se construirían sobre supuestos de transporte.
+Proyectado por tick R4-O en tres puntos.
+
+**j.1 · Modelo nodo / pub / relay + WebRTC**
+
+- **Alcance**: escribir el modelo operativo con el vocabulario ya corregido
+  por auditoría — barrio y ciudad son **pubs L2** de encuentro, relay,
+  reconciliación y reenganche; **no** padres obligatorios ni escalones de
+  mando. Un edificio puede publicar directo, federar en horizontal o ampliar
+  alcance vía pubs L2: **no hay camino obligatorio**. Incluye las dos vías de
+  señalización WebRTC ya existentes en Z (`@zeus/rooms` + socket-server en L2;
+  DMs SSB `webrtc-signal` mediando ciphertext sin signaling dedicado) y el
+  papel de STUN/TURN como facilitadores **sin autoridad**.
+- **CA**: cero uso de «jerarquía» como cadena de mando (solo composición de
+  ámbitos) · las dos vías de señalización descritas y trazadas a su evidencia
+  · STUN/TURN declarados como facilitación, no como control · el modelo no
+  presupone que el VPS sea autoridad por co-ubicar servicios.
+- **Necesita**: validación de mesa (Z+S+G+O). ⏳ verificación operativa
+  contra sbot vivo y coturn sigue pendiente en Z — **no la doy por hecha**.
+
+**j.2 · CA anti-autoridad-por-topología**
+
+Criterio de aceptación transversal: **ninguna pieza de O puede convertir una
+posición en la red en poder sobre otros.** Se verifica, no se declara:
+
+```
+CA-ANTI-AUTORIDAD (se comprueba en cualquier entregable de O)
+  1. Dos nodos que se alcanzan siguen hablando si cae cualquier tercero
+     → si no, hay nodo obligatorio = árbol con dueño.
+  2. El transporte no exige credencial: apertura anónima base sigue viva
+     → fail-closed aplica a CAPACIDADES, no al cable.
+  3. Ningún relay reescribe payload; solo ámbito (zona/scope).
+  4. Ningún pub L2 emite ni eleva credenciales por el hecho de transportar.
+  5. Toda decisión de relay deja rastro observable (Admin UI).
+```
+
+- **CA**: los 5 puntos comprobables con un caso positivo y uno negativo
+  (control), no por inspección de intenciones.
+- **Corrección de vocabulario adoptada**: no emite «cada nivel» — emite cada
+  **contexto de autoridad** que conceda capacidades limitadas.
+
+**j.3 · U93 como dependencia de Z** — ⛔ discrepancia registrada
+
+- **Hecho**: el torno de `@zeus/webrtc-signaling` (`peer-card-gate.mjs`,
+  WP-U93) **exige peer-card** para `room-join`, offer, answer e ICE.
+- **Choque**: la política normativa de R2 §2.a es **apertura anónima base +
+  peer-card opt-in**. Tal como está, la card habilita el cable — exactamente
+  la falsa equivalencia entre conectividad y permiso que el CA de j.2 prohíbe.
+- **O no diseña sobre esto hasta que Z se pronuncie.** Lo que O necesita de Z:
+  cómo se separan (a) transporte y signaling anónimos, (b) capacidades
+  privilegiadas por opt-in, (c) verificación fuerte **cuando** haya card.
+- **Dependencia dura**: j.1 y j.2 no cierran sin la respuesta de Z sobre U93.
+  Registrado como discrepancia de facto, no como decisión.
+
 ### Candidatos abiertos por la nota vigente
 
 `O-a` gate de claves · `O-b` Forgejo + remote rad + seed web · `O-c`

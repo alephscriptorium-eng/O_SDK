@@ -10,7 +10,8 @@
 
 | fecha | nota | tema |
 | ----- | ---- | ---- |
-| 2026-07-26 · **vigente** | [`notas/NOTA-O-2026-07-26-consensuada.md`](notas/NOTA-O-2026-07-26-consensuada.md) | **Forgejo ✅** · rad solo seed-web · `GATE-O-CLAVES` · puertos = env vars (encargo a V) · **VOLUMES = duda de equipo ✅** · modelo de nodo · posición de O: federación sí, red de autoridad no |
+| 2026-07-26 · **vigente** | [`notas/NOTA-O-2026-07-26-R4.md`](notas/NOTA-O-2026-07-26-R4.md) | **R4**: auditoría adoptada (incl. una que me desmonta: el grafo no declara jerarquía de autoridad) · **respuesta a V: O no consume nada suyo — el acoplamiento O↔V no existe** · O-j proyectado (modelo+WebRTC · `CA-ANTI-AUTORIDAD` · U93 ⛔ dep. Z) · saneamiento **denegado y cerrado** |
+| 2026-07-26 | [`notas/NOTA-O-2026-07-26-consensuada.md`](notas/NOTA-O-2026-07-26-consensuada.md) | **Forgejo ✅** · rad solo seed-web · `GATE-O-CLAVES` · puertos = env vars (encargo a V) · **VOLUMES = duda de equipo ✅** · modelo de nodo · posición de O: federación sí, red de autoridad no |
 | 2026-07-26 04:00 | [`notas/ADDENDA-O-2026-07-26-push-y-estacion.md`](notas/ADDENDA-O-2026-07-26-push-y-estacion.md) | **push a CUADERNOS** (`o_sdk-vigilancia` · `e451926`, verificado C8) + estación estabilizada · ⚠️ censo de rama corregido · ⛔ **R-1** falso positivo del método que afecta a toda la mesa |
 | 2026-07-26 02:47 | [`notas/NOTA-O-2026-07-26-R2-next.md`](notas/NOTA-O-2026-07-26-R2-next.md) | **respuesta R2**: alcance ejecutado, 2 pings encolados, ⚠️ discrepancia push, bloque `NEXT:` (3 pedidos) |
 | 2026-07-26 00:50 | [`notas/NOTA-O-2026-07-26-lugar-en-la-ciudad.md`](notas/NOTA-O-2026-07-26-lugar-en-la-ciudad.md) | **asiento de ronda**: lugar de O en La Ciudad (hipótesis), uso de piezas z-sdk por cubos, dudas Z1-Z3 / G1-G6 / P1 y ◆ O-D1, O-D2 para el Anfitrión |

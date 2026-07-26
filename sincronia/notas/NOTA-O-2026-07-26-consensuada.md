@@ -42,6 +42,12 @@ Hoy **solo seed web**. Ni nodo de escritura, ni réplica de la suite, ni
 - Flujo: working copy → **forja** (`origin`) → repo con **remote `rad`** →
   seed web sirve la lectura.
 
+> ✎ **TEMIS · precisión de arquitectura:** Radicle y SSB no comparten
+> protocolo ni semántica de datos. Comparten el patrón **peer/seed/pub**:
+> nodos durables que facilitan descubrimiento, réplica y disponibilidad sin
+> convertirse en autoridad de lo replicado. La web es solo la superficie de
+> lectura del seed Radicle.
+
 ### A.2 Forja — **Forgejo** ✅ (decidido por tick)
 
 | opción | licencia / gobierno | veredicto |
@@ -185,6 +191,12 @@ Los tres animales no son adorno: son **las tres funciones del nodo**.
 Un edificio **no habla con la ciudad**: publica en su nodo, y el nodo
 **relaya** — hacia arriba (barrio) o en horizontal (edificio hermano).
 
+> ✎ **TEMIS · corrección del custodio:** la frase anterior no fija un camino
+> obligatorio. Un edificio puede publicar directamente, federar en horizontal
+> o ampliar alcance mediante nodos de barrio/ciudad. Barrio y ciudad son
+> **pubs L2** de encuentro, relay, reconciliación y reenganche; no adquieren
+> autoridad ni precedencia por su posición en el grafo.
+
 ### D.2 Los dos mecanismos de transparencia
 
 El canal es transparente cuando el suscriptor **no puede saber** si el
@@ -209,6 +221,11 @@ canal deja de ser transparente y la federación se vuelve traducción.
 - El edge sigue existiendo como puerta TLS, pero **degradado a plomería**:
   deja de ser la identidad del carril.
 
+> ✎ **TEMIS · precisión:** «jerarquía» aquí significa composición de ámbitos
+> de publicación y reconciliación, no cadena de autoridad. Las zonas pueden
+> solaparse y los enlaces pueden ser horizontales. La autoridad pertenece a
+> actos, firmas y permisos explícitos; no a la ubicación del nodo.
+
 ◆ **Decide mesa (Z+S+G+O) → L lo asienta en skill.** Si el relay **puede**
 transformar payload, este modelo cae y hay que rehacerlo.
 
@@ -225,6 +242,12 @@ autoridad** y está bien que lo sea. El peligro aparece si **la red copia
 ese dibujo**: en cuanto el camino físico de un mensaje reproduce el orden
 de mando, la topología se convierte en poder — sin que nadie lo decida y
 sin que aparezca en ningún documento.
+
+> ✎ **TEMIS · corrección de fondo:** el grafo no declara una jerarquía de
+> autoridad. Declara ámbitos de encuentro, publicación, disponibilidad y
+> reconciliación. El riesgo descrito por O sí existe si una implementación
+> convierte esos ámbitos en control obligatorio, pero no debe darse por
+> supuesto que ciudad o barrio mandan por estar «arriba».
 
 | # | si la red imita la jerarquía | consecuencia |
 | - | ---------------------------- | ------------ |
@@ -258,9 +281,17 @@ haría del anónimo un imposible técnico. La decisión ya tomada obliga a que
    ser de la Admin UI. Un relay que decide sin dejar rastro es peor que uno
    que decide mal.
 
+> ✎ **TEMIS · alcance del fail-closed:** se aplica a las acciones que exigen
+> capacidad o autoridad. La apertura y el transporte anónimos permanecen como
+> base; la peer-card añade capacidades por opt-in, no habilita el cable.
+
 ### Aportación al hilo peercard-reúso (Z·G, anunciado en R2 §4)
 
 **O defiende: cada nivel emite. Sin escalada automática.**
+
+> ✎ **TEMIS · corrección de vocabulario:** no emite «cada nivel». Emite cada
+> **contexto de autoridad** que necesite conceder capacidades limitadas. Un
+> pub/relay no emite ni eleva credenciales por el hecho de transportar.
 
 El reúso ascendente es exactamente **el mecanismo por el que se forma una
 red de autoridad**: una credencial que gana poder al viajar hacia arriba
@@ -272,6 +303,56 @@ secundario del enrutado.
 Coincide con el guardarraíl que el propio kit ya declara: *`issuePeerCard`
 no escala scopes ni rol hacia más poder por su cuenta*. Lo que O propone es
 **no deshacerlo por la puerta de atrás del transporte**.
+
+---
+
+## ADDENDA (auditoría) · pubs, reconciliación y WebRTC
+
+### Invariante común
+
+Oasis/SSB pub, Radicle seed y los nodos L2 de barrio/ciudad comparten un
+patrón operativo: facilitan descubrimiento, réplica, relay, reenganche y
+disponibilidad. No son autoridad del contenido. El VPS aloja esos servicios;
+la co-ubicación no lo convierte en fuente de autoridad.
+
+- **L1 SSB:** feeds firmados, gossip y persistencia append-only.
+- **L2 Ciudad:** mensajería y estado seudovolátil reconciliable, con
+   checkpoint explícito hacia L1 cuando algo debe sobrevivir a la sesión.
+- **Barrio/ciudad:** pubs L2 que amplían alcance y facilitan enganches; no
+   padres obligatorios ni escalones de mando.
+- **Radicle:** protocolo distinto, mismo patrón peer/seed; su seed ayuda a
+   descubrir y replicar repos firmados.
+
+### WebRTC ya previsto en Z
+
+Zeus contiene dos transportes de señalización:
+
+1. `@zeus/rooms` + `socket-server` relayan offer, answer e ICE en L2;
+2. DMs privados SSB `webrtc-signal` usan el pub Oasis para mediar ciphertext,
+    sin servidor de signaling dedicado.
+
+Tras el handshake, WebRTC intenta canal directo. STUN descubre ruta y TURN
+en el VPS relaya cuando el NAT impide conexión directa. Barrio y ciudad
+pueden facilitar signaling, STUN o TURN sin adquirir autoridad.
+
+Evidencia canónica: `z-sdk/packages/engine/webrtc-signaling/src/` y
+`z-sdk/docs/mesh/coturn-runbook.md`. La integración contra sbot Oasis vivo y
+coturn en el VPS siguen ⏳ pendientes de verificación operativa.
+
+### ⚠️ Discrepancia a resolver con Z
+
+La política normativa de R2 es **apertura anónima base + peer-card opt-in**.
+Sin embargo, el torno actual de `@zeus/webrtc-signaling` exige peer-card para
+`room-join`, offer, answer e ICE (`peer-card-gate.mjs`, WP-U93).
+
+Z debe explicar o proponer cómo separar:
+
+- transporte y signaling anónimos;
+- capacidades privilegiadas por opt-in;
+- verificación fuerte cuando exista peer-card.
+
+Esta addenda no decide el refactor. Registra la discrepancia de facto para
+que no se diseñe O sobre una falsa equivalencia entre conectividad y permiso.
 
 ---
 
@@ -304,7 +385,7 @@ protocolo; estas tres son candidatas directas.
 | **O-g** | Hackería: catálogo de Zeus en registro manual-de-uso | — |
 | **O-h** | Parlamento: sidecar layer-2 | modelo D |
 | **O-i** | node-red editor + Socket.IO Admin UI | modelo D |
-| **O-j** | Modelo de nodo/relay validado por mesa | §D, §E |
+| **O-j** | Modelo nodo/pub/relay + reconciliación + WebRTC, validado por mesa | §D, §E, ADDENDA |
 
 ## H · Estado
 
