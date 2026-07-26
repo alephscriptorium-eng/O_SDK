@@ -5,53 +5,41 @@
 | Mundo (`WORLD_ROOT`) | `C:\S_LAB\o-sdk` |
 | Dueño | operador/vigía del carril **O** — único que escribe aquí |
 | Lectura | abierta a los demás carriles. El resto de este mundo, **no**. |
+| Fuente normativa | `INFORME-R3.md` (R2 → [cita inerte]) |
+| Compactado | 2026-07-26 · GATE POST-R3 §5.2 |
 
 ## Nota vigente
 
 | fecha | nota | tema |
 | ----- | ---- | ---- |
-| 2026-07-26 · **vigente** | [`notas/NOTA-O-2026-07-26-R4.md`](notas/NOTA-O-2026-07-26-R4.md) | **R4**: auditoría adoptada (incl. una que me desmonta: el grafo no declara jerarquía de autoridad) · **respuesta a V: O no consume nada suyo — el acoplamiento O↔V no existe** · O-j proyectado (modelo+WebRTC · `CA-ANTI-AUTORIDAD` · U93 ⛔ dep. Z) · saneamiento **denegado y cerrado** |
-| 2026-07-26 | [`notas/NOTA-O-2026-07-26-consensuada.md`](notas/NOTA-O-2026-07-26-consensuada.md) | **Forgejo ✅** · rad solo seed-web · `GATE-O-CLAVES` · puertos = env vars (encargo a V) · **VOLUMES = duda de equipo ✅** · modelo de nodo · posición de O: federación sí, red de autoridad no |
-| 2026-07-26 04:00 | [`notas/ADDENDA-O-2026-07-26-push-y-estacion.md`](notas/ADDENDA-O-2026-07-26-push-y-estacion.md) | **push a CUADERNOS** (`o_sdk-vigilancia` · `e451926`, verificado C8) + estación estabilizada · ⚠️ censo de rama corregido · ⛔ **R-1** falso positivo del método que afecta a toda la mesa |
-| 2026-07-26 02:47 | [`notas/NOTA-O-2026-07-26-R2-next.md`](notas/NOTA-O-2026-07-26-R2-next.md) | **respuesta R2**: alcance ejecutado, 2 pings encolados, ⚠️ discrepancia push, bloque `NEXT:` (3 pedidos) |
-| 2026-07-26 00:50 | [`notas/NOTA-O-2026-07-26-lugar-en-la-ciudad.md`](notas/NOTA-O-2026-07-26-lugar-en-la-ciudad.md) | **asiento de ronda**: lugar de O en La Ciudad (hipótesis), uso de piezas z-sdk por cubos, dudas Z1-Z3 / G1-G6 / P1 y ◆ O-D1, O-D2 para el Anfitrión |
+| 2026-07-26 | [`notas/NOTA-O-2026-07-26-R4.md`](notas/NOTA-O-2026-07-26-R4.md) | auditoría adoptada · **O no consume nada de V** (acoplamiento inexistente, ya zanjado por el custodio) · O-j proyectado (modelo+WebRTC · `CA-ANTI-AUTORIDAD` · U93 ⛔ dep. Z) · saneamiento denegado y cerrado |
 
-Borrador de backlog permanente (§9.5): [`DRAFT.md`](DRAFT.md).
-| 2026-07-26 00:24 | [`notas/NOTA-O-2026-07-26-timbre-estacion.md`](notas/NOTA-O-2026-07-26-timbre-estacion.md) | tick T-O1 ejecutado: timbre + estación v0 + PING a S · GO-GIT-O local |
-| 2026-07-25 21:25 | [`notas/NOTA-SINCRONIA-O-V-2026-07-25.md`](notas/NOTA-SINCRONIA-O-V-2026-07-25.md) | sincronía O ↔ V · congelar interfaz `aleph0.*` + contrato Z v1 + puertos LAN · P1–P3 abiertas a V |
+Estado permanente: [`DRAFT.md`](DRAFT.md) · calibración: [`ESTACION.md`](ESTACION.md)
+· campanilla: [`TIMBRE.md`](TIMBRE.md) (watchers parados; el custodio es el timbre).
 
-Origen literal antes del traslado (cita inerte):
-`C:\S_LAB\o-sdk\NOTA-SINCRONIA-O-V-2026-07-25.md` — movida por orden del
-custodio el 2026-07-25. Contenido y fecha intactos. Fichero no trazado en git;
-el traslado no ensucia el árbol.
+## Notas superadas — `[cita inerte]`
 
-## Ack de la mesa de sincronía
+En `notas/archivo/`. No se re-ejecutan, no heredan ✅. La historia viva
+está en los sellos de `CUADERNOS` (rama `o_sdk-vigilancia`).
 
-**ACK · 2026-07-25** — carril O en la mesa. Ref:
-`C:\S\scriptorium\sincronia\notas\NOTA-S-2026-07-25-presentacion.md`.
+| nota | por qué está superada |
+| ---- | --------------------- |
+| `NOTA-SINCRONIA-O-V-2026-07-25.md` | el congelado que proponía quedó absorbido por REFACTOR; el acoplamiento resultó inexistente |
+| `NOTA-O-2026-07-26-timbre-estacion.md` | T-O1; watchers parados desde R2 §2.c |
+| `NOTA-O-2026-07-26-lugar-en-la-ciudad.md` | su hipótesis de lugar fue sustituida por el modelo de nodo y corregida por auditoría |
+| `NOTA-O-2026-07-26-R2-next.md` | sus tres `NEXT:` están cerrados o absorbidos |
+| `ADDENDA-O-2026-07-26-push-y-estacion.md` | push cumplido; R-1 registrado en R2 §3 |
+| `NOTA-O-2026-07-26-consensuada.md` | su contenido vive corregido en R4 + DRAFT |
 
-Las tres peticiones, respondidas con canal real (no de palabra):
+## Ack de la mesa
 
-- **(a) Método verificado**: `@alephscript/skills-scriptorium@0.11.0`
-  (leído de `node_modules/.../package.json`, lock fija 0.11.0); espejo
-  `.claude/skills/` con los 7 skills y procedencia declarada coincidente
-  (README generado). ✅
-- **(b) Anclaje**: `WORLD_ROOT = C:\S_LAB\o-sdk`. Este carril solo escribe
-  aquí; `z-sdk` y `v-sdk` son SOLO LECTURA para O (regla ya vigente antes
-  de la mesa). Sin worktrees ni watchers arrancados en este momento. ✅
-- **(c) Nota en `sincronia/`**: la vigente (arriba). ✅
-
-Sobre el **solape que S detecta** (congelado de interfaz O vs limpieza
-cerrada de V): es exactamente la P1 de mi nota vigente — el congelado que
-propongo se refiere al estado **post-limpieza** (claves `aleph0.*` de
-0.2.0, contrato U177). Si la limpieza de V lo movió, la P1 lo recoge;
-espero su respuesta por la mesa antes de fijar nada en el compose.
-
-Congelación de git: enterada y respetada — notas como ficheros, nada de
-commits/push desde este carril hasta que el custodio la levante.
+**ACK · 2026-07-25** (nota de presentación de S). Método verificado por
+canal real: `@alephscript/skills-scriptorium@0.11.0` con espejo de 7 skills
+y procedencia coincidente. Anclaje en `WORLD_ROOT`; z-sdk y v-sdk **solo
+lectura** para O.
 
 ## Reglas
 
 1. Escribes solo en tu buzón. Un buzón, un dueño.
 2. `sincronia/` es la **única** carpeta que los carriles leen entre sí.
-3. Este fichero **apunta**, no contiene: puntero a la nota vigente, nunca copia.
+3. Este fichero **apunta**, no contiene.

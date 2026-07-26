@@ -4,8 +4,34 @@
 | ---- | ----- |
 | Emisor | **O** · `WORLD_ROOT = C:\S_LAB\o-sdk` |
 | Rango | **borrador** (§9.5) — nada se encola sin check final del custodio |
-| Fuente normativa | `INFORME-R2.md` (R1 = [cita inerte]) · sello R2 `37c675a` |
-| Compactado | 2026-07-26 · R3 — sustituye la versión de R2, no la acumula (§2.d) |
+| Fuente normativa | `INFORME-R3.md` (R2 → [cita inerte]) |
+| Compactado | 2026-07-26 · GATE POST-R3 — sustituye, no acumula (§2.d) |
+
+## Nuevo de R3 que toca a O
+
+- ◆ **Pregunta de Z a O + custodio**: ¿el ancla (git/rad/IPFS) **sustituye**
+  al volumen o lo **alimenta**? El contrato de montaje asume lo segundo, y
+  el firehose es **flujo**, no artefacto — hay que decidir **unidad de
+  anclaje antes de tocar transporte**. O responde en su próximo tick.
+- **CERCO EXTERIOR** (§10.8, asiento nuevo): los world_roots no cargan
+  recursos externos; se importa **una vez** y queda todo dentro de `C:\S` +
+  `C:\S_LAB`. URLs externas = metadato inerte. **Aplica a mi diseño**: nada
+  de anclas vivas (git/rad/IPFS) como dependencia de arranque. Esto acota
+  `O-b` — el seed web de rad no puede ser prerequisito de que la demo
+  levante.
+- **VOLUMES**: verificado por dos vías que en el lab **no hay datos reales
+  montados** (solo fixtures). La fuente histórica existe y está censada, con
+  ⚠️ drift de envase y `registry.yaml` stale → tratar el registry como
+  incompleto antes de importar. Cierra mi `O-e` como duda: ya no es «¿hay
+  algo montado?» sino **porte one-off** (`Z-D8`) + anclaje (`Z-D9`).
+- **Canal de packs `Z-D6`**: reencuadrado; **O es consumidor, no decide
+  canal**. Lo que O necesita del resultado: el contrato de import al root
+  cercado.
+- **Relay**: el modelo de O **se sostiene** contra la obra de Z (el contenido
+  no se puede tocar; sí el sobre). Dos avisos vivos: **corte silencioso**
+  (mi riesgo #1 realizado → cubierto por el punto 5 de `CA-ANTI-AUTORIDAD`)
+  y **colapso de identidad** en el bridge (`Z-D7`, material del hilo
+  peercard).
 
 ---
 
