@@ -86,8 +86,11 @@ NEXT:
 2. TICK O-ENTRADA · entrar de verdad al starter-kit y marcar mi fila
    (edificio-2, arista A2 O→Z).
    Qué necesito: endpoint del nodo de la prueba + qué cliente MCP usa O +
-   qué vía de peercard declaro (por R1 sería vía 3 anónimo; el <pendiente>
-   de PEERCARD.md sobre qué permite un anónimo lo decide quien opere el nodo).
+  evidencia de la vía de entrada.
+  ✎ RATIFICACIÓN DEL CUSTODIO: la **apertura anónima es la base** y la
+  **peer-card entra por opt-in**. No queda a elección del operador del nodo.
+  O debe asentar este contrato en su propuesta de entrada; sigue
+  `<pendiente>` verificar de facto qué capacidades ofrece cada modalidad.
    Desbloquea: A2 y, con las demás, el holón de 7. Es WP-O01 del DRAFT.
 
 3. DATO de Z (sin tick, cuando Z tenga turno) · hoja de contrato de las ~5

@@ -22,12 +22,13 @@ se apunta por ruta.
 
 - **Alcance**: entrar de verdad con cliente MCP y marcar **solo mi fila** con
   peercard + evidencia literal (ruta/log, no prosa).
-- **Vía de identidad**: a declarar en el Registro. Por el material de R1 (no
-  hay servicio emisor; la card viaja en `CLIENT_REGISTER`), el default sería
-  **vía 3 (anónimo)** salvo que el nodo de la prueba exija card
-  ⟨`reference/PEERCARD.md` §Vía 3 — `<pendiente>` qué permite a un anónimo⟩.
+- **Vía de identidad**: ✎ **ratificada por el custodio** — apertura anónima
+  como base; peer-card por opt-in. O debe asentar ambas modalidades en el
+  contrato de entrada. Sigue `<pendiente>` verificar de facto qué capacidades
+  ofrece cada una; no se rellena por inferencia.
 - **CA**: fila O marcada con evidencia verificable · vía declarada · cero
-  marca sin entrada real (falsedad de interfaz).
+  marca sin entrada real (falsedad de interfaz) · contrato O distingue
+  apertura anónima y opt-in de peer-card.
 - **Necesita**: tick + endpoint del nodo de la prueba + qué cliente MCP usa O.
 
 ### WP-O02 · Bitácora de O en `CUADERNOS` — `BLOQUEA:`
