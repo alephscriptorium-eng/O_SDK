@@ -10,7 +10,9 @@ mundo · **P2** horizonte.
 | Mundo | `C:\S_LAB\o-sdk` |
 | Encargo | `INFORME-R4 §2` (F2) — proyectar el mundo **acabado**, sin limitarse a lo votado |
 | Fuente normativa | `INFORME-R4.md` · consenso H-01 sellado |
+| Asientos del carril | [`plan/DECISIONES.md`](DECISIONES.md) (D-O1…D-O12) |
 | Régimen | **nada se abre sin GO del custodio**; encolar de más cuesta cero |
+| Revisión | 2026-07-26 · relevo de estación (D-O12): +WP-O19 · T5 resuelto en concepto (D-O9) · U93 acotado (D-O11) |
 
 ---
 
@@ -131,10 +133,14 @@ Dep: endpoint del nodo de prueba · resolución de **WP-O13**.
 **BRIEF** · Discrepancia registrada: el torno de `@zeus/webrtc-signaling`
 exige peer-card para `room-join`, offer, answer e ICE — **la card habilita
 el cable**, contra la política de apertura anónima. O **no diseña sobre
-esto** hasta que Z se pronuncie.
-**CA** · Transporte y signaling anónimos separados de capacidades opt-in ·
+esto** hasta que Z se pronuncie. **Lectura propuesta por O (D-O11)** que
+estrecha la pregunta: si WebRTC se lee como **capacidad opt-in** (no
+transporte base), exigir card en su signaling es coherente con D-O7; la
+discrepancia se reduce a un único punto — ¿el `room-join` del signaling
+gobierna la sala genérica o solo la antesala WebRTC?
+**CA** · Transporte base anónimo separado de capacidades opt-in ·
 verificación fuerte **cuando** haya card · el CA de WP-O11 punto 2 pasa.
-⛔ Dependencia dura de Z. No es trabajo de O; se encola porque **bloquea** a O.
+⛔ Dependencia dura de Z, pero con pregunta estrecha ya formulada.
 
 | **WP-O14** | **P1** | Zonas como ámbito de suscripción |
 
@@ -173,6 +179,22 @@ suprimido en la obra de Z. Un mensaje que desaparece sin rastro es peor que
 uno rechazado.
 **CA** · Todo descarte deja traza · control: mensaje fuera de allowlist →
 rastro presente. Coordinar con Z (`Z-D7`).
+
+| **WP-O19** | **P1** | Posición de O en el hilo peercard-reúso |
+
+**BRIEF** · El hilo (Z·G, anunciado desde R2 §4) decidirá si las cards se
+reúsan al subir de ámbito o si se emite por contexto. Posición de O ya
+argumentada y corregida por auditoría: **emite cada contexto de autoridad**
+que conceda capacidades limitadas; un pub/relay no emite ni eleva por
+transportar — el reúso ascendente es el mecanismo por el que la topología
+se convierte en autoridad. Incluye el material de `Z-D7` (colapso de
+identidad del bridge: `scriptorium-bridge` único + secreto compartido =
+N actores, una identidad).
+**CA** · Posición presentada en el hilo con los dos casos (reúso vs
+emisión por contexto) contrastados contra `CA-ANTI-AUTORIDAD` · Z-D7
+tratado como caso, no como excepción · lo que la mesa decida queda
+asentado en DECISIONES con su motivo.
+Dep: tick del hilo (Z·G convocan; O participa).
 
 ---
 
@@ -282,20 +304,30 @@ declarada · familia desconocida = **error**, no adivinanza.
 
 **BRIEF** · 8.388 ficheros sueltos son un acantilado de rendimiento en bind
 mounts de Windows/Docker Desktop, que **es nuestro molde local**. No es
-detalle de implementación: condiciona el contrato. Si el contrato asume «un
-fichero = una unidad», la familia flujo no cabe.
+detalle de implementación: condiciona el contrato. **Dirección fijada en
+D-O9**: la unidad es el **segmento con cursor** — N segmentos empaquetados
++ índice en lugar de 8.388 ficheros; T5 y T6 son la misma decisión vista
+desde dos lados.
 **CA** · Medición antes/después en el molde real · el contrato admite
-representación empaquetada sin cambiar el catálogo.
-Deuda declarada de O (T6).
+representación empaquetada sin cambiar el catálogo · reanudar por cursor
+funciona sobre la representación empaquetada.
+Deuda declarada de O (T6). Dep: WP-O35 (comparten decisión de unidad).
 
-| **WP-O35** | **P0** | T5: ¿el ancla sustituye al volumen o lo alimenta? |
+| **WP-O35** | **P0** | T5: el ancla ALIMENTA — validar contra el contrato de import |
 
-**BRIEF** · **Deuda mía con la mesa** (compromiso R4 §1). Con el firehose
-siendo *flujo* y no artefacto, hay que fijar **unidad de anclaje antes de
-tocar transporte**. Requiere el contrato de import de Z.
-**CA** · Respuesta con las tres familias contrastadas · declara qué se
-ancla (unidad) antes de decidir por dónde viaja.
-Dep: contrato de import (Z).
+**BRIEF** · **Deuda mía con la mesa** (compromiso R4 §1) — **resuelta en
+concepto en D-O9**, pendiente de validación: el ancla alimenta al volumen,
+no lo sustituye; el runtime solo lee el volumen montado; el ancla
+referencia **unidades selladas del manifiesto** que el import materializa.
+Unidad por familia: snapshot sellado (packs/FORCES) · árbol manifiesto+hash
+(LINEAS) · **segmento con cursor** (FIREHOSE) · feed (SSB) · CID (blobs).
+Cuatro apoyos, todos ya votados (cerco · convergencia 1 · CA-LOCAL-FIRST
+punto 5 · los tres momentos del COMPACTO).
+**CA** · La posición contrastada contra el contrato de import de Z cuando
+exista — si el contrato la refuta, se reabre con asiento nuevo · las cinco
+familias con unidad declarada · presentada a la mesa en el tick que
+corresponda.
+Dep: contrato de import (Z) — para **validar**, ya no para responder.
 
 | **WP-O36** | **P1** | `CA-LOCAL-FIRST` ejecutable (tick nuevo, ya votado) |
 
@@ -640,17 +672,17 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 | prioridad | WPs |
 | --------- | --- |
 | **P0** | 11 |
-| **P1** | 32 |
+| **P1** | 33 |
 | **P2** | 21 |
-| **total** | **64** |
+| **total** | **65** |
 
 **P0 (11)**: `WP-O01` fundar plan · `WP-O10` modelo de nodo · `WP-O11`
-CA-anti-autoridad · `WP-O12` entrada al grafo (A2) · `WP-O13` U93 (⛔ Z) ·
-`WP-O20` env único · `WP-O22` compose del lab · `WP-O30` contrato de
-montaje · `WP-O31` separación física · `WP-O35` T5 (deuda mía) · `WP-O70`
-gate de claves.
+CA-anti-autoridad · `WP-O12` entrada al grafo (A2) · `WP-O13` U93 (⛔ Z,
+pregunta estrecha formulada) · `WP-O20` env único · `WP-O22` compose del
+lab · `WP-O30` contrato de montaje · `WP-O31` separación física · `WP-O35`
+T5 (resuelto en concepto, valida Z) · `WP-O70` gate de claves.
 
-Distribución por lane: L0 6 · L1 9 · L2 7 · L3 10 · L4 6 · L5 5 · L6 6 ·
+Distribución por lane: L0 6 · L1 10 · L2 7 · L3 10 · L4 6 · L5 5 · L6 6 ·
 L7 6 · L8 4 · L9 5.
 
 De ellos: 2 con `BLOQUEA:` (WP-O10, WP-O70) · 2 con ⛔ (WP-O13 dependencia

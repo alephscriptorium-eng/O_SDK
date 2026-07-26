@@ -1,4 +1,13 @@
-# PLAN — el gran puzzle por etapas (2026-07-25)
+# PLAN — el gran puzzle por etapas (2026-07-25) · **[cita inerte]**
+
+> ⛔ **SUPERADO el 2026-07-26.** El plan vigente del carril es
+> **[`plan/BACKLOG.md`](plan/BACKLOG.md)** (10 lanes · 65 WPs) con sus
+> asientos en [`plan/DECISIONES.md`](plan/DECISIONES.md). Este documento se
+> conserva como traza: varias de sus etapas fueron **rechazadas o
+> recortadas** después (rad quedó en solo seed-web, no réplica de suite ni
+> «colección datos»; las rotaciones E0 están ⛔ bloqueadas por el custodio;
+> el «diseño target» fue retirado por O). No ejecutar nada de aquí.
+> Consolidación pendiente: WP-O03.
 
 > Complemento de [MAPA.md](MAPA.md) («inventario, no plan»). Esto ES el plan.
 > Propuesta del agente, no doctrina: lo existente no es la autoridad y esto
