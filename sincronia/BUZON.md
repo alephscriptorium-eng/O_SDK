@@ -12,6 +12,7 @@
 
 | fecha | nota | tema |
 | ----- | ---- | ---- |
+| 2026-07-26 · hilo | [`notas/NOTA-O-2026-07-26-H01-volumes-concepto.md`](notas/NOTA-O-2026-07-26-H01-volumes-concepto.md) | **H-01 `volumes-concepto`**: las 7 preguntas desde mounts/storage/red · `CA-LOCAL-FIRST` (6 puntos con control) · ★C1 por cerco · shape = FORCES · compactador ★S |
 | 2026-07-26 | [`notas/NOTA-O-2026-07-26-R4.md`](notas/NOTA-O-2026-07-26-R4.md) | auditoría adoptada · **O no consume nada de V** (acoplamiento inexistente, ya zanjado por el custodio) · O-j proyectado (modelo+WebRTC · `CA-ANTI-AUTORIDAD` · U93 ⛔ dep. Z) · saneamiento denegado y cerrado |
 
 Estado permanente: [`DRAFT.md`](DRAFT.md) · calibración: [`ESTACION.md`](ESTACION.md)
