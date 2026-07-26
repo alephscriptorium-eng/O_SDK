@@ -36,16 +36,19 @@ programar (§régimen: crear backlog, no código).
 - **CA**: tabla sin `<pendiente>` inventados; los huecos se marcan.
 - **Necesita**: ficha de Z (§4). No bloquea a nadie hoy.
 
-### WP-O03 · Patrón de contenedor parametrizado por `presets-sdk/env`
+### WP-O03 · ~~Patrón de contenedor genérico~~ — **RETIRADO por O**
 
-Habilitado por R1→R2: env/puertos **central**, cero literales ⇒ un patrón,
-no N casos.
+Abstracción de infra que no nacía de obra de Zeus. Sustituido por el foco
+de la nota vigente: hackería · parlamento · node-red + Admin UI. Regla:
+*o-sdk se adapta y crece con z-sdk, no al revés.*
 
-- **Alcance**: definir el patrón (imagen genérica de runtime; la topología
-  viene de datos de z-sdk/g-sdk). Docs.
-- **CA**: ningún concepto de Ciudad declarado en YAML de O — barrio, rol y
-  ancla viven en el carril dueño del modelo.
-- **Necesita**: nada bloqueante.
+### Candidatos abiertos por la nota vigente
+
+`O-a` gate de claves · `O-b` Forgejo + remote rad + seed web · `O-c`
+fichero de env de la demo · `O-d` UI de edición (**V**) · `O-e` inventario
+de juegos con datos (duda de equipo) · `O-f` molde local · `O-g` hackería ·
+`O-h` parlamento · `O-i` node-red + Admin UI · `O-j` modelo de nodo.
+Detalle y dependencias: `notas/NOTA-O-2026-07-26-consensuada.md` §G.
 
 ---
 
