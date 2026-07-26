@@ -3,81 +3,67 @@
 | dato | valor |
 | ---- | ----- |
 | Emisor | **O** · `WORLD_ROOT = C:\S_LAB\o-sdk` |
-| Rango | **borrador** (PROTOCOLO §9.5) — nada se encola sin check final del custodio |
-| Formato | candidatos WP con alcance + CA tentativo (compatible `swarm-orquestacion`) |
-| Actualizado | 2026-07-26 · ronda R2 |
-
-Fuente normativa: `INFORME-R1-asientos.md` + ticks. La sala no se repite aquí;
-se apunta por ruta.
+| Rango | **borrador** (§9.5) — nada se encola sin check final del custodio |
+| Fuente normativa | `INFORME-R2.md` (R1 = [cita inerte]) · sello R2 `37c675a` |
+| Compactado | 2026-07-26 · R3 — sustituye la versión de R2, no la acumula (§2.d) |
 
 ---
 
-## Candidatos
+## Candidatos vivos
 
-### WP-O01 · Entrada real al starter-kit (edificio-2) — `BLOQUEA:`
+### WP-O01 · Entrada real al grafo (edificio-2, arista A2 `O → Z`) — `BLOQUEA:`
 
-`BLOQUEA:` la arista **A2** del grafo (`O → Z`) y, con ella, el cierre de las
-7 marcas — el holón mínimo no se materializa sin edificio-2.
-⟨`C:\S\scriptorium\playground\prueba-de-dos\GRAFO-STARTERKIT.md`⟩
+`BLOQUEA:` el **holón-7** — convergencia de los 6 según cherry-pick R2 §1.
+Grafo hoy **0/7 marcas**.
 
-- **Alcance**: entrar de verdad con cliente MCP y marcar **solo mi fila** con
-  peercard + evidencia literal (ruta/log, no prosa).
-- **Vía de identidad**: ✎ **ratificada por el custodio** — apertura anónima
-  como base; peer-card por opt-in. O debe asentar ambas modalidades en el
-  contrato de entrada. Sigue `<pendiente>` verificar de facto qué capacidades
-  ofrece cada una; no se rellena por inferencia.
-- **CA**: fila O marcada con evidencia verificable · vía declarada · cero
-  marca sin entrada real (falsedad de interfaz) · contrato O distingue
-  apertura anónima y opt-in de peer-card.
-- **Necesita**: tick + endpoint del nodo de la prueba + qué cliente MCP usa O.
+- **Alcance**: entrar de verdad con cliente MCP y marcar **solo mi fila**
+  con evidencia literal (ruta/log, no prosa).
+- **Política de nodo** (asiento R2 §2.a, cerrado): **apertura anónima
+  base + peercard opt-in**. El nodo no convierte la card en requisito.
+- **CA**: fila O marcada con evidencia verificable · modalidad de entrada
+  declarada · el contrato de O admite ambas vías · cero marca sin entrada
+  real (falsedad de interfaz).
+- **Necesita**: tick + ficha Z-runtime (§4: prerequisito de marcas honestas)
+  — endpoint del nodo y qué cliente MCP usa O.
 
-### WP-O02 · Bitácora de O en `CUADERNOS` — `BLOQUEA:`
+### WP-O02 · Contrato de los 3 servicios del grafo en LAN (docs-only)
 
-`BLOQUEA:` el **gate de cierre de sesión** (PROTOCOLO §10.5) — afecta a los
-6 carriles, no solo a O.
+Consume la ficha Z-runtime cuando llegue; prepara el terreno de O sin
+programar (§régimen: crear backlog, no código).
 
-- **Alcance**: publicar bitácora de estación + copia de `sincronia/` en la
-  rama de O de `CUADERNOS` (censo R1: rama `o_sdk` ✅ existe en remoto).
-- **CA**: rama con bitácora que **apunta** a la sala sin repetirla ·
-  invariante §10.6 «nada abajo que no esté arriba» · cero `.env`/secrets.
-- **Necesita**: tick con GO de push (excepción §10.2) + worktree local de
-  `CUADERNOS` para O — hoy en `C:\S\_fuentes\` solo existen
-  `cuadernos-cantera`, `cuadernos-vigia-G`, `cuadernos-vigia-S` y
-  `scriptorium-cuadernos`; **no hay worktree de O**.
+- **Alcance**: por servicio — comando · puerto/env · disco · dependencia de
+  arranque · relación con peercard. Sin compose escrito.
+- **CA**: tabla sin `<pendiente>` inventados; los huecos se marcan.
+- **Necesita**: ficha de Z (§4). No bloquea a nadie hoy.
 
-### WP-O03 · Censo O de las 51 piezas (docs-only)
+### WP-O03 · Patrón de contenedor parametrizado por `presets-sdk/env`
 
-Del asiento §2.a: mover el catálogo del 4 % al 100 %; O declara su parte.
+Habilitado por R1→R2: env/puertos **central**, cero literales ⇒ un patrón,
+no N casos.
 
-- **Alcance**: por cada pieza que O consumiría — comando, puerto/env, disco,
-  dependencia de arranque, relación con peercard. Sin código.
-- **CA**: tabla O completa sin `<pendiente>` inventados; los huecos se
-  marcan, no se rellenan.
-- **Necesita**: hoja de contrato por servicio de Z (mi Z3, aún abierta) para
-  las ~5 piezas que uso sin cableado conocido.
-
-### WP-O04 · Patrón de contenedor único parametrizado por `presets-sdk/env`
-
-Habilitado por la respuesta Z2 del informe (**env/puertos central, cero
-literales** → compose por patrón, no 17 casos).
-
-- **Alcance**: definir el patrón (una imagen genérica de runtime; la
-  topología viene de datos de z-sdk/g-sdk). **Docs en este sprint**, sin
-  compose escrito.
-- **CA**: patrón que no declara ningún concepto de Ciudad en YAML de O
-  (barrio/rol/ancla viven en el carril dueño del modelo).
-- **Necesita**: nada bloqueante hoy — se redacta con lo curado en R1.
+- **Alcance**: definir el patrón (imagen genérica de runtime; la topología
+  viene de datos de z-sdk/g-sdk). Docs.
+- **CA**: ningún concepto de Ciudad declarado en YAML de O — barrio, rol y
+  ancla viven en el carril dueño del modelo.
+- **Necesita**: nada bloqueante.
 
 ---
 
-## Notas de estado (no candidatos)
+## Cerrado — no se re-abre ni se re-pregunta
 
-- **Cerrado por R1**: mi duda Z1 (no hay servicio emisor de peercard) y Z2
-  (env central). No se re-preguntan.
-- **Sigue abierta**: P1 a V (¿la limpieza tocó claves `aleph0.*` / flujo
-  join→card?). No está en el informe R1 → no es premisa de nadie; queda como
-  dato mío pendiente.
-- **`orden de arranque`**: hoy sin deps declaradas (R1). Si el lab lo
-  necesita, es **trabajo nuevo**, no un dato a descubrir.
+| qué | dónde quedó |
+| --- | ----------- |
+| WP-O02 anterior (bitácora en CUADERNOS) | ✅ hecho · `o_sdk-vigilancia` `9b94422` · gate §10.5 cumplido (R2 §1) |
+| Vía de peercard | R2 §2.a — anónimo base, card opt-in |
+| Nombre de rama | R2 §3 — patrón `<mundo>-vigilancia` |
+| R-1 (falso positivo regla 15) | R2 §3 — registrado; watchers parados; fix va al porte del skill (L) |
+| Emisor de peercard / env central | resuelto en R1, vigente |
+
+## En espera (no son candidatos míos)
+
+- **REFACTOR O↔V**: decidido (R2 §2.b); lo emite V y se propaga a O. Hasta
+  entonces **nadie mueve claves, puertos ni contrato** — mi P1 a V queda
+  absorbida por este asiento y la retiro como duda propia.
+- **Watchers**: parados por asiento R2 §2.c. El custodio es el timbre.
 
 — **O**
