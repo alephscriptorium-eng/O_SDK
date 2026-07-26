@@ -13,6 +13,13 @@ mundo · **P2** horizonte.
 | Asientos del carril | [`plan/DECISIONES.md`](DECISIONES.md) (D-O1…D-O12) |
 | Régimen | **nada se abre sin GO del custodio**; encolar de más cuesta cero |
 | Revisión | 2026-07-26 · relevo de estación (D-O12): +WP-O19 · T5 resuelto en concepto (D-O9) · U93 acotado (D-O11) |
+| Edición | **F2-unificada** (Anfitrión + revisión Temis): +O07/O08/O09/O55/O66/O76/O77/O78/O95 · ownership O13/O21/O37 → dependencias externas · O94 = gate de v1 |
+
+**Dependencias externas de este plan** (un solo Scriptorium): U93/torno =
+**Z·U186** (O aporta pregunta estrecha D-O11 y CA de integración) · editor
+de env = **V·V26** (O posee schema con Z) · T9 = **V·V44** (O aporta
+storage/fixture) · contrato de import = **Z·U199–U206** · entrada al grafo
+= **Z-D1 + HUB-022** · frontera kit/pack = **G** (notario/loader).
 
 ---
 
@@ -51,6 +58,24 @@ dueño) + `plan/BRIEFS/` + `plan/REPORTES/`. Hoy el gobierno de O vive
 disperso entre `MAPA.md`, `PLAN.md`, `pub/BACKLOG.md` y `sincronia/`.
 **CA** · Un WP ✅ tiene brief y reporte trazados · `DRAFT.md` apunta aquí ·
 cero decisiones vivas fuera de `plan/`.
+
+| **WP-O07** | **P0** | Gobierno de ejecución F2 |
+
+**BRIEF** · 74 WPs no se despachan planos: grafo de dependencias, ficheros
+calientes, olas, techo de workers, gates por lane y **DoD O-v1**. (V ya pagó
+esta lección con 3 WPs pisándose un `package.json`.)
+**CA** · Cada WP con deps y paths · lotes paralelos con alcance disjunto ·
+ningún WP huérfano de gate · DoD escrita antes del primer despacho.
+
+| **WP-O08** | **P0** | Identidad y licencia FOSS |
+
+**BRIEF** · `package.json` dice `oasis-dockerized@1.0.0` sin `license`; el
+fichero LICENSE es paródico y declara no crear obligaciones. Para un mundo
+FOSS eso es deuda de nacimiento: **el custodio decide nombre, primera
+versión y SPDX real** — no se hereda un `1.0.0` de un producto que nadie usó
+(INÉDITO).
+**CA** · SPDX validado · package/LICENSE/docs/imágenes coherentes · nombre
+propio decidido y aplicado.
 
 | **WP-O02** | **P1** | Mapas de territorio (#19) |
 
@@ -126,21 +151,20 @@ fila** con evidencia literal. Política ya asentada: **apertura anónima base
 + peercard opt-in**.
 **CA** · Fila O marcada con ruta/log verificable · modalidad declarada ·
 cero marca sin entrada real (falsedad de interfaz).
-Dep: endpoint del nodo de prueba · resolución de **WP-O13**.
+Dep: **Z-D1 + HUB-022** (la puerta del grafo es `rooms`/`socket-server` —
+verificado; el torno WebRTC es otra capa y NO condiciona esta entrada).
 
-| **WP-O13** | **P0 · ⛔** | U93: separar transporte de permiso |
+| **WP-O13** | **P0 · ⛔ externa** | U93 — CA de integración (obra de **Z**) |
 
-**BRIEF** · Discrepancia registrada: el torno de `@zeus/webrtc-signaling`
-exige peer-card para `room-join`, offer, answer e ICE — **la card habilita
-el cable**, contra la política de apertura anónima. O **no diseña sobre
-esto** hasta que Z se pronuncie. **Lectura propuesta por O (D-O11)** que
-estrecha la pregunta: si WebRTC se lee como **capacidad opt-in** (no
-transporte base), exigir card en su signaling es coherente con D-O7; la
-discrepancia se reduce a un único punto — ¿el `room-join` del signaling
-gobierna la sala genérica o solo la antesala WebRTC?
-**CA** · Transporte base anónimo separado de capacidades opt-in ·
-verificación fuerte **cuando** haya card · el CA de WP-O11 punto 2 pasa.
-⛔ Dependencia dura de Z, pero con pregunta estrecha ya formulada.
+**BRIEF** · **Dependencia externa con owner: Z (U186/Z-D4).** El refactor
+del torno no es obra de O; ningún worker O toca `webrtc-signaling`. Lo que
+O conserva: (a) la **pregunta estrecha D-O11** como aporte al WP de Z — si
+WebRTC es capacidad opt-in, ¿el `room-join` del signaling gobierna la sala
+genérica o solo la antesala WebRTC?; (b) el **CA de integración**: cuando Z
+entregue, el punto 2 de WP-O11 debe pasar sin excepciones.
+**CA** · Contrato de retorno declarado (qué entrega Z, cuándo, cómo se
+verifica desde O) · WP-O11.2 pasa contra la entrega real · cero diseño de O
+construido sobre el estado previo del torno.
 
 | **WP-O14** | **P1** | Zonas como ámbito de suscripción |
 
@@ -219,15 +243,19 @@ Dep: coordinación con Z. Habilita **WP-O21**.
 **nace nueva** — no se hereda (el acoplamiento O↔V no existía).
 **CA** · V edita el fichero real · validación antes de escribir · O declara
 su contrato de lectura antes de que V escriba.
-Dueño: **V**. O aporta contrato.
+**Dependencia externa con owner: V (V26).** O posee schema/validación (con
+Z); ningún worker O toca la extensión. Contrato de retorno: V consume el
+schema publicado, no lo inventa.
 
 | **WP-O22** | **P0** | Compose del laboratorio |
 
 **BRIEF** · Levantar en Docker Desktop el runtime que la demo necesita,
 **parametrizado por env** (WP-O20), sin declarar ningún concepto de Ciudad
 en YAML. Barrio, rol y ancla viven en el carril dueño del modelo.
-**CA** · Un comando levanta el lab · cero literales · cero conceptos de
-Ciudad en YAML · `CA-ANTI-AUTORIDAD` pasa sobre el resultado.
+**CA** · Un comando levanta el lab **desde checkout limpio** · cero
+literales · cero conceptos de Ciudad en YAML · `CA-ANTI-AUTORIDAD` pasa ·
+**health de cada servicio verificado** · **shutdown limpio sin residuos**
+(no basta «compose up»).
 Dep: WP-O10, WP-O20.
 
 | **WP-O23** | **P1** | Arranque sin red (garantía offline) |
@@ -282,7 +310,8 @@ conceptual, **quieren almacenamiento distinto**. Si conviven, el árbol
 hereda lo peor de ambos y deja de poder montarse en solo-lectura.
 **CA** · Root monta `:ro` y el juego arranca · escritura al mount mutable
 aparte · el estado mutable **nunca** dentro del árbol del manifiesto ·
-import no pisa curación humana.
+import no pisa curación humana · **locking del mount mutable declarado**
+(dos procesos no corrompen) · **backup/restore del mutable probado**.
 
 | **WP-O32** | **P1** | Reconciliación por hash, nunca por mtime |
 
@@ -343,7 +372,8 @@ LECTURA renovada: aquí se encola, **no** se ejecuta.
 independencia **desde dentro del par**. Falta que un tercero pueda
 verificar la réplica sin consultar a A ni a B.
 **CA** · Un verificador externo valida con solo el manifiesto público.
-Dueño tentativo: V + mesa. O aporta el lado de storage.
+**Dependencia externa con owner: V (V44) + mesa.** O aporta el lado de
+storage y las fixtures; la evidencia final la consume HUB-084.
 
 | **WP-O38** | **P1** | Consumo del pack Release al root cercado |
 
@@ -426,7 +456,8 @@ cuales no entra: `profiles` (que ningún deploy lo arrastre) · token
 declarado (sin él arranca sin auth) · tamaño máximo acorde a la memoria
 real · montar **solo el socket**, no el directorio con la identidad.
 **CA** · Las 4 verificadas antes de levantar · salud 200 desde el harness ·
-el contenedor no ve material de identidad.
+el contenedor no ve material de identidad · **rootless/capabilities
+mínimas declaradas** (least-privilege por defecto).
 
 | **WP-O51** | **P1** | Cristalización L2→L1 como rito |
 
@@ -440,9 +471,10 @@ colateral · lo cristalizado declara su origen.
 **BRIEF** · El panel monta el socket de Docker en lectura-escritura y corre
 como root: quien controle ese proceso puede crear un contenedor
 privilegiado. No es «una API de restart».
-**CA** · El proceso ya no ve el socket crudo · control: intento de crear
-contenedor privilegiado → denegado · la capacidad se reduce, no se
-documenta.
+**CA** · El proceso ya no ve el socket crudo (**socket-proxy mínimo** con
+allowlist de operaciones) · control: intento de crear contenedor
+privilegiado → denegado · rootless donde el runtime lo permita · la
+capacidad se reduce, no se documenta.
 
 | **WP-O53** | **P1** | Invites sin coste por visita |
 
@@ -456,6 +488,22 @@ caducidad · invite muerto detectado, no servido.
 **BRIEF** · Señal observable `OK/DEGRADED/FAIL`; sin señal trazada **no** se
 declara OK.
 **CA** · Cada estado con su evidencia · ausencia de señal ≠ salud.
+
+| **WP-O55** | **P1** | Backup / restore / disaster recovery de L1 |
+
+**BRIEF** · El pub y el blobstore son **la capa permanente**: si solo
+existen en un disco, no son permanentes — son afortunados. Backup
+declarado, restore probado, RPO/RTO escritos.
+**CA** · Restauración completa **en host limpio** · RPO/RTO declarados y
+medidos · el backup no contiene material de identidad · restore no depende
+de la máquina autora.
+
+| **WP-O78** | **P1** | SLO, alertas y capacidad |
+
+**BRIEF** · «Salud OK» sin umbrales medidos es opinión. Límites de disco,
+memoria y conexiones conocidos **antes** de que se crucen.
+**CA** · SLO escritos por servicio · alerta dispara antes del límite, con
+evidencia · capacidad medida en el molde real, no estimada.
 
 ---
 
@@ -487,6 +535,26 @@ clave acabó horneada. Construir en origen y publicar cambia la clase entera
 de fuga: el destino deja de tener contexto de build.
 **CA** · Imágenes con tag versionado · el destino solo tira, no construye ·
 contexto de build sin material de identidad (**WP-O70**).
+Dep dura: **WP-O70 + WP-O76** — forja, seed e imágenes **nunca** preceden
+al gate de claves ni al CI de producto.
+
+| **WP-O66** | **P1** | Imágenes reproducibles, firmadas, con SBOM |
+
+**BRIEF** · Publicar imágenes sin procedencia es mudarse de problema: de
+«clave horneada» a «binario inexplicable». Digest verificable, SBOM y
+provenance por imagen.
+**CA** · Dos builds del mismo tip comparan manifest · digest citado en el
+deploy · SBOM publicado junto a la imagen.
+
+| **WP-O76** | **P0** | CI de producto |
+
+**BRIEF** · Hoy solo hay workflow de docs; el backlog promete compose,
+imágenes, pub, sidecars y seguridad **sin gate continuo**. PR sin gate = no
+merge.
+**CA** · compose config-check · shellcheck · tests · build sin secretos ·
+inspección de imagen (W-1: contra el artefacto, no el patrón de ignore) ·
+vulnerability scan · smoke offline. Todo en verde antes de cualquier
+release.
 
 | **WP-O63** | **P2** | CI propio |
 
@@ -532,6 +600,16 @@ clave · el gate corre **antes** del build, no después.
 identidad; los secretos van por env, nunca en el árbol.
 **CA** · Búsqueda de material de identidad en volúmenes = 0 · control: un
 fichero de clave colado hace fallar el gate.
+
+| **WP-O09** | **P0** | CLI segura + threat model |
+
+**BRIEF** · Los scripts públicos incluyen `downDELETEVOLS`,
+`cleanDELETEVOLS`, `update` con `git pull` y credenciales de ejemplo en
+comandos. Para un nodo que **custodia datos**, el default debe ser
+conservador: lo destructivo se gana, no se tropieza.
+**CA** · Comandos destructivos separados y con confirmación + backup previo
+obligatorio · secretos por store/env, jamás en argv/README · matriz de
+amenazas escrita (hostil-omite incluido) · least-privilege por defecto.
 
 | **WP-O72** | **P1** | Deuda de la cuenta anulada en superficie pública |
 
@@ -637,13 +715,38 @@ camino de arranque** (cerco).
 **CA** · Un objeto pesado resoluble desde fuera · el manifiesto es la raíz
 de confianza · desconectar la red no impide arrancar.
 
-| **WP-O94** | **P2** | Segundo nodo (prueba de que no somos el centro) |
+| **WP-O77** | **P1** | Upgrade y rollback de instancia |
 
-**BRIEF** · La prueba definitiva del modelo: un nodo hermano que federa en
-horizontal. Si al apagar el nuestro dos partes dejan de hablarse, el modelo
-está mal.
+**BRIEF** · Una instancia que solo sabe avanzar es una trampa: la
+actualización fallida debe volver al estado anterior **sin perder datos**.
+**CA** · Upgrade fallido → rollback probado · datos intactos tras el ciclo ·
+el procedimiento corre sin la máquina autora.
+
+| **WP-O94** | **P1 · gate de v1** | Segundo nodo (prueba de que no somos el centro) |
+
+**BRIEF** · La prueba definitiva del modelo — y si el objetivo de la
+versión es demostrar federación, esto es **gate de aceptación, no horizonte
+ornamental** (sube de P2 por revisión). Un nodo hermano que federa en
+horizontal.
 **CA** · Dos nodos federados · apagar cualquiera no aísla a los demás ·
-`CA-ANTI-AUTORIDAD` punto 1 verificado **en vivo**, no en papel.
+`CA-ANTI-AUTORIDAD` punto 1 verificado **en vivo**, no en papel · entra en
+la DoD de O-v1 (WP-O95).
+
+---
+
+## L10 · Aceptación
+
+| WP | prio | título |
+| -- | ---- | ------ |
+| **WP-O95** | **P0** | Aceptación O-v1 por operador externo |
+
+**BRIEF** · La definición de acabado que no se puede autocertificar: un
+operador **ajeno al equipo**, desde canales limpios, instala → siembra →
+levanta el nodo → hace backup → restaura — sin hablar con el autor. Es la
+cara O del test de Scriptorium v1 (10 pasos, integración Temis).
+**CA** · Ciclo completo documentado y ejecutado por tercero · cero pasos
+que exijan conocimiento no escrito · evidencia literal de cada paso ·
+incluye WP-O94 como prueba de federación.
 
 ---
 
@@ -667,25 +770,27 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 
 ---
 
-## Conteo
+## Conteo (edición F2-unificada)
 
 | prioridad | WPs |
 | --------- | --- |
-| **P0** | 11 |
-| **P1** | 33 |
-| **P2** | 21 |
-| **total** | **65** |
+| **P0** | **16** |
+| **P1** | **38** |
+| **P2** | **20** |
+| **total** | **74** |
 
-**P0 (11)**: `WP-O01` fundar plan · `WP-O10` modelo de nodo · `WP-O11`
-CA-anti-autoridad · `WP-O12` entrada al grafo (A2) · `WP-O13` U93 (⛔ Z,
-pregunta estrecha formulada) · `WP-O20` env único · `WP-O22` compose del
-lab · `WP-O30` contrato de montaje · `WP-O31` separación física · `WP-O35`
-T5 (resuelto en concepto, valida Z) · `WP-O70` gate de claves.
+**P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
+identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11
+CA-anti-autoridad · O12 entrada al grafo (dep Z-D1) · O13 (⛔ externa: Z) ·
+O20 env único · O22 compose · O30 contrato de montaje · O31 separación
+física · O35 T5 · O70 gate de claves · **O76 CI producto** · **O95
+aceptación por operador externo**.
 
-Distribución por lane: L0 6 · L1 10 · L2 7 · L3 10 · L4 6 · L5 5 · L6 6 ·
-L7 6 · L8 4 · L9 5.
+Distribución: L0 8 · L1 10 · L2 7 · L3 10 · L4 6 · L5 7 · L6 8 · L7 7 ·
+L8 4 · L9 6 · L10 1.
 
-De ellos: 2 con `BLOQUEA:` (WP-O10, WP-O70) · 2 con ⛔ (WP-O13 dependencia
-de Z · WP-O73 bloqueado por el custodio).
+`BLOQUEA:` WP-O10, WP-O70 (+O76 bloquea releases). ⛔: O13 (externa Z) ·
+O73 (custodio). **Gate de v1**: O94 + O95. Secuencia dura: O70+O76
+preceden a O60/O61/O62.
 
 — **O**
