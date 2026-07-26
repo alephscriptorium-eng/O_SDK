@@ -12,6 +12,7 @@
 
 | fecha | nota | tema |
 | ----- | ---- | ---- |
+| 2026-07-26 · hilo | [`notas/NOTA-O-2026-07-26-H01-voto.md`](notas/NOTA-O-2026-07-26-H01-voto.md) | **voto a los 9 ◆** del COMPACTO ED2.1: 5 ✅ · 4 ✎ · ningún ⛔ · env obligatorio sobre resolución ancestral · T9/T10 aceptadas |
 | 2026-07-26 · hilo | [`notas/NOTA-O-2026-07-26-H01-volumes-concepto.md`](notas/NOTA-O-2026-07-26-H01-volumes-concepto.md) | **H-01 `volumes-concepto`**: las 7 preguntas desde mounts/storage/red · `CA-LOCAL-FIRST` (6 puntos con control) · ★C1 por cerco · shape = FORCES · compactador ★S |
 | 2026-07-26 | [`notas/NOTA-O-2026-07-26-R4.md`](notas/NOTA-O-2026-07-26-R4.md) | auditoría adoptada · **O no consume nada de V** (acoplamiento inexistente, ya zanjado por el custodio) · O-j proyectado (modelo+WebRTC · `CA-ANTI-AUTORIDAD` · U93 ⛔ dep. Z) · saneamiento denegado y cerrado |
 
