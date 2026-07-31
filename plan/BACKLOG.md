@@ -750,6 +750,22 @@ incluye WP-O94 como prueba de federación.
 
 ---
 
+## Encolado post-F2 (2026-07-31)
+
+| WP | prio | título |
+| -- | ---- | ------ |
+| WP-O96 | P2 | Spike: market propio junto al registry npm |
+
+**BRIEF** · Decisión ③ del custodio: el Marketplace de VS Code queda
+DEFERRED; se explora un market propio del Scriptorium al lado del registry
+npm nuevo (misma soberanía que forja/imágenes, L6). Alcance de spike:
+opciones, coste, integración con el canal GitHub Release; cero obra de
+runtime. Consumidor directo: V86 (primera release de V).
+**CA** · informe con opciones y recomendación · decisión de mesa encolada ·
+ninguna infraestructura montada durante el spike.
+
+---
+
 ## Trazabilidad de los candidatos del `DRAFT`
 
 | draft | destino |
@@ -776,8 +792,8 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 | --------- | --- |
 | **P0** | **16** |
 | **P1** | **38** |
-| **P2** | **20** |
-| **total** | **74** |
+| **P2** | **21** |
+| **total** | **75** |
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11
