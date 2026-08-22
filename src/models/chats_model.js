@@ -17,9 +17,21 @@ const normalizeTags = (raw) => {
 const INVITE_CODE_BYTES = 16
 const VALID_STATUS = ["OPEN", "INVITE-ONLY", "CLOSED"]
 
+const DEFAULT_MESSAGES_PER_HOUR = 60
+
 module.exports = ({ cooler, tribeCrypto, chatCrypto, tribesModel }) => {
   let ssb
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb }
+
+  const MESSAGES_PER_HOUR = (() => {
+    try {
+      const raw = getConfig()?.chats?.messagesPerHour
+      const n = parseInt(raw, 10)
+      return Number.isFinite(n) && n > 0 ? n : DEFAULT_MESSAGES_PER_HOUR
+    } catch (_) {
+      return DEFAULT_MESSAGES_PER_HOUR
+    }
+  })()
 
   const ownCrypto = chatCrypto || tribeCrypto
   const lookupKey = (rid) => (ownCrypto && ownCrypto.getKey(rid)) || (tribeCrypto && tribeCrypto.getKey(rid)) || null
@@ -357,6 +369,15 @@ module.exports = ({ cooler, tribeCrypto, chatCrypto, tribesModel }) => {
   return {
     type: "chat",
 
+    async encryptionKeyFor(chatRootId, tribeId = null) {
+      if (!tribeCrypto) return null
+      if (tribeId) {
+        const k = await getTribeFirstKeyFor(tribeId)
+        if (k) return k
+      }
+      return lookupKey(chatRootId) || null
+    },
+
     async resolveRootId(id) {
       const ssbClient = await openSsb()
       const messages = await readAll(ssbClient)
@@ -596,6 +617,18 @@ module.exports = ({ cooler, tribeCrypto, chatCrypto, tribesModel }) => {
 
       let list = chatCollab.visibleThenCollapsed(collectChats(idx), uid)
 
+      const lastMsgAt = new Map()
+      const lastMineAt = new Map()
+      for (const node of idx.msgNodes.values()) {
+        const cid = node.c && node.c.chatId
+        if (!cid) continue
+        const r = idx.rawRootOf(cid) || cid
+        const t = node.ts || 0
+        if (t > (lastMsgAt.get(r) || 0)) lastMsgAt.set(r, t)
+        if (node.author === uid && t > (lastMineAt.get(r) || 0)) lastMineAt.set(r, t)
+      }
+      list = list.map(c => ({ ...c, lastMsgAt: lastMsgAt.get(c.rootId) || 0, lastMineAt: lastMineAt.get(c.rootId) || 0 }))
+
       if (filter === "mine") list = list.filter(c => c.author === uid)
       else if (filter === "recent") list = list.filter(c => new Date(c.createdAt).getTime() >= now - 86400000)
       else if (filter === "open") list = list.filter(c => c.status === "OPEN" || c.status === "INVITE-ONLY")
@@ -706,7 +739,7 @@ module.exports = ({ cooler, tribeCrypto, chatCrypto, tribesModel }) => {
       let chatKey = null
       if (tribeCrypto && typeof matchedInvite === "object") {
         if (matchedInvite.ekChain) {
-          const chain = tribeCrypto.decryptChainFromInvite(matchedInvite.ekChain, code, matchedInvite.salt)
+          const chain = tribeCrypto.decryptChainFromInvite(matchedInvite.ekChain, code, matchedInvite.salt, 3)
           if (Array.isArray(chain) && chain.length) {
             for (const entry of chain) {
               if (Array.isArray(entry.keys) && entry.keys.length) {
@@ -779,17 +812,11 @@ module.exports = ({ cooler, tribeCrypto, chatCrypto, tribesModel }) => {
       try {
         const ssbClient = await openSsb()
         const messages = await readAll(ssbClient)
-        const live = new Set()
-        for (const m of messages) {
-          const c = m.value && m.value.content
-          if (!c) continue
-          if (c.type === "chat") live.add(m.key)
-        }
         const tomb = buildValidatedTombstoneSet(messages)
         const all = ownCrypto.getAllRootIds()
         let removed = 0
         for (const rid of all) {
-          if (!live.has(rid) || tomb.has(rid)) {
+          if (tomb.has(rid)) {
             try { ownCrypto.dropKey(rid); removed += 1 } catch (_) {}
           }
         }
@@ -814,7 +841,12 @@ module.exports = ({ cooler, tribeCrypto, chatCrypto, tribesModel }) => {
         const c = m.value?.content
         return c?.type === "chatMessage" && c?.chatId === chat.rootId && m.value?.author === userId && (m.value?.timestamp || 0) >= oneHourAgo
       }).length
-      if (recentCount >= 3) throw new Error("Rate limit: max 3 messages per hour")
+      if (recentCount >= MESSAGES_PER_HOUR) {
+        const err = new Error(`Rate limit: max ${MESSAGES_PER_HOUR} messages per hour`)
+        err.code = "CHAT_RATE_LIMIT"
+        err.retryAfterMinutes = 60
+        throw err
+      }
 
       const now = new Date().toISOString()
       let content = {

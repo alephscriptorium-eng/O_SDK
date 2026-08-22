@@ -36,10 +36,11 @@ exports.statsView = (stats, filter) => {
   const description = i18n.statsDescription;
   const modes = ['ALL', 'MINE', 'TOMBSTONE'];
   const types = [
-    'bookmark', 'event', 'task', 'votes', 'report', 'feed', 'project',
+    'bookmark', 'event', 'task', 'votes', 'report', 'feed', 'project', 'industry', 'industryBlueprint',
     'image', 'torrent', 'audio', 'video', 'document', 'transfer', 'post', 'tribe',
     'market', 'forum', 'job', 'aiExchange', 'map', 'shop', 'shopProduct',
     'chat', 'chatMessage', 'pad', 'padEntry', 'gameScore', 'calendar', 'calendarDate', 'calendarNote',
+    'schoolCourse', 'schoolLesson', 'schoolEnroll', 'schoolCertificate',
     'parliamentCandidature','parliamentTerm','parliamentProposal','parliamentRevocation','parliamentLaw',
     'courtsCase','courtsEvidence','courtsAnswer','courtsVerdict','courtsSettlement','courtsSettlementProposal','courtsSettlementAccepted','courtsNomination','courtsNominationVote'
   ];
@@ -51,6 +52,8 @@ exports.statsView = (stats, filter) => {
     report: i18n.statsReport,
     feed: i18n.statsFeed,
     project: i18n.statsProject,
+    industry: i18n.industryTitle,
+    industryBlueprint: i18n.industryBlueprints,
     image: i18n.statsImage,
     torrent: i18n.statsTorrent,
     audio: i18n.statsAudio,
@@ -71,6 +74,10 @@ exports.statsView = (stats, filter) => {
     pad: i18n.statsPad,
     padEntry: i18n.statsPadEntry,
     gameScore: i18n.statsGameScore,
+    schoolCourse: i18n.statsSchoolCourse,
+    schoolLesson: i18n.statsSchoolLesson,
+    schoolEnroll: i18n.statsSchoolEnroll,
+    schoolCertificate: i18n.statsSchoolCertificate,
     calendar: i18n.statsCalendar,
     calendarDate: i18n.statsCalendarDate,
     calendarNote: i18n.statsCalendarNote,
@@ -175,18 +182,18 @@ exports.statsView = (stats, filter) => {
       const pct = networkCO2 > 0 ? Math.min(100, (userCO2 / networkCO2) * 100) : 0;
       return div({ class: 'carbon-chart' },
         div({ class: 'carbon-bar-label' },
-          span(i18n.statsCarbonUser || 'Your footprint'),
-          span(`${userCO2} g CO₂`)
-        ),
-        div({ class: 'carbon-bar-track' },
-          div({ class: `carbon-bar-fill carbon-bar-mine ${wClass(pct)}` })
-        ),
-        div({ class: 'carbon-bar-label' },
-          span(i18n.statsCarbonNetwork || 'Network total'),
+          span(`HcT — ${i18n.statsCarbonNetwork || 'Network total'}`),
           span(`${networkCO2} g CO₂`)
         ),
         div({ class: 'carbon-bar-track' },
           div({ class: 'carbon-bar-fill carbon-bar-network stats-w-100' })
+        ),
+        div({ class: 'carbon-bar-label' },
+          span(`HcH — ${i18n.statsCarbonUser || 'Your footprint'}`),
+          span(`${userCO2} g CO₂`)
+        ),
+        div({ class: 'carbon-bar-track' },
+          div({ class: `carbon-bar-fill carbon-bar-mine ${wClass(pct)}` })
         ),
         p({ class: 'carbon-bar-note' }, strong(`${pct.toFixed(1)}%`), ` ${i18n.statsCarbonOfNetwork || 'of network total'}`),
         p({ class: 'carbon-bar-formula' }, 'Based on local data storage weight ', strong('(0.0002 kWh/MB × 475 g CO₂/kWh)'))
@@ -200,75 +207,65 @@ exports.statsView = (stats, filter) => {
       const tombPct = networkCO2 > 0 ? Math.min(100, (tombCO2 / networkCO2) * 100) : 0;
       return div({ class: 'carbon-chart' },
         div({ class: 'carbon-bar-label' },
-          span(i18n.statsCarbonTombstone || 'Tombstoning footprint'),
-          span(`${tombCO2} g CO₂`)
-        ),
-        div({ class: 'carbon-bar-track' },
-          div({ class: `carbon-bar-fill carbon-bar-mine ${wClass(tombPct)}` })
-        ),
-        div({ class: 'carbon-bar-label' },
           span(i18n.statsCarbonNetwork || 'Network total'),
           span(`${networkCO2} g CO₂`)
         ),
         div({ class: 'carbon-bar-track' },
           div({ class: 'carbon-bar-fill carbon-bar-network stats-w-100' })
         ),
+        div({ class: 'carbon-bar-label' },
+          span(i18n.statsCarbonTombstone || 'Tombstoning footprint'),
+          span(`${tombCO2} g CO₂`)
+        ),
+        div({ class: 'carbon-bar-track' },
+          div({ class: `carbon-bar-fill carbon-bar-mine ${wClass(tombPct)}` })
+        ),
         p({ class: 'carbon-bar-note' }, strong(`${tombPct.toFixed(1)}%`), ` ${i18n.statsCarbonOfNetwork || 'of network total'} (${tombCount} tombstones × ~${avgTombBytes} bytes)`),
         p({ class: 'carbon-bar-formula' }, 'Based on estimated tombstone message size ', strong('(0.0002 kWh/MB × 475 g CO₂/kWh)'))
       );
     }
     const pct = Math.min(100, (networkCO2 / maxAnnualCO2) * 100);
+    const now = new Date();
+    const yearStart = new Date(now.getFullYear(), 0, 1).getTime();
+    const yearEnd = new Date(now.getFullYear() + 1, 0, 1).getTime();
+    const yearPct = Math.min(100, ((now.getTime() - yearStart) / (yearEnd - yearStart)) * 100);
     return div({ class: 'carbon-chart' },
-      div({ class: 'carbon-bar-label' },
-        span(i18n.statsCarbonNetwork || 'Network footprint'),
-        span(`${networkCO2} g CO₂`)
-      ),
-      div({ class: 'carbon-bar-track' },
-        div({ class: `carbon-bar-fill carbon-bar-network ${wClass(pct)}` })
-      ),
       div({ class: 'carbon-bar-label' },
         span(i18n.statsCarbonMaxAnnual || 'Annual max estimate'),
         span(`${maxAnnualCO2} g CO₂`)
       ),
       div({ class: 'carbon-bar-track' },
-        div({ class: 'carbon-bar-fill carbon-bar-max stats-w-100' })
+        div({ class: `carbon-bar-fill carbon-bar-max ${wClass(yearPct)}` })
       ),
-      p({ class: 'carbon-bar-note' }, strong(`${pct.toFixed(1)}%`), ` ${i18n.statsCarbonOfEstMax || 'of estimated max capacity'}`),
+      div({ class: 'carbon-bar-label' },
+        span(`HcT — ${i18n.statsCarbonNetwork || 'Network footprint'}`),
+        span(`${networkCO2} g CO₂`)
+      ),
+      div({ class: 'carbon-bar-track' },
+        div({ class: `carbon-bar-fill carbon-bar-network ${wClass(pct)}` })
+      ),
+      p({ class: 'carbon-bar-note' }, strong(`${pct.toFixed(1)}%`), ` ${i18n.statsCarbonOfEstMax || 'of estimated max capacity'} · `, strong(`${yearPct.toFixed(1)}%`), ` ${i18n.statsCarbonYearProgress || 'of the year elapsed'}`),
       p({ class: 'carbon-bar-formula' }, 'Based on local data storage weight ', strong('(0.0002 kWh/MB × 475 g CO₂/kWh)'))
     );
   })();
 
-  const headerCard = div({ class: 'stats-card' },
+  const storageCard = div({ class: 'stats-card' },
+    h3({ class: 'stats-section-h' }, i18n.statsStorageTitle || 'Storage'),
     table({ class: 'block-info-table' },
-      tr(td({ class: 'card-label' }, i18n.statsCreatedAt), td({ class: 'card-value' }, stats.createdAt)),
-      tr(td({ class: 'card-label' }, 'ID'), td({ class: 'card-value' }, userLink(stats.id))),
       tr(td({ class: 'card-label' }, i18n.statsBlobsSize), td({ class: 'card-value' }, stats.statsBlobsSize)),
       tr(td({ class: 'card-label' }, i18n.statsBlockchainSize), td({ class: 'card-value' }, stats.statsBlockchainSize)),
       tr(td({ class: 'card-label' }, i18n.statsSize), td({ class: 'card-value' }, stats.folderSize))
     )
   );
 
-  const totalInhabitants = stats.usersKPIs?.totalInhabitants || stats.inhabitants || 0;
-  const networkKPIs = stats.networkKPIs || {};
-
-  const topStrip = div({ class: 'stats-block' },
-    kpiGrid(
-      kpi(i18n.bankingUserEngagementScore, C(stats, 'karmaScore')),
-      kpi(i18n.statsUsersTitle, totalInhabitants),
-      kpi(i18n.statsTotalMsgs || 'Total messages', networkKPIs.totalMsgs || 0),
-      kpi(i18n.statsLogsTitle || 'Logs', stats?.logsCount || 0),
-      kpi(i18n.statsAITraining, C(stats, 'aiExchange') || 0),
-      kpi(i18n.statsPUBs, stats.pubsCount || 0)
-    )
-  );
-
-  const carbonCard = div({ class: 'stats-card' },
-    h3({ class: 'stats-section-h' }, i18n.statsCarbonFootprintTitle || 'Carbon Footprint'),
-    carbonChart
-  );
-
-  const bankingCard = div({ class: 'stats-card' },
+  const accountCard = div({ class: 'stats-card' },
+    h3({ class: 'stats-section-h' }, i18n.statsAccountTitle || 'Account'),
     table({ class: 'block-info-table' },
+      tr(td({ class: 'card-label' }, 'ID'), td({ class: 'card-value' }, userLink(stats.id))),
+      tr(td({ class: 'card-label' }, i18n.statsCreatedAt), td({ class: 'card-value' }, stats.createdAt)),
+      C(stats, 'karmaScore') > 0
+        ? tr(td({ class: 'card-label' }, i18n.bankingUserEngagementScore), td({ class: 'card-value' }, String(C(stats, 'karmaScore'))))
+        : null,
       tr(td({ class: 'card-label' }, i18n.statsEcoWalletLabel), td({ class: 'card-value' }, a({ href: '/wallet', class: 'stats-link-break' }, stats?.banking?.myAddress || i18n.statsEcoWalletNotConfigured))),
       tr(td({ class: 'card-label' }, i18n.profileGpgChip || 'GPG'), td({ class: 'card-value' },
         stats?.gpgFingerprint
@@ -278,7 +275,27 @@ exports.statsView = (stats, filter) => {
     )
   );
 
+  const totalInhabitants = stats.usersKPIs?.totalInhabitants || stats.inhabitants || 0;
+  const networkKPIs = stats.networkKPIs || {};
+
+  const networkStrip = div({ class: 'stats-block' },
+    h3({ class: 'stats-section-h' }, i18n.statsNetworkTitle || 'Network'),
+    kpiGrid(
+      kpi(i18n.statsUsersTitle, totalInhabitants),
+      kpi(i18n.statsTotalMsgs || 'Total messages', networkKPIs.totalMsgs || 0),
+      kpi(i18n.statsLogsTitle || 'Logs', stats?.logsCount || 0),
+      kpi(i18n.statsAITraining, C(stats, 'aiExchange') || 0),
+      kpi(i18n.statsPUBs, stats.pubsCount || 0)
+    )
+  );
+
+  const carbonCard = div({ id: 'carbon', class: 'stats-card' },
+    h3({ class: 'stats-section-h' }, i18n.statsCarbonFootprintTitle || 'Carbon Footprint'),
+    carbonChart
+  );
+
   const networkBlock = div({ class: 'stats-block' },
+    h3({ class: 'stats-section-h' }, i18n.statsAveragesTitle || 'Averages'),
     kpiGrid(
       filter === 'MINE'
         ? kpi(i18n.statsMyShare || 'Your share of the network', `${fmtNum(networkKPIs.myShare || 0)}%`)
@@ -452,6 +469,7 @@ exports.statsView = (stats, filter) => {
         }
         return div({ class: 'stats-container' }, [
           div({ class: 'stats-block' },
+            h3({ class: 'stats-section-h' }, i18n.TOMBSTONEButton),
             kpiGrid(
               kpi(i18n.TOMBSTONEButton, userTomb),
               kpi(i18n.statsTombstoneRatio, `${(stats.tombstoneKPIs?.ratio || 0).toFixed(2)}%`)
@@ -464,6 +482,7 @@ exports.statsView = (stats, filter) => {
   const ets = stats.ecoTaxStats || null;
   const userTax = Number(stats.userEcoinTax || 0);
   const ecoTaxBlock = ets ? div({ class: 'stats-card' },
+    h3({ class: 'stats-section-h' }, i18n.statsEcoTaxTitle || 'ECO Tax'),
     table({ class: 'block-info-table' },
       filter === 'MINE'
         ? tr(td({ class: 'card-label' }, i18n.bankTaxesUserAmount || 'Your ECO tax'), td({ class: 'card-value' }, `${userTax.toFixed(6)} ECO`))
@@ -487,18 +506,19 @@ exports.statsView = (stats, filter) => {
         modes.map(m =>
           form({ method: 'GET', action: '/stats' },
             input({ type: 'hidden', name: 'filter', value: m }),
-            button({ type: 'submit', class: filter === m ? 'filter-btn active' : 'filter-btn' }, i18n[m + 'Button'])
+            button({ type: 'submit', class: filter === m ? 'filter-btn active' : 'filter-btn' }, String(i18n[m + 'Button']).toUpperCase())
           )
         )
       ),
       section(
-        topStrip,
-        headerCard,
+        filter === 'ALL' ? networkStrip : null,
+        filter === 'MINE' ? accountCard : null,
+        filter === 'ALL' ? storageCard : null,
+        tombMode,
+        carbonCard,
         filter !== 'TOMBSTONE' ? ecoTaxBlock : null,
-        bankingCard,
         allMode,
-        mineMode,
-        tombMode
+        mineMode
       )
     )
   );

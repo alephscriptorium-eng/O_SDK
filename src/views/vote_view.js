@@ -1,5 +1,6 @@
 const { div, h2, p, section, button, form, a, textarea, br, input, table, tr, th, td, label, span } = require("../server/node_modules/hyperaxe");
-const { template, i18n, renderOpinionsVoting, userLink, renderOpenClosedChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions } = require("./main_views");
+const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderOpenClosedChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderDocumentActions } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl");
@@ -13,15 +14,15 @@ const voteLabel = (opt) =>
   i18n["vote" + opt.split("_").map(w => w.charAt(0) + w.slice(1).toLowerCase()).join("")] || opt;
 
 const computeVoteOutcome = (baseCounts, voteOptions, totalVotesNum) => {
-  const noResult = { text: i18n.voteNoQuorum || "NO QUORUM", color: "#ffcc00" };
+  const noResult = { text: i18n.voteNoQuorum || "NO QUORUM", variant: "pending" };
   if (totalVotesNum < VOTE_QUORUM) return noResult;
   const opts = voteOptions.filter((o) => o !== "FOLLOW_MAJORITY");
   const maxCount = opts.reduce((m, o) => Math.max(m, baseCounts[o] || 0), 0);
   const topOpts = opts.filter((o) => (baseCounts[o] || 0) === maxCount);
   if (maxCount === 0 || topOpts.length > 1) return noResult;
   const winner = topOpts[0];
-  const color = winner === "YES" ? "#4caf50" : winner === "NO" ? "#e53935" : "#ffcc00";
-  return { text: voteLabel(winner), color };
+  const variant = winner === "YES" ? "yes" : winner === "NO" ? "no" : "pending";
+  return { text: voteLabel(winner), variant };
 };
 
 const normalizeStatus = (v) => {
@@ -110,7 +111,7 @@ const renderVoteListItem = (v, voteOptionsDefault, activeFilter, spreadInfo) => 
   return div({ class: "trending-card vote-card" + (isOwn ? " own-content" : "") },
     div({ class: "card-header activity-card-header" },
       span(),
-      renderContentActions(v.id, `/votes/${encodeURIComponent(v.id)}`)
+      renderContentActions(v.id, `/votes/${encodeURIComponent(v.id)}`, { spread: spreadInfo || null, author: v.createdBy, favKind: 'votes', isFavorite: v.isFavorite, reportTitle: v.question })
     ),
     div({ class: "card-section vote-card-body" },
       div({ class: "shop-title-row" },
@@ -123,8 +124,7 @@ const renderVoteListItem = (v, voteOptionsDefault, activeFilter, spreadInfo) => 
       div({ class: "tribe-card-members" },
         span({ class: "tribe-members-count" }, `${i18n.eventAttendees}: ${totalVotesNum}`)
       ),
-      div({ class: "job-meta-line", style: `color:${outcome.color};font-weight:bold;` }, `${i18n.voteResults || "Results"}: ${outcome.text}`),
-      div({ class: "card-spread-centered" }, renderSpreadButton(v.id, spreadInfo))
+      div({ class: `job-meta-line vote-outcome vote-outcome-${outcome.variant}` }, `${i18n.voteResults || "Results"}: ${outcome.text}`)
     )
   );
 };
@@ -147,12 +147,6 @@ const renderVoteDetail = (v, voteOptionsDefault, firstRow, secondRow, mode, acti
   ].filter(Boolean);
 
   const sideActions = [];
-  if (v.createdBy && v.createdBy !== userId) {
-    sideActions.push(form({ method: "GET", action: "/pm" },
-      input({ type: "hidden", name: "recipients", value: v.createdBy }),
-      button({ type: "submit", class: "filter-btn" }, i18n.privateMessage)
-    ));
-  }
   for (const a of renderVoteOwnerActions(v, returnTo, mode || "")) sideActions.push(a);
 
   const cleanTags = (Array.isArray(v.tags) ? v.tags : []).filter((t) => t && !String(t).includes(":"));
@@ -172,17 +166,20 @@ const renderVoteDetail = (v, voteOptionsDefault, firstRow, secondRow, mode, acti
   pushRow(i18n.voteStatus, statusLabel(v.status));
 
   const voteSide = div({ class: "tribe-side" },
+    div({ class: "card-header activity-card-header" },
+      renderContentActions(v.id, null, { spread: params.spreads || null, author: v.createdBy, favKind: 'votes', isFavorite: v.isFavorite, reportTitle: v.question })
+    ),
     div({ class: "shop-title-row" },
       h2({ class: "tribe-card-title" }, v.question)
     ),
     chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-    div({ class: "card-spread-centered" }, renderSpreadButton(v.id, params.spreads)),
     table({ class: "tribe-info-table jobs-info-table" }, ...infoRows),
     tagsNode,
     div({ class: "tribe-card-members" },
       span({ class: "tribe-members-count" }, `${i18n.eventAttendees}: ${totalVotesNum}`)
     ),
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
+    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
+    renderDocumentActions('votes', v.id)
   );
 
   const voteButtonsNode = renderVoteButtons(v, voteOptions, firstRow, secondRow, returnTo);
@@ -197,7 +194,7 @@ const renderVoteDetail = (v, voteOptionsDefault, firstRow, secondRow, mode, acti
     div({ class: "job-section" },
       h2({ class: "job-section-title" },
         `${i18n.voteResults || "Results"}: `,
-        span({ style: `color:${outcome.color} !important;font-weight:bold;` }, outcome.text)
+        span({ class: `vote-outcome vote-outcome-${outcome.variant}` }, outcome.text)
       ),
       div({ class: "vote-table" },
         table(
@@ -210,71 +207,20 @@ const renderVoteDetail = (v, voteOptionsDefault, firstRow, secondRow, mode, acti
       span({ class: "date-link" }, `${moment(v.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
       userLink(v.createdBy)
     ),
-    renderOpinionsBar(v, returnTo)
+    renderEngagement(v.id, renderOpinionsBar(v, returnTo),
+      mode === "detail" ? renderCommentsSection(v.id, params.comments || [], activeFilter) : null)
   );
 
   return div({ class: "tribe-details" }, voteSide, voteMain);
 };
 
 const renderCommentsSection = (voteId, comments, activeFilter) => {
-  const commentsCount = Array.isArray(comments) ? comments.length : 0;
   const returnTo = `/votes/${encodeURIComponent(voteId)}?filter=${encodeURIComponent(activeFilter || "all")}`;
-
-  return div(
-    { class: "vote-comments-section" },
-    div(
-      { class: "comments-count" },
-      span({ class: "card-label" }, i18n.voteCommentsLabel + ": "),
-      span({ class: "card-value" }, String(commentsCount))
-    ),
-    div(
-      { class: "comment-form-wrapper" },
-      h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
-      form(
-        { method: "POST", action: `/votes/${encodeURIComponent(voteId)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
-        input({ type: "hidden", name: "returnTo", value: returnTo }),
-        textarea({
-          id: "comment-text",
-          name: "text",
-          rows: 4,
-          class: "comment-textarea",
-          placeholder: i18n.voteNewCommentPlaceholder
-        }),
-        div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
-        br(),
-        button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
-      )
-    ),
-    comments && comments.length
-      ? div(
-          { class: "comments-list" },
-          comments.map((c) => {
-            const author = c.value && c.value.author ? c.value.author : "";
-            const ts = c.value && c.value.timestamp ? c.value.timestamp : c.timestamp;
-            const absDate = ts ? moment(ts).format("YYYY/MM/DD HH:mm:ss") : "";
-            const relDate = ts ? moment(ts).fromNow() : "";
-
-            const content = c.value && c.value.content ? c.value.content : {};
-            const root = content.fork || content.root || "";
-            const text = content.text || "";
-
-            return div(
-              { class: "votations-comment-card" },
-              span(
-                { class: "created-at" },
-                span(i18n.createdBy),
-                author ? userLink(author) : span("(unknown)"),
-                absDate ? span(" | ") : "",
-                absDate ? span({ class: "votations-comment-date" }, absDate) : "",
-                relDate ? span({ class: "votations-comment-date" }, " | ", i18n.sendTime) : "",
-                relDate && root ? a({ href: `/thread/${encodeURIComponent(root)}#${encodeURIComponent(c.key)}` }, relDate) : ""
-              ),
-              p({ class: "votations-comment-text" }, ...renderUrl(String(text)))
-            );
-          })
-        )
-      : p({ class: "votations-no-comments" }, i18n.voteNoCommentsYet)
-  );
+  return renderSharedCommentsSection({
+    action: `/votes/${encodeURIComponent(voteId)}/comments`,
+    comments: comments,
+    returnTo: returnTo
+  });
 };
 
 exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam, params = {}) => {
@@ -285,14 +231,7 @@ exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam,
     ? activeFilterParam
     : (standardFilters.includes(mode) ? mode : "all");
 
-  const title =
-    mode === "mine" ? i18n.voteMineSectionTitle :
-    mode === "create" ? i18n.voteCreateSectionTitle :
-    mode === "edit" ? i18n.voteUpdateSectionTitle :
-    mode === "open" ? i18n.voteOpenTitle :
-    mode === "closed" ? i18n.voteClosedTitle :
-    mode === "detail" ? (i18n.voteDetailSectionTitle || i18n.voteAllSectionTitle) :
-    i18n.voteAllSectionTitle;
+  const title = i18n.votationsTitle;
 
   const voteToEdit = list.find((v) => v.id === voteId) || {};
   const editTags = Array.isArray(voteToEdit.tags) ? voteToEdit.tags.filter(Boolean) : [];
@@ -317,8 +256,19 @@ exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam,
 
   const listReturnTo = standardFilters.includes(activeFilter) ? `/votes?filter=${encodeURIComponent(activeFilter)}` : "/votes";
 
-  const deadlineMin = moment().add(1, "minute").format("YYYY-MM-DDTHH:mm");
-  const deadlineValue = voteToEdit.deadline ? moment(voteToEdit.deadline).format("YYYY-MM-DDTHH:mm") : "";
+  const minVoteDays = Number(params.minVoteDays) > 0 ? Number(params.minVoteDays) : 7;
+  const deadlineMin = moment().add(minVoteDays, "days").format("YYYY-MM-DDTHH:mm");
+  const draft = params.draft || {};
+  const deadlineValue = draft.deadline
+    ? String(draft.deadline)
+    : (voteToEdit.deadline ? moment(voteToEdit.deadline).format("YYYY-MM-DDTHH:mm") : "");
+  const questionValue = draft.question !== undefined && draft.question !== "" ? String(draft.question) : (voteToEdit.question || "");
+  const tagsValue = draft.tags ? String(draft.tags) : editTags.join(", ");
+  const formError = params.error === "deadline"
+    ? String(i18n.voteErrorDeadlineMin || "The deadline must be at least {days} days from now.").replace("{days}", String(minVoteDays))
+    : params.error
+      ? (i18n.voteErrorGeneric || "The vote could not be saved.")
+      : "";
 
   return template(
     title,
@@ -328,23 +278,41 @@ exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam,
         { class: "filters" },
         form(
           { method: "GET", action: "/votes" },
-          button({ type: "submit", name: "filter", value: "all", class: mode === "all" ? "filter-btn active" : "filter-btn" }, i18n.voteFilterAll),
-          button({ type: "submit", name: "filter", value: "mine", class: mode === "mine" ? "filter-btn active" : "filter-btn" }, i18n.voteFilterMine),
-          button({ type: "submit", name: "filter", value: "open", class: mode === "open" ? "filter-btn active" : "filter-btn" }, i18n.voteFilterOpen),
-          button({ type: "submit", name: "filter", value: "closed", class: mode === "closed" ? "filter-btn active" : "filter-btn" }, i18n.voteFilterClosed),
+          button({ type: "submit", name: "filter", value: "all", class: mode === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.voteFilterAll).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "mine", class: mode === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.voteFilterMine).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "open", class: mode === "open" ? "filter-btn active" : "filter-btn" }, String(i18n.voteFilterOpen).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "closed", class: mode === "closed" ? "filter-btn active" : "filter-btn" }, String(i18n.voteFilterClosed).toUpperCase()),
           button({ type: "submit", name: "filter", value: "create", class: mode === "create" ? "create-button active" : "create-button" }, i18n.voteCreateButton)
         )
-      )
+      ),
+      mode !== "create" && mode !== "edit"
+        ? div({ class: "filters" },
+            form({ method: "GET", action: "/votes", class: "filter-box" },
+              input({ type: "hidden", name: "filter", value: mode }),
+              input({ type: "text", name: "q", value: (params && params.q) || "", placeholder: i18n.votesSearchPlaceholder, class: "filter-box__input" }),
+              div({ class: "filter-box__controls" },
+                button({ type: "submit", class: "filter-box__button" }, i18n.searchButton)
+              )
+            )
+          )
+        : null
     ),
     section(
       (mode === "edit" || mode === "create")
         ? div(
             { class: "vote-form" },
+            mode === "edit" ? await renderSpreadEditWarning(voteId) : null,
+            formError
+              ? div({ class: "error-box vote-form-error" },
+                  p({ class: "error-title" }, i18n.voteErrorTitle || "Check the form"),
+                  p(formError)
+                )
+              : null,
             form(
               { action: mode === "edit" ? `/votes/update/${encodeURIComponent(voteId)}` : "/votes/create", method: "POST" },
               input({ type: "hidden", name: "returnTo", value: listReturnTo }),
               h2(i18n.voteQuestionLabel),
-              input({ type: "text", name: "question", id: "question", required: true, value: voteToEdit.question || "" }), br(), br(),
+              input({ type: "text", name: "question", id: "question", required: true, value: questionValue }), br(), br(),
               label(i18n.voteDeadlineLabel), br(),
               input({
                 type: "datetime-local",
@@ -355,16 +323,15 @@ exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam,
                 value: deadlineValue
               }), br(), br(),
               label(i18n.voteTagsLabel), br(),
-              input({ type: "text", name: "tags", id: "tags", value: editTags.join(", ") }), br(), br(),
+              input({ type: "text", name: "tags", id: "tags", value: tagsValue }), br(), br(),
               button({ type: "submit" }, mode === "edit" ? i18n.voteUpdateButton : i18n.voteCreateButton)
             )
           )
         : mode === "detail" && voteId
-          ? renderVoteDetail(filtered[0] || list.find(v => v.id === voteId) || {}, voteOptions, firstRow, secondRow, mode, activeFilter, params)
+          ? renderVoteDetail(filtered[0] || list.find(v => v.id === voteId) || {}, voteOptions, firstRow, secondRow, mode, activeFilter, { ...params, comments })
           : filtered.length > 0
             ? div({ class: "jobs-grid" }, filtered.map((v) => renderVoteListItem(v, voteOptions, activeFilter, params.spreadMap && params.spreadMap.get(v.id))))
             : p(i18n.novotes),
-      (mode === "detail" && voteId) ? renderCommentsSection(voteId, comments, activeFilter) : null
     )
   );
 };

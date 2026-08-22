@@ -12,13 +12,14 @@ const SENSITIVE_FIELDS = [
 const ENVELOPE_PRESERVE = new Set([
   'type', 'tribeId', 'contentType', 'replaces', 'target', 'author',
   'createdAt', 'updatedAt', 'encryptedPayload',
-  'mapId', 'calendarId', 'dateId', 'padId', 'roomId', 'parentId',
+  'mapId', 'calendarId', 'dateId', 'padId', 'roomId', 'parentId', 'courseId',
   'members', 'invites', 'participants',
   '_decrypted', '_undecryptable'
 ]);
 
 const INVITE_SALT_LEGACY = 'SolarNET.HuB';
-const INVITE_SCRYPT = { N: 131072, r: 8, p: 1, maxmem: 256 * 1024 * 1024 };
+const INVITE_SCRYPT = { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+const INVITE_SCRYPT_LEGACY = { N: 131072, r: 8, p: 1, maxmem: 512 * 1024 * 1024 };
 
 const FP_INFO = Buffer.from('v1-fp', 'utf8');
 const ENVELOPE_TYPE = 'tribe-msg';
@@ -200,9 +201,9 @@ module.exports = (configPath, namespace = 'tribes') => {
 
   const generateInviteSalt = () => crypto.randomBytes(16).toString('hex');
 
-  const deriveInviteKey = (code, salt) => {
+  const deriveInviteKey = (code, salt, params = INVITE_SCRYPT) => {
     const s = (salt === undefined || salt === null || salt === '') ? INVITE_SALT_LEGACY : salt;
-    return crypto.scryptSync(code, s, 32, INVITE_SCRYPT);
+    return crypto.scryptSync(code, s, 32, params);
   };
 
   const hashInviteCode = (code, salt) => {
@@ -219,21 +220,52 @@ module.exports = (configPath, namespace = 'tribes') => {
   };
 
   const decryptFromInvite = (encryptedKey, inviteCode, salt) => {
-    const derived = deriveInviteKey(inviteCode, salt);
-    return decryptWithKey(encryptedKey, derived.toString('hex'), inviteAad(inviteCode, salt));
+    const aad = inviteAad(inviteCode, salt);
+    try {
+      const derived = deriveInviteKey(inviteCode, salt);
+      return decryptWithKey(encryptedKey, derived.toString('hex'), aad);
+    } catch (_) {}
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const derived = deriveInviteKey(inviteCode, salt, INVITE_SCRYPT_LEGACY);
+        return decryptWithKey(encryptedKey, derived.toString('hex'), aad);
+      } catch (_) {}
+    }
+    throw new Error('Unsupported state or unable to authenticate data');
   };
+
+  const INVITE_ENCRYPT_ATTEMPTS = 3;
 
   const encryptChainForInvite = (ancestryRootIds, code, salt) => {
     const chain = ancestryRootIds.map(rid => ({ rootId: rid, keys: getKeys(rid), gen: getGen(rid) }));
     if (chain.some(e => !Array.isArray(e.keys) || !e.keys.length)) return null;
-    const k = deriveInviteKey(code, salt);
-    return encryptWithKey(JSON.stringify(chain), k.toString('hex'), inviteAad(code, salt));
+    const plain = JSON.stringify(chain);
+    const aad = inviteAad(code, salt);
+    for (let attempt = 0; attempt < INVITE_ENCRYPT_ATTEMPTS; attempt++) {
+      const k = deriveInviteKey(code, salt);
+      const payload = encryptWithKey(plain, k.toString('hex'), aad);
+      if (!payload) continue;
+      const readBack = decryptChainFromInvite(payload, code, salt);
+      if (readBack && JSON.stringify(readBack.map(e => ({ rootId: e.rootId, keys: e.keys, gen: e.gen })))
+        === JSON.stringify(chain.map(e => ({ rootId: e.rootId, keys: e.keys, gen: e.gen })))) {
+        return payload;
+      }
+    }
+    throw new Error('Could not produce a verifiable invite on this machine');
   };
 
-  const decryptChainFromInvite = (encryptedPayload, code, salt) => {
-    const k = deriveInviteKey(code, salt);
+  const decryptChainOnce = (encryptedPayload, code, salt) => {
+    let json = null
     try {
-      const json = decryptWithKey(encryptedPayload, k.toString('hex'), inviteAad(code, salt));
+      const k = deriveInviteKey(code, salt);
+      json = decryptWithKey(encryptedPayload, k.toString('hex'), inviteAad(code, salt));
+    } catch (_) {
+      try {
+        const k = deriveInviteKey(code, salt, INVITE_SCRYPT_LEGACY);
+        json = decryptWithKey(encryptedPayload, k.toString('hex'), inviteAad(code, salt));
+      } catch (_) { return null; }
+    }
+    try {
       const parsed = JSON.parse(json);
       if (Array.isArray(parsed) && parsed.every(e => e && e.rootId && Array.isArray(e.keys) && e.keys.length)) {
         return parsed.map(e => ({
@@ -244,6 +276,15 @@ module.exports = (configPath, namespace = 'tribes') => {
         }));
       }
     } catch (_) {}
+    return null;
+  };
+
+  const decryptChainFromInvite = (encryptedPayload, code, salt, attempts = 1) => {
+    const tries = Math.max(1, Number(attempts) || 1);
+    for (let i = 0; i < tries; i++) {
+      const chain = decryptChainOnce(encryptedPayload, code, salt);
+      if (chain) return chain;
+    }
     return null;
   };
 

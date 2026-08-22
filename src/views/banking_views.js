@@ -297,7 +297,8 @@ const renderTaxes = (data, lookup) => {
   );
 };
 
-const renderOverviewSummaryTable = (s, rules, userEcoinTax) => {
+const renderOverviewSummaryTable = (s, rules, userEcoinTax, isPub = false) => {
+  const ubiWired = !!s.pubId || isPub;
   const score = Number(s.userEngagementScore || 0);
   const pool = Number(s.pool || 0);
   const W = Math.max(1, Number(s.weightsSum || 1));
@@ -314,14 +315,18 @@ const renderOverviewSummaryTable = (s, rules, userEcoinTax) => {
     table({ class: "bank-info-table" },
       tbody(
         kvRow(i18n.bankUserBalance, `${Number(s.userBalance || 0).toFixed(6)} ECO`),
-        kvRow(i18n.bankUbiAvailability, span({ class: availClass }, availLabel)),
+        kvRow(i18n.bankIndustryBalance || 'Industry Production (estimated)', a({ href: '/industry' }, `${Number(s.industryNetworkTotal || 0).toFixed(6)} ECO`)),
+        ubiWired ? kvRow(i18n.bankUbiAvailability, span({ class: availClass }, availLabel)) : null,
         s.pubId ? kvRow(i18n.pubIdLabel, userLink(s.pubId)) : null,
         kvRow(i18n.bankEpoch, String(s.epochId || "-")),
         kvRow(i18n.bankPool, `${pool.toFixed(6)} ECO`),
         kvRow(i18n.bankWeightsSum, String(W.toFixed(6))),
         kvRow(i18n.bankingUserEngagementScore, String(score)),
+        ubiWired ? kvRow(i18n.bankYourUbiMonth || 'Your UBI (this month)', `${future.toFixed(6)} ECO`) : null,
+        kvRow(i18n.bankYourIndustryBalance || 'Your Industry Share', a({ href: '/industry?filter=MEMBER' }, `${Number(s.industryBalance || 0).toFixed(6)} ECO`)),
+        kvRow(i18n.bankYourSchoolBalance || 'Your School Earnings', a({ href: '/school?filter=mine' }, `${Number(s.schoolBalance || 0).toFixed(6)} ECO`)),
         kvRow(i18n.bankOverviewYourTaxes || 'Your taxes', a({ href: '/banking?filter=taxes' }, `${tax.toFixed(6)} ECO`)),
-        kvRow(i18n.bankUbiThisMonth, `${future.toFixed(6)} ECO`)
+        kvRow(i18n.bankYourFundsMonth || 'Your Funds (this month)', `${((ubiWired ? future : 0) + Number(s.industryBalance || 0) + Number(s.schoolBalance || 0) - tax).toFixed(6)} ECO`)
       )
     )
   );
@@ -618,7 +623,7 @@ const renderBankingView = (data, filter, userId, isPub) =>
       generateFilterButtons(["overview","exchange","taxes","mine","pending","closed","claimed","expired","epochs","rules","addresses"], filter, "/banking"),
       filter === "overview"
         ? div(
-            renderOverviewSummaryTable(data.summary || {}, data.rules, data.userTotalTax || data.userEcoinTax),
+            renderOverviewSummaryTable(data.summary || {}, data.rules, data.userTotalTax || data.userEcoinTax, isPub),
             renderClaimUBIBlock(data.pendingUBI || null, isPub, data.alreadyClaimed, (data.summary || {}).pubId, (data.summary || {}).hasValidWallet, (data.summary || {}).ubiAvailability),
             allocationsTable((data.allocations || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), userId)
           )

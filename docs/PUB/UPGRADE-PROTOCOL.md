@@ -1,8 +1,12 @@
 # Protocolo de upgrade de Oasis (fork dockerizado)
 
+> **Este repo es el sitio del upgrade** (`C:\S_LAB\o-sdk`,
+> `https://github.com/alephscriptorium-eng/O_SDK.git`). No uses
+> `BlockchainComPort` ni `alephscript-network-sdk` (archivado).
+
 Checklist operativo reutilizable para subir el fork dockerizado de Oasis a una nueva versión
 upstream (KrakensLab/oasis) sin perder identidad SSB ni los "fork guards". Deriva del plan de
-upgrade y de lo aprendido en el ciclo 0.8.3→0.8.8.
+upgrade y de lo aprendido en los ciclos 0.8.3→0.8.8 y 0.8.8→0.9.6.
 
 > **Modelo mental del "ciclo".** El *ciclo de red* NO lo calcula ningún código local
 > (`blockchain-cycle.json` no lo lee nadie; `computeCycle()` de LARP es otra cosa). Es una
@@ -24,10 +28,10 @@ No asumas el estado. Este comando lo dice: versión/cap/feed del pub vivo y verd
 ## 1. Preflight (check-warning)
 
 ```bash
-bash devops/scripts/upgrade-preflight.sh    # drift de versión + drift de ciclo + estado del árbol
+UPSTREAM_BRANCH=main bash devops/scripts/upgrade-preflight.sh    # drift de versión + drift de ciclo + estado del árbol
 ```
 
-- Compara `src/server/package.json` local vs `oasis-upstream/master`.
+- Compara `src/server/package.json` local vs `oasis-upstream/main`.
 - Deriva el ciclo/cap actual de la red desde `oasis-project.pub/api/pubs` y lo compara con el local.
 - Avisa si nuestro pub está rojo (y distingue descubribilidad de cap/deploy).
 - Sale `0` = GO, `1` = hay WARN. (El aviso in-app de Oasis es un no-op en Docker: `.dockerignore`
@@ -40,7 +44,7 @@ rama `upgrade/oasis-X.Y.Z`:
 
 ```bash
 git switch -c upgrade/oasis-X.Y.Z
-git checkout oasis-upstream/master -- src/                                   # overlay app sources
+git checkout oasis-upstream/main -- src/                                     # overlay app sources
 git checkout HEAD -- src/server/ssb_config.js src/backend/updater.js src/views/settings_view.js
 # Re-aplicar A MANO el guard de /update en el nuevo src/backend/backend.js:
 #   conservar isLoopbackRequest de upstream; sustituir el bloque
@@ -64,7 +68,7 @@ Fuera de `src/` se mantiene **wholesale** (nunca overlay): `Dockerfile`, `docker
 ### Verificación de invariantes (crítica)
 
 ```bash
-git diff oasis-upstream/master --stat -- src/     # SOLO los 4 guards + blockchain-cycle.json
+git diff oasis-upstream/main --stat -- src/       # SOLO los 4 guards + blockchain-cycle.json
 node --check src/backend/backend.js               # el edit a mano parsea
 grep -m1 '"version"' src/server/package.json      # = X.Y.Z
 ls src/configs/blockchain-cycle.json              # preservado
@@ -84,13 +88,18 @@ ls src/configs/blockchain-cycle.json              # preservado
 y `ai-models`.
 
 - **Cliente** (`docker-compose.yml`, modo `full`): `docker compose build && docker compose up -d`.
-- **Pub** (VPS): `bash pub/scripts/env-run.sh .env.prod deploy.sh`.
+- **Pub** (VPS `/opt/oasis-scriptorium`): **no es un checkout git**. `deploy.sh` solo hace
+  `compose up --build` sobre lo que ya hay en disco. Orden: backup → actualizar **`src/`**
+  (tar/rsync; no el repo o-sdk entero) → rebuild **solo** `oasis-pub`.
+  - El layout del host sigue siendo `OASIS_PUB/` (pre-refactor). No rsync de `pub/` encima.
   - **Backup previo obligatorio**: `bash devops/scripts/backup-oasis-pub.sh`.
   - ⚠️ **Caddy compartido**: `oasis-pub-web` frontea también los hosts de ScriptoriumVps. Para un
     upgrade de solo Oasis, reconstruir **solo el servicio de la app**
-    (`docker compose -f docker-compose.pub.yml up -d --build oasis-pub`) para no recrear `pub-web`.
+    (`docker compose -f docker-compose.pub.yml up -d --build --no-deps oasis-pub`) para no recrear `pub-web`.
     Si tocas el `Caddyfile`: `caddy validate` + `caddy reload --config /dev/stdin`, **nunca**
     `restart pub-web` a ciegas.
+  - **Landing**: no tocar. `pub/site/index.html` lee versión/ciclo/cap en vivo
+    (`/public/status`, `/public/network`).
 - El `deploy.sh` del pub **apenda al journal** (A0b) al terminar (`devops/scripts/deploy-log.sh`).
 
 ## 5. Ciclo de red — dos casos

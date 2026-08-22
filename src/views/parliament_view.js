@@ -4,8 +4,9 @@ const { template, i18n, userLink} = require('./main_views');
 
 const TERM_DAYS = 60;
 
-const fmt = (d) => moment(d).format('YYYY-MM-DD HH:mm:ss');
+const fmt = (d) => d ? moment(d).format('YYYY-MM-DD HH:mm:ss') : '—';
 const timeLeft = (end) => {
+  if (!end) return '—';
   const diff = moment(end).diff(moment());
   if (diff <= 0) return '0d 00:00:00';
   const dur = moment.duration(diff);
@@ -75,8 +76,8 @@ const Tabs = (active) =>
   );
 
 const GovHeader = (g) => {
-  const termStart = g && g.since ? g.since : moment().toISOString();
-  const termEnd = g && g.end ? g.end : moment(termStart).add(TERM_DAYS, 'days').toISOString();
+  const termStart = g && g.since ? g.since : null;
+  const termEnd = g && g.end ? g.end : null;
   const methodKeyRaw = g && g.method ? String(g.method) : 'ANARCHY';
   const methodKey = methodKeyRaw.toUpperCase();
   const i18nMeth = i18n[`parliamentMethod${methodKey}`];
@@ -118,8 +119,8 @@ const GovHeader = (g) => {
 };
 
 const GovernmentCard = (g, meta) => {
-  const termStart = g && g.since ? g.since : moment().toISOString();
-  const termEnd = g && g.end ? g.end : moment(termStart).add(TERM_DAYS, 'days').toISOString();
+  const termStart = g && g.since ? g.since : null;
+  const termEnd = g && g.end ? g.end : null;
   const actorLabel =
     g.powerType === 'tribe'
       ? (i18n.parliamentActorInPowerTribe || i18n.parliamentActorInPower || 'TRIBE RULING')
@@ -263,7 +264,7 @@ const CandidatureStats = (cands, govCard, leaderMeta, electionQuorum = 2) => {
     h2(i18n.parliamentElectionsStatusTitle),
     div({ class: 'card-field card-field--spaced' },
       span({ class: 'card-label' }, winLbl + ': '),
-      span({ class: 'card-value' }, hasQuorum ? idLink : span({ style: 'color:#ffcc00;font-weight:bold;' }, i18n.voteNoQuorum || 'NO QUORUM'))
+      span({ class: 'card-value' }, hasQuorum ? idLink : span({ class: 'vote-no-quorum' }, i18n.voteNoQuorum || 'NO QUORUM'))
     ),
     hasQuorum
       ? div({ class: 'card-field card-field--spaced' },
@@ -343,7 +344,7 @@ const ProposalForm = () =>
     form(
       { method: 'POST', action: '/parliament/proposals/create' },
       label(i18n.parliamentProposalTitle), br(),
-      input({ type: 'text', name: 'title', required: true }), br(), br(),
+      input({ type: 'text', name: 'title', maxlength: '100', required: true }), br(), br(),
       label(i18n.parliamentProposalDescription), br(),
       textarea({ name: 'description', rows: 5, maxlength: 1000 }), br(), br(),
       button({ type: 'submit', class: 'create-button' }, i18n.parliamentProposalPublish)
@@ -950,8 +951,8 @@ const parliamentView = async (state) => {
     powerType: 'none',
     powerId: null,
     powerTitle: 'ANARCHY',
-    since: moment().toISOString(),
-    end: moment().add(TERM_DAYS, 'days').toISOString(),
+    since: null,
+    end: null,
     inhabitantsTotal: Number(inhabitantsTotal ?? 0) || 0
   };
 

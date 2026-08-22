@@ -8,7 +8,7 @@
 Tu nodo, tu identidad. Sin nube, sin cuentas, sin servidor central.
 
 [![web](https://img.shields.io/badge/web-o--sdk.escrivivir.co-111?style=flat-square)](https://o-sdk.escrivivir.co)
-[![oasis](https://img.shields.io/badge/oasis-0.8.8-111?style=flat-square)](https://solarnethub.com/)
+[![oasis](https://img.shields.io/badge/oasis-0.9.6-111?style=flat-square)](https://solarnethub.com/)
 [![docker](https://img.shields.io/badge/docker-compose-111?style=flat-square&logo=docker&logoColor=white)](#-quickstart)
 [![SSB](https://img.shields.io/badge/protocol-SSB-111?style=flat-square)](https://scuttlebutt.nz)
 [![status](https://img.shields.io/badge/status-WIP-111?style=flat-square)](#-a-quien-corresponda)

@@ -671,7 +671,7 @@ module.exports = ({ cooler, tribeCrypto }) => {
         if (typeof c.ch !== 'string' || typeof c.s !== 'string' || typeof c.ek !== 'string') continue;
         if (inviteTombstoned.has(m.key)) continue;
         if (tribeCrypto.hashInviteCode(code, c.s) !== c.ch) continue;
-        const chain = tribeCrypto.decryptChainFromInvite(c.ek, code, c.s);
+        const chain = tribeCrypto.decryptChainFromInvite(c.ek, code, c.s, 3);
         if (Array.isArray(chain) && chain.length) {
           matched = { msgKey: m.key, codeHash: c.ch, chain, multi: c.multi === 1 || c.multi === true };
           break;
@@ -929,7 +929,7 @@ module.exports = ({ cooler, tribeCrypto }) => {
       const all = tribeCrypto.getAllRootIds();
       let removed = 0;
       for (const rid of all) {
-        if (!idx.tribes.has(rid) || idx.effectivelyTombstoned.has(rid)) {
+        if (idx.effectivelyTombstoned.has(rid)) {
           try { tribeCrypto.dropKey(rid); removed++; } catch (_) {}
         }
       }

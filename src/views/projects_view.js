@@ -1,5 +1,6 @@
 const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, ul, li, table, thead, tbody, tr, th, td, progress, video, audio } = require("../server/node_modules/hyperaxe")
-const { template, i18n, renderOpinionsVoting, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions } = require("./main_views")
+const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderUrl } = require("../backend/renderUrl")
@@ -308,8 +309,8 @@ const renderMilestonesAndBounties = (project, filter, editable) => {
                       br(),
                       select(
                         { name: "milestoneIndex" },
-                        option({ value: "", selected: b.milestoneIndex == null }, "-"),
-                        ...milestones.map((m2, idx2) => option({ value: String(idx2), selected: b.milestoneIndex === idx2 }, m2.title))
+                        option({ value: "", ...(b.milestoneIndex == null ? { selected: true } : {})}, "-"),
+                        ...milestones.map((m2, idx2) => option({ value: String(idx2), ...(b.milestoneIndex === idx2 ? { selected: true } : {})}, m2.title))
                       ),
                       br(),
                       br(),
@@ -408,7 +409,7 @@ const renderProjectList = exports.renderProjectList = (projects, filter, spreadM
         div(
           { class: "card-header activity-card-header" },
           span(),
-          renderContentActions(pr.id || pr.key, `/projects/${encodeURIComponent(pr.id)}`)
+          renderContentActions(pr.id || pr.key, `/projects/${encodeURIComponent(pr.id)}`, { spread: spreadMap.get(pr.id || pr.key) || null, author: pr.author, favKind: 'projects', isFavorite: pr.isFavorite, reportTitle: pr.title })
         ),
         div({ class: "card-section project-card-body" },
           heroNode,
@@ -426,15 +427,14 @@ const renderProjectList = exports.renderProjectList = (projects, filter, spreadM
             : null,
           div({ class: "tribe-card-members" },
             span({ class: "tribe-members-count" }, `${i18n.projectFollowers}: ${followersCount(pr)}`)
-          ),
-          div({ class: "card-spread-centered" }, renderSpreadButton(pr.id || pr.key, spreadMap.get(pr.id || pr.key)))
+          )
         )
       )
     })
   )
 }
 
-const renderProjectForm = (project, mode) => {
+const renderProjectForm = (project, mode, spreadWarning = null) => {
   const pr = project || {}
   const isEdit = mode === "edit"
   const nowLocal = moment().format("YYYY-MM-DDTHH:mm")
@@ -444,6 +444,7 @@ const renderProjectForm = (project, mode) => {
 
   return div(
     { class: "div-center project-form" },
+    isEdit ? spreadWarning : null,
     form(
       {
         action: isEdit ? `/projects/update/${encodeURIComponent(pr.id)}` : "/projects/create",
@@ -453,7 +454,7 @@ const renderProjectForm = (project, mode) => {
       input({ type: "hidden", name: "returnTo", value: returnTo }),
       label(i18n.projectTitle),
       br(),
-      input({ type: "text", name: "title", required: true, placeholder: i18n.projectTitlePlaceholder, value: pr.title || "" }),
+      input({ type: "text", name: "title", maxlength: "100", required: true, placeholder: i18n.projectTitlePlaceholder, value: pr.title || "" }),
       br(),
       label(i18n.projectDescription),
       br(),
@@ -505,6 +506,10 @@ const renderProjectForm = (project, mode) => {
 }
 
 exports.projectsView = async (projectsOrForm, filter, _unused, params = {}) => {
+  if (String(filter).toUpperCase() === "EDIT") {
+    const editing = Array.isArray(projectsOrForm) ? projectsOrForm[0] : projectsOrForm
+    params = { ...params, spreadWarning: await renderSpreadEditWarning(editing && (editing.id || editing.key)) }
+  }
   const f = String(filter || "ALL").toUpperCase()
   const filterObj = FILTERS.find((x) => x.key === f) || FILTERS[0]
   const sectionTitle = i18n[filterObj.title] || i18n.projectAllTitle
@@ -524,14 +529,25 @@ exports.projectsView = async (projectsOrForm, filter, _unused, params = {}) => {
         { class: "filters" },
         form(
           { method: "GET", action: "/projects", class: "ui-toolbar ui-toolbar--filters" },
-          FILTERS.map((x) => button({ type: "submit", name: "filter", value: x.key, class: f === x.key ? "filter-btn active" : "filter-btn" }, i18n[x.i18n]))
+          FILTERS.map((x) => button({ type: "submit", name: "filter", value: x.key, class: f === x.key ? "filter-btn active" : "filter-btn" }, String(i18n[x.i18n]).toUpperCase()))
             .concat(button({ type: "submit", name: "filter", value: "CREATE", class: "create-button" }, i18n.projectCreateProject))
         )
       ),
       f === "CREATE" || f === "EDIT"
+        ? null
+        : div({ class: "filters" },
+            form({ method: "GET", action: "/projects", class: "filter-box" },
+              input({ type: "hidden", name: "filter", value: f }),
+              input({ type: "text", name: "q", value: safeText(params.q), placeholder: i18n.projectSearchPlaceholder, class: "filter-box__input" }),
+              div({ class: "filter-box__controls" },
+                button({ type: "submit", class: "filter-box__button" }, i18n.searchButton)
+              )
+            )
+          ),
+      f === "CREATE" || f === "EDIT"
         ? (() => {
-            const prToEdit = f === "EDIT" ? (safeArr(projectsOrForm)[0] || {}) : {}
-            return renderProjectForm(prToEdit, f === "EDIT" ? "edit" : "create")
+            const prToEdit = f === "EDIT" ? (safeArr(projectsOrForm)[0] || {}) : (params.prefill || {})
+            return renderProjectForm(prToEdit, f === "EDIT" ? "edit" : "create", params.spreadWarning)
           })()
         : (f === "BACKERS"
             ? renderBackersLeaderboard(projectsOrForm)
@@ -564,12 +580,6 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
   ].filter(Boolean)
 
   const sideActions = []
-  if (!isAuthor && pr.author) {
-    sideActions.push(form({ method: "GET", action: "/pm" },
-      input({ type: "hidden", name: "recipients", value: pr.author }),
-      button({ type: "submit", class: "filter-btn" }, i18n.privateMessage)
-    ))
-  }
   if (!isAuthor && statusUpper === "ACTIVE") {
     sideActions.push(isFollower
       ? form({ method: "POST", action: `/projects/unfollow/${encodeURIComponent(pr.id)}` },
@@ -584,7 +594,7 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
   }
   if (isAuthor) {
     sideActions.push(form({ method: "GET", action: `/projects/edit/${encodeURIComponent(pr.id)}` },
-      button({ class: "update-btn", type: "submit" }, i18n.projectUpdateButton)
+      button({ class: "tribe-action-btn", type: "submit" }, i18n.projectUpdateButton)
     ))
     sideActions.push(form({ method: "POST", action: `/projects/delete/${encodeURIComponent(pr.id)}` },
       input({ type: "hidden", name: "returnTo", value: returnTo }),
@@ -595,10 +605,10 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
       input({ type: "hidden", name: "returnTo", value: returnTo }),
       select(
         { name: "status", class: "project-control-select" },
-        option({ value: "ACTIVE", selected: statusUpper === "ACTIVE" }, i18n.projectStatusACTIVE),
-        option({ value: "PAUSED", selected: statusUpper === "PAUSED" }, i18n.projectStatusPAUSED),
-        option({ value: "COMPLETED", selected: statusUpper === "COMPLETED" }, i18n.projectStatusCOMPLETED),
-        option({ value: "CANCELLED", selected: statusUpper === "CANCELLED" }, i18n.projectStatusCANCELLED)
+        option({ value: "ACTIVE", ...(statusUpper === "ACTIVE" ? { selected: true } : {})}, i18n.projectStatusACTIVE),
+        option({ value: "PAUSED", ...(statusUpper === "PAUSED" ? { selected: true } : {})}, i18n.projectStatusPAUSED),
+        option({ value: "COMPLETED", ...(statusUpper === "COMPLETED" ? { selected: true } : {})}, i18n.projectStatusCOMPLETED),
+        option({ value: "CANCELLED", ...(statusUpper === "CANCELLED" ? { selected: true } : {})}, i18n.projectStatusCANCELLED)
       ),
       button({ class: "status-btn project-control-btn", type: "submit" }, i18n.projectSetStatus)
     ))
@@ -611,11 +621,13 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
   }
 
   const projectSide = div({ class: "tribe-side" },
+    div({ class: "card-header activity-card-header" },
+      renderContentActions(pr.id || pr.key, null, { spread: params.spreads || null, author: pr.author, favKind: 'projects', isFavorite: pr.isFavorite, reportTitle: pr.title })
+    ),
     div({ class: "shop-title-row" },
       h2({ class: "tribe-card-title" }, pr.title)
     ),
     chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-    div({ class: "card-spread-centered" }, renderSpreadButton(pr.id || pr.key, params.spreads)),
     pr.image ? renderMediaBlob(pr.image, { class: "tribe-detail-image" }) : null,
     div({ class: "job-price-line card-salary" }, `${pr.goal || 0} ECO`),
     div({ class: "job-price-line card-salary" }, `${i18n.projectFollowers}: ${followersCount(pr)}`),
@@ -642,41 +654,14 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
       span({ class: "date-link" }, `${moment(pr.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
       userLink(pr.author)
     ),
-    renderOpinionsVoting('/projects/opinions', pr.id || pr.key, pr.opinions, null, pr.opinions_inhabitants),
-    div(
-      { id: "comments", class: "vote-comments-section" },
-      div({ class: "comment-form-wrapper" },
-        h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
-        form(
-          { method: "POST", action: `/projects/${encodeURIComponent(pr.id || pr.key)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
-          textarea({ id: "comment-text", name: "text", rows: 4, class: "comment-textarea", placeholder: i18n.voteNewCommentPlaceholder }),
-          div({ class: "comment-file-upload" }, label(i18n.uploadMedia), br(), input({ type: "file", name: "blob" })),
-          br(),
-          button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
-        )
-      ),
-      (() => {
-        const visibleComments = (comments || []).filter(c => {
-          const t = c && c.value && c.value.content && c.value.content.text
-          return t && String(t).trim()
-        })
-        return visibleComments.length
-          ? div({ class: "comments-list" },
-              visibleComments.map((c) => {
-                const author = c?.value?.author || ""
-                const ts = c?.value?.timestamp || c?.timestamp
-                const absDate = ts ? moment(ts).format("YYYY/MM/DD HH:mm:ss") : ""
-                const relDate = ts ? moment(ts).fromNow() : ""
-                return div({ class: "comment-card" },
-                  div({ class: "comment-header" }, userLink(author)),
-                  div({ class: "comment-date" }, span({ title: absDate }, relDate)),
-                  div({ class: "comment-body" }, ...renderUrl(c?.value?.content?.text || ""))
-                )
-              })
-            )
-          : p({ class: "votations-no-comments" }, i18n.voteNoCommentsYet)
-      })()
-    )
+    renderEngagement(pr.id || pr.key,
+      renderOpinionsVoting('/projects/opinions', pr.id || pr.key, pr.opinions, null, pr.opinions_inhabitants),
+      renderSharedCommentsSection({
+        action: `/projects/${encodeURIComponent(pr.id || pr.key)}/comments`,
+        comments,
+        returnTo: `/projects/${encodeURIComponent(pr.id || pr.key)}`
+      })
+    ),
   )
 
   return template(
@@ -687,7 +672,7 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
         { class: "filters" },
         form(
           { method: "GET", action: "/projects", class: "ui-toolbar ui-toolbar--filters" },
-          FILTERS.map((x) => button({ type: "submit", name: "filter", value: x.key, class: f === x.key ? "filter-btn active" : "filter-btn" }, i18n[x.i18n]))
+          FILTERS.map((x) => button({ type: "submit", name: "filter", value: x.key, class: f === x.key ? "filter-btn active" : "filter-btn" }, String(i18n[x.i18n]).toUpperCase()))
             .concat(button({ type: "submit", name: "filter", value: "CREATE", class: "create-button" }, i18n.projectCreateProject))
         )
       ),
@@ -720,6 +705,7 @@ exports.clearnetProjectView = async (project) => {
 .cn-prj-funding-amount{color:var(--fg);font-size:18px;font-weight:700;margin-bottom:8px}
 .cn-prj-bar{height:8px;background:#000;border-radius:4px;overflow:hidden}
 .cn-prj-bar-fill{height:100%;background:var(--fg);border-radius:4px}
+${Array.from({ length: 21 }, (_, i) => `.cn-prj-bar-fill-${i * 5}{width:${i * 5}%}`).join('\n')}
 .cn-prj-section{margin-top:24px}
 .cn-prj-section h2{color:var(--fg);font-size:18px;text-transform:uppercase;letter-spacing:2px;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 .cn-prj-section p{color:var(--fg-soft);white-space:pre-wrap;line-height:1.6;font-size:15px;margin:0}
@@ -741,7 +727,7 @@ exports.clearnetProjectView = async (project) => {
   <div class="cn-prj-funding">
     <div class="cn-prj-funding-label">Funding</div>
     <div class="cn-prj-funding-amount">${pledged.toFixed(2)} / ${goal.toFixed(2)} ECO · ${fundingPct}%</div>
-    <div class="cn-prj-bar"><div class="cn-prj-bar-fill" style="width:${fundingPct}%"></div></div>
+    <div class="cn-prj-bar"><div class="cn-prj-bar-fill cn-prj-bar-fill-${Math.round(fundingPct / 5) * 5}"></div></div>
     ${deadline ? `<div class="cn-prj-deadline">Deadline: ${deadline}</div>` : ''}
   </div>` : ''}
   ${desc ? `<div class="cn-prj-section"><h2>Description</h2><p>${desc}</p></div>` : ''}

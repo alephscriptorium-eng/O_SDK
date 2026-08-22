@@ -42,7 +42,7 @@ const collectLocalIPs = () => {
 
 module.exports = ({ host, port, middleware, allowHost }) => {
   const assets = new Koa()
-  assets.use(koaStatic(join(__dirname, "..", "client", "assets")));
+  assets.use(koaStatic(join(__dirname, "..", "client", "assets"), { maxage: 60 * 60 * 1000 }));
 
   const app = new Koa();
   const validHosts = [];
@@ -79,12 +79,14 @@ module.exports = ({ host, port, middleware, allowHost }) => {
     return true;
   };
 
+  const httpDebug = process.argv.includes('--debug') || process.env.OASIS_DEBUG === '1' || process.env.OASIS_DEBUG === 'true';
+
    app.on("error", (err, ctx) => {
     if (err && (err.code === 'ECONNRESET' || err.code === 'EPIPE')) {
       return;
     }
     if (err && (err.name === 'BadRequestError' || err.status === 400)) {
-      console.error(`[400] ${err.message}`);
+      if (httpDebug) console.error(`[400] ${err.message}`);
       return null;
     }
     console.error(err);
@@ -114,8 +116,8 @@ module.exports = ({ host, port, middleware, allowHost }) => {
   app.use(koaStatic(path.join(__dirname, 'public')));
 
   app.use(async (ctx, next) => {
-  
-    //console.log("Requesting:", ctx.path); // uncomment to check for HTTP requests
+
+    if (httpDebug) console.log(`[http] ${ctx.method} ${ctx.path}`);
     
     const isClearnet = isClearnetPath(ctx.request);
     const csp = isClearnet
@@ -171,7 +173,6 @@ module.exports = ({ host, port, middleware, allowHost }) => {
     }
   });
   
-  // pdf viewer
   const pdfjsPath = path.join(__dirname, '../server/node_modules/pdfjs-dist/build/pdf.min.js');
   app.use(koaStatic(pdfjsPath));
 

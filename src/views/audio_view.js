@@ -15,8 +15,9 @@ const {
   label,
   option
 } = require("../server/node_modules/hyperaxe");
+const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink } = require("./comments_view");
 
-const { template, i18n, renderOpinionsVoting, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl")
@@ -46,21 +47,6 @@ const renderTags = (tags) => {
       )
     : null;
 };
-
-const renderAudioFavoriteToggle = (audioObj, returnTo = "") =>
-  form(
-    {
-      method: "POST",
-      action: audioObj.isFavorite
-        ? `/audios/favorites/remove/${encodeURIComponent(audioObj.key)}`
-        : `/audios/favorites/add/${encodeURIComponent(audioObj.key)}`
-    },
-    returnTo ? input({ type: "hidden", name: "returnTo", value: returnTo }) : null,
-    button(
-      { type: "submit", class: "filter-btn" },
-      audioObj.isFavorite ? i18n.audioRemoveFavoriteButton : i18n.audioAddFavoriteButton
-    )
-  );
 
 const renderTranscodeButton = (audioObj) =>
   audioObj.isBcs
@@ -108,66 +94,11 @@ const renderAudioOwnerActions = (filter, audioObj, params = {}) => {
 };
 
 const renderAudioCommentsSection = (audioId, comments = [], returnTo = null) => {
-  const list = safeArr(comments).filter(c => {
-    const t = c && c.value && c.value.content && c.value.content.text;
-    return t && String(t).trim();
+  return renderSharedCommentsSection({
+    action: `/audios/${encodeURIComponent(audioId)}/comments`,
+    comments: comments,
+    returnTo: returnTo
   });
-  const commentsCount = list.length;
-
-  return div(
-    { class: "vote-comments-section" },
-    div(
-      { class: "comments-count" },
-      span({ class: "card-label" }, i18n.voteCommentsLabel + ": "),
-      span({ class: "card-value" }, String(commentsCount))
-    ),
-    div(
-      { class: "comment-form-wrapper" },
-      h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
-      form(
-        { method: "POST", action: `/audios/${encodeURIComponent(audioId)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
-        returnTo ? input({ type: "hidden", name: "returnTo", value: returnTo }) : null,
-        textarea({
-          id: "comment-text",
-          name: "text",
-          rows: 4,
-          class: "comment-textarea",
-          placeholder: i18n.voteNewCommentPlaceholder
-        }),
-        div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
-        br(),
-        button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
-      )
-    ),
-    list.length
-      ? div(
-          { class: "comments-list" },
-          list.map((c) => {
-            const author = c?.value?.author || "";
-            const ts = c?.value?.timestamp || c?.timestamp;
-            const absDate = ts ? moment(ts).format("YYYY/MM/DD HH:mm:ss") : "";
-            const relDate = ts ? moment(ts).fromNow() : "";
-            const content = c?.value?.content || {};
-            const rootId = content.fork || content.root || null;
-            const text = content.text || "";
-
-            return div(
-              { class: "votations-comment-card" },
-              span(
-                { class: "created-at" },
-                span(i18n.createdBy),
-                author ? userLink(author) : span("(unknown)"),
-                absDate ? span(" | ") : "",
-                absDate ? span({ class: "votations-comment-date" }, absDate) : "",
-                relDate ? span({ class: "votations-comment-date" }, " | ", i18n.sendTime) : "",
-                relDate && rootId ? a({ href: `/thread/${encodeURIComponent(rootId)}#${encodeURIComponent(c.key)}` }, relDate) : ""
-              ),
-              p({ class: "votations-comment-text" }, ...renderUrl(text))
-            );
-          })
-        )
-      : p({ class: "votations-no-comments" }, i18n.voteNoCommentsYet)
-  );
 };
 
 const renderAudioList = exports.renderAudioList = (audios, filter, params = {}) => {
@@ -177,7 +108,6 @@ const renderAudioList = exports.renderAudioList = (audios, filter, params = {}) 
     ? audios.map((audioObj) => {
         const commentCount = typeof audioObj.commentCount === "number" ? audioObj.commentCount : 0;
         const title = safeText(audioObj.title);
-        const ownerActions = renderAudioOwnerActions(filter, audioObj, params);
 
         const isOwn = audioObj.author && String(audioObj.author) === String(userId);
         return div(
@@ -185,55 +115,17 @@ const renderAudioList = exports.renderAudioList = (audios, filter, params = {}) 
           div(
             { class: "card-header activity-card-header" },
             span(),
-            renderContentActions(audioObj.key, `/audios/${encodeURIComponent(audioObj.key)}`)
+            renderContentActions(audioObj.key, `/audios/${encodeURIComponent(audioObj.key)}`, { spread: (params.spreadMap && params.spreadMap.get(audioObj.key)) || params.spreads || null, author: audioObj.author, favKind: 'audios', isFavorite: audioObj.isFavorite, reportTitle: audioObj.title })
           ),
           div(
             { class: "card-section audio-card-body" },
-            div(
-              { class: "bookmark-topbar" },
-              div(
-                { class: "bookmark-topbar-left" },
-                renderAudioFavoriteToggle(audioObj, returnTo),
-                audioObj.author && String(audioObj.author) !== String(userId)
-                  ? form(
-                      { method: "GET", action: "/pm" },
-                      input({ type: "hidden", name: "recipients", value: audioObj.author }),
-                      button({ type: "submit", class: "filter-btn" }, i18n.audioMessageAuthorButton)
-                    )
-                  : null
-              ),
-              ownerActions.length
-                ? div({ class: "bookmark-topbar-right" }, div({ class: "bookmark-actions" }, ...ownerActions))
-                : null
-            ),
             title ? h2(title) : null,
             audioObj.lifetime ? div({ class: "card-chips-row" }, renderLifespanChip(audioObj.lifetime, i18n)) : null,
             renderAudioPlayer(audioObj),
-            div(
-              { class: "card-comments-summary" },
-              span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
-              span({ class: "card-value" }, String(commentCount)),
-              br(),
-              br(),
-              form(
-                { method: "GET", action: `/audios/${encodeURIComponent(audioObj.key)}` },
-                input({ type: "hidden", name: "returnTo", value: returnTo }),
-                input({ type: "hidden", name: "filter", value: filter || "all" }),
-                params.q ? input({ type: "hidden", name: "q", value: params.q }) : null,
-                params.sort ? input({ type: "hidden", name: "sort", value: params.sort }) : null,
-                button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
-              )
+            renderEngagement(audioObj.key,
+              renderOpinionsVoting('/audios/opinions', audioObj.key, audioObj.opinions, returnTo, audioObj.opinions_inhabitants),
+              renderCommentsLink({ href: `/audios/${encodeURIComponent(audioObj.key)}`, count: commentCount })
             ),
-                        div(
-              { class: "card-comments-summary feed-opinions-section" },
-              div(
-                { class: "comments-count" },
-                span({ class: "card-label" }, (i18n.opinionsTitle || "Opinions") + ": "),
-                span({ class: "card-value" }, String(Object.values(audioObj.opinions || {}).reduce((s, n) => s + (Number(n) || 0), 0)))
-              ),
-              renderOpinionsVoting('/audios/opinions', audioObj.key, audioObj.opinions, returnTo, audioObj.opinions_inhabitants)
-            ),
-            div({ class: "card-spread-left" }, renderSpreadButton(audioObj.key, (params.spreadMap && params.spreadMap.get(audioObj.key)) || params.spreads)),
             renderMapLocationVisitLabel(audioObj.mapUrl),
             br(),
             (() => {
@@ -243,12 +135,12 @@ const renderAudioList = exports.renderAudioList = (audios, filter, params = {}) 
 
               return p(
                 { class: "card-footer" },
-                span({ class: "date-link" }, `${moment(audioObj.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
+                span({ class: "date-link" }, `${moment(audioObj.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
                 userLink(audioObj.author),
                 showUpdated
                   ? span(
                       { class: "votations-comment-date" },
-                      ` | ${i18n.audioUpdatedAt}: ${moment(audioObj.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`
+                      ` | ${i18n.audioUpdatedAt}: ${moment(audioObj.updatedAt).format("YYYY/MM/DD HH:mm")}`
                     )
                   : null
               );
@@ -263,6 +155,7 @@ const renderAudioForm = (filter, audioId, audioToEdit, params = {}) => {
   const returnTo = safeText(params.returnTo) || buildReturnTo("all", params);
   return div(
     { class: "div-center audio-form" },
+    params.spreadWarning || null,
     form(
       {
         action: filter === "edit" ? `/audios/update/${encodeURIComponent(audioId)}` : "/audios/create",
@@ -277,7 +170,7 @@ const renderAudioForm = (filter, audioId, audioToEdit, params = {}) => {
       br(),
       span(i18n.audioTitleLabel),
       br(),
-      input({ type: "text", name: "title", placeholder: i18n.audioTitlePlaceholder, value: audioToEdit?.title || "" }),
+      input({ type: "text", name: "title", maxlength: "100", placeholder: i18n.audioTitlePlaceholder, value: audioToEdit?.title || "" }),
       br(),
       span(i18n.audioDescriptionLabel),
       br(),
@@ -303,20 +196,8 @@ const renderAudioForm = (filter, audioId, audioToEdit, params = {}) => {
 };
 
 exports.audioView = async (audios, filter = "all", audioId = null, params = {}) => {
-  const title =
-    filter === "mine"
-      ? i18n.audioMineSectionTitle
-      : filter === "create"
-        ? i18n.audioCreateSectionTitle
-        : filter === "edit"
-          ? i18n.audioUpdateSectionTitle
-          : filter === "recent"
-            ? i18n.audioRecentSectionTitle
-            : filter === "top"
-              ? i18n.audioTopSectionTitle
-              : filter === "favorites"
-                ? i18n.audioFavoritesSectionTitle
-                : i18n.audioAllSectionTitle;
+  if (filter === "edit") params = { ...params, spreadWarning: await renderSpreadEditWarning(audioId) };
+  const title = i18n.audioTitle;
 
   const q = safeText(params.q || "");
   const sort = safeText(params.sort || "recent");
@@ -343,15 +224,15 @@ exports.audioView = async (audios, filter = "all", audioId = null, params = {}) 
           { method: "GET", action: "/audios", class: "ui-toolbar ui-toolbar--filters" },
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
-          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterAll),
-          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterMine),
-          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterRecent),
-          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterTop),
-          button({ type: "submit", name: "filter", value: "bcs", class: filter === "bcs" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterBcs || "BCS"),
+          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterAll).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterMine).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterRecent).toUpperCase()),
           button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
-            i18n.audioFilterFavorites
+            String(i18n.audioFilterFavorites).toUpperCase()
           ),
+          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterTop).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "bcs", class: filter === "bcs" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterBcs || "BCS"),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.audioCreateButton)
         )
       )
@@ -376,9 +257,9 @@ exports.audioView = async (audios, filter = "all", audioId = null, params = {}) 
                   { class: "filter-box__controls" },
                   select(
                     { name: "sort", class: "filter-box__select" },
-                    option({ value: "recent", selected: sort === "recent" }, i18n.audioSortRecent),
-                    option({ value: "oldest", selected: sort === "oldest" }, i18n.audioSortOldest),
-                    option({ value: "top", selected: sort === "top" }, i18n.audioSortTop)
+                    option({ value: "recent", ...(sort === "recent" ? { selected: true } : {})}, i18n.audioSortRecent),
+                    option({ value: "oldest", ...(sort === "oldest" ? { selected: true } : {})}, i18n.audioSortOldest),
+                    option({ value: "top", ...(sort === "top" ? { selected: true } : {})}, i18n.audioSortTop)
                   ),
                   button({ type: "submit", class: "filter-box__button" }, i18n.audioSearchButton)
                 )
@@ -407,7 +288,6 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
 
   const ownerActions = renderAudioOwnerActions(filter, audioObj, { q, sort });
   const sideActions = [];
-  sideActions.push(renderAudioFavoriteToggle(audioObj, returnTo));
   if (audioObj.author && String(audioObj.author) !== String(userId)) {
     sideActions.push(form(
       { method: "GET", action: "/pm" },
@@ -425,6 +305,17 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
 
   const tagsNode = renderTags(audioObj.tags);
 
+  const detailActions = div({ class: "card-header activity-card-header" },
+    renderContentActions(audioObj.key, null, {
+      author: audioObj.author,
+      favKind: 'audios',
+      isFavorite: audioObj.isFavorite,
+      spread: params.spreads || null,
+      returnTo,
+      reportTitle: audioObj.title
+    })
+  );
+
   const audioSide = div({ class: "tribe-side" },
     div({ class: "shop-title-row" },
       title ? h2({ class: "tribe-card-title" }, title) : null,
@@ -435,12 +326,12 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
       ? p({ class: "tribe-side-description" }, ...renderUrl(audioObj.description))
       : null,
     tagsNode,
-    div({ class: "card-spread-centered" }, renderSpreadButton(audioObj.key, params.spreads)),
     renderMapLocationVisitLabel(audioObj.mapUrl),
     sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
   );
 
   const audioMain = div({ class: "tribe-main" },
+    detailActions,
     renderAudioPlayer(audioObj),
     (() => {
       const createdTs = audioObj.createdAt ? new Date(audioObj.createdAt).getTime() : NaN;
@@ -449,18 +340,20 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
 
       return p(
         { class: "card-footer" },
-        span({ class: "date-link" }, `${moment(audioObj.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
+        span({ class: "date-link" }, `${moment(audioObj.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
         userLink(audioObj.author),
         showUpdated
           ? span(
               { class: "votations-comment-date" },
-              ` | ${i18n.audioUpdatedAt}: ${moment(audioObj.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`
+              ` | ${i18n.audioUpdatedAt}: ${moment(audioObj.updatedAt).format("YYYY/MM/DD HH:mm")}`
             )
           : null
       );
     })(),
-    renderOpinionsVoting('/audios/opinions', audioObj.key, audioObj.opinions, returnTo, audioObj.opinions_inhabitants),
-    renderAudioCommentsSection(audioObj.key, comments, returnTo)
+    renderEngagement(audioObj.key,
+      renderOpinionsVoting('/audios/opinions', audioObj.key, audioObj.opinions, returnTo, audioObj.opinions_inhabitants),
+      renderAudioCommentsSection(audioObj.key, comments, returnTo)
+    )
   );
 
   return template(
@@ -476,15 +369,15 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
           { method: "GET", action: "/audios", class: "ui-toolbar ui-toolbar--filters" },
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
-          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterAll),
-          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterMine),
-          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterRecent),
-          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterTop),
-          button({ type: "submit", name: "filter", value: "bcs", class: filter === "bcs" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterBcs || "BCS"),
+          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterAll).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterMine).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterRecent).toUpperCase()),
           button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
-            i18n.audioFilterFavorites
+            String(i18n.audioFilterFavorites).toUpperCase()
           ),
+          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterTop).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "bcs", class: filter === "bcs" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterBcs || "BCS"),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.audioCreateButton)
         )
       ),
@@ -499,7 +392,7 @@ exports.audioTranscodeDetailView = async ({ audio, decoded = false, stegoPayload
   const title = i18n.audioTranscodeDetailTitle || "Transcode";
   const composition = Array.isArray(audio.bcsComposition) ? audio.bcsComposition : [];
   const hasStego = decoded && stegoPayload && (stegoPayload.id || stegoPayload.ts || stegoPayload.msg);
-  const stegoDate = hasStego && Number.isFinite(stegoPayload.ts) ? moment(stegoPayload.ts).format("YYYY/MM/DD HH:mm:ss") : null;
+  const stegoDate = hasStego && Number.isFinite(stegoPayload.ts) ? moment(stegoPayload.ts).format("YYYY/MM/DD HH:mm") : null;
 
   return template(
     title,
@@ -520,7 +413,7 @@ exports.audioTranscodeDetailView = async ({ audio, decoded = false, stegoPayload
         p({ class: "transcode-meta card-footer" },
           userLink(audio.author),
           span({ class: "melody-meta-sep" }, " · "),
-          span({ class: "card-value" }, moment(audio.createdAt).format("YYYY/MM/DD HH:mm:ss")),
+          span({ class: "card-value" }, moment(audio.createdAt).format("YYYY/MM/DD HH:mm")),
           itemSize ? span({ class: "melody-meta-sep" }, " · ") : null,
           itemSize ? renderEcoTax(itemSize, audio.key) : null
         ),

@@ -40,7 +40,7 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
     'post', 'about', 'curriculum', 'tribe', 'transfer', 'feed',
     'votes', 'report', 'task', 'event', 'bookmark', 'document',
     'image', 'audio', 'video', 'torrent', 'market', 'bankWallet', 'bankClaim',
-    'project', 'job', 'forum', 'vote', 'contact', 'pub', 'map', 'shop', 'shopProduct', 'chat', 'pad'
+    'project', 'job', 'housing', 'industry', 'industryBlueprint', 'forum', 'vote', 'contact', 'pub', 'map', 'shop', 'shopProduct', 'chat', 'pad', 'poll', 'schoolCourse'
   ];
 
   const getRelevantFields = (type, content) => {
@@ -60,7 +60,7 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
       case 'audio':
         return [content?.url, content?.mimeType, content?.title, content?.description, ...(content?.tags || [])];
       case 'image':
-        return [content?.url, content?.title, content?.description, ...(content?.tags || []), content?.meme];
+        return [content?.url, content?.title, content?.description, ...(content?.tags || [])];
       case 'video':
         return [content?.url, content?.mimeType, content?.title, content?.description, ...(content?.tags || [])];
       case 'document':
@@ -83,10 +83,22 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
         return [content?.address];
       case 'bankClaim':
         return [content?.amount, content?.epochId, content?.allocationId, content?.txid];
+      case 'schoolCourse':
+        return [content?.title, content?.description, ...(content?.tags || []), content?.price, content?.status, content?.visibility];
       case 'project':
         return [content?.title, content?.status, content?.progress, content?.goal, content?.pledged, content?.deadline, (content?.followers || []).length, (content?.backers || []).length, (content?.milestones || []).length, content?.bounty, content?.bountyAmount, content?.bounty_currency, content?.activity?.kind, content?.activityActor];
+      case 'poll':
+        return content?.encryptedQuestion
+          ? []
+          : [content?.question, ...(content?.options || []), ...(content?.tags || [])];
+      case 'housing':
+        return [content?.title, content?.housing_type, content?.property_type, content?.place, content?.price, content?.rooms, content?.size, content?.capacity, content?.status];
       case 'job':
         return [content?.title, content?.job_type, ...(content?.tasks || []), content?.location, content?.vacants, content?.salary, content?.status, (content?.subscribers || []).length];
+      case 'industry':
+        return [content?.name, content?.sector, content?.description, content?.membershipPolicy, content?.status, content?.license, ...(content?.tags || [])];
+      case 'industryBlueprint':
+        return [content?.name, content?.description, content?.sector, content?.outItem, content?.outKind, content?.license, ...(content?.skills || []), ...((content?.materials || []).map(m => m && m.item))];
       case 'forum':
         return [content?.root, content?.category, content?.title, content?.text, content?.key];
       case 'vote':
@@ -218,6 +230,9 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
       ].join('|');
     }
 
+    if (t === 'schoolCourse') {
+      return ['schoolCourse', author, norm(c.title), norm(c.createdAt)].join('|');
+    }
     if (t === 'project') {
       return [
         'project',
@@ -225,6 +240,17 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
         norm(c.title),
         norm(c.deadline),
         norm(c.goal)
+      ].join('|');
+    }
+
+    if (t === 'housing') {
+      return [
+        'housing',
+        author,
+        norm(c.title),
+        norm(c.place),
+        norm(c.price),
+        norm(c.housing_type)
       ].join('|');
     }
 
@@ -237,6 +263,14 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
         norm(c.salary),
         norm(c.job_type)
       ].join('|');
+    }
+
+    if (t === 'industry') {
+      return ['industry', author, norm(c.name), norm(c.sector)].join('|');
+    }
+
+    if (t === 'industryBlueprint') {
+      return ['industryBlueprint', author, norm(c.facility), norm(c.name)].join('|');
     }
 
     if (t === 'forum') {

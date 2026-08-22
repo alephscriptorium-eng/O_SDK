@@ -165,6 +165,11 @@ function getGoverningHouseKey(now = new Date()) {
   return HOUSE_KEYS[now.getMonth() % HOUSE_KEYS.length];
 }
 
+function getGoverningPeriodId(now = new Date()) {
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${getGoverningHouseKey(now)}:${now.getFullYear()}-${month}`;
+}
+
 module.exports = ({ cooler, tribesModel, tribeCrypto }) => {
   let ssb;
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb; };
@@ -568,10 +573,14 @@ module.exports = ({ cooler, tribesModel, tribeCrypto }) => {
     });
   }
 
+  function wallIsPublic(houseKey, { isGoverning = false } = {}) {
+    return houseKey === 'academia' || isGoverning === true;
+  }
+
   async function listHousePosts(houseKey, { viewerHouse = null, isGoverning = false } = {}) {
     if (!VALID_KEY(houseKey)) return [];
     const viewerIsMember = viewerHouse === houseKey;
-    if (!viewerIsMember && !isGoverning) return [];
+    if (!viewerIsMember && !wallIsPublic(houseKey, { isGoverning })) return [];
     const client = await openSsb();
     const memberships = await listAllMemberships();
     return new Promise((resolve) => {
@@ -912,11 +921,13 @@ module.exports = ({ cooler, tribesModel, tribeCrypto }) => {
   return {
     HOUSES,
     HOUSE_KEYS,
+    wallIsPublic,
     TEST_COOLDOWN_MS,
     TEST_QUESTIONS_COUNT,
     PROFILE_QUESTIONS,
     computeCycle,
     getGoverningHouseKey,
+    getGoverningPeriodId,
     publishJoin,
     publishLeaveLarp,
     getUserHouse,

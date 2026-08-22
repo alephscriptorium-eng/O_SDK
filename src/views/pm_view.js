@@ -54,7 +54,7 @@ exports.pmView = async (initialRecipients = '', initialSubject = '', initialText
             br(),
             label({ for: "text" }, i18n.pmText),
             br(),
-            textarea({ name: "text", rows: "6", cols: "50", id: "pm-text", maxlength: "8096", placeholder: i18n.pmTextPlaceholder || '' }, initialText),
+            textarea({ name: "text", rows: "6", cols: "50", id: "pm-text", maxlength: "7000", placeholder: i18n.pmTextPlaceholder || '' }, initialText),
             div({ class: "pm-crypter-row" },
               label({ for: "pm-crypter" },
                 input({ type: "checkbox", name: "crypter", value: "1", id: "pm-crypter", ...(crypterPreview ? { checked: true } : {}) }),
@@ -96,7 +96,7 @@ exports.pmView = async (initialRecipients = '', initialSubject = '', initialText
                   )
                 : div({ id: "pm-preview-area", class: "pm-preview" },
                     div({ class: "title-with-chip" }, h2(i18n.pmPreviewTitle), renderEncryptedChip(i18n)),
-                    p({ id: "pm-preview-count", class: "pm-preview-count" }, `${textLen}/8096`),
+                    p({ id: "pm-preview-count", class: "pm-preview-count" }, `${textLen}/7000`),
                     div({ id: "pm-preview-content", class: "pm-preview-content" },
                       pre({ class: "pm-pre" }, initialText || '')
                     ),
@@ -156,7 +156,13 @@ exports.pmView = async (initialRecipients = '', initialSubject = '', initialText
                   span({ class: "pm-fileshare-meta" }, `${fileSharePreview.sizeLabel || ''} · ${String(fileSharePreview.mime || 'application/octet-stream')}`)
                 ),
                 form({ method: "POST", action: "/pm/file", class: "pm-fileshare-send-form" },
-                  input({ type: "hidden", name: "recipient", value: fileSharePreview.recipient }),
+                  fileSharePreview.recipient
+                    ? input({ type: "hidden", name: "recipient", value: fileSharePreview.recipient })
+                    : div({ class: "pm-fileshare-recipient" },
+                        label({ for: "fs-preview-recipient" }, i18n.pmRecipients),
+                        br(),
+                        input({ id: "fs-preview-recipient", type: "text", name: "recipient", placeholder: i18n.fileShareRecipientPlaceholder || 'Enter Oasis ID (@....ed25519)', required: true, maxlength: "120" })
+                      ),
                   input({ type: "hidden", name: "subject", value: fileSharePreview.subject || '' }),
                   input({ type: "hidden", name: "manifestBlobId", value: fileSharePreview.manifestBlobId }),
                   input({ type: "hidden", name: "keyHex", value: fileSharePreview.keyHex }),

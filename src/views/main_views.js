@@ -99,18 +99,96 @@ const renderLifespanChip = (lifetime, i18nObj) => {
   );
 };
 
-const renderContentActions = (msgId, viewHref) => {
+const DATE_TIME_FORMAT = "YYYY/MM/DD HH:mm";
+const DATE_FORMAT = "YYYY/MM/DD";
+const fmtDateTime = (v) => (v ? moment(v).format(DATE_TIME_FORMAT) : "");
+const fmtDay = (v) => (v ? moment(v).format(DATE_FORMAT) : "");
+exports.DATE_TIME_FORMAT = DATE_TIME_FORMAT;
+exports.DATE_FORMAT = DATE_FORMAT;
+exports.fmtDateTime = fmtDateTime;
+exports.fmtDay = fmtDay;
+
+const renderContentActions = (msgId, viewHref, opts = {}) => {
+  const o = (opts && typeof opts === 'object') ? opts : {};
   const blockId = (typeof msgId === 'string' && msgId.startsWith('%')) ? msgId : null;
+  const myId = (config.keys && config.keys.id) ? config.keys.id : '';
+
+  const pinBtn = o.favKind && blockId
+    ? form({ method: 'POST', action: `/${o.favKind}/favorites/${o.isFavorite ? 'remove' : 'add'}/${encodeURIComponent(blockId)}`, class: 'content-action-form' },
+        o.returnTo ? input({ type: 'hidden', name: 'returnTo', value: o.returnTo }) : null,
+        button({ type: 'submit', class: o.isFavorite ? 'btn-singleview btn-pin-on' : 'btn-singleview', title: o.isFavorite ? i18n.favoriteRemove : i18n.favoriteAdd }, o.isFavorite ? '✜' : '✛')
+      )
+    : null;
+
+  const spreadBtn = o.spread !== undefined && blockId ? renderSpreadButton(blockId, o.spread) : null;
+
   const chainBtn = blockId
-    ? a({ href: `/blockexplorer/block/${encodeURIComponent(blockId)}`, class: 'btn-singleview', title: i18n.blockchainViewBlockexplorer || 'View blockexplorer' }, '⦿')
+    ? a({ href: `/blockexplorer/block/${encodeURIComponent(blockId)}`, class: 'btn-singleview', title: i18n.blockchainViewBlockexplorer }, '⦿')
     : null;
+
   const contentBtn = viewHref
-    ? a({ href: viewHref, class: 'btn-singleview btn-content', title: i18n.visitContent || 'Visit content' }, '↗')
+    ? a({ href: viewHref, class: 'btn-singleview btn-content', title: i18n.visitContent }, '↗')
     : null;
-  if (!chainBtn && !contentBtn) return null;
-  return div({ class: 'content-actions' }, chainBtn, contentBtn);
+
+  const reportHref = blockId
+    ? `/reports?filter=create&category=CONTENT&title=${encodeURIComponent(String(o.reportTitle || blockId).slice(0, 120))}&description=${encodeURIComponent(`${viewHref || blockId}`)}`
+    : null;
+  const reportBtn = o.report !== false && reportHref
+    ? a({ href: reportHref, class: 'btn-singleview btn-report', title: i18n.reportContent }, '⚑')
+    : null;
+
+  const pmBtn = o.author && String(o.author) !== String(myId)
+    ? a({ href: `/pm?recipients=${encodeURIComponent(o.author)}`, class: 'btn-singleview btn-pm', title: i18n.pmContentTooltip }, '✉')
+    : null;
+
+  if (!pinBtn && !spreadBtn && !chainBtn && !contentBtn && !reportBtn && !pmBtn) return null;
+  return div({ class: 'content-actions' }, spreadBtn, pinBtn, reportBtn, pmBtn, chainBtn, contentBtn);
 };
 exports.renderContentActions = renderContentActions;
+
+const renderDocumentActions = (kind, id, leadingNodes = []) => {
+  const base = id ? `/${kind}/${encodeURIComponent(id)}` : `/${kind}`;
+  return div({ class: 'doc-export-actions' },
+    ...leadingNodes,
+    form({ method: 'GET', action: `${base}/pdf` },
+      button({ type: 'submit', class: 'filter-btn' }, i18n.generatePdf)
+    ),
+    form({ method: 'POST', action: `${base}/share` },
+      button({ type: 'submit', class: 'filter-btn' }, i18n.sharePm)
+    )
+  );
+};
+exports.renderDocumentActions = renderDocumentActions;
+
+const renderRelationshipBlock = (relationship, feedId) => {
+  const rel = relationship || {};
+  if (rel.me) return span({ class: 'status you' }, i18n.relationshipYou);
+  const actions = [];
+  const addAction = (action) => actions.push(
+    form({ action: `/${action}/${encodeURIComponent(feedId)}`, method: 'post' },
+      button({ type: 'submit', class: 'filter-btn' }, i18n[action])
+    )
+  );
+  if (rel.following) addAction('unfollow');
+  else if (rel.blocking) addAction('unblock');
+  else { addAction('follow'); addAction('block'); }
+  return div({ class: 'relationship-status' },
+    rel.blocking && rel.blockedBy
+      ? span({ class: 'status blocked' }, i18n.relationshipMutualBlock)
+      : [
+          rel.blocking ? span({ class: 'status blocked' }, i18n.relationshipBlocking) : null,
+          rel.blockedBy ? span({ class: 'status blocked-by' }, i18n.relationshipBlockedBy) : null,
+          rel.following && rel.followsMe
+            ? span({ class: 'status mutual' }, i18n.relationshipMutuals)
+            : [
+                span({ class: 'status supporting' }, rel.following ? i18n.relationshipFollowing : i18n.relationshipNone),
+                span({ class: 'status supported-by' }, rel.followsMe ? i18n.relationshipTheyFollow : i18n.relationshipNotFollowing)
+              ]
+        ],
+    actions.length ? div({ class: 'relationship-actions' }, ...actions) : null
+  );
+};
+exports.renderRelationshipBlock = renderRelationshipBlock;
 
 exports.renderStateChip = renderStateChip;
 exports.renderOpenClosedChip = renderOpenClosedChip;
@@ -187,21 +265,11 @@ const renderSpreadButton = (msgKey, opts) => {
   const voters = Array.isArray(o.voters) ? o.voters : [];
   const count = typeof o.count === 'number' ? o.count : voters.length;
   const alreadySpread = o.alreadySpread === true;
-  const maxNames = 5;
-  const maxLen = 16;
-  const lastVoters = voters.slice(-maxNames);
-  const tooltipNames = lastVoters
-    .map(v => (v && typeof v === 'object' ? (v.name || v.key || '') : String(v || '')))
-    .filter(Boolean)
-    .map(n => n.slice(0, maxLen))
-    .join(', ');
-  const extra = count > maxNames ? ` +${count - maxNames} ${i18n.spreadMore || 'more'}` : '';
-  const tooltip = count > 0 ? `${tooltipNames}${extra}` : (i18n.spreadHint || 'Spread this to your supporters (replicates via your feed).');
   return form(
     { method: 'POST', action: `/spread/${encodeURIComponent(msgKey)}`, class: 'spread-form' },
     button(
-      { type: 'submit', class: alreadySpread ? 'spread-btn spread-btn-on' : 'spread-btn', title: tooltip },
-      `🔁 ${count}`
+      { type: 'submit', class: alreadySpread ? 'btn-singleview btn-spread-on' : 'btn-singleview', title: i18n.spreadContent },
+      `⟳ ${count}`
     )
   );
 };
@@ -213,7 +281,16 @@ const aiNavResultsView = ({ query, results }) => {
   const safeResults = Array.isArray(results) ? results : [];
   const fmtScore = (s) => {
     const n = Number(s);
-    return Number.isFinite(n) ? n.toFixed(2) : '—';
+    return Number.isFinite(n) ? `${Math.round(n * 100)}%` : '—';
+  };
+  const routeLabel = (p) => {
+    const [base, qs] = String(p || '').split('?');
+    let label = decodeURIComponent(base).replace(/^\//, '').replace(/\//g, ' · ');
+    try {
+      const filter = new URLSearchParams(qs || '').get('filter');
+      if (filter) label += ` · ${filter}`;
+    } catch (_) {}
+    return label.toUpperCase();
   };
   const splitTerms = (desc) => String(desc || '')
     .split(/[,;]/)
@@ -231,7 +308,7 @@ const aiNavResultsView = ({ query, results }) => {
             safeResults.map(r => div({ class: 'ai-nav-result-card card-section' },
               div({ class: 'card-field' },
                 span({ class: 'card-label' }, `${(i18n.aiNavResultMatch || 'Match').toUpperCase()}: ${fmtScore(r.score)}`),
-                span({ class: 'card-value' }, a({ href: r.path, class: 'filter-btn' }, r.path))
+                span({ class: 'card-value' }, a({ href: r.path, class: 'filter-btn' }, routeLabel(r.path)))
               )
             ))
           )
@@ -255,20 +332,28 @@ exports.i18n = i18n;
 Object.defineProperty(exports, 'selectedLanguage', { get: () => selectedLanguage });
 
 const opinionCategoriesList = require('../backend/opinion_categories');
+const renderEngagement = (id, opinionsNode, commentsNode) => {
+  const parts = [opinionsNode, commentsNode].filter(Boolean);
+  if (!parts.length) return null;
+  return div({ class: 'card-engage' }, ...parts);
+};
+exports.renderEngagement = renderEngagement;
+
 const renderOpinionsVoting = (basePath, id, opinions, returnTo, voters) => {
   const ops = opinions || {};
   const total = Object.values(ops).reduce((s, n) => s + (Number(n) || 0), 0);
   const myId = (config.keys && config.keys.id) ? config.keys.id : '';
   const alreadyVoted = Array.isArray(voters) && myId ? voters.includes(myId) : false;
   return details({ class: 'opinions-voting-collapse' },
-    summary({ class: 'opinions-summary' },
-      `${i18n.opinionsTitle || 'Opinions'} (${total})`),
+    summary({ class: total > 0 ? 'opinions-summary engage-on' : 'opinions-summary' },
+      span({ class: 'opinions-summary-icon' }, 'ꔍ'),
+      span({ class: 'opinions-summary-count' }, `(${total})`)),
     div({ class: 'voting-buttons' },
       opinionCategoriesList.map((category) =>
         form({ method: 'POST', action: `${basePath}/${encodeURIComponent(id)}/${category}` },
           returnTo ? input({ type: 'hidden', name: 'returnTo', value: returnTo }) : null,
           button({ class: alreadyVoted ? 'vote-btn disabled' : 'vote-btn', type: 'submit', ...(alreadyVoted ? { disabled: true } : {}) },
-            `${i18n['vote' + category.charAt(0).toUpperCase() + category.slice(1)] || category} [${ops[category] || 0}]`)
+            `${String(i18n['vote' + category.charAt(0).toUpperCase() + category.slice(1)] || category).toUpperCase()} [${ops[category] || 0}]`)
         )
       )
     ),
@@ -277,7 +362,28 @@ const renderOpinionsVoting = (basePath, id, opinions, returnTo, voters) => {
 };
 exports.renderOpinionsVoting = renderOpinionsVoting;
 
-// markdown
+let spreadsModel = null;
+const spreadsFor = async (msgId) => {
+  if (!msgId || typeof msgId !== 'string' || !msgId.startsWith('%')) return 0;
+  try {
+    if (!spreadsModel) spreadsModel = require('../models/main_models')({ cooler, isPublic: config.public }).spreads;
+    const info = await spreadsModel.forMessage(msgId);
+    return info && Number(info.count) > 0 ? Number(info.count) : 0;
+  } catch (_) {
+    return 0;
+  }
+};
+
+const renderSpreadEditWarning = async (msgId) => {
+  const count = await spreadsFor(msgId);
+  if (!count) return null;
+  return div({ class: 'error-box spread-edit-warning' },
+    p(`${i18n.spreadEditWarning} (${count})`)
+  );
+};
+exports.renderSpreadEditWarning = renderSpreadEditWarning;
+
+
 const markdownUrl = "https://commonmark.org/help/";
 
 const doctypeString = "<!DOCTYPE html>";
@@ -292,7 +398,24 @@ const nbsp = "\xa0";
 
 const { getConfig } = require('../configs/config-manager.js');
 
-// menu INIT
+const assetVersion = () => {
+  try {
+    const base = path.resolve(__dirname, "..", "client", "assets");
+    let latest = 0;
+    for (const rel of ["styles", "themes"]) {
+      const dir = path.join(base, rel);
+      for (const f of fs.readdirSync(dir)) {
+        const t = fs.statSync(path.join(dir, f)).mtimeMs;
+        if (t > latest) latest = t;
+      }
+    }
+    const v = String(readPkg()?.version || '0');
+    return encodeURIComponent(latest ? `${v}-${Math.floor(latest / 1000).toString(36)}` : v);
+  } catch (_) {
+    try { return encodeURIComponent(String(readPkg()?.version || '0')); } catch (_) { return '0'; }
+  }
+};
+
 const readPkg = () => {
   const file = path.resolve(__dirname, "..", "server", "package.json");
   try {
@@ -342,9 +465,9 @@ const renderFooter = () => {
       br(),
       span({ class: "oasis-footer-carbon" },
         span("HcT: "),
-        a({ href: "/stats?filter=ALL" }, hcT != null ? String(hcT) : '–'),
+        a({ href: "/stats?filter=ALL#carbon" }, hcT != null ? String(hcT) : '–'),
         span(" | HcH: "),
-        a({ href: "/stats?filter=MINE" }, hcH != null ? String(hcH) : '–')
+        a({ href: "/stats?filter=MINE#carbon" }, hcH != null ? String(hcH) : '–')
       ),
       br(),
       a(
@@ -415,70 +538,33 @@ const navGroup = ({ id, emoji, title, defaultOpen = false }, ...items) => {
   );
 };
 
-const renderPopularLink = () => {
-  const popularMod = getConfig().modules.popularMod === "on";
-  return popularMod
+
+
+
+
+
+const renderPollsLink = () => {
+  const pollsMod = getConfig().modules.pollsMod === "on";
+  return pollsMod
     ? navLink({
-        href: "/public/popular/day",
-        emoji: "⌘",
-        text: i18n.popular,
-        class: "popular-link enabled"
+        href: "/polls",
+        emoji: "☑",
+        text: i18n.pollsTitle,
+        class: "polls-link enabled"
       })
     : "";
 };
 
-const renderTopicsLink = () => {
-  const topicsMod = getConfig().modules.topicsMod === "on";
-  return topicsMod
+const renderBlogsLink = () => {
+  const blogsMod = getConfig().modules.blogsMod === "on";
+  return blogsMod
     ? navLink({
-        href: "/public/latest/topics",
-        emoji: "ϟ",
-        text: i18n.topics,
-        class: "topics-link enabled"
+        href: "/blogs",
+        emoji: "✦",
+        text: i18n.blogTitle,
+        class: "blogs-link enabled"
       })
     : "";
-};
-
-const renderSummariesLink = () => {
-  const summariesMod = getConfig().modules.summariesMod === "on";
-  if (summariesMod) {
-    return [
-      navLink({
-        href: "/public/latest/summaries",
-        emoji: "※",
-        text: i18n.summaries,
-        class: "summaries-link enabled"
-      })
-    ];
-  }
-  return "";
-};
-
-const renderLatestLink = () => {
-  const latestMod = getConfig().modules.latestMod === "on";
-  return latestMod
-    ? navLink({
-        href: "/public/latest",
-        emoji: "☄",
-        text: i18n.latest,
-        class: "latest-link enabled"
-      })
-    : "";
-};
-
-const renderThreadsLink = () => {
-  const threadsMod = getConfig().modules.threadsMod === "on";
-  if (threadsMod) {
-    return [
-      navLink({
-        href: "/public/latest/threads",
-        emoji: "♺",
-        text: i18n.threads,
-        class: "threads-link enabled"
-      })
-    ];
-  }
-  return "";
 };
 
 const renderInvitesLink = () => {
@@ -502,6 +588,21 @@ const renderWalletLink = () => {
         emoji: "❄",
         text: i18n.wallet,
         class: "wallet-link enabled"
+      })
+    ];
+  }
+  return "";
+};
+
+const renderDevLink = () => {
+  const devMod = getConfig().modules.devMod === "on";
+  if (devMod) {
+    return [
+      navLink({
+        href: "/dev",
+        emoji: "⌘",
+        text: i18n.developer,
+        class: "dev-link enabled"
       })
     ];
   }
@@ -684,17 +785,6 @@ const renderTagsLink = () => {
     : "";
 };
 
-const renderMultiverseLink = () => {
-  const multiverseMod = getConfig().modules.multiverseMod === "on";
-  return multiverseMod
-    ? navLink({
-        href: "/public/latest/extended",
-        emoji: "∞",
-        text: i18n.multiverse,
-        class: "multiverse-link enabled"
-      })
-    : "";
-};
 
 const renderMastodonLink = () => {
   const fediverseMod = getConfig().modules.fediverseMod === "on";
@@ -715,6 +805,19 @@ const renderMarketLink = () => {
           href: "/market",
           emoji: "ꕻ",
           text: i18n.marketTitle
+        })
+      ]
+    : "";
+};
+
+const renderHousingLink = () => {
+  const housingMod = getConfig().modules.housingMod === "on";
+  return housingMod
+    ? [
+        navLink({
+          href: "/housing",
+          emoji: "⌂",
+          text: i18n.housingTitle
         })
       ]
     : "";
@@ -754,6 +857,19 @@ const renderProjectsLink = () => {
           href: "/projects",
           emoji: "ꕧ",
           text: i18n.projectsTitle
+        })
+      ]
+    : "";
+};
+
+const renderIndustryLink = () => {
+  const industryMod = getConfig().modules.industryMod === "on";
+  return industryMod
+    ? [
+        navLink({
+          href: "/industry",
+          emoji: "ꖴ",
+          text: i18n.industryTitle
         })
       ]
     : "";
@@ -809,6 +925,18 @@ const renderParliamentLink = () => {
           class: "parliament-link enabled"
         })
       ]
+    : "";
+};
+
+const renderSchoolLink = () => {
+  const schoolMod = getConfig().modules.schoolMod === "on";
+  return schoolMod
+    ? navLink({
+        href: "/school",
+        emoji: "ꖂ",
+        text: i18n.schoolTitle,
+        class: "school-link enabled"
+      })
     : "";
 };
 
@@ -1070,18 +1198,18 @@ const renderTasksLink = () => {
 const template = (titlePrefix, ...elements) => {
   const currentConfig = getConfig();
   const theme = currentConfig.themes.current || "Dark-SNH";
-  const uxMode = currentConfig.ux?.current === "ainav" ? "ainav" : "blocks";
+  const uxMode = currentConfig.ux?.current === "ainav" ? "ainav" : currentConfig.ux?.current === "chats" ? "chats" : "blocks";
   const themeLink = link({
     rel: "stylesheet",
-    href: `/assets/themes/${theme}.css`
+    href: `/assets/themes/${theme}.css?v=${assetVersion()}`
   });
   const nodes = html(
     { lang: "en" },
     head(
       title(titlePrefix, " | Oasis"),
-      link({ rel: "stylesheet", href: "/assets/styles/style.css" }),
+      link({ rel: "stylesheet", href: `/assets/styles/style.css?v=${assetVersion()}` }),
       themeLink,
-      link({ rel: "stylesheet", href: "/assets/styles/mobile.css", media: "(max-width: 768px)" }),
+      link({ rel: "stylesheet", href: `/assets/styles/mobile.css?v=${assetVersion()}`, media: "(max-width: 768px)" }),
       link({ rel: "icon", href: "/assets/images/favicon.svg" }),
       meta({ charset: "utf-8" }),
       meta({ name: "description", content: i18n.oasisDescription }),
@@ -1123,6 +1251,15 @@ const template = (titlePrefix, ...elements) => {
           ) : nav(
             ul(
               (() => {
+                const mentionsCount = sharedState.getMentionsCount();
+                const badge = mentionsCount > 0 ? span({ class: 'inbox-badge' }, String(mentionsCount)) : '';
+                return li(
+                  a({ href: "/mentions" },
+                    span({ class: "emoji" }, "✺"), nbsp, i18n.mentions, badge
+                  )
+                );
+              })(),
+              (() => {
                 const inboxCount = sharedState.getInboxCount();
                 const badge = inboxCount > 0 ? span({ class: 'inbox-badge' }, String(inboxCount)) : '';
                 return li(
@@ -1131,12 +1268,13 @@ const template = (titlePrefix, ...elements) => {
                   )
                 );
               })(),
-              navLink({
-                href: "/pm",
-                emoji: "ꕕ",
-                text: i18n.privateMessage
-              }),
-              navLink({ href: "/publish", emoji: "❂", text: i18n.publish })
+              uxMode === "chats"
+                ? navLink({ href: "/settings", emoji: "⚙", text: i18n.settings })
+                : navLink({
+                    href: "/pm",
+                    emoji: "ꕕ",
+                    text: i18n.privateMessage
+                  })
             )
           )
         ),
@@ -1169,13 +1307,22 @@ const template = (titlePrefix, ...elements) => {
               navLink({ href: "/peers", emoji: "⧖", text: i18n.peers })
             )
           )
+        ) : uxMode === "chats" ? div(
+          { class: "top-bar-right" },
+          nav(
+            ul(
+              navLink({ href: "/activity", emoji: "ꔙ", text: i18n.activityTitle }),
+              renderTrendingLink(),
+              navLink({ href: "/search", emoji: "ꔅ", text: i18n.searchTitle })
+            )
+          )
         ) : div(
           { class: "top-bar-right" },
           nav(
             ul(
-              navLink({ href: "/search", emoji: "ꔅ", text: i18n.searchTitle }),
-              renderGraphosLink(),
-              navLink({ href: "/peers", emoji: "⧖", text: i18n.peers })
+              navLink({ href: "/data", emoji: "⚯", text: i18n.dataTitle }),
+              renderTagsLink(),
+              navLink({ href: "/search", emoji: "ꔅ", text: i18n.searchTitle })
             )
           )
         )
@@ -1185,16 +1332,53 @@ const template = (titlePrefix, ...elements) => {
         if (fs.existsSync(updateFlagPath)) {
           return div(
             { class: "update-banner" },
-            span({ class: "update-banner-icon" }, "⟳"),
+            span({ class: "update-banner-icon" }, "🛠️"),
             span({ class: "update-banner-text" }, i18n.updateBannerText),
             a({ href: "/settings", class: "update-banner-link" }, i18n.updateBannerAction)
           );
         }
         return null;
       })(),
+      (() => {
+        try {
+          const onboarding = require('../models/onboarding_model');
+          if (!onboarding.bannerVisible(config && config.path)) return null;
+          return div(
+            { class: "update-banner welcome-banner" },
+            span({ class: "update-banner-icon" }, "🌴"),
+            span({ class: "update-banner-text" }, i18n.welcomeBannerText),
+            a({ href: "/welcome", class: "update-banner-link" }, i18n.welcomeBannerAction),
+            form(
+              { method: "POST", action: "/welcome/dismiss", class: "welcome-banner-close" },
+              button({ type: "submit", class: "welcome-banner-close-btn" }, "✕")
+            )
+          );
+        } catch (_) {
+          return null;
+        }
+      })(),
+      (() => {
+        try {
+          const { getConfig } = require('../configs/config-manager.js');
+          if (getConfig().ai?.suggestions === false) return null;
+        } catch (_) {}
+        const suggestion = sharedState.getBestMatch ? sharedState.getBestMatch() : null;
+        if (!suggestion || !suggestion.href) return null;
+        if (sharedState.getDismissedSuggestion && sharedState.getDismissedSuggestion() === suggestion.href) return null;
+        return div(
+          { class: "update-banner ai-suggestion-banner" },
+          span({ class: "update-banner-icon" }, "🤖"),
+          span({ class: "update-banner-text" }, i18n.aiSuggestionBanner),
+          a({ href: suggestion.href, class: "update-banner-link" }, `${suggestion.title} (${(((Number(suggestion.score) || 0) * 100).toFixed(1)).replace(/\.0$/, '')}%)`),
+          form(
+            { method: "POST", action: "/ai/suggestion/dismiss", class: "welcome-banner-close" },
+            button({ type: "submit", class: "welcome-banner-close-btn" }, "✕")
+          )
+        );
+      })(),
       div(
-        { class: uxMode === "ainav" ? "main-content ainav-only" : "main-content" },
-        uxMode === "ainav" ? null : div(
+        { class: uxMode === "ainav" ? "main-content ainav-only" : uxMode === "chats" ? "main-content chatsux-only" : "main-content" },
+        uxMode !== "blocks" ? null : div(
           { class: "sidebar-left" },
           nav(
             ul(
@@ -1217,7 +1401,7 @@ const template = (titlePrefix, ...elements) => {
                 renderAgendaLink(),
                 renderFavoritesLink(),
                 renderLogsLink(),
-                renderWalletLink(),
+                renderInvitesLink(),
                 navLink({
                   href: "/modules",
                   emoji: "ꗣ",
@@ -1242,20 +1426,9 @@ const template = (titlePrefix, ...elements) => {
                 }),
                 renderTribesLink(),
                 renderLarpLink(),
+                renderSchoolLink(),
                 renderParliamentLink(),
                 renderCourtsLink()
-              ),
-              navGroup(
-                {
-                  id: "office",
-                  emoji: "⌂",
-                  title: i18n.menuOffice
-                },
-                renderVotationsLink(),
-                renderEventsLink(),
-                renderCalendarsLink(),
-                renderTasksLink(),
-                renderReportsLink()
               ),
               navGroup(
                 {
@@ -1264,11 +1437,27 @@ const template = (titlePrefix, ...elements) => {
                   title: i18n.menuEconomy
                 },
                 renderBankingLink(),
+                renderWalletLink(),
                 renderMarketLink(),
+                renderHousingLink(),
                 renderProjectsLink(),
+                renderIndustryLink(),
                 renderJobsLink(),
                 renderShopsLink(),
                 renderTransfersLink()
+              ),
+              navGroup(
+                {
+                  id: "office",
+                  emoji: "⌂",
+                  title: i18n.menuOffice
+                },
+                renderVotationsLink(),
+                renderPollsLink(),
+                renderEventsLink(),
+                renderCalendarsLink(),
+                renderTasksLink(),
+                renderReportsLink()
               ),
               navGroup(
                 {
@@ -1282,8 +1471,10 @@ const template = (titlePrefix, ...elements) => {
                   emoji: "ꖸ",
                   text: i18n.blockchain
                 }),
+                renderGraphosLink(),
+                navLink({ href: "/peers", emoji: "⧖", text: i18n.peers }),
+                renderDevLink(),
                 renderCipherLink(),
-                renderInvitesLink(),
                 renderLegacyLink(),
                 navLink({
                   href: "/stats",
@@ -1295,7 +1486,7 @@ const template = (titlePrefix, ...elements) => {
           )
         ),
         main({ id: "content", class: "main-column" }, elements),
-        uxMode === "ainav" ? null : div(
+        uxMode !== "blocks" ? null : div(
           { class: "sidebar-right" },
           nav(
             ul(
@@ -1310,42 +1501,14 @@ const template = (titlePrefix, ...elements) => {
                   emoji: "ꔙ",
                   text: i18n.activityTitle
                 }),
-                renderTagsLink(),
+                renderFeedLink(),
+                renderBlogsLink(),
                 renderTrendingLink(),
                 renderOpinionsLink(),
                 renderPadsLink(),
                 renderForumLink(),
                 renderMapsLink(),
                 renderChatsLink()
-              ),
-              navGroup(
-                {
-                  id: "blogs",
-                  emoji: "✦",
-                  title: i18n.menuBlogs
-                },
-                navLink({
-                  href: "/mentions",
-                  emoji: "✺",
-                  text: i18n.mentions
-                }),
-                renderLatestLink(),
-                renderThreadsLink(),
-                renderTopicsLink(),
-                renderSummariesLink(),
-                renderPopularLink(),
-                renderMultiverseLink()
-              ),
-              navGroup(
-                {
-                  id: "creative",
-                  emoji: "✎",
-                  title: i18n.menuCreative
-                },
-                renderFeedLink(),
-                renderGamesLink(),
-                renderPixeliaLink(),
-                renderMelodyLink()
               ),
               navGroup(
                 {
@@ -1359,6 +1522,16 @@ const template = (titlePrefix, ...elements) => {
                 renderImagesLink(),
                 renderTorrentsLink(),
                 renderVideosLink()
+              ),
+              navGroup(
+                {
+                  id: "creative",
+                  emoji: "✎",
+                  title: i18n.menuCreative
+                },
+                renderGamesLink(),
+                renderPixeliaLink(),
+                renderMelodyLink()
               ),
               navGroup(
                 {
@@ -1377,7 +1550,6 @@ const template = (titlePrefix, ...elements) => {
   );
   return doctypeString + nodes.outerHTML;
 };
-// menu END
 
 exports.template = template;
 
@@ -1389,9 +1561,9 @@ exports.ainavHomeView = ({ recentTags = [] } = {}) => {
     { lang: "en" },
     head(
       title(placeholder, " | Oasis"),
-      link({ rel: "stylesheet", href: "/assets/styles/style.css" }),
-      link({ rel: "stylesheet", href: `/assets/themes/${theme}.css` }),
-      link({ rel: "stylesheet", href: "/assets/styles/mobile.css", media: "(max-width: 768px)" }),
+      link({ rel: "stylesheet", href: `/assets/styles/style.css?v=${assetVersion()}` }),
+      link({ rel: "stylesheet", href: `/assets/themes/${theme}.css?v=${assetVersion()}` }),
+      link({ rel: "stylesheet", href: `/assets/styles/mobile.css?v=${assetVersion()}`, media: "(max-width: 768px)" }),
       link({ rel: "icon", href: "/assets/images/favicon.svg" }),
       meta({ charset: "utf-8" }),
       meta({ name: "description", content: i18n.oasisDescription }),
@@ -1934,10 +2106,6 @@ const post = ({ msg, aside = false, preview = false, spreadInfo = null }) => {
 
     const fallbackVoted = !!msg.value?.meta?.voted;
     const fallbackVoteCount = msg.value?.meta?.votes?.length || 0;
-    const fallbackVoteNames = (msg.value?.meta?.votes || [])
-        .map((person) => person.name)
-        .filter(Boolean);
-
     const spreadInfoObj = (spreadInfo && typeof spreadInfo === 'object') ? spreadInfo : null;
     const spreadCount = spreadInfoObj && typeof spreadInfoObj.count === 'number'
         ? spreadInfoObj.count
@@ -1945,22 +2113,6 @@ const post = ({ msg, aside = false, preview = false, spreadInfo = null }) => {
     const alreadySpread = spreadInfoObj && typeof spreadInfoObj.alreadySpread === 'boolean'
         ? spreadInfoObj.alreadySpread
         : fallbackVoted;
-    const spreadVoters = (spreadInfoObj && Array.isArray(spreadInfoObj.voters))
-        ? spreadInfoObj.voters
-              .map(v => (v && typeof v === 'object') ? (v.name || v.key || '') : String(v || ''))
-              .filter(Boolean)
-        : fallbackVoteNames;
-
-    const maxSpreadNameLength = 16;
-    const maxSpreadNames = 16;
-    const spreadByNames = spreadVoters
-        .slice(0, maxSpreadNames)
-        .map((n) => String(n).slice(0, maxSpreadNameLength))
-        .join(", ");
-    const additionalSpreadsMessage =
-        spreadCount > maxSpreadNames ? `+${spreadCount - maxSpreadNames} more` : ``;
-    const spreadByMessage =
-        spreadCount > 0 ? `${spreadByNames} ${additionalSpreadsMessage}`.trim() : (i18n.spreadHint || 'Spread this to your supporters (replicates via your feed).');
     const spreadButtonClass = alreadySpread ? 'liked' : null;
 
     const messageClasses = ["post"];
@@ -2035,7 +2187,7 @@ const post = ({ msg, aside = false, preview = false, spreadInfo = null }) => {
                         {
                             type: "submit",
                             class: spreadButtonClass,
-                            title: spreadByMessage,
+                            title: i18n.spreadContent,
                         },
                         `☉ ${spreadCount}`
                     )
@@ -2066,6 +2218,7 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
     ubi:      visibilityPrefs.ubi      === true,
     wallet:   visibilityPrefs.wallet   === true,
     clearnetShops:     visibilityPrefs.clearnetShops     === true,
+    clearnetSchool:    visibilityPrefs.clearnetSchool    === true,
     clearnetJobs:      visibilityPrefs.clearnetJobs      === true,
     clearnetEvents:    visibilityPrefs.clearnetEvents    === true,
     clearnetProjects:  visibilityPrefs.clearnetProjects  === true,
@@ -2090,10 +2243,10 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
     ecoTax:            visibilityPrefs.ecoTax            !== false,
     larpSign:          visibilityPrefs.larpSign          === true,
     fediverse:         visibilityPrefs.fediverse         === true,
-    gpg:               visibilityPrefs.gpg               !== false
+    gpg:               visibilityPrefs.gpg               === true
   };
   const fediverseHandleValue = typeof visibilityPrefs.fediverseHandle === 'string' ? visibilityPrefs.fediverseHandle : '';
-  prefs.clearnet = prefs.clearnetShops || prefs.clearnetJobs || prefs.clearnetEvents || prefs.clearnetProjects || prefs.clearnetPosts || prefs.clearnetAudios || prefs.clearnetVideos || prefs.clearnetImages || prefs.clearnetDocuments || prefs.clearnetTorrents || prefs.clearnetBookmarks;
+  prefs.clearnet = prefs.clearnetShops || prefs.clearnetSchool || prefs.clearnetJobs || prefs.clearnetEvents || prefs.clearnetProjects || prefs.clearnetPosts || prefs.clearnetAudios || prefs.clearnetVideos || prefs.clearnetImages || prefs.clearnetDocuments || prefs.clearnetTorrents || prefs.clearnetBookmarks;
   const togglePill = (key, labelText, forced = false) => label(
     { class: forced ? "pref-pill pref-pill-forced" : "pref-pill", for: forced ? undefined : `vis_${key}`, title: forced ? (i18n.profileDeviceLockedHint || 'On mobile devices this sensor is mandatory and cannot be disabled.') : undefined },
     forced ? input({ type: "hidden", name: `vis_${key}`, value: "1" }) : null,
@@ -2140,7 +2293,7 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
           div({ class: "gpg-edit-row" },
             input({ type: "file", name: "gpgKey", accept: ".asc,.gpg,.pgp,application/pgp-keys,text/plain" }),
             gpgFingerprint
-              ? button({ type: "submit", formaction: "/profile/gpg/remove", formenctype: "application/x-www-form-urlencoded", formnovalidate: true, class: "gpg-remove-btn" },
+              ? button({ type: "submit", formaction: "/profile/gpg/remove", attrs: { formenctype: "application/x-www-form-urlencoded", formnovalidate: "formnovalidate" }, class: "gpg-remove-btn" },
                   (i18n.profileGpgRemove || 'Remove') + ' (' + String(gpgFingerprint).slice(-8).toUpperCase() + ')'
                 )
               : null
@@ -2175,7 +2328,7 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
           div({ class: "pref-pill-row" },
             togglePill('karma',    i18n.profileVisibilityKarma    || 'KARMA Scoring'),
             togglePill('activity', i18n.profileVisibilityActivity || 'Activity Level'),
-            togglePill('fediverse', i18n.profileVisibilityFediverse || 'Fediverse'),
+            togglePill('fediverse', i18n.profileVisibilityFediverse || 'Multiverse'),
             togglePill('larpSign', i18n.profileVisibilityLarpSign || 'L.A.R.P. Sign'),
             togglePill('gpg',      i18n.profileVisibilityGpg      || 'GPG Key'),
             togglePill('wallet',   i18n.profileVisibilityWallet   || 'ECOIN Wallet'),
@@ -2192,6 +2345,7 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
           ),
           div({ class: "pref-pill-row" },
             togglePill('clearnetShops',     i18n.profileClearnetShopsLabel     || 'Shops'),
+            togglePill('clearnetSchool',    i18n.profileClearnetSchoolLabel    || 'School'),
             togglePill('clearnetJobs',      i18n.profileClearnetJobsLabel      || 'Jobs'),
             togglePill('clearnetEvents',    i18n.profileClearnetEventsLabel    || 'Events'),
             togglePill('clearnetProjects',  i18n.profileClearnetProjectsLabel  || 'Projects'),
@@ -2284,6 +2438,7 @@ exports.clearnetInhabitantView = async ({ feedId, name, description, image, pref
   };
   const moduleDef = [
     { key: 'shops',     label: 'Shops',     kind: 'Shop',     prefKey: 'clearnetShops' },
+    { key: 'school',    label: 'School',    kind: 'Course',   prefKey: 'clearnetSchool' },
     { key: 'jobs',      label: 'Jobs',      kind: 'Job',      prefKey: 'clearnetJobs' },
     { key: 'events',    label: 'Events',    kind: 'Event',    prefKey: 'clearnetEvents' },
     { key: 'projects',  label: 'Projects',  kind: 'Project',  prefKey: 'clearnetProjects' },
@@ -2482,9 +2637,9 @@ exports.authorView = async ({
     clearnet: rawPrefs.clearnet === true,
     fediverse: rawPrefs.fediverse === true,
     fediverseHandle: typeof rawPrefs.fediverseHandle === 'string' ? rawPrefs.fediverseHandle : '',
-    gpg:      rawPrefs.gpg      !== false
+    gpg:      rawPrefs.gpg      === true
   };
-  const clearnetSubKeys = ['clearnetShops','clearnetJobs','clearnetEvents','clearnetProjects','clearnetPosts','clearnetAudios','clearnetVideos','clearnetImages','clearnetDocuments','clearnetTorrents','clearnetBookmarks'];
+  const clearnetSubKeys = ['clearnetShops','clearnetSchool','clearnetJobs','clearnetEvents','clearnetProjects','clearnetPosts','clearnetAudios','clearnetVideos','clearnetImages','clearnetDocuments','clearnetTorrents','clearnetBookmarks'];
   const anySubClearnet = clearnetSubKeys.some(k => rawPrefs[k] === true);
   prefs.clearnet = prefs.clearnet || anySubClearnet;
   const showField = (key) => prefs[key];
@@ -2494,51 +2649,7 @@ exports.authorView = async ({
   const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const markdownMention = `[@${escHtml(name)}](<strong>${escHtml(feedId)}</strong>)`;
 
-  const contactForms = [];
-  const addForm = ({ action }) =>
-    contactForms.push(
-      form(
-        { action: `/${action}/${encodeURIComponent(feedId)}`, method: "post" },
-        button({ type: "submit", class: "btn" }, i18n[action])
-      )
-    );
-
-  if (relationship.me === false) {
-    if (relationship.following) addForm({ action: "unfollow" });
-    else if (relationship.blocking) addForm({ action: "unblock" });
-    else { addForm({ action: "follow" }); addForm({ action: "block" }) }
-  }
-
-  const relationshipMessage = (() => {
-    if (relationship.me) return i18n.relationshipYou;
-    const following = relationship.following === true;
-    const followsMe = relationship.followsMe === true;
-    if (following && followsMe) return i18n.relationshipMutuals;
-    const messagesArr = [];
-    messagesArr.push(following ? i18n.relationshipFollowing : i18n.relationshipNone);
-    messagesArr.push(followsMe ? i18n.relationshipTheyFollow : i18n.relationshipNotFollowing);
-    return messagesArr.join(". ") + ".";
-  })();
-
-  const relationshipBlock = relationship.me
-    ? span({ class: "status you" }, i18n.relationshipYou)
-    : div({ class: "relationship-status" },
-        relationship.blocking && relationship.blockedBy
-          ? span({ class: "status blocked" }, i18n.relationshipMutualBlock)
-          : [
-              relationship.blocking ? span({ class: "status blocked" }, i18n.relationshipBlocking) : null,
-              relationship.blockedBy ? span({ class: "status blocked-by" }, i18n.relationshipBlockedBy) : null,
-              relationship.following && relationship.followsMe
-                ? span({ class: "status mutual" }, i18n.relationshipMutuals)
-                : [
-                    span({ class: "status supporting" }, relationship.following ? i18n.relationshipFollowing : i18n.relationshipNone),
-                    span({ class: "status supported-by" }, relationship.followsMe ? i18n.relationshipTheyFollow : i18n.relationshipNotFollowing)
-                  ]
-            ],
-        contactForms.length
-          ? div({ class: "relationship-actions" }, ...contactForms)
-          : null
-      );
+  const relationshipBlock = renderRelationshipBlock(relationship, feedId);
 
   const userSensors = renderUserSensors({
     isMe: isOwnProfile, fediverseConfigured, prefs, id: feedId,
@@ -2563,9 +2674,9 @@ exports.authorView = async ({
       : null,
     ...userSensors,
     div({ class: "profile-side-actions" },
-      isOwnProfile ? a({ href: `/profile/edit`, class: "btn" }, i18n.editProfile) : null,
-      a({ href: `/likes/${encodeURIComponent(feedId)}`, class: "btn" }, i18n.viewLikes),
-      !isOwnProfile ? a({ href: `/pm?recipients=${encodeURIComponent(feedId)}`, class: "btn" }, i18n.pmCreateButton) : null
+      isOwnProfile ? a({ href: `/profile/edit`, class: "filter-btn" }, i18n.editProfile) : null,
+      a({ href: `/likes/${encodeURIComponent(feedId)}`, class: "filter-btn" }, i18n.viewLikes),
+      !isOwnProfile ? a({ href: `/pm?recipients=${encodeURIComponent(feedId)}`, class: "filter-btn" }, i18n.pmCreateButton) : null
     )
   );
 
@@ -2629,7 +2740,7 @@ exports.authorView = async ({
         const { renderActionCards } = require('./activity_view');
         mainColumnContent.push(filterRow);
         mainColumnContent.push(div({ class: 'feed-container profile-module-section' },
-          renderActionCards(limited, feedId, allActions || limited, spreadMap instanceof Map ? spreadMap : new Map())
+          renderActionCards(limited, (config.keys && config.keys.id) ? config.keys.id : '', allActions || limited, spreadMap instanceof Map ? spreadMap : new Map())
         ));
       }
     }
@@ -2830,77 +2941,7 @@ const renderMessage = (msg) => {
   );
 };
 
-const hasMention = (msg, feedId) => {
-  const content = lodash.get(msg, "value.content", {});
-  const mentions = content.mentions;
-  if (mentions) {
-    if (Array.isArray(mentions)) {
-      if (mentions.some(m => m.link === feedId || m.feed === feedId)) return true;
-    } else if (typeof mentions === 'object') {
-      for (const arr of Object.values(mentions)) {
-        if (Array.isArray(arr) && arr.some(m => m.link === feedId || m.feed === feedId)) return true;
-        if (arr && (arr.link === feedId || arr.feed === feedId)) return true;
-      }
-    }
-  }
-  const text = content.text || '';
-  if (text.includes(feedId) || text.includes(feedId.slice(1))) return true;
-  return false;
-};
 
-exports.mentionsView = ({ messages, myFeedId }) => {
-  const title = i18n.mentions;
-  const description = i18n.mentionsDescription;
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return template(
-      title,
-      section(
-        div({ class: "tags-header" },
-          h2(title),
-          p(description)
-        )
-      ),
-      section(
-        div({ class: "mentions-list" },
-          p({ class: "empty" }, i18n.noMentions)
-        )
-      )
-    );
-  }
-  const filteredMessages = messages
-    .filter(msg => hasMention(msg, myFeedId))
-    .sort((a, b) => (b.value.timestamp || 0) - (a.value.timestamp || 0));
-  if (filteredMessages.length === 0) {
-    return template(
-      title,
-      section(
-        div({ class: "tags-header" },
-          h2(title),
-          p(description)
-        )
-      ),
-      section(
-        div({ class: "mentions-list" },
-          p({ class: "empty" }, i18n.noMentions)
-        )
-      )
-    );
-  }
-  return template(
-    title,
-    section(
-      div({ class: "tags-header" },
-        h2(title),
-        p(description)
-      )
-    ),
-    section(
-      div({ class: "mentions-list" },
-        filteredMessages.map(renderMessage) 
-      )
-    )
-  );
-};
 
 exports.privateView = async (messagesInput, filter, decrypted = null, notice = '') => {
   const noticeText = notice === 'unavailable'
@@ -2920,7 +2961,8 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
   const hrefFor = {
     job: (id) => `/jobs/${encodeURIComponent(id)}`,
     project: (id) => `/projects/${encodeURIComponent(id)}`,
-    market: (id) => `/market/${encodeURIComponent(id)}`
+    market: (id) => `/market/${encodeURIComponent(id)}`,
+    shopProduct: (id) => `/shops/product/${encodeURIComponent(id)}`
   }
 
   const clickableCardProps = (href, extraClass = '') => {
@@ -3044,6 +3086,10 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       const m = str.match(/\/market\/([%A-Za-z0-9/+._=-]+\.sha256)/)
       return m ? m[1] : ''
     }
+    if (kind === 'shopProduct') {
+      const m = str.match(/\/shops\/product\/([%A-Za-z0-9/+._=-]+\.sha256)/)
+      return m ? m[1] : ''
+    }
     return ''
   }
 
@@ -3066,15 +3112,27 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       }
     }
     flushQuote()
-    return parts.join('<br>')
+    const mdLinks = []
+    const masked = parts.join('<br>')
+      .replace(/\[([^\]\n]{1,120})\]\((https?:\/\/[^)\s]+|\/[^)\s]+)\)/g, (match, label, href) => {
+        const idx = mdLinks.length
+        const safeHref = String(href).replace(/"/g, '%22')
+        const ext = /^https?:/.test(href) ? ' target="_blank" rel="noopener noreferrer"' : ''
+        mdLinks.push(`<a class="oasis-md-link" href="${safeHref}"${ext}>${label}</a>`)
+        return `\u0000MD${idx}\u0000`
+      })
+    return masked
       .replace(/(@[a-zA-Z0-9/+._=-]+\.ed25519)/g, (match, id) => `<a class="user-link" href="/author/${encodeURIComponent(id)}">${userLinkLabel(id)}</a>`)
       .replace(/\/jobs\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="job-link" href="${hrefFor.job(id)}">${match}</a>`)
       .replace(/\/projects\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="project-link" href="${hrefFor.project(id)}">${match}</a>`)
       .replace(/\/market\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="market-link" href="${hrefFor.market(id)}">${match}</a>`)
       .replace(/\/calendars\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="calendar-link" href="/calendars/${encodeURIComponent(id)}">${match}</a>`)
       .replace(/\/ai\/ask\?[^\s<"]+/g, (match) => `<a class="ai-ask-link" href="${match}">${match}</a>`)
-      .replace(/(?<![A-Za-z0-9_])\/(profile|inbox|invites|peers|tribes|inhabitants|publish|activity|settings|modules|banking|larp|melody|audios|videos|images|documents|bookmarks|torrents|forum|feed|fediverse|events|tasks|votes|reports|market|jobs|projects|shops|pixelia|opinions|trending|agenda|cv|favorites|stats|blockexplorer|wallet|chats|pads|maps|calendars|ai|games)(?![A-Za-z0-9_\/])/g, (match) => `<a class="oasis-path-link" href="${match}">${match}</a>`)
+      .replace(/\/tribe\/([%A-Za-z0-9/+._=-]+\.sha256)(\?section=[a-zA-Z]+)?/g, (match) => `<a class="tribe-link" href="${match}">${match}</a>`)
+      .replace(/\/larp\/([a-zA-Z]+)/g, (match) => `<a class="larp-link" href="${match}">${match}</a>`)
+      .replace(/(?<![A-Za-z0-9_])\/(profile|inbox|invites|peers|tribes|inhabitants|publish|activity|settings|modules|banking|larp|parliament|courts|melody|audios|videos|images|documents|bookmarks|torrents|forum|feed|fediverse|multiverse|events|tasks|votes|reports|market|jobs|projects|industry|shops|pixelia|opinions|trending|agenda|cv|favorites|stats|blockexplorer|wallet|chats|pads|maps|calendars|ai|games|search)(?![A-Za-z0-9_\/])/g, (match) => `<a class="oasis-path-link" href="${match}">${match}</a>`)
       .replace(/(https?:\/\/[^\s<"]+)/g, (match) => `<a href="${match}" target="_blank" rel="noopener noreferrer">${match}</a>`)
+      .replace(/\u0000MD(\d+)\u0000/g, (m, i) => mdLinks[Number(i)] !== undefined ? mdLinks[Number(i)] : m)
   }
 
   const threads = {}
@@ -3125,7 +3183,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
     const href = jobId ? hrefFor.job(jobId) : null
     return div(
       clickableCardProps(href, `job-notification thread-level-0`),
-      headerLine({ sentAt, from, toLinks, subject: type, msgKey: key, msgSize }),
+      headerLine({ sentAt, from, toLinks, subject: titleH, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `${icon} ${i18n.pmBotJobs} · ${titleH}`),
       p(
         i18n.pmInhabitantWithId, ' ',
@@ -3149,7 +3207,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
     const href = projectId ? hrefFor.project(projectId) : null
     return div(
       clickableCardProps(href, `project-${isFollow ? 'follow' : 'unfollow'}-notification thread-level-0`),
-      headerLine({ sentAt, from, toLinks, subject: type, msgKey: key, msgSize }),
+      headerLine({ sentAt, from, toLinks, subject: titleH, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `${icon} ${i18n.pmBotProjects} · ${titleH}`),
       p(
         i18n.pmInhabitantWithId, ' ',
@@ -3163,23 +3221,28 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
     )
   }
 
-  function MarketSoldCard({ sentAt, from, toLinks, subject, text, key, msgSize }) {
+  function MarketSoldCard({ sentAt, from, toLinks, subject, text, key, msgSize, variant = 'market' }) {
+    const isShop = variant === 'shop'
     const itemTitle = quoted(subject) || quoted(text) || 'item'
     const buyerId = (text.match(/OASIS ID:\s*([\w=/+.-]+)/) || [])[1] || from
-    const price = (text.match(/for:\s*\$([\d.]+)/) || [])[1] || ''
+    const price = (text.match(/for:\s*\$?([\d.]+)/) || [])[1] || ''
     const marketId = pickLink(text, 'market')
-    const href = marketId ? hrefFor.market(marketId) : null
+    const shopProductId = pickLink(text, 'shopProduct')
+    const href = isShop ? (shopProductId ? hrefFor.shopProduct(shopProductId) : null) : (marketId ? hrefFor.market(marketId) : null)
+    const icon = isShop ? '🛍️' : '💰'
+    const botLabel = isShop ? i18n.pmBotShops : i18n.pmBotMarket
+    const soldTitle = isShop ? (i18n.inboxShopSoldTitle || 'Product Sold') : i18n.inboxMarketItemSoldTitle
     return div(
-      clickableCardProps(href, 'market-sold-notification thread-level-0'),
-      headerLine({ sentAt, from, toLinks, subject, msgKey: key, msgSize }),
-      h2({ class: 'pm-title' }, `💰 ${i18n.pmBotMarket} · ${i18n.inboxMarketItemSoldTitle}`),
+      clickableCardProps(href, (isShop ? 'shop-sold-notification' : 'market-sold-notification') + ' thread-level-0'),
+      headerLine({ sentAt, from, toLinks, subject: soldTitle, msgKey: key, msgSize }),
+      h2({ class: 'pm-title' }, `${icon} ${botLabel} · ${soldTitle}`),
       p(
         i18n.pmYourItem, ' ',
-        href ? a({ class: 'market-link', href }, `"${itemTitle}"`) : `"${itemTitle}"`,
+        href ? a({ class: isShop ? 'shop-link' : 'market-link', href }, `"${itemTitle}"`) : `"${itemTitle}"`,
         ' ',
         i18n.pmHasBeenSoldTo, ' ',
         linkAuthor(buyerId),
-        price ? ` ${i18n.pmFor} $${price}.` : '.'
+        price ? ` ${i18n.pmFor} ${price} ECO.` : '.'
       ),
       actions({ key, replyId: buyerId, subjectRaw: itemTitle, text })
     )
@@ -3192,7 +3255,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
     const href = projectId ? hrefFor.project(projectId) : null
     return div(
       clickableCardProps(href, 'project-pledge-notification thread-level-0'),
-      headerLine({ sentAt, from, toLinks, subject: 'PROJECT_PLEDGE', msgKey: key, msgSize }),
+      headerLine({ sentAt, from, toLinks, subject: i18n.inboxProjectPledgedTitle, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `💚 ${i18n.pmBotProjects} · ${i18n.inboxProjectPledgedTitle}`),
       p(
         i18n.pmInhabitantWithId, ' ',
@@ -3203,6 +3266,95 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
         href ? a({ class: 'project-link', href }, `"${projectTitle}"`) : `"${projectTitle}"`
       ),
       actions({ key, replyId: from, subjectRaw: projectTitle, text })
+    )
+  }
+
+  function PoliticalBotCard({ subjectU, sentAt, from, toLinks, text, key, msgSize }) {
+    const titleMap = {
+      LARP_RULING: i18n.politicalBotLarpTitle || 'The ruling house of the L.A.R.P has changed.',
+      PARLIAMENT_GOV: i18n.politicalBotParliamentTitle || 'A new government cycle has begun in the Parliament.',
+      TRIBE_GOV: i18n.politicalBotTribeTitle || 'A new government cycle has begun in one of your Tribes.'
+    }
+    const title = titleMap[subjectU] || (i18n.pmBotPolitical || 'PoliticalBot')
+    return div(
+      { class: 'pm-card political-bot-notification thread-level-0' },
+      headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
+      h2({ class: 'pm-title' }, `🏛️ ${i18n.pmBotPolitical} · ${title}`),
+      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      actions({ key, replyId: from, subjectRaw: title, text })
+    )
+  }
+
+  function IndustryBotCard({ subjectU, sentAt, from, toLinks, text, key, msgSize }) {
+    const titleMap = {
+      INDUSTRY_ADMITTED: i18n.industryBotAdmittedTitle || 'You have been admitted to a facility.',
+      INDUSTRY_APPLICATION: i18n.industryBotApplicationTitle || 'New membership application in your facility.',
+      INDUSTRY_INVITED: i18n.industryBotInvitedTitle || 'You have been invited to a facility.',
+      INDUSTRY_DISSOLVED: i18n.industryBotDissolvedTitle || 'A facility you belong to has been dissolved.',
+      INDUSTRY_BUILD_APPROVED: i18n.industryBotBuildApprovedTitle || 'A build has been approved.',
+      INDUSTRY_DISTRIBUTED: i18n.industryBotDistributedTitle || 'A build output has been distributed.'
+    }
+    const title = titleMap[subjectU] || (i18n.pmBotIndustry || 'IndustryBot')
+    return div(
+      { class: 'pm-card industry-bot-notification thread-level-0' },
+      headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
+      h2({ class: 'pm-title' }, `🏭 ${i18n.pmBotIndustry || 'IndustryBot'} · ${title}`),
+      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      actions({ key, replyId: from, subjectRaw: title, text })
+    )
+  }
+
+  function SchoolBotCard({ subjectU, sentAt, from, toLinks, text, key, msgSize }) {
+    const titleMap = {
+      SCHOOL_ENROLLED: i18n.schoolBotEnrolledTitle || 'A new student has enrolled in your course.',
+      SCHOOL_INVITED: i18n.schoolBotInvitedTitle || 'You have been invited to a course.',
+      SCHOOL_ADMITTED: i18n.schoolBotAdmittedTitle || 'You have been admitted to a course.',
+      SCHOOL_CERTIFICATE: i18n.schoolBotCertificateTitle || 'You have received a certificate.',
+      SCHOOL_PASSED: i18n.schoolBotPassedTitle || 'A student has passed your course.',
+      SCHOOL_LESSON_NEW: i18n.schoolBotLessonTitle || 'A new lesson has been published.'
+    }
+    const title = titleMap[subjectU] || (i18n.pmBotSchool || 'EducaBot')
+    return div(
+      { class: 'pm-card school-bot-notification thread-level-0' },
+      headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
+      h2({ class: 'pm-title' }, `🎓 ${i18n.pmBotSchool || 'EducaBot'} · ${title}`),
+      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      actions({ key, replyId: from, subjectRaw: title, text })
+    )
+  }
+
+  function JobsBotCard({ sentAt, from, toLinks, text, key, msgSize }) {
+    const title = i18n.jobsBotMatchTitle
+    return div(
+      { class: 'pm-card jobs-bot-notification thread-level-0' },
+      headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
+      h2({ class: 'pm-title' }, `💼 ${i18n.pmBotJobs} · ${title}`),
+      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      actions({ key, replyId: from, subjectRaw: title, text })
+    )
+  }
+
+  function HousingBotCard({ subjectU, sentAt, from, toLinks, text, key, msgSize }) {
+    const myId = (config.keys && config.keys.id) ? config.keys.id : ''
+    const mine = String(from) === String(myId)
+    const titleMap = mine
+      ? {
+          HOUSING_REQUESTED: i18n.housingBotYouRequestedTitle || 'You have requested a place.',
+          HOUSING_CANCELLED: i18n.housingBotYouCancelledTitle || 'You have cancelled a request.',
+          HOUSING_UNAVAILABLE: i18n.housingBotUnavailableSentTitle || 'You have told the people who requested this place.'
+        }
+      : {
+          HOUSING_REQUESTED: i18n.housingBotRequestedTitle || 'Somebody has requested one of your places.',
+          HOUSING_CANCELLED: i18n.housingBotCancelledTitle || 'A request on one of your places was cancelled.',
+          HOUSING_UNAVAILABLE: i18n.housingBotUnavailableTitle || 'A place you requested is no longer available.'
+        }
+    const title = titleMap[subjectU] || (i18n.pmBotHousing || 'HousingBot')
+    return div(
+      { class: 'pm-card housing-bot-notification thread-level-0' },
+      headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
+      h2({ class: 'pm-title' }, `🏠 ${i18n.pmBotHousing || 'HousingBot'} · ${title}`),
+      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
 
@@ -3308,6 +3460,9 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
               )
             }
 
+            if (subjectU === 'JOB_MATCH') {
+              return JobsBotCard({ sentAt, from: fromResolved, toLinks, text, key: msg.key, msgSize })
+            }
             if (subjectU === 'JOB_SUBSCRIBED' || subjectU === 'JOB_UNSUBSCRIBED') {
               return JobCard({ type: subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key, msgSize })
             }
@@ -3315,7 +3470,22 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
               return ProjectFollowCard({ type: subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key, msgSize })
             }
             if (subjectU === 'MARKET_SOLD') {
-              return MarketSoldCard({ sentAt, from: fromResolved, toLinks, subject: subjectRaw, text, key: msg.key, msgSize })
+              return MarketSoldCard({ sentAt, from: fromResolved, toLinks, subject: subjectRaw, text, key: msg.key, msgSize, variant: 'market' })
+            }
+            if (subjectU === 'SHOP_SOLD') {
+              return MarketSoldCard({ sentAt, from: fromResolved, toLinks, subject: subjectRaw, text, key: msg.key, msgSize, variant: 'shop' })
+            }
+            if (subjectU === 'LARP_RULING' || subjectU === 'PARLIAMENT_GOV' || subjectU === 'TRIBE_GOV') {
+              return PoliticalBotCard({ subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key, msgSize })
+            }
+            if (subjectU === 'SCHOOL_ENROLLED' || subjectU === 'SCHOOL_INVITED' || subjectU === 'SCHOOL_ADMITTED' || subjectU === 'SCHOOL_CERTIFICATE' || subjectU === 'SCHOOL_PASSED' || subjectU === 'SCHOOL_LESSON_NEW') {
+              return SchoolBotCard({ subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key, msgSize })
+            }
+            if (subjectU === 'INDUSTRY_ADMITTED' || subjectU === 'INDUSTRY_APPLICATION' || subjectU === 'INDUSTRY_INVITED' || subjectU === 'INDUSTRY_DISSOLVED' || subjectU === 'INDUSTRY_BUILD_APPROVED' || subjectU === 'INDUSTRY_DISTRIBUTED') {
+              return IndustryBotCard({ subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key, msgSize })
+            }
+            if (subjectU === 'HOUSING_REQUESTED' || subjectU === 'HOUSING_CANCELLED' || subjectU === 'HOUSING_UNAVAILABLE') {
+              return HousingBotCard({ subjectU, sentAt, from: fromResolved, toLinks, text, key: msg.key, msgSize })
             }
             if (subjectU === 'PROJECT_PLEDGE' || content.meta?.type === 'project-pledge') {
               return ProjectPledgeCard({ sentAt, from: fromResolved, toLinks, content, text, key: msg.key, msgSize })
@@ -3365,6 +3535,12 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
 
           if (!threadOrder.length) return p({ class: 'empty' }, i18n.noPrivateMessages)
 
+          const threadTs = (tid) => (threadGroups[tid] || []).reduce((max, m) => {
+            const t = new Date(m?.value?.content?.sentAt || m.timestamp || 0).getTime()
+            return t > max ? t : max
+          }, 0)
+          threadOrder.sort((a, b) => threadTs(b) - threadTs(a))
+
           return threadOrder.map(tid => {
             const msgs = threadGroups[tid]
             const original = msgs[0]
@@ -3395,44 +3571,6 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
   )
 }
 
-exports.publishCustomView = async () => {
-  const action = "/publish/custom";
-  const method = "post";
-
-  return template(
-    i18n.publishCustom,
-    section(
-      div({ class: "tags-header" },
-        h2(i18n.publishCustom),
-        p(i18n.publishCustomDescription)
-      ),
-      form(
-        { action, method },
-        textarea(
-          {
-            autofocus: true,
-            required: true,
-            name: "text",
-            rows: 10,
-            class: "textarea-full"
-          },
-          "{\n",
-          '  "type": "feed",\n',
-          '  "hello": "world"\n',
-          "}"
-        ),
-        br(),
-        br(),
-        button({ type: "submit" }, i18n.submit)
-      )
-    ),
-    section(
-      div({ class: "tags-header" },
-        p(i18n.publishBasicInfo({ href: "/publish" }))
-      )
-    )
-  );
-};
 
 exports.threadView = ({ messages, spreadMap = null }) => {
   const rootMessage = messages[0];
@@ -3456,70 +3594,23 @@ exports.threadView = ({ messages, spreadMap = null }) => {
   }`;
 };
 
-exports.publishView = (preview, text, contentWarning) => {
+exports.likesView = async ({ messages, feed, name, spreadMap = null }) => {
+  const list = Array.isArray(messages) ? messages : [];
   return template(
-    i18n.publish,
+    i18n.viewLikes,
     section(
       div({ class: "tags-header" },
-        h2(i18n.publishBlog),
-        p(i18n.publishLabel({ markdownUrl, linkTarget: "_blank" }))
+        h2(i18n.viewLikes),
+        p(userLink(feed, name))
       )
     ),
-    section(
-      div({ class: "publish-form" },
-        form(
-          {
-            action: "/publish/preview",
-            method: "post",
-            enctype: "multipart/form-data",
-          },
-          [
-            label({ for: "contentWarning" }, i18n.blogSubject),
-            br(),
-            input({
-              name: "contentWarning",
-              id: "contentWarning",
-              type: "text",
-              class: "contentWarning",
-              value: contentWarning || "",
-              placeholder: i18n.contentWarningPlaceholder
-            }),
-            br(),
-            label({ for: "text" }, i18n.blogMessage),
-            br(),
-            textarea(
-              {
-                required: true,
-                name: "text",
-                id: "text",
-                rows: "6",
-                cols: "50",
-                placeholder: i18n.publishWarningPlaceholder,
-                class: "publish-textarea",
-                maxlength: "8096"
-              },
-              text || ""
-            ),
-            br(),
-            label({ for: "blob" }, i18n.blogImage || "Upload media (max-size: 50MB)"),
-            br(),
-            input({ type: "file", id: "blob", name: "blob" }),
-            br(), br(),
-            button({ type: "submit" }, i18n.blogPublish)
-          ]
-        )
-      )
-    ),
-    preview || "",
-    section(
-      div({ class: "tags-header" },
-        p(i18n.publishCustomInfo({ href: "/publish/custom" }))
-      )
-    )
+    list.length
+      ? div(thread(list, spreadMap))
+      : p({ class: "no-content" }, i18n.no_results)
   );
 };
 
-//generate preview
+
 const ensureAt = (id) => {
   const s = String(id || "").trim()
   if (!s) return ""
@@ -3719,44 +3810,6 @@ const generatePreview = ({ previewData, contentWarning, action }) => {
   )
 }
 
-exports.previewView = ({ previewData, contentWarning }) => {
-  const publishAction = "/publish"
-  const preview = generatePreview({
-    previewData,
-    contentWarning,
-    action: publishAction,
-  })
-  return exports.publishView(preview, (previewData && previewData.text) || "", contentWarning)
-}
-
-const viewInfoBox = ({ viewTitle = null, viewDescription = null }) => {
-  if (!viewTitle && !viewDescription) {
-    return null
-  }
-  return section(
-    { class: "viewInfo" },
-    viewTitle ? h1(viewTitle) : null,
-    viewDescription ? em(viewDescription) : null
-  )
-}
-//generate preview
-
-exports.likesView = async ({ messages, feed, name, spreadMap = null }) => {
-  const authorLink = a(
-    { href: `/author/${encodeURIComponent(feed)}` },
-    "@" + name
-  );
-  const getSpread = (key) => (spreadMap instanceof Map ? spreadMap.get(key) : null) || null;
-
-  return template(
-    ["@", name],
-    viewInfoBox({
-      viewTitle: span(authorLink),
-      viewDescription: span(i18n.spreadedDescription)
-    }),
-    messages.map((msg) => post({ msg, spreadInfo: getSpread(msg.key) }))
-  );
-};
 
 const messageListView = ({
   messages,
@@ -3781,71 +3834,10 @@ const messageListView = ({
   );
 };
 
-exports.popularView = ({ messages, prefix, spreadMap = null }) => {
-  const header = div({ class: "tags-header" },
-    h2(i18n.popular),
-    p(i18n.popularDescription)
-  );
-  return messageListView({
-    messages,
-    viewTitle: i18n.popular,
-    viewElements: [header, prefix],
-    spreadMap
-  });
-};
 
-exports.extendedView = ({ messages, spreadMap = null }) => {
-  const header = div({ class: "tags-header" },
-    h2(i18n.extended),
-    p(i18n.extendedDescription)
-  );
-  return messageListView({
-    messages,
-    viewTitle: i18n.extended,
-    viewElements: header,
-    spreadMap
-  });
-};
 
-exports.latestView = ({ messages, spreadMap = null }) => {
-  const header = div({ class: "tags-header" },
-    h2(i18n.latest),
-    p(i18n.latestDescription)
-  );
-  return messageListView({
-    messages,
-    viewTitle: i18n.latest,
-    viewElements: header,
-    spreadMap
-  });
-};
 
-exports.topicsView = ({ messages, prefix, spreadMap = null }) => {
-  const header = div({ class: "tags-header" },
-    h2(i18n.topics),
-    p(i18n.topicsDescription)
-  );
-  return messageListView({
-    messages,
-    viewTitle: i18n.topics,
-    viewElements: [header, prefix],
-    spreadMap
-  });
-};
 
-exports.summaryView = ({ messages, spreadMap = null }) => {
-  const header = div({ class: "tags-header" },
-    h2(i18n.summaries),
-    p(i18n.summariesDescription)
-  );
-  return messageListView({
-    messages,
-    viewTitle: i18n.summaries,
-    viewElements: header,
-    aside: true,
-    spreadMap
-  });
-};
 
 exports.spreadedView = ({ messages }) => {
   const header = div({ class: "tags-header" },
@@ -3859,19 +3851,6 @@ exports.spreadedView = ({ messages }) => {
   });
 };
 
-exports.threadsView = ({ messages, spreadMap = null }) => {
-  const header = div({ class: "tags-header" },
-    h2(i18n.threads),
-    p(i18n.threadsDescription)
-  );
-  return messageListView({
-    messages,
-    viewTitle: i18n.threads,
-    viewElements: header,
-    aside: true,
-    spreadMap
-  });
-};
 
 exports.previewSubtopicView = async ({
   previewData,

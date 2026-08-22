@@ -6,6 +6,7 @@ const { buildValidatedTombstoneSet } = require('./tombstone_validator');
 
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 const MONTH_MS = 30 * DAY_MS;
@@ -23,7 +24,7 @@ const ACTION_TYPES = new Set([
   'post', 'about', 'contact', 'feed', 'bookmark', 'image', 'audio', 'video',
   'document', 'torrent', 'event', 'task', 'taskAssignment',
   'votes', 'vote', 'report', 'tribe', 'chat', 'chatMessage', 'pad', 'padEntry',
-  'forum', 'market', 'job', 'project', 'pixelia', 'map', 'mapMarker',
+  'forum', 'market', 'job', 'project', 'industry', 'industryBuild', 'pixelia', 'map', 'mapMarker',
   'shop', 'shopProduct', 'curriculum', 'gameScore',
   'calendar', 'calendarDate', 'calendarNote',
   'transfer', 'bankClaim', 'ubiClaim',
@@ -61,6 +62,8 @@ const ACTION_PHRASES = {
   forum: 'posted in the forum',
   job: 'posted a job opportunity',
   project: 'advanced a project',
+  industry: 'founded a network-owned facility',
+  industryBuild: 'proposed a production build',
   pixelia: 'placed a pixel in pixelia',
   map: 'contributed to a map',
   mapMarker: 'placed a marker on a map',
@@ -291,7 +294,10 @@ module.exports = ({ cooler }) => {
       const c = v?.content;
       if (!c) continue;
       if (v.author !== userId) continue;
-      if (c.type === 'tombstone') continue;
+      if (c.type === 'tombstone') {
+        if (typeof c.target === 'string' && c.target) tombstoned.add(c.target);
+        continue;
+      }
       if (c.type !== 'log') continue;
       if (c.replaces) replaced.set(c.replaces, dec.key || keyIn);
       items.push({
@@ -306,7 +312,16 @@ module.exports = ({ cooler }) => {
         ref: c.ref || null
       });
     }
+    const parentOf = new Map();
+    for (const i of items) if (i.replaces) parentOf.set(i.key, i.replaces);
+    const rootOf = (key) => {
+      let cur = key;
+      const seen = new Set();
+      while (parentOf.has(cur) && !seen.has(cur)) { seen.add(cur); cur = parentOf.get(cur); }
+      return cur;
+    };
     const survivors = items.filter(i => !tombstoned.has(i.key) && !replaced.has(i.key));
+    for (const i of survivors) i.rootId = rootOf(i.key);
     survivors.sort((a, b) => b.ts - a.ts);
     return survivors;
   }
@@ -327,11 +342,14 @@ module.exports = ({ cooler }) => {
   async function updateLog(id, { text, label, mode }) {
     const current = await getLogById(id);
     if (!current) return { status: 'not_found' };
-    await republishLog({
-      replaces: current.key,
+    const next = {
       text: text !== undefined ? text : current.text,
       label: label !== undefined ? label : current.label,
-      mode: mode || current.mode,
+      mode: mode || current.mode
+    };
+    await republishLog({
+      replaces: current.key,
+      ...next,
       createdAt: current.createdAt
     });
     return { status: 'ok' };

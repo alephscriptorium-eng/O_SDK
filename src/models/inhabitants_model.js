@@ -130,9 +130,9 @@ module.exports = ({ cooler }) => {
         return filterInactive(users);
       }
 
-      if (filter === 'all' || filter === 'TOP KARMA' || filter === 'TOP ACTIVITY' || filter === 'TOP ECO') {
+      if (filter === 'all' || filter === 'TOP KARMA' || filter === 'TOP ACTIVITY' || filter === 'TOP INACTIVITY' || filter === 'TOP ECO') {
         let users = await listAllBase(ssbClient);
-        if (filter !== 'TOP ACTIVITY') {
+        if (filter !== 'TOP ACTIVITY' && filter !== 'TOP INACTIVITY') {
           users = filterInactive(users);
         }
         if (search) {
@@ -170,6 +170,7 @@ module.exports = ({ cooler }) => {
         }));
         if (filter === 'TOP KARMA') return withMetrics.sort((a, b) => (b.karmaScore || 0) - (a.karmaScore || 0));
         if (filter === 'TOP ACTIVITY') return withMetrics.sort((a, b) => (b.lastActivityTs || 0) - (a.lastActivityTs || 0));
+        if (filter === 'TOP INACTIVITY') return withMetrics.sort((a, b) => (a.lastActivityTs || 0) - (b.lastActivityTs || 0));
         if (filter === 'TOP ECO') return withMetrics.sort((a, b) => (b.ecoScore || 0) - (a.ecoScore || 0));
         return withMetrics;
       }
@@ -254,7 +255,7 @@ module.exports = ({ cooler }) => {
         );
       }
 
-      if (filter === 'CVs' || filter === 'MATCHSKILLS') {
+      if (filter === 'CVs') {
         const records = await new Promise((res, rej) => {
           pull(
             ssbClient.createLogStream({ limit: logLimit, reverse: true}),
@@ -295,54 +296,13 @@ module.exports = ({ cooler }) => {
           return out;
         }
 
-        if (filter === 'MATCHSKILLS') {
-          let base = await Promise.all(cvs.map(async c => {
-            const photo = await fetchUserImageUrl(c.author, 256);
-            const lastActivityTs = await getLastActivityTimestamp(c.author);
-            const { bucket, range } = bucketLastActivity(lastActivityTs);
-            const norm = this._normalizeCurriculum(c, photo);
-            const karmaScore = await getLastKarmaScore(c.author).catch(() => 0);
-            return { ...norm, lastActivityTs, lastActivityBucket: bucket, lastActivityRange: range, karmaScore };
-          }));
-          base = filterInactive(base);
-          const mecv = await this.getCVByUserId();
-          const userSkills = Array.from(new Set(
-            (mecv
-              ? [
-                  ...(mecv.personalSkills || []),
-                  ...(mecv.oasisSkills || []),
-                  ...(mecv.educationalSkills || []),
-                  ...(mecv.professionalSkills || [])
-                ]
-              : []).map(s => String(s || '').toLowerCase()).filter(Boolean)
-          ));
-          if (!userSkills.length) return [];
-          const userSet = new Set(userSkills);
-          const matches = base.map(c => {
-            if (c.id === userId) return null;
-            const theirSkillsRaw = (c.skills || []).map(s => String(s || '').toLowerCase()).filter(Boolean);
-            const theirSet = new Set(theirSkillsRaw);
-            const common = Array.from(theirSet).filter(s => userSet.has(s));
-            if (!common.length) return null;
-            const unionSize = userSet.size + theirSet.size - common.length;
-            const matchScore = unionSize > 0 ? common.length / unionSize : 0;
-            const matchCoverage = userSet.size > 0 ? common.length / userSet.size : 0;
-            return { ...c, commonSkills: common, matchScore, matchCoverage };
-          }).filter(Boolean);
-          return matches.sort((a, b) =>
-            (b.matchScore - a.matchScore) ||
-            (b.commonSkills.length - a.commonSkills.length) ||
-            ((b.karmaScore || 0) - (a.karmaScore || 0)) ||
-            ((b.lastActivityTs || 0) - (a.lastActivityTs || 0))
-          );
-        }
       }
 
       return [];
     },
 
     _normalizeCurriculum(c, photoUrl) {
-      const photo = photoUrl || toImageUrl(c.photo, 256);
+      const photo = c.photo ? toImageUrl(c.photo, 256) : (photoUrl || toImageUrl(null, 256));
       return {
         id: c.author,
         name: c.name,
@@ -358,6 +318,8 @@ module.exports = ({ cooler }) => {
         languages: typeof c.languages === 'string'
           ? c.languages.split(',').map(x => x.trim())
           : Array.isArray(c.languages) ? c.languages : [],
+        status: c.status,
+        preferences: c.preferences,
         createdAt: c.createdAt
       };
     },
@@ -407,7 +369,7 @@ module.exports = ({ cooler }) => {
       const isOwner = viewer === target;
       const arr = (v) => Array.isArray(v) ? v : [];
       const up = (v) => String(v || '').toUpperCase();
-      const COUNTED = new Set(['post','event','task','forum','tribe','market','job','project','shop','image','video','audio','document','bookmark','transfer','map']);
+      const COUNTED = new Set(['post','event','task','forum','tribe','market','job','housing','project','industry','shop','image','video','audio','document','bookmark','transfer','map']);
       const accessible = (type, c) => {
         if (c.encryptedPayload) return false;
         switch (type) {
@@ -415,6 +377,7 @@ module.exports = ({ cooler }) => {
           case 'event':  return String(c.isPublic || '').toLowerCase() !== 'private' || isOwner || arr(c.attendees).includes(viewer);
           case 'forum':  return c.isPrivate !== true || isOwner;
           case 'job':    return up(c.visibility) !== 'HIDDEN' || isOwner || arr(c.subscribers).includes(viewer);
+          case 'housing': return up(c.visibility) !== 'HIDDEN' || isOwner;
           case 'market': return up(c.visibility) !== 'HIDDEN' || isOwner;
           case 'shop':   return up(c.visibility) !== 'CLOSED' || isOwner;
           case 'tribe':  { const st = up(c.status); return !(st === 'PRIVATE' || st === 'INVITE-ONLY') || isOwner || arr(c.members).includes(viewer); }

@@ -13,7 +13,7 @@ const filterButton = (mode, currentFilter) =>
     input({ type: 'hidden', name: 'filter', value: mode }),
     button(
       { type: 'submit', class: currentFilter === mode ? 'filter-btn active' : 'filter-btn' },
-      i18n[mode + 'Button'] || mode
+      String(i18n[mode + 'Button'] || mode).toUpperCase()
     )
   );
 
@@ -42,12 +42,11 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
       )
     );
   } else if (c.type === 'image') {
-    const { url, title, description, meme } = c;
+    const { url, title, description } = c;
     contentHtml = div({ class: 'trending-image' },
       div({ class: 'card-section image' },
         title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.imageTitleLabel + ':'), span({ class: 'card-value' }, title)) : "",
         description ? [span({ class: 'card-label' }, i18n.imageDescriptionLabel + ":"), p(...renderUrl(description))] : null,
-        meme ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.trendingCategory + ':'), span({ class: 'card-value' }, i18n.meme)) : "",
         div({ class: 'card-field' }, img({ src: `/blob/${encodeURIComponent(url)}`, class: 'feed-image' }))
       )
     );
@@ -98,6 +97,57 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
         div({ id: `pdf-container-${item.key}`, class: 'pdf-viewer-container', 'data-pdf-url': `/blob/${encodeURIComponent(url)}` })
       )
     );
+  } else if (c.type === 'industry') {
+    contentHtml = div({ class: 'trending-industry' },
+      div({ class: 'card-section industry' },
+        div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.industryName + ':'), span({ class: 'card-value' }, c.name || '')),
+        c.sector ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.industrySector + ':'), span({ class: 'card-value' }, String(c.sector).toUpperCase())) : "",
+        c.membershipPolicy ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.industryMembershipPolicy + ':'), span({ class: 'card-value' }, String(i18n['industryPolicy_' + c.membershipPolicy] || c.membershipPolicy).toUpperCase())) : "",
+        c.description ? p(...renderUrl(c.description)) : null,
+        Array.isArray(c.tags) && c.tags.length
+          ? div({ class: 'card-tags' }, c.tags.map(tag => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)))
+          : null
+      )
+    );
+  } else if (c.type === 'industryBlueprint') {
+    contentHtml = div({ class: 'trending-industry' },
+      div({ class: 'card-section industry' },
+        div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.industryBlueprint + ':'), span({ class: 'card-value' }, c.name || '')),
+        c.outKind ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.industryOutputKind + ':'), span({ class: 'card-value' }, String(i18n['industryKind_' + c.outKind] || c.outKind).toUpperCase())) : "",
+        c.laborHours ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.industryLaborHours + ':'), span({ class: 'card-value' }, String(c.laborHours))) : "",
+        c.description ? p(...renderUrl(c.description)) : null
+      )
+    );
+  } else if (c.type === 'housing') {
+    const free = String(c.housing_type || '').toLowerCase() === 'couchsurfing';
+    contentHtml = div({ class: 'trending-housing' },
+      div({ class: 'card-section housing' },
+        div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.title + ':'), span({ class: 'card-value' }, c.title || '')),
+        c.housing_type ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.housingType + ':'), span({ class: 'card-value' }, String(i18n['housingType' + String(c.housing_type).toUpperCase()] || c.housing_type).toUpperCase())) : "",
+        c.property_type ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.housingProperty + ':'), span({ class: 'card-value' }, String(i18n['housingProperty' + String(c.property_type).toUpperCase()] || c.property_type).toUpperCase())) : "",
+        div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.housingPrice + ':'), span({ class: 'card-value' }, free ? (i18n.housingFree || 'FREE') : `${Number(c.price || 0).toFixed(2)} ECO`)),
+        c.place ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.housingPlace + ':'), span({ class: 'card-value' }, c.place)) : "",
+        Number(c.rooms) > 0 ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.housingRooms + ':'), span({ class: 'card-value' }, String(c.rooms))) : "",
+        Number(c.size) > 0 ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.housingSize + ':'), span({ class: 'card-value' }, `${c.size} m²`)) : "",
+        c.description ? p(...renderUrl(c.description)) : null,
+        Array.isArray(c.tags) && c.tags.length
+          ? div({ class: 'card-tags' }, c.tags.map(tag => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)))
+          : null
+      )
+    );
+  } else if (c.type === 'market') {
+    contentHtml = div({ class: 'trending-market' },
+      div({ class: 'card-section market' },
+        div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.title + ':'), span({ class: 'card-value' }, c.title || '')),
+        c.item_type ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemType + ':'), span({ class: 'card-value' }, String(c.item_type).toUpperCase())) : "",
+        c.item_status ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.marketItemCondition || i18n.status) + ':'), span({ class: 'card-value' }, String(c.item_status).toUpperCase())) : "",
+        div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.marketItemPrice || i18n.price) + ':'), span({ class: 'card-value' }, `${c.price} ECO`)),
+        c.description ? p(...renderUrl(c.description)) : null,
+        Array.isArray(c.tags) && c.tags.length
+          ? div({ class: 'card-tags' }, c.tags.map(tag => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)))
+          : null
+      )
+    );
   } else if (c.type === 'feed') {
     const { text, refeeds } = c;
     contentHtml = div({ class: 'trending-feed' },
@@ -108,7 +158,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
             : ""
       )
     );
-  } else if (c.type === 'votes') {
+  } else if (c.type === 'votes' || c.type === 'poll') {
     const { question, deadline, votes: vmap, totalVotes } = c;
     const votesList = vmap && typeof vmap === 'object'
       ? Object.entries(vmap).map(([o, cnt]) => ({ option: o, count: cnt }))
@@ -142,7 +192,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
       div({ class: 'card-section styled-text-content' },
         div(
           { class: 'card-field' },
-          span({ class: 'card-value', innerHTML: sanitizeHtml(renderTextWithStyles(c.text || c.description || c.title || '[no content]')) })
+          span({ class: 'card-value', innerHTML: sanitizeHtml(renderTextWithStyles(c.title || c.name || c.text || c.description || '[no content]')) })
         )
       )
     );
@@ -157,7 +207,15 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
     document: 'documents',
     feed: 'feed',
     votes: 'votes',
-    transfer: 'transfers'
+    transfer: 'transfers',
+    industry: 'industry',
+    project: 'projects',
+    report: 'reports',
+    task: 'tasks',
+    event: 'events',
+    shopProduct: 'shops/product',
+    housing: 'housing',
+    market: 'market'
   };
   const detailHref = detailPaths[c.type]
     ? `/${detailPaths[c.type]}/${encodeURIComponent(item.key)}`
@@ -171,12 +229,11 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
       span({ class: 'pm-exposition-chip pm-exposition-whole' },
         span({ class: 'pm-exposition-text' }, String(c.type || '').toUpperCase())
       ),
-      renderContentActions(item.key, detailHref)
+      renderContentActions(item.key, detailHref, { spread: spreadMap.get(item.key) || null })
     ),
     div(
       { class: 'card-section trending-card-body' },
       contentHtml,
-      div({ class: 'card-spread-left' }, renderSpreadButton(item.key, spreadMap.get(item.key))),
       p(
         { class: 'card-footer' },
         span({ class: 'date-link' }, `${created} ${i18n.performed} `),
@@ -201,14 +258,16 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
         );
       })(),
       details({ class: 'opinions-voting-collapse' },
-        summary({ class: 'opinions-summary' }, `${i18n.opinionsTitle || 'Opinions'} (${Object.values(c.opinions || {}).reduce((s, n) => s + (Number(n) || 0), 0)})`),
+        summary({ class: 'opinions-summary' },
+          span({ class: 'opinions-summary-icon' }, 'ꔍ'),
+          span({ class: 'opinions-summary-count' }, `(${Object.values(c.opinions || {}).reduce((s, n) => s + (Number(n) || 0), 0)})`)),
         div(
           { class: 'voting-buttons' },
           categories.map(cat =>
             form({ method: 'POST', action: `/trending/${encodeURIComponent(item.key)}/${cat}` },
               button(
                 { class: 'vote-btn' },
-                `${voteLabelFor(cat)} [${c.opinions?.[cat] || 0}]`
+                `${String(voteLabelFor(cat)).toUpperCase()} [${c.opinions?.[cat] || 0}]`
               )
             )
           )
@@ -218,14 +277,15 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
   );
 };
 
-exports.trendingView = (items, filter, categories = opinionCategories, spreadMap = new Map()) => {
+exports.trendingView = (items, filter, categories = opinionCategories, spreadMap = new Map(), q = '') => {
   const seenDocumentTitles = new Set();
   const title = i18n.trendingTitle;
 
-  const baseFilters = ['TOP', 'ALL', 'MINE', 'RECENT'];
+  const baseFilters = ['ALL', 'MINE', 'RECENT', 'TOP'];
   const contentFilters = [
-    ['votes', 'feed', 'transfer'],
-    ['bookmark', 'image', 'video', 'audio', 'document', 'torrent']
+    ['votes', 'event', 'task', 'report'],
+    ['feed', 'project', 'industry', 'shopProduct', 'transfer'],
+    ['audio', 'bookmark', 'document', 'image', 'torrent', 'video']
   ];
 
   let filteredItems = items.filter(item => {
@@ -245,7 +305,9 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
       return bVotes !== aVotes ? bVotes - aVotes : b.value.timestamp - a.value.timestamp;
     });
   } else if (contentFilters.flat().includes(filter)) {
-    filteredItems = filteredItems.filter(item => item.value.content.type === filter);
+    filteredItems = filteredItems.filter(item =>
+      item.value.content.type === filter ||
+      (filter === 'votes' && item.value.content.type === 'poll'));
   } else if (filter !== 'ALL') {
     filteredItems = filteredItems.filter(item => (item.value.content.opinions_inhabitants || []).length > 0);
   }
@@ -280,9 +342,18 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
           div({ class: 'column' }, row.map(mode => filterButton(mode, filter)))
         )
       ),
+      div({ class: 'filters' },
+        form({ method: 'GET', action: '/trending', class: 'filter-box' },
+          input({ type: 'hidden', name: 'filter', value: filter }),
+          input({ type: 'text', name: 'q', value: q, placeholder: i18n.trendingSearchPlaceholder, class: 'filter-box__input' }),
+          div({ class: 'filter-box__controls' },
+            button({ type: 'submit', class: 'filter-box__button' }, i18n.searchButton)
+          )
+        )
+      ),
       section(
         cards.length
-          ? div({ class: 'trending-container', style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;' }, ...cards)
+          ? div({ class: 'trending-container' }, ...cards)
           : div({ class: 'no-results' }, p(i18n.trendingNoContentMessage))
       )
     )

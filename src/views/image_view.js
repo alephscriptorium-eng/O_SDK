@@ -1,8 +1,9 @@
 const { form, button, div, h2, p, section, input, label, br, a, img, span, textarea, select, option } =
   require("../server/node_modules/hyperaxe");
+const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink } = require("./comments_view");
 
 const moment = require("../server/node_modules/moment");
-const { template, i18n, renderOpinionsVoting, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderStateChip, renderContentActions } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderStateChip, renderContentActions , renderSpreadEditWarning } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl")
 const { renderMapLocationVisitLabel } = require("./maps_view");
@@ -22,18 +23,6 @@ const buildReturnTo = (filter, params = {}) => {
   return `/images?${parts.join("&")}`;
 };
 
-const renderPMButton = (recipient, className = "filter-btn") => {
-  const r = safeText(recipient);
-  if (!r) return null;
-  if (String(r) === String(userId)) return null;
-
-  return form(
-    { method: "GET", action: "/pm" },
-    input({ type: "hidden", name: "recipients", value: r }),
-    button({ type: "submit", class: className }, i18n.privateMessage)
-  );
-};
-
 const renderTags = (tags) => {
   const list = safeArr(tags).map((t) => String(t || "").trim()).filter(Boolean);
   return list.length
@@ -44,27 +33,12 @@ const renderTags = (tags) => {
     : null;
 };
 
-const renderImageFavoriteToggle = (imgObj, returnTo = "") =>
-  form(
-    {
-      method: "POST",
-      action: imgObj.isFavorite
-        ? `/images/favorites/remove/${encodeURIComponent(imgObj.key)}`
-        : `/images/favorites/add/${encodeURIComponent(imgObj.key)}`
-    },
-    returnTo ? input({ type: "hidden", name: "returnTo", value: returnTo }) : null,
-    button(
-      { type: "submit", class: "filter-btn" },
-      imgObj.isFavorite ? i18n.imageRemoveFavoriteButton : i18n.imageAddFavoriteButton
-    )
-  );
-
 const renderImageMedia = (imgObj, filter, params = {}) => {
   const src = imgObj?.url ? `/blob/${encodeURIComponent(imgObj.url)}` : "";
 
   return imgObj?.url
     ? div(
-        { class: "image-container", style: "display:flex;gap:8px;align-items:center;flex-wrap:wrap;" },
+        { class: "image-container image-container-row" },
         a(
           {
             href: `/images/${encodeURIComponent(imgObj.key)}?filter=${encodeURIComponent(filter || "all")}${
@@ -111,7 +85,6 @@ const renderImageList = exports.renderImageList = (images, filter, params = {}) 
     ? images.map((imgObj) => {
         const commentCount = typeof imgObj.commentCount === "number" ? imgObj.commentCount : 0;
         const title = safeText(imgObj.title);
-        const ownerActions = renderImageOwnerActions(filter, imgObj, params);
 
         const isOwn = imgObj.author && String(imgObj.author) === String(userId);
         return div(
@@ -119,50 +92,19 @@ const renderImageList = exports.renderImageList = (images, filter, params = {}) 
           div(
             { class: "card-header activity-card-header" },
             span(),
-            renderContentActions(imgObj.key, `/images/${encodeURIComponent(imgObj.key)}`)
+            renderContentActions(imgObj.key, `/images/${encodeURIComponent(imgObj.key)}`, { spread: (params.spreadMap && params.spreadMap.get(imgObj.key)) || params.spreads || null, author: imgObj.author, favKind: 'images', isFavorite: imgObj.isFavorite, reportTitle: imgObj.title })
           ),
           div(
             { class: "card-section image-card-body" },
-            div(
-              { class: "bookmark-topbar" },
-              div(
-                { class: "bookmark-topbar-left" },
-                renderImageFavoriteToggle(imgObj, returnTo),
-                renderPMButton(imgObj.author)
-              ),
-              ownerActions.length ? div({ class: "bookmark-actions" }, ...ownerActions) : null
-            ),
             title ? h2(title) : null,
-            (imgObj.meme || imgObj.lifetime) ? div({ class: "card-chips-row" },
-              imgObj.meme ? a({ href: "/images?filter=meme", class: "chip-link" }, renderStateChip("mutuals", null, i18n.imageFilterMeme || "MEME")) : null,
+            imgObj.lifetime ? div({ class: "card-chips-row" },
               imgObj.lifetime ? renderLifespanChip(imgObj.lifetime, i18n) : null
             ) : null,
             renderImageMedia(imgObj, filter, params),
-            div(
-              { class: "card-comments-summary" },
-              span({ class: "card-label" }, i18n.voteCommentsLabel + ":"),
-              span({ class: "card-value" }, String(commentCount)),
-              br(),
-              br(),
-              form(
-                { method: "GET", action: `/images/${encodeURIComponent(imgObj.key)}` },
-                input({ type: "hidden", name: "returnTo", value: returnTo }),
-                input({ type: "hidden", name: "filter", value: filter || "all" }),
-                params.q ? input({ type: "hidden", name: "q", value: params.q }) : null,
-                params.sort ? input({ type: "hidden", name: "sort", value: params.sort }) : null,
-                button({ type: "submit", class: "filter-btn" }, i18n.voteCommentsForumButton)
-              )
+            renderEngagement(imgObj.key,
+              renderOpinionsVoting('/images/opinions', imgObj.key, imgObj.opinions, returnTo, imgObj.opinions_inhabitants),
+              renderCommentsLink({ href: `/images/${encodeURIComponent(imgObj.key)}`, count: commentCount })
             ),
-                        div(
-              { class: "card-comments-summary feed-opinions-section" },
-              div(
-                { class: "comments-count" },
-                span({ class: "card-label" }, (i18n.opinionsTitle || "Opinions") + ": "),
-                span({ class: "card-value" }, String(Object.values(imgObj.opinions || {}).reduce((s, n) => s + (Number(n) || 0), 0)))
-              ),
-              renderOpinionsVoting('/images/opinions', imgObj.key, imgObj.opinions, returnTo, imgObj.opinions_inhabitants)
-            ),
-            div({ class: "card-spread-left" }, renderSpreadButton(imgObj.key, (params.spreadMap && params.spreadMap.get(imgObj.key)) || params.spreads)),
             renderMapLocationVisitLabel(imgObj.mapUrl),
             br(),
             (() => {
@@ -172,12 +114,12 @@ const renderImageList = exports.renderImageList = (images, filter, params = {}) 
 
               return p(
                 { class: "card-footer" },
-                span({ class: "date-link" }, `${moment(imgObj.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
+                span({ class: "date-link" }, `${moment(imgObj.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
                 userLink(imgObj.author),
                 showUpdated
                   ? span(
                       { class: "votations-comment-date" },
-                      ` | ${i18n.imageUpdatedAt}: ${moment(imgObj.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`
+                      ` | ${i18n.imageUpdatedAt}: ${moment(imgObj.updatedAt).format("YYYY/MM/DD HH:mm")}`
                     )
                   : null
               );
@@ -195,6 +137,7 @@ const renderImageForm = (filter, imageId, imageToEdit, params = {}) => {
 
   return div(
     { class: "div-center image-form" },
+    params.spreadWarning || null,
     form(
       {
         action: filter === "edit" ? `/images/update/${encodeURIComponent(imageId)}` : "/images/create",
@@ -212,7 +155,7 @@ const renderImageForm = (filter, imageId, imageToEdit, params = {}) => {
         : null,
       label(i18n.imageTitleLabel),
       br(),
-      input({ type: "text", name: "title", placeholder: i18n.imageTitlePlaceholder, value: imageToEdit?.title || "" }),
+      input({ type: "text", name: "title", maxlength: "100", placeholder: i18n.imageTitlePlaceholder, value: imageToEdit?.title || "" }),
       br(),
       label(i18n.imageDescriptionLabel),
       br(),
@@ -222,20 +165,9 @@ const renderImageForm = (filter, imageId, imageToEdit, params = {}) => {
       br(),
       input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: imageToEdit?.mapUrl || "" }),
       br(),
-      input({ type: "hidden", name: "meme", value: "0" }),
       label(i18n.imageTagsLabel),
       br(),
       input({ type: "text", name: "tags", placeholder: i18n.imageTagsPlaceholder, value: tagsValue }),
-      br(),
-      label(i18n.imageMemeLabel),
-      input({
-        id: "meme-checkbox",
-        type: "checkbox",
-        name: "meme",
-        value: "1",
-        class: "meme-checkbox",
-        ...(imageToEdit?.meme ? { checked: true } : {})
-      }),
       br(),
       br(),
       button({ type: "submit" }, filter === "edit" ? i18n.imageUpdateButton : i18n.imageCreateButton)
@@ -269,88 +201,16 @@ const renderLightbox = (images) =>
   });
 
 const renderImageCommentsSection = (imageKey, comments = [], returnTo = null) => {
-  const list = safeArr(comments).filter(c => {
-    const t = c && c.value && c.value.content && c.value.content.text;
-    return t && String(t).trim();
+  return renderSharedCommentsSection({
+    action: `/images/${encodeURIComponent(imageKey)}/comments`,
+    comments: comments,
+    returnTo: returnTo
   });
-  const commentsCount = list.length;
-
-  return div(
-    { class: "vote-comments-section" },
-    div(
-      { class: "comments-count" },
-      span({ class: "card-label" }, i18n.voteCommentsLabel + ": "),
-      span({ class: "card-value" }, String(commentsCount))
-    ),
-    div(
-      { class: "comment-form-wrapper" },
-      h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
-      form(
-        { method: "POST", action: `/images/${encodeURIComponent(imageKey)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
-        returnTo ? input({ type: "hidden", name: "returnTo", value: returnTo }) : null,
-        textarea({
-          id: "comment-text",
-          name: "text",
-          rows: 4,
-          class: "comment-textarea",
-          placeholder: i18n.voteNewCommentPlaceholder
-        }),
-        div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
-        br(),
-        button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
-      )
-    ),
-    list.length
-      ? div(
-          { class: "comments-list" },
-          list.map((c) => {
-            const author = c?.value?.author || "";
-            const ts = c?.value?.timestamp || c?.timestamp;
-            const absDate = ts ? moment(ts).format("YYYY/MM/DD HH:mm:ss") : "";
-            const relDate = ts ? moment(ts).fromNow() : "";
-
-            const content = c?.value?.content || {};
-            const text = content.text || "";
-            const threadRoot = content.fork || content.root || null;
-
-            return div(
-              { class: "votations-comment-card" },
-              span(
-                { class: "created-at" },
-                span(i18n.createdBy),
-                author ? userLink(author) : span("(unknown)"),
-                absDate ? span(" | ") : "",
-                absDate ? span({ class: "votations-comment-date" }, absDate) : "",
-                relDate ? span({ class: "votations-comment-date" }, " | ", i18n.sendTime) : "",
-                relDate && threadRoot ? a({ href: `/thread/${encodeURIComponent(threadRoot)}#${encodeURIComponent(c.key)}` }, relDate) : ""
-              ),
-              p({ class: "votations-comment-text" }, ...renderUrl(text))
-            );
-          })
-        )
-      : p({ class: "votations-no-comments" }, i18n.voteNoCommentsYet)
-  );
 };
 
 exports.imageView = async (images, filter = "all", imageId = null, params = {}) => {
-  const title =
-    filter === "mine"
-      ? i18n.imageMineSectionTitle
-      : filter === "create"
-        ? i18n.imageCreateSectionTitle
-        : filter === "edit"
-          ? i18n.imageUpdateSectionTitle
-          : filter === "gallery"
-            ? i18n.imageGallerySectionTitle
-            : filter === "meme"
-              ? i18n.imageMemeSectionTitle
-              : filter === "recent"
-                ? i18n.imageRecentSectionTitle
-                : filter === "top"
-                  ? i18n.imageTopSectionTitle
-                  : filter === "favorites"
-                    ? i18n.imageFavoritesSectionTitle
-                    : i18n.imageAllSectionTitle;
+  if (filter === "edit") params = { ...params, spreadWarning: await renderSpreadEditWarning(imageId) };
+  const title = i18n.imageTitle;
 
   const q = safeText(params.q || "");
   const sort = safeText(params.sort || "recent");
@@ -377,19 +237,18 @@ exports.imageView = async (images, filter = "all", imageId = null, params = {}) 
           { method: "GET", action: "/images", class: "ui-toolbar ui-toolbar--filters" },
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
-          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, i18n.imageFilterAll),
-          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, i18n.imageFilterMine),
-          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, i18n.imageFilterRecent),
-          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, i18n.imageFilterTop),
-          button(
+          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterAll).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterMine).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterRecent).toUpperCase()),          button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
-            i18n.imageFilterFavorites
+            String(i18n.imageFilterFavorites).toUpperCase()
           ),
+
+          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterTop).toUpperCase()),
           button(
             { type: "submit", name: "filter", value: "gallery", class: filter === "gallery" ? "filter-btn active" : "filter-btn" },
-            i18n.imageFilterGallery
+            String(i18n.imageFilterGallery).toUpperCase()
           ),
-          button({ type: "submit", name: "filter", value: "meme", class: filter === "meme" ? "filter-btn active" : "filter-btn" }, i18n.imageFilterMeme),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.imageCreateButton)
         )
       )
@@ -414,9 +273,9 @@ exports.imageView = async (images, filter = "all", imageId = null, params = {}) 
                   { class: "filter-box__controls" },
                   select(
                     { name: "sort", class: "filter-box__select" },
-                    option({ value: "recent", selected: sort === "recent" }, i18n.imageSortRecent),
-                    option({ value: "oldest", selected: sort === "oldest" }, i18n.imageSortOldest),
-                    option({ value: "top", selected: sort === "top" }, i18n.imageSortTop)
+                    option({ value: "recent", ...(sort === "recent" ? { selected: true } : {})}, i18n.imageSortRecent),
+                    option({ value: "oldest", ...(sort === "oldest" ? { selected: true } : {})}, i18n.imageSortOldest),
+                    option({ value: "top", ...(sort === "top" ? { selected: true } : {})}, i18n.imageSortTop)
                   ),
                   button({ type: "submit", class: "filter-box__button" }, i18n.imageSearchButton)
                 )
@@ -438,24 +297,27 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
   const { renderReachChip } = require('./clearnet_view');
   const isClearnet = !!(params.authorPrefs && params.authorPrefs.clearnetImages);
 
-  const memeChip = imageObj.meme
-    ? a({ href: "/images?filter=meme", class: "chip-link" }, renderStateChip("mutuals", null, i18n.imageFilterMeme || "MEME"))
-    : null;
   const chips = [
-    memeChip,
     renderLifespanChip(imageObj.lifetime, i18n),
     imageObj.sizeBytes ? renderEcoTax(imageObj.sizeBytes, imageObj.key) : null
   ].filter(Boolean);
 
   const ownerActions = renderImageOwnerActions(filter, imageObj, { q, sort });
   const sideActions = [];
-  sideActions.push(renderImageFavoriteToggle(imageObj, returnTo));
-  if (imageObj.author && String(imageObj.author) !== String(userId)) {
-    sideActions.push(renderPMButton(imageObj.author));
-  }
   for (const a of ownerActions) sideActions.push(a);
 
   const tagsNode = renderTags(imageObj.tags);
+
+  const detailActions = div({ class: "card-header activity-card-header" },
+    renderContentActions(imageObj.key, null, {
+      author: imageObj.author,
+      favKind: 'images',
+      isFavorite: imageObj.isFavorite,
+      spread: params.spreads || null,
+      returnTo,
+      reportTitle: imageObj.title
+    })
+  );
 
   const imageSide = div({ class: "tribe-side" },
     div({ class: "shop-title-row" },
@@ -467,12 +329,12 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
       ? p({ class: "tribe-side-description" }, ...renderUrl(imageObj.description))
       : null,
     tagsNode,
-    div({ class: "card-spread-centered" }, renderSpreadButton(imageObj.key, params.spreads)),
     renderMapLocationVisitLabel(imageObj.mapUrl),
     sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
   );
 
   const imageMain = div({ class: "tribe-main" },
+    detailActions,
     imageObj?.url
       ? div(
           { class: "image-container" },
@@ -491,18 +353,20 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
 
       return p(
         { class: "card-footer" },
-        span({ class: "date-link" }, `${moment(imageObj.createdAt).format("YYYY/MM/DD HH:mm:ss")} ${i18n.performed} `),
+        span({ class: "date-link" }, `${moment(imageObj.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
         userLink(imageObj.author),
         showUpdated
           ? span(
               { class: "votations-comment-date" },
-              ` | ${i18n.imageUpdatedAt}: ${moment(imageObj.updatedAt).format("YYYY/MM/DD HH:mm:ss")}`
+              ` | ${i18n.imageUpdatedAt}: ${moment(imageObj.updatedAt).format("YYYY/MM/DD HH:mm")}`
             )
           : null
       );
     })(),
-    renderOpinionsVoting('/images/opinions', imageObj.key, imageObj.opinions, returnTo, imageObj.opinions_inhabitants),
-    renderImageCommentsSection(imageObj.key, comments, returnTo)
+    renderEngagement(imageObj.key,
+      renderOpinionsVoting('/images/opinions', imageObj.key, imageObj.opinions, returnTo, imageObj.opinions_inhabitants),
+      renderImageCommentsSection(imageObj.key, comments, returnTo)
+    )
   );
 
   return template(
@@ -518,19 +382,18 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
           { method: "GET", action: "/images", class: "ui-toolbar ui-toolbar--filters" },
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
-          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, i18n.imageFilterAll),
-          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, i18n.imageFilterMine),
-          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, i18n.imageFilterRecent),
-          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, i18n.imageFilterTop),
-          button(
+          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterAll).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterMine).toUpperCase()),
+          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterRecent).toUpperCase()),          button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
-            i18n.imageFilterFavorites
+            String(i18n.imageFilterFavorites).toUpperCase()
           ),
+
+          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterTop).toUpperCase()),
           button(
             { type: "submit", name: "filter", value: "gallery", class: filter === "gallery" ? "filter-btn active" : "filter-btn" },
-            i18n.imageFilterGallery
+            String(i18n.imageFilterGallery).toUpperCase()
           ),
-          button({ type: "submit", name: "filter", value: "meme", class: filter === "meme" ? "filter-btn active" : "filter-btn" }, i18n.imageFilterMeme),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.imageCreateButton)
         )
       ),

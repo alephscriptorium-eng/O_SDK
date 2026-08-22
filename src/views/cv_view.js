@@ -1,5 +1,5 @@
-const { form, button, div, h2, p, section, textarea, label, input, br, img, a, select, option, span } = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink, renderVisibilityChip } = require('./main_views');
+const { form, button, div, h2, p, section, textarea, label, input, br, img, a, select, option, span, table, tr, td } = require("../server/node_modules/hyperaxe");
+const { template, i18n, userLink, renderVisibilityChip, renderDocumentActions } = require('./main_views');
 const { renderUrl } = require('../backend/renderUrl');
 
 const generateCVBox = (label, content, className) => {
@@ -9,22 +9,8 @@ const generateCVBox = (label, content, className) => {
   );
 };
 
-const generateTags = (tags) => {
-  return tags && tags.length
-    ? div(
-        tags.map(tag =>
-          a({
-            href: `/search?query=%23${encodeURIComponent(tag)}`,
-            class: "tag-link",
-            style: "margin-right:0.8em;margin-bottom:0.5em;"
-          }, `#${tag}`)
-        )
-      )
-    : null;
-};
-
 exports.createCVView = async (cv = {}, editMode = false) => {
-  const title = editMode ? i18n.cvEditSectionTitle : i18n.cvCreateSectionTitle;
+  const title = i18n.cvTitle;
 
   return template(
     title,
@@ -39,6 +25,20 @@ exports.createCVView = async (cv = {}, editMode = false) => {
           action: editMode ? `/cv/update/${encodeURIComponent(cv.id)}` : "/cv/upload",
           enctype: "multipart/form-data"
         },
+
+          div({ class: "cv-box cv-ai-box" },
+            div({ class: "poll-switch" },
+              input({ type: "hidden", name: "aiManaged", value: "0" }),
+              label(
+                input({ type: "checkbox", name: "aiManaged", value: "1", ...(cv.aiManaged === false ? {} : { checked: true }) }),
+                " ", i18n.cvAiManaged
+              )
+            ),
+            div({ class: "cv-threshold-row" },
+              label({ for: "cv_match_threshold" }, `${i18n.cvMatchThreshold}: `),
+              input({ type: "number", id: "cv_match_threshold", name: "matchThreshold", min: "0", max: "100", step: "5", value: String(cv.matchThreshold != null ? cv.matchThreshold : 80) })
+            )
+          ),
 
           generateCVBox(i18n.cvPersonal, [
             label(i18n.cvNameLabel), br(),
@@ -81,19 +81,19 @@ exports.createCVView = async (cv = {}, editMode = false) => {
             input({ type: "text", name: "location", required: true, value: cv.location || "UNKNOWN" }), br(),
             label(i18n.cvStatusLabel), br(),
             select({ name: "status", required: true },
-              option({ value: "AVAILABLE", selected: cv.status === "AVAILABLE FOR COLLABORATION" }, "AVAILABLE FOR COLLABORATION"),
-              option({ value: "UNAVAILABLE", selected: cv.status === "NOT CURRENTLY AVAILABLE" }, "NOT CURRENTLY AVAILABLE"),
-              option({ value: "LOOKING FOR WORK", selected: !cv.status || cv.status === "LOOKING FOR WORK" }, "LOOKING FOR WORK")
+              option({ value: "AVAILABLE", ...(cv.status === "AVAILABLE FOR COLLABORATION" ? { selected: true } : {})}, "AVAILABLE FOR COLLABORATION"),
+              option({ value: "UNAVAILABLE", ...(cv.status === "NOT CURRENTLY AVAILABLE" ? { selected: true } : {})}, "NOT CURRENTLY AVAILABLE"),
+              option({ value: "LOOKING FOR WORK", ...(!cv.status || cv.status === "LOOKING FOR WORK" ? { selected: true } : {})}, "LOOKING FOR WORK")
             ), br(), br(),
             label(i18n.cvPreferencesLabel), br(),
             select({ name: "preferences", required: true },
-              option({ value: "IN PERSON", selected: cv.preferences === "IN-PERSON ONLY" }, "IN-PERSON ONLY"),
-              option({ value: "REMOTE WORKING", selected: !cv.preferences || cv.preferences === "REMOTE WORKING" }, "REMOTE-WORKING")
+              option({ value: "IN PERSON", ...(cv.preferences === "IN-PERSON ONLY" ? { selected: true } : {})}, "IN-PERSON ONLY"),
+              option({ value: "REMOTE WORKING", ...(!cv.preferences || cv.preferences === "REMOTE WORKING" ? { selected: true } : {})}, "REMOTE-WORKING")
             ), br(), br(),
             label(i18n.visibilityLabel || "Visibility"), br(),
             select({ name: "visibility" },
-              option({ value: "PUBLIC", selected: (cv.visibility || "PUBLIC") === "PUBLIC" }, i18n.visibilityPublic || "Public"),
-              option({ value: "HIDDEN", selected: cv.visibility === "HIDDEN" }, i18n.visibilityHidden || "Hidden")
+              option({ value: "PUBLIC", ...((cv.visibility || "PUBLIC") === "PUBLIC" ? { selected: true } : {})}, i18n.visibilityPublic || "Public"),
+              option({ value: "HIDDEN", ...(cv.visibility === "HIDDEN" ? { selected: true } : {})}, i18n.visibilityHidden || "Hidden")
             ), br()
           ], "availability"),
 
@@ -104,7 +104,7 @@ exports.createCVView = async (cv = {}, editMode = false) => {
   )
 };
 
-exports.cvView = async (cv) => {
+exports.cvView = async (cv, certificates = []) => {
   const title = i18n.cvTitle;
 
   if (!cv) {
@@ -120,17 +120,132 @@ exports.cvView = async (cv) => {
           form({ method: "GET", action: "/cv/create" },
             button({ type: "submit" }, i18n.cvCreateButton)
           )
-        )
+        ),
+        Array.isArray(certificates) && certificates.length
+          ? div({ class: "cv-section-block school-certificates" },
+              h2(i18n.schoolCertificates),
+              certificates.map(cert =>
+                div({ class: "school-certificate" },
+                  span("🎓 "),
+                  a({ href: `/school/course/${encodeURIComponent(cert.courseId)}` }, cert.courseTitle || cert.courseId),
+                  span(" — "),
+                  userLink(cert.author),
+                  span({ class: "school-certificate-date" }, ` (${new Date(cert.createdAt).toLocaleDateString()})`)
+                )
+              )
+            )
+          : null
       )
     )
   }
 
-  const hasPersonal = cv.contact || cv.name || cv.description || cv.photo || typeof cv.oasisContributor === "boolean" || (cv.personalSkills && cv.personalSkills.length);
-  const hasPersonalExp = cv.personalExperiences;
-  const hasOasis = cv.oasisExperiences || (cv.oasisSkills && cv.oasisSkills.length);
-  const hasEducational = cv.educationExperiences || cv.languages || (cv.educationalSkills && cv.educationalSkills.length);
-  const hasProfessional = cv.professionalExperiences || (cv.professionalSkills && cv.professionalSkills.length);
-  const hasAvailability = cv.location || cv.status || cv.preferences;
+  const skills = (list) => (Array.isArray(list) ? list.filter(Boolean) : []);
+  const allSkills = [
+    ...skills(cv.personalSkills),
+    ...skills(cv.educationalSkills),
+    ...skills(cv.professionalSkills),
+    ...skills(cv.oasisSkills)
+  ];
+  const uniqueSkills = Array.from(new Set(allSkills));
+
+  const renderSkillTags = (list) => skills(list).length
+    ? div({ class: "card-tags" },
+        skills(list).map(tag =>
+          a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: "tag-link" }, `#${tag}`))
+      )
+    : null;
+
+  const renderBlock = (heading, body, list) => (body || skills(list).length)
+    ? div({ class: "cv-box" },
+        h2({ class: "job-section-title" }, heading),
+        body ? p({ class: "tribe-side-description" }, ...renderUrl(String(body))) : null,
+        renderSkillTags(list)
+      )
+    : null;
+
+  const vis = (cv.visibility || 'PUBLIC').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'PUBLIC';
+  const nextVis = vis === 'PUBLIC' ? 'HIDDEN' : 'PUBLIC';
+
+  const infoRows = [];
+  const pushRow = (labelText, valueNode) =>
+    infoRows.push(tr(
+      td({ class: "tribe-info-label" }, labelText),
+      td({ class: "tribe-info-value" }, valueNode)
+    ));
+  if (cv.location) pushRow(i18n.cvLocationLabel, cv.location);
+  if (cv.status) pushRow(i18n.cvStatusLabel, cv.status);
+  if (cv.preferences) pushRow(i18n.cvPreferencesLabel, cv.preferences);
+  if (cv.languages) pushRow(i18n.cvLanguagesLabel, String(cv.languages).toUpperCase());
+  pushRow(i18n.cvAiManaged, cv.aiManaged === false ? i18n.switchOff : `${i18n.switchOn} · ${cv.matchThreshold != null ? cv.matchThreshold : 80}%`);
+  pushRow(i18n.cvCreatedAt, new Date(cv.createdAt).toLocaleString());
+  if (cv.updatedAt) pushRow(i18n.cvUpdatedAt, new Date(cv.updatedAt).toLocaleString());
+
+  const cvSide = div({ class: "tribe-side" },
+    div({ class: "shop-title-row" },
+      h2({ class: "tribe-card-title" }, cv.name || i18n.unnamed || 'Anonymous')
+    ),
+    cv.photo
+      ? img({ src: `/blob/${encodeURIComponent(cv.photo)}`, class: "cv-photo tribe-detail-image" })
+      : null,
+    (cv.contact || cv.author)
+      ? div({ class: 'profile-qr' },
+          a({ href: `/author/${encodeURIComponent(cv.contact || cv.author)}` },
+            img({ class: 'profile-qr-img', src: `/qr/${encodeURIComponent(cv.contact || cv.author)}?size=240`, alt: 'QR' })))
+      : null,
+    cv.contact ? p(userLink(cv.contact)) : null,
+    table({ class: "tribe-info-table jobs-info-table" }, ...infoRows),
+    uniqueSkills.length
+      ? div({ class: "tribe-card-members" },
+          span({ class: "tribe-members-count" }, `${i18n.cvSkillsCount}: ${uniqueSkills.length}`)
+        )
+      : null,
+    div({ class: "tribe-side-actions cv-visibility-row housing-status-row" },
+      span({ class: "card-label" }, `${i18n.visibilityLabel || 'Visibility'}: `),
+      renderVisibilityChip(vis, i18n),
+      form({ method: "POST", action: `/cv/visibility/${encodeURIComponent(cv.id)}`, class: "inline-form" },
+        input({ type: "hidden", name: "visibility", value: nextVis }),
+        button({ type: "submit", class: "filter-btn" },
+          nextVis === 'PUBLIC' ? (i18n.visibilityMakePublic || 'Make public') : (i18n.visibilityMakeHidden || 'Make hidden')
+        )
+      )
+    ),
+    div({ class: "tribe-side-actions" },
+      form({ method: "GET", action: `/cv/edit/${encodeURIComponent(cv.id)}` },
+        button({ type: "submit", class: "update-btn" }, i18n.cvEditButton)
+      ),
+      form({ method: "POST", action: `/cv/delete/${encodeURIComponent(cv.id)}` },
+        button({ type: "submit", class: "delete-btn" }, i18n.cvDeleteButton)
+      )
+    ),
+    renderDocumentActions('cv', null)
+  );
+
+  const cvMain = div({ class: "tribe-main" },
+    cv.description
+      ? div({ class: "job-section" },
+          h2({ class: "job-section-title" }, i18n.cvDescriptionLabel),
+          p({ class: "tribe-side-description" }, ...renderUrl(String(cv.description)))
+        )
+      : null,
+    renderBlock(i18n.cvPersonal, cv.personalExperiences, cv.personalSkills),
+    renderBlock(i18n.cvEducationalView, cv.educationExperiences, cv.educationalSkills),
+    renderBlock(i18n.cvProfessionalView, cv.professionalExperiences, cv.professionalSkills),
+    renderBlock(i18n.cvOasisContributorView, cv.oasisExperiences, cv.oasisSkills),
+    Array.isArray(certificates) && certificates.length
+      ? div({ class: "cv-section-block school-certificates" },
+          h2(i18n.schoolCertificates),
+          certificates.map(cert =>
+            div({ class: "school-certificate" },
+              span("🎓 "),
+              a({ href: `/school/course/${encodeURIComponent(cert.courseId)}` }, cert.courseTitle || cert.courseId),
+              span(" — "),
+              userLink(cert.author),
+              span({ class: "school-certificate-date" }, ` (${new Date(cert.createdAt).toLocaleDateString()})`)
+            )
+          )
+        )
+      : null
+  );
 
   return template(
     title,
@@ -139,119 +254,7 @@ exports.cvView = async (cv) => {
         h2(title),
         p(i18n.cvDescription)
       ),
-      div({ class: "cv-section" },
-        div({ class: "cv-item" }, ...[
-          (() => {
-            const vis = (cv.visibility || 'PUBLIC').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'PUBLIC';
-            const next = vis === 'PUBLIC' ? 'HIDDEN' : 'PUBLIC';
-            return div({ class: "cv-visibility-row" },
-              span({ class: "card-label" }, `${i18n.visibilityLabel || 'Visibility'}: `),
-              renderVisibilityChip(vis, i18n),
-              " ",
-              form({ method: "POST", action: `/cv/visibility/${encodeURIComponent(cv.id)}`, class: "inline-form" },
-                input({ type: "hidden", name: "visibility", value: next }),
-                button({ type: "submit", class: "filter-btn" },
-                  next === 'PUBLIC' ? (i18n.visibilityMakePublic || 'Make public') : (i18n.visibilityMakeHidden || 'Make hidden')
-                )
-              )
-            );
-          })(),
-          div({ class: "cv-actions" },
-            form({ method: "GET", action: `/cv/edit/${encodeURIComponent(cv.id)}` },
-              button({ type: "submit" }, i18n.cvEditButton)
-            ),
-            form({ method: "POST", action: `/cv/delete/${encodeURIComponent(cv.id)}` },
-              button({ type: "submit", class: "danger-btn" }, i18n.cvDeleteButton)
-            )
-          ),
-          div({ class: "cv-meta" },
-            p(`${i18n.cvCreatedAt}: ${new Date(cv.createdAt).toLocaleString()}`),
-            cv.updatedAt ? p(`${i18n.cvUpdatedAt}: ${new Date(cv.updatedAt).toLocaleString()}`) : null
-          ),
-          hasPersonal ? div({ class: "cv-box personal" }, ...[
-            cv.photo
-              ? img({
-                  src: `/blob/${encodeURIComponent(cv.photo)}`,
-                  class: "cv-photo"
-                })
-              : null,
-            cv.name ? h2(`${cv.name}`) : null,
-            (cv.contact || cv.author)
-              ? a({ href: `/author/${encodeURIComponent(cv.contact || cv.author)}`, class: 'inhabitant-qr-link' },
-                  img({ class: 'inhabitant-qr-small', src: `/qr/${encodeURIComponent(cv.contact || cv.author)}?size=120`, alt: 'QR' }))
-              : null,
-            cv.contact ? p(userLink(cv.contact)) : null,
-            cv.description ? p(...renderUrl(`${cv.description}`)) : null,
-            (cv.personalSkills && cv.personalSkills.length)
-              ? div(
-                  cv.personalSkills.map(tag =>
-                    a({
-                      href: `/search?query=%23${encodeURIComponent(tag)}`,
-                      class: "tag-link",
-                      style: "margin-right:0.8em;margin-bottom:0.5em;"
-                    }, `#${tag}`)
-                  )
-                )
-              : null
-          ]) : null,
-          hasPersonal ? div({ class: "cv-box personal" }, ...[  
-           h2(i18n.cvLanguagesLabel),
-           cv.languages ? p(`${cv.languages.toUpperCase()}`) : null
-          ]) : null,
-          hasEducational ? div({ class: "cv-box education" }, ...[
-            h2(i18n.cvEducationalView),
-            cv.educationExperiences ? p(...renderUrl(`${cv.educationExperiences}`)) : null,
-            (cv.educationalSkills && cv.educationalSkills.length)
-              ? div(
-                  cv.educationalSkills.map(tag =>
-                    a({
-                      href: `/search?query=%23${encodeURIComponent(tag)}`,
-                      class: "tag-link",
-                      style: "margin-right:0.8em;margin-bottom:0.5em;"
-                    }, `#${tag}`)
-                  )
-                )
-              : null
-          ]) : null,
-          hasProfessional ? div({ class: "cv-box professional" }, ...[
-            h2(i18n.cvProfessionalView),
-            cv.professionalExperiences ? p(...renderUrl(`${cv.professionalExperiences}`)) : null,
-            (cv.professionalSkills && cv.professionalSkills.length)
-              ? div(
-                  cv.professionalSkills.map(tag =>
-                    a({
-                      href: `/search?query=%23${encodeURIComponent(tag)}`,
-                      class: "tag-link",
-                      style: "margin-right:0.8em;margin-bottom:0.5em;"
-                    }, `#${tag}`)
-                  )
-                )
-              : null
-          ]) : null,
-          hasOasis ? div({ class: "cv-box oasis" }, ...[
-            h2(i18n.cvOasisContributorView),
-            cv.oasisExperiences ? p(...renderUrl(`${cv.oasisExperiences}`)) : null,
-            (cv.oasisSkills && cv.oasisSkills.length)
-              ? div(
-                  cv.oasisSkills.map(tag =>
-                    a({
-                      href: `/search?query=%23${encodeURIComponent(tag)}`,
-                      class: "tag-link",
-                      style: "margin-right:0.8em;margin-bottom:0.5em;"
-                    }, `#${tag}`)
-                  )
-                )
-              : null
-          ]) : null,
-          hasAvailability ? div({ class: "cv-box availability" }, ...[
-            h2(i18n.cvAvailabilityView),
-            cv.location ? p(`${i18n.cvLocationLabel}: ${cv.location}`) : null,
-            cv.status ? p(`${i18n.cvStatusLabel}: ${cv.status}`) : null,
-            cv.preferences ? p(`${i18n.cvPreferencesLabel}: ${cv.preferences}`) : null
-          ]) : null
-        ])
-      )
+      div({ class: "tribe-details" }, cvSide, cvMain)
     )
   );
 };
-

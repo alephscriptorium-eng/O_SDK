@@ -49,10 +49,9 @@ const ADDR_PATH = path.join(__dirname, '..', 'configs', 'wallet-addresses.json')
 const readAddrMap = () => { try { return JSON.parse(fs.readFileSync(ADDR_PATH, 'utf8')); } catch { return {}; } };
 const writeAddrMap = (map) => { fs.mkdirSync(path.dirname(ADDR_PATH), { recursive: true }); fs.writeFileSync(ADDR_PATH, JSON.stringify(map, null, 2)); };
 
-//parliament model
 let electionInFlight = null;
 const ensureTerm = async () => {
-  const cur = await parliamentModel.getCurrentTerm().catch(() => null);
+  const cur = await parliamentModel.getPublishedTerm().catch(() => null);
   if (cur) return cur;
   if (electionInFlight) return electionInFlight;
   electionInFlight = parliamentModel.resolveElection().catch(() => null).finally(() => { electionInFlight = null; });
@@ -112,7 +111,6 @@ const safeArr = v => Array.isArray(v) ? v : [];
 const safeText = v => String(v || '').trim();
 const safeReturnTo = (ctx, fb, ap) => { const rt = ctx.request?.body?.returnTo || ctx.query?.returnTo; return typeof rt === 'string' && ap?.some(p => rt.startsWith(p)) ? rt : fb; };
 
-// anti-injections
 const { stripDangerousTags, sanitizeHtml } = require('./sanitizeHtml');
 
 const sharedState = require('../configs/shared-state');
@@ -147,6 +145,13 @@ const sendErrorPage = (ctx, message, { title, status } = {}) => {
   ctx.type = 'html';
   ctx.body = errorView({ title, message, backHref });
 };
+
+const exceedsSsbLimit = (content, extraOverhead = 0) => {
+  try { return Buffer.byteLength(JSON.stringify(content), 'utf8') + 512 + extraOverhead > 8192; }
+  catch (_) { return false; }
+};
+
+const isSsbTooLargeError = (e) => e && /8192|must not be larger/i.test(String(e && e.message));
 
 const safeRefererRedirect = (ctx, fallback = '/') => {
   const ref = ctx.request.header.referer;
@@ -360,6 +365,10 @@ const refreshInboxCount = async (messagesOpt) => {
   sharedState.setInboxCount(filtered.filter(isToUser).length);
 };
 
+const refreshMentionsCount = async () => {
+  try { sharedState.setMentionsCount(await mentionsModel.countUnseen()); } catch (_) {}
+};
+
 const PM_CRYPTER_MAX = 4600;
 
 const buildInboxMessages = async () => {
@@ -387,7 +396,7 @@ const buildInboxMessages = async () => {
   }
   return messages;
 };
-const mediaFavorites = require("./media-favorites.js");
+const contentFavorites = require("./content_favorites.js");
 const customStyleFile = path.join(envPaths("oasis", { suffix: "" }).config, "/custom-style.css");
 let haveCustomStyle = false;
 try { fs.readFileSync(customStyleFile, "utf8"); haveCustomStyle = true; } catch (e) { if (e.code !== "ENOENT") { console.log(`Problem loading ${customStyleFile}`); throw e; } }
@@ -571,13 +580,15 @@ const { about, blob, friend, meta, post, vote, spreads, lifetime } = models({
   cooler,
   isPublic: config.public,
 });
-const { handleBlobUpload, serveBlob, FileTooLargeError } = require('../backend/blobHandler.js');
+const { handleBlobUpload, handleBlobUploads, serveBlob, FileTooLargeError } = require('../backend/blobHandler.js');
+const { mergeGallery } = require('../models/media_gallery');
 const extractBlobId = (md) => md ? (md.match(/\((&[^)]+)\)/)?.[1] ?? null) : null;
 const exportmodeModel = require('../models/exportmode_model');
 const panicmodeModel = require('../models/panicmode_model');
 const cipherModel = require('../models/cipher_model');
 const pmPolicy = require('./pm_policy');
 const legacyModel = require('../models/legacy_model');
+const devModel = require('../models/dev_model');
 const walletModel = require('../models/wallet_model')
 const pmModel = require('../models/pm_model')({ cooler, isPublic: config.public });
 const fileshareModel = require('../models/fileshare_model')({ cooler });
@@ -604,7 +615,9 @@ const tasksModel = require('../models/tasks_model')({ cooler, isPublic: config.p
 const votesModel = require('../models/votes_model')({ cooler, isPublic: config.public });
 const ssbConfig = require('../server/ssb_config');
 const tribeCrypto = require('../models/crypto')(ssbConfig.path, 'tribes');
+const onboardingModel = require('../models/onboarding_model')({ cooler, ssbPath: ssbConfig.path });
 const chatCrypto = require('../models/crypto')(ssbConfig.path, 'chats');
+const schoolCrypto = require('../models/crypto')(ssbConfig.path, 'school');
 const padCrypto = require('../models/crypto')(ssbConfig.path, 'pads');
 const mapCrypto = require('../models/crypto')(ssbConfig.path, 'maps');
 const calendarCrypto = require('../models/crypto')(ssbConfig.path, 'calendars');
@@ -631,20 +644,28 @@ const padsModel = require('../models/pads_model')({ cooler, cipherModel, tribeCr
 const tagsModel = require('../models/tags_model')({ cooler, isPublic: config.public, padsModel, tribesModel });
 const tribesContentModel = require('../models/tribes_content_model')({ cooler, isPublic: config.public, tribeCrypto, tribesModel });
 const searchModel = require('../models/search_model')({ cooler, isPublic: config.public, padsModel, tribeCrypto, tribesModel });
-const activityModel = require('../models/activity_model')({ cooler, isPublic: config.public, tribeCrypto, tribesModel, padsModel });
+const industryModel = require("../models/industry_model")({ cooler, isPublic: config.public });
+const activityModel = require('../models/activity_model')({ cooler, isPublic: config.public, tribeCrypto, tribesModel, padsModel, industryModel });
 const pixeliaModel = require('../models/pixelia_model')({ cooler, isPublic: config.public });
 const melodyModel = require('../models/melody_model')({ cooler });
 const marketModel = require('../models/market_model')({ cooler, isPublic: config.public, tribeCrypto });
 const forumModel = require('../models/forum_model')({ cooler, isPublic: config.public, tribeCrypto, forumCrypto });
+const blogModel = require('../models/blog_model')({ cooler, isPublic: config.public });
+const dataModel = require('../models/data_model')({ cooler });
+const workflowsModel = require('../models/workflows_model');
+const mentionsModel = require('../models/mentions_model')({ cooler });
 const jobsModel = require('../models/jobs_model')({ cooler, isPublic: config.public, tribeCrypto });
+const housingModel = require('../models/housing_model')({ cooler });
 const shopsModel = require('../models/shops_model')({ cooler, isPublic: config.public, tribeCrypto });
 const chatsModel = require('../models/chats_model')({ cooler, tribeCrypto, chatCrypto, tribesModel });
+const pollsModel = require('../models/polls_model')({ cooler, isPublic: config.public, tribeCrypto, chatsModel });
 const projectsModel = require("../models/projects_model")({ cooler, isPublic: config.public });
-const agendaModel = require("../models/agenda_model")({ cooler, isPublic: config.public, calendarsModel, eventsModel, tasksModel, marketModel, jobsModel, projectsModel });
+const schoolModel = require('../models/school_model')({ cooler, transfersModel, schoolCrypto, chatsModel });
+const agendaModel = require("../models/agenda_model")({ cooler, isPublic: config.public, calendarsModel, eventsModel, tasksModel, marketModel, jobsModel, projectsModel, industryModel, housingModel, schoolModel });
 const mapsModel = require("../models/maps_model")({ cooler, isPublic: config.public, tribeCrypto, mapCrypto, tribesModel });
 const gamesModel = require('../models/games_model')({ cooler });
 const bankingModel = require("../models/banking_model")({ services: { cooler }, isPublic: config.public });
-const favoritesModel = require("../models/favorites_model")({ services: { cooler }, audiosModel, bookmarksModel, documentsModel, imagesModel, videosModel, mapsModel, padsModel, chatsModel, calendarsModel, torrentsModel, marketModel, shopsModel });
+const favoritesModel = require("../models/favorites_model")({ services: { cooler }, audiosModel, bookmarksModel, documentsModel, imagesModel, videosModel, mapsModel, padsModel, chatsModel, calendarsModel, torrentsModel, marketModel, shopsModel, eventsModel, tasksModel, reportsModel, votesModel, jobsModel, housingModel, projectsModel, transfersModel, forumModel, blogsModel: blogModel, pollsModel, schoolModel });
 const logsModel = require("../models/logs_model")({ cooler });
 const parliamentModel = require('../models/parliament_model')({ cooler, services: { tribes: tribesModel, votes: votesModel, inhabitants: inhabitantsModel, banking: bankingModel } });
 const fediverseModel = require('../models/fediverse_model')({ isPublic: config.public });
@@ -799,8 +820,40 @@ const applyListFilters = async (items, ctx, opts = {}) => {
     }
     out = filtered;
   }
+  out = await markFavorites(out, ctx);
   return out;
 };
+
+const applyTextSearch = (items, q, fields) => {
+  const needle = String(q || '').trim().toLowerCase();
+  if (!needle || !Array.isArray(items)) return items;
+  return items.filter(it => fields.some(f => {
+    const v = it && it[f];
+    if (Array.isArray(v)) return v.some(x => String(x || '').toLowerCase().includes(needle));
+    return String(v == null ? '' : v).toLowerCase().includes(needle);
+  }));
+};
+
+const withFavorite = async (item, kind) => {
+  if (!item || typeof item !== 'object') return item;
+  try {
+    const fav = await contentFavorites.getFavoriteSet(kind);
+    return { ...item, isFavorite: fav.has(String(item.rootId || item.id || item.key)) };
+  } catch (_) { return item; }
+};
+
+const markFavorites = async (items, ctx) => {
+  if (!Array.isArray(items) || !items.length || !ctx) return items;
+  const kind = String(ctx.path || '').split('/').filter(Boolean)[0];
+  if (!kind || !contentModCheck[kind]) return items;
+  let fav;
+  try { fav = await contentFavorites.getFavoriteSet(kind); } catch (_) { return items; }
+  if (!fav || typeof fav.has !== 'function') return items;
+  return items.map(it => (it && typeof it === 'object' && it.isFavorite === undefined)
+    ? { ...it, isFavorite: fav.has(String(it.rootId || it.id || it.key)) }
+    : it);
+};
+
 const enrichItemLifetime = async (item, opts = {}) => {
   if (!item) return item;
   try {
@@ -860,30 +913,246 @@ const resolveMapUrl = async (mapUrl) => {
   } catch (_) { return null; }
 };
 
-const mediaResolvers = {
+const contentResolvers = {
   images: id => imagesModel.resolveRootId(id),
   audios: id => audiosModel.resolveRootId(id),
   videos: id => videosModel.resolveRootId(id),
   documents: id => documentsModel.resolveRootId(id),
   bookmarks: id => bookmarksModel.resolveRootId(id),
   shops: id => shopsModel.resolveRootId(id),
+  shopProducts: id => shopsModel.resolveRootId(id),
   chats: id => chatsModel.resolveRootId(id),
   maps: id => mapsModel.resolveRootId(id),
   pads: id => padsModel.resolveRootId(id),
   calendars: id => calendarsModel.resolveRootId(id),
-  torrents: id => torrentsModel.resolveRootId(id)
+  torrents: id => torrentsModel.resolveRootId(id),
+  events: async id => id,
+  blogs: async id => id,
+  logs: async id => id,
+  polls: async id => pollsModel.resolveRootId(id).catch(() => id),
+  forum: async id => id,
+  tasks: async id => id,
+  reports: async id => id,
+  votes: async id => id,
+  jobs: async id => jobsModel.resolveRootId(id).catch(() => id),
+  housing: async id => housingModel.resolveRootId(id).catch(() => id),
+  projects: async id => id,
+  transfers: async id => id,
+  market: async id => id,
+  school: async id => schoolModel.resolveRootId(id).catch(() => id)
 };
-const mediaModCheck = { images: 'imagesMod', audios: 'audiosMod', videos: 'videosMod', documents: 'documentsMod', bookmarks: 'bookmarksMod', market: 'marketMod', jobs: 'jobsMod', projects: 'projectsMod', shops: 'shopsMod', chats: 'chatsMod', maps: 'mapsMod', pads: 'padsMod', calendars: 'calendarsMod', torrents: 'torrentsMod' };
+const contentModCheck = { images: 'imagesMod', audios: 'audiosMod', videos: 'videosMod', documents: 'documentsMod', bookmarks: 'bookmarksMod', market: 'marketMod', jobs: 'jobsMod', projects: 'projectsMod', shops: 'shopsMod', shopProducts: 'shopsMod', chats: 'chatsMod', maps: 'mapsMod', pads: 'padsMod', calendars: 'calendarsMod', torrents: 'torrentsMod', events: 'eventsMod', forum: 'forumMod', blogs: 'blogsMod', logs: 'logsMod', polls: 'pollsMod', tasks: 'tasksMod', reports: 'reportsMod', votes: 'votesMod', housing: 'housingMod', transfers: 'transfersMod', school: 'schoolMod' };
 const favAction = async (ctx, kind, action) => {
-  if (!checkMod(ctx, mediaModCheck[kind])) { ctx.redirect('/modules'); return; }
+  if (!checkMod(ctx, contentModCheck[kind])) { ctx.redirect('/modules'); return; }
   try {
-    const rootId = await mediaResolvers[kind](ctx.params.id);
-    if (rootId) await mediaFavorites[action + 'Favorite'](kind, rootId);
+    const rootId = await contentResolvers[kind](ctx.params.id);
+    if (rootId) await contentFavorites[action + 'Favorite'](kind, rootId);
   } catch (_) {}
   ctx.redirect(safeReturnTo(ctx, `/${kind}`, [`/${kind}`]));
 };
+const voteFormRedirect = (mode, id, err, body = {}) => {
+  const params = new URLSearchParams();
+  params.set('error', err && err.code === 'VOTE_DEADLINE_MIN' ? 'deadline' : 'generic');
+  if (body.question) params.set('question', String(body.question).slice(0, 300));
+  if (body.deadline) params.set('deadline', String(body.deadline).slice(0, 40));
+  if (body.tags) params.set('tags', String(body.tags).slice(0, 300));
+  return mode === 'edit' && id
+    ? `/votes/edit/${encodeURIComponent(id)}?${params.toString()}`
+    : `/votes?filter=create&${params.toString()}`;
+};
+
+const voteFormState = (ctx) => ({
+  error: typeof ctx.query.error === 'string' ? ctx.query.error : '',
+  minVoteDays: votesModel.MIN_VOTE_DAYS,
+  draft: {
+    question: typeof ctx.query.question === 'string' ? ctx.query.question : '',
+    deadline: typeof ctx.query.deadline === 'string' ? ctx.query.deadline : '',
+    tags: typeof ctx.query.tags === 'string' ? ctx.query.tags : ''
+  }
+});
+
+const notifyHousingRequesters = async (item, reason) => {
+  if (!item || String(item.author) !== String(getViewerId())) return;
+  const requesters = Array.isArray(item.requests) ? item.requests.filter(id => id && id !== item.author) : [];
+  if (!requesters.length) return;
+  const label = reason === 'deleted' ? 'has been removed' : 'is no longer available';
+  for (const requester of requesters) {
+    try {
+      await pmModel.sendMessage([requester], 'HOUSING_UNAVAILABLE', `The place [${item.title || 'a place'}](/housing/${encodeURIComponent(item.id)}) you requested ${label}`);
+    } catch (_) {}
+  }
+};
+
+const readInterval = (b) => {
+  const single = String((b && b.interval) || '').toLowerCase();
+  if (single) {
+    return {
+      intervalWeekly: single === 'weekly',
+      intervalMonthly: single === 'monthly',
+      intervalYearly: single === 'yearly'
+    };
+  }
+  return {
+    intervalWeekly: [].concat(b.intervalWeekly).includes('1'),
+    intervalMonthly: [].concat(b.intervalMonthly).includes('1'),
+    intervalYearly: [].concat(b.intervalYearly).includes('1')
+  };
+};
+
+const readGalleryUpload = async (ctx) => {
+  const b = ctx.request.body || {};
+  const uploaded = await handleBlobUploads(ctx, 'images');
+  const clip = ctx.request.files?.video ? await handleBlobUpload(ctx, 'video') : null;
+  const removeIndex = b.removePhoto !== undefined && b.removePhoto !== '' ? parseInt(b.removePhoto, 10) : -1;
+  const action = String(b.action || '');
+  const keep = [].concat(b.keepImages || []).filter(Boolean);
+  return {
+    uploaded,
+    clip,
+    keep,
+    removeIndex,
+    action,
+    isMediaAction: action === 'addPhoto' || action === 'addVideo' || action === 'removeVideo' || removeIndex >= 0
+  };
+};
+
+const galleryPatch = (media, current) => {
+  const patch = {};
+  if (media.uploaded.length || media.removeIndex >= 0) patch.images = mergeGallery(current, media.uploaded, media.removeIndex);
+  if (media.clip) patch.video = media.clip;
+  else if (media.action === 'removeVideo') patch.video = '';
+  return patch;
+};
+
+const formatFileSize = (n) => {
+  const x = Number(n) || 0;
+  if (x < 1024) return x + ' B';
+  const u = ['KB', 'MB', 'GB', 'TB'];
+  let v = x / 1024, i = 0;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return v.toFixed(v >= 100 || i === 0 ? 0 : 1) + ' ' + u[i];
+};
+
+const PDF_KINDS = {
+  reports: { mod: 'reportsMod', load: async (id) => ({ item: await reportsModel.getReportById(id) }) },
+  votes: { mod: 'votesMod', load: async (id) => ({ item: await votesModel.getVoteById(id) }) },
+  events: {
+    mod: 'eventsMod',
+    load: async (id, viewerId) => {
+      const event = await eventsModel.getEventById(id);
+      if (!event) return null;
+      const attendees = Array.isArray(event.attendees) ? event.attendees : [];
+      const isPrivate = String(event.isPublic || '').toUpperCase() === 'PRIVATE';
+      if (isPrivate && String(event.organizer) !== String(viewerId) && !attendees.includes(viewerId)) return null;
+      return { item: event };
+    }
+  },
+  tasks: {
+    mod: 'tasksMod',
+    load: async (id, viewerId) => {
+      const task = await tasksModel.getTaskById(id);
+      if (!task) return null;
+      const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+      const isPrivate = String(task.isPublic || '').toUpperCase() === 'PRIVATE';
+      if (isPrivate && String(task.author) !== String(viewerId) && !assignees.includes(viewerId)) return null;
+      return { item: task };
+    }
+  },
+  calendars: {
+    mod: 'calendarsMod',
+    load: async (id, viewerId) => {
+      const cal = await calendarsModel.getCalendarById(id);
+      if (!cal) return null;
+      if (cal.tribeId) {
+        const tribe = await tribesModel.getTribeById(cal.tribeId).catch(() => null);
+        if (!tribe || !tribe.members.includes(viewerId)) return null;
+      } else {
+        const participants = Array.isArray(cal.participants) ? cal.participants : [];
+        const isOpen = String(cal.status || '').toUpperCase() === 'OPEN';
+        if (!isOpen && cal.author !== viewerId && !participants.includes(viewerId)) return null;
+      }
+      if (String(cal.status || '').toUpperCase() === 'CLOSED' && cal.author !== viewerId) return null;
+      const dates = await calendarsModel.getDatesForCalendar(cal.rootId);
+      const notesByDate = {};
+      for (const d of dates) notesByDate[d.key] = await calendarsModel.getNotesForDate(cal.rootId, d.key);
+      return { item: cal, extra: { dates, notesByDate } };
+    }
+  },
+  cv: { mod: null, load: async () => ({ item: await cvModel.getCVByUserId() }) }
+};
+
+const loadPdfDoc = async (ctx, kind, id) => {
+  const cfg = PDF_KINDS[kind];
+  if (!cfg) return null;
+  if (cfg.mod && !checkMod(ctx, cfg.mod)) return null;
+  try {
+    return await cfg.load(id, getViewerId());
+  } catch (_) {
+    return null;
+  }
+};
+
+const sendContentPdf = async (ctx, kind, id) => {
+  const doc = await loadPdfDoc(ctx, kind, id);
+  if (!doc || !doc.item) { ctx.redirect(`/${kind === 'cv' ? 'cv' : kind}`); return; }
+  const pdf = buildContentPdf(kind, doc.item, doc.extra || {}, getViewerId());
+  ctx.set('Content-Type', 'application/pdf');
+  ctx.set('Content-Disposition', `attachment; filename="${pdfFilename(kind, doc.item)}"`);
+  ctx.body = pdf;
+};
+
+const sharePdfBuffer = async (ctx, pdf, filename, subject) => {
+  let pointer;
+  try {
+    pointer = await fileshareModel.createShareFromBuffer({ buffer: pdf, filename, mime: 'application/pdf' });
+  } catch (_) {
+    ctx.redirect('/pm?fileerror=failed#fileshare');
+    return;
+  }
+  const subjectText = String(subject || filename).slice(0, 150);
+  ctx.body = await pmView('', subjectText, '', false, '', false, null, false, '', {
+    recipient: '', subject: subjectText,
+    manifestBlobId: pointer.manifestBlobId, keyHex: pointer.key,
+    filename: pointer.filename, mime: pointer.mime, size: pointer.size,
+    sizeLabel: formatFileSize(pointer.size), crypter: false, sharedKey: ''
+  });
+};
+
+const sharePdfAsPm = async (ctx, kind, id) => {
+  const doc = await loadPdfDoc(ctx, kind, id);
+  if (!doc || !doc.item) { ctx.redirect(`/${kind}`); return; }
+  const pdf = buildContentPdf(kind, doc.item, doc.extra || {}, null);
+  const subject = doc.item.title || doc.item.question || doc.item.name || '';
+  await sharePdfBuffer(ctx, pdf, pdfFilename(kind, doc.item), subject);
+};
+
+const MODULE_HOME_PATHS = new Set([
+  'images', 'audios', 'videos', 'documents', 'bookmarks', 'torrents', 'maps',
+  'events', 'tasks', 'reports', 'votes', 'market', 'jobs', 'housing', 'projects',
+  'industry', 'shops', 'transfers', 'pads', 'chats', 'calendars', 'forum',
+  'tribes', 'feed', 'logs', 'opinions', 'trending', 'agenda', 'school'
+]);
+
+const moduleHomeFor = (ctx) => {
+  if (!ctx || ctx.method !== 'GET') return null;
+  const segment = String(ctx.path || '').split('/').filter(Boolean)[0];
+  return segment && MODULE_HOME_PATHS.has(segment) ? `/${segment}` : null;
+};
+
+const isMissingContentError = (err) => {
+  if (!err) return false;
+  if (err.status === 400 || err.status === 404 || err.name === 'BadRequestError') return true;
+  const msg = String(err.message || '').toLowerCase();
+  return msg.includes('failed to decode') ||
+    msg.includes('not found') ||
+    msg.includes('malformed') ||
+    msg.includes('invalid') ||
+    msg.includes('cannot be decrypted') ||
+    msg.includes('undecodable');
+};
+
 const commentAction = async (ctx, kind, idParam) => {
-  const modKey = mediaModCheck[kind];
+  const modKey = contentModCheck[kind];
   if (modKey && !checkMod(ctx, modKey)) { ctx.redirect('/modules'); return; }
   const itemId = ctx.params[idParam];
   let text = stripDangerousTags((ctx.request.body.text || '').trim());
@@ -897,14 +1166,14 @@ const commentAction = async (ctx, kind, idParam) => {
 const opinionModels = { images: imagesModel, audios: audiosModel, videos: videosModel, documents: documentsModel, bookmarks: bookmarksModel, torrents: torrentsModel };
 const deleteModels = { images: imagesModel, audios: audiosModel, videos: videosModel, documents: documentsModel, bookmarks: bookmarksModel, torrents: torrentsModel };
 const opinionAction = async (ctx, kind, idParam) => {
-  const modKey = mediaModCheck[kind];
+  const modKey = contentModCheck[kind];
   if (modKey && !checkMod(ctx, modKey)) { ctx.redirect('/modules'); return; }
   await opinionModels[kind].createOpinion(ctx.params[idParam], ctx.params.category);
   try { activityModel.invalidateCache(); } catch (_) {}
   ctx.redirect(safeReturnTo(ctx, `/${kind}`, [`/${kind}`]));
 };
 const deleteAction = async (ctx, kind, deleteFn = 'delete' + kind.charAt(0).toUpperCase() + kind.slice(1, -1) + 'ById') => {
-  const modKey = mediaModCheck[kind];
+  const modKey = contentModCheck[kind];
   if (modKey && !checkMod(ctx, modKey)) { ctx.redirect('/modules'); return; }
   await deleteModels[kind][deleteFn](ctx.params.id);
   ctx.redirect(safeReturnTo(ctx, `/${kind}?filter=mine`, [`/${kind}`]));
@@ -912,7 +1181,7 @@ const deleteAction = async (ctx, kind, deleteFn = 'delete' + kind.charAt(0).toUp
 
 const mediaCreateModels = { audios: audiosModel, videos: videosModel };
 const mediaCreateAction = async (ctx, kind) => {
-  const modKey = mediaModCheck[kind];
+  const modKey = contentModCheck[kind];
   if (modKey && !checkMod(ctx, modKey)) { ctx.redirect('/modules'); return; }
   const blob = await handleBlobUpload(ctx, kind.slice(0, -1));
   const { tags, title, description, mapUrl } = ctx.request.body;
@@ -920,7 +1189,7 @@ const mediaCreateAction = async (ctx, kind) => {
   ctx.redirect(safeReturnTo(ctx, `/${kind}?filter=all`, [`/${kind}`]));
 };
 const mediaUpdateAction = async (ctx, kind) => {
-  const modKey = mediaModCheck[kind];
+  const modKey = contentModCheck[kind];
   if (modKey && !checkMod(ctx, modKey)) { ctx.redirect('/modules'); return; }
   const { tags, title, description, mapUrl } = ctx.request.body;
   const singular = kind.slice(0, -1);
@@ -948,9 +1217,6 @@ const dedupeLarpHouseTribes = (list) => {
   });
 };
 about._startNameWarmup();
-// Route-triggered author-name resolution: warms nameCache with the ACTUAL name
-// for each feed id about to be rendered, so every userLink() date·author footer
-// (and comments) shows @name instead of the raw oasis id. Call before rendering.
 const FEED_RE = /^@.+\.ed25519$/;
 const AUTHOR_FIELDS = ['author', 'from', 'to', 'organizer', 'proposer', 'seller', 'recipient', 'judgeId', 'accuser', 'respondentId', 'createdBy'];
 const warmNames = async (ids) => {
@@ -1347,13 +1613,14 @@ const resolveCommentComponents = async function (ctx) {
   }
   return { messages, myFeedId, parentMessage, contentWarning };
 };
-const { authorView, previewCommentView, commentView, editProfileView, extendedView, latestView, likesView, threadView, hashtagView, mentionsView, popularView, previewView, privateView, publishCustomView, publishView, previewSubtopicView, subtopicView, imageSearchView, setLanguage, topicsView, summaryView, threadsView, tribeAccessDeniedView, inviteRequiredView, clearnetInhabitantView, clearnetBlogView } = require("../views/main_views");
+const { authorView, previewCommentView, commentView, editProfileView, likesView, threadView, hashtagView, privateView, previewSubtopicView, subtopicView, imageSearchView, setLanguage, tribeAccessDeniedView, inviteRequiredView, clearnetInhabitantView, clearnetBlogView } = require("../views/main_views");
 const { activityView } = require("../views/activity_view");
 const { cvView, createCVView } = require("../views/cv_view");
 const { indexingView } = require("../views/indexing_view");
 const { pixeliaView } = require("../views/pixelia_view");
 const { melodyView } = require("../views/melody_view");
 const { gamesView } = require("../views/games_view");
+const { schoolView, singleCourseView } = require("../views/school_view");
 const { statsView } = require("../views/stats_view");
 const { tribesView, tribeView, renderInvitePage } = require("../views/tribes_view");
 const { agendaView } = require("../views/agenda_view");
@@ -1374,6 +1641,8 @@ const { voteView } = require("../views/vote_view");
 const { bookmarkView, singleBookmarkView } = require("../views/bookmark_view");
 const { feedView, feedCreateView, singleFeedView } = require("../views/feed_view");
 const { legacyView } = require("../views/legacy_view");
+const { devTreeView, devFileView, devSearchView, devMapView } = require("../views/dev_view");
+const { welcomeView } = require("../views/welcome_view");
 const { opinionsView } = require("../views/opinions_view");
 const { peersView } = require("../views/peers_view");
 const { graphosView } = require("../views/graphos_view");
@@ -1382,25 +1651,32 @@ const { searchView } = require("../views/search_view");
 const { transferView, singleTransferView } = require("../views/transfer_view");
 const { cipherView } = require("../views/cipher_view");
 const { imageView, singleImageView } = require("../views/image_view");
-const { mapsView, singleMapView } = require("../views/maps_view");
+const { mapsView, singleMapView , renderMapInvitePage } = require("../views/maps_view");
 const { settingsView } = require("../views/settings_view");
 const { fediverseView, fediverseThreadView, fediverseOverviewView, fediversePreviewView } = require("../views/fediverse_view");
 const { trendingView } = require("../views/trending_view");
 const { marketView, singleMarketView } = require("../views/market_view");
 const { aiView } = require("../views/AI_view");
 const { forumView, singleForumView, renderForumInvitePage } = require("../views/forum_view");
+const { blogView, singleBlogView } = require("../views/blog_view");
+const { dataView } = require("../views/data_view");
+const { pollsView, singlePollView } = require("../views/polls_view");
+const { mentionsView } = require("../views/mentions_view");
 const { renderBlockchainView, renderSingleBlockView } = require("../views/blockchain_view");
 const { jobsView, singleJobsView, renderJobForm, clearnetJobView } = require("../views/jobs_view");
+const { housingView, singleHousingView } = require("../views/housing_view");
 const { shopsView, singleShopView, singleProductView, editProductView, shopOrdersView, myPurchasesView, clearnetShopView, renderShopInvitePage } = require("../views/shops_view");
 const { chatsView, singleChatView, renderChatInvitePage } = require("../views/chats_view");
 const { padsView, singlePadView, renderPadInvitePage } = require("../views/pads_view");
 const { calendarsView, singleCalendarView, renderCalendarInvitePage } = require("../views/calendars_view");
 const { projectsView, singleProjectView, clearnetProjectView } = require("../views/projects_view")
+const { industryView, singleFacilityView, singleBuildView, singleBlueprintView, blueprintEditView, buildEditView } = require("../views/industry_view")
 const { renderBankingView, renderSingleAllocationView, renderEpochView } = require("../views/banking_views")
 const { favoritesView } = require("../views/favorites_view");
 const { logsView } = require("../views/logs_view");
 const { buildLogsPdf } = require("./logsPdf");
 const { buildSmartContractPdf } = require("./smartContractPdf");
+const { buildContentPdf, pdfFilename } = require("./contentPdf");
 const { parliamentView } = require("../views/parliament_view");
 const { courtsView, courtsCaseView } = require('../views/courts_view');
 let sharp;
@@ -1493,6 +1769,10 @@ router
       ctx.body = ainavHomeView({ recentTags });
       return;
     }
+    if (currentConfig.ux?.current === "chats") {
+      ctx.redirect("/chats");
+      return;
+    }
     const homePage = currentConfig.homePage || "activity";
     ctx.redirect(`/${homePage}`);
   })
@@ -1524,15 +1804,8 @@ router
     try { stats.userEcoinTax = await bankingModel.getUserEcoinTax(getViewerId()); } catch (_) { stats.userEcoinTax = 0; }
     ctx.body = statsView(stats, filter);
   })
-  .get("/public/popular/:period", async (ctx) => {
-    if (!checkMod(ctx, 'popularMod')) return ctx.redirect('/modules');
-    const i18n = require("../client/assets/translations/i18n"), lang = ctx.cookies.get('language') || getConfig().language || 'en', t = i18n[lang] || i18n['en'];
-    const messages = sanitizeMessages(await post.popular({ period: ctx.params.period }));
-    const spreadMap = await spreads.forMessages((messages || []).map(m => m && m.key)).catch(() => new Map());
-    ctx.body = await popularView({ messages, prefix: nav(div({ class: "filters" }, ul(['day','week','month','year'].map(p => li(form({ method: "GET", action: `/public/popular/${p}` }, button({ type: "submit", class: "filter-btn" }, t[p]))))))), spreadMap });
-  })
   .get("/modules", async (ctx) => {
-    const modules = ['popular', 'topics', 'summaries', 'latest', 'threads', 'multiverse', 'fediverse', 'invites', 'wallet', 'legacy', 'cipher', 'bookmarks', 'calendars', 'chats', 'videos', 'docs', 'audios', 'tags', 'images', 'maps', 'trending', 'events', 'tasks', 'market', 'tribes', 'larp', 'votes', 'reports', 'opinions', 'pads', 'transfers', 'feed', 'pixelia', 'melody', 'agenda', 'favorites', 'ai', 'forum', 'games', 'jobs', 'projects', 'shops', 'banking', 'parliament', 'courts'];
+    const modules = ['blogs', 'polls', 'fediverse', 'invites', 'wallet', 'legacy', 'dev', 'cipher', 'bookmarks', 'calendars', 'chats', 'videos', 'docs', 'audios', 'tags', 'images', 'maps', 'trending', 'events', 'tasks', 'market', 'tribes', 'larp', 'votes', 'reports', 'opinions', 'pads', 'transfers', 'feed', 'pixelia', 'melody', 'agenda', 'favorites', 'ai', 'forum', 'games', 'housing', 'jobs', 'projects', 'industry', 'shops', 'banking', 'school', 'parliament', 'courts'];
     const cfg = getConfig().modules;
     ctx.body = modulesView(modules.reduce((acc, m) => { acc[`${m}Mod`] = cfg[`${m}Mod`]; return acc; }, {}));
   })
@@ -1547,8 +1820,9 @@ router
   .get('/games', async (ctx) => {
     if (!checkMod(ctx, 'gamesMod')) { ctx.redirect('/modules'); return; }
     const filter = qf(ctx, 'all');
+    const q = String(ctx.query.q || '').trim();
     const hall = await gamesModel.getHallOfFame();
-    ctx.body = gamesView(filter, hall);
+    ctx.body = gamesView(filter, hall, q);
   })
   .get('/games/:name', async (ctx) => {
     if (!checkMod(ctx, 'gamesMod')) { ctx.redirect('/modules'); return; }
@@ -1561,6 +1835,236 @@ router
     try { await gamesModel.submitScore(game, score); } catch (_) {}
     ctx.redirect('/games?filter=scoring');
   })
+  .get('/school', async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const filter = String(ctx.query.filter || 'all').toLowerCase();
+    const q = String(ctx.query.q || '').trim();
+    const sort = String(ctx.query.sort || 'recent').trim();
+    if (filter === 'create') { ctx.body = await schoolView([], 'create', null, { q, sort }); return; }
+    if (filter === 'edit') {
+      const course = await schoolModel.getCourseById(String(ctx.query.courseId || ''), getViewerId());
+      ctx.body = await schoolView([], 'edit', course, { q, sort });
+      return;
+    }
+    const fav = await contentFavorites.getFavoriteSet('school').catch(() => new Set());
+    let courses = await schoolModel.listCourses(filter === 'favorites' ? 'all' : filter, getViewerId(), { q, sort });
+    courses = courses.map(c => ({ ...c, isFavorite: fav.has(String(c.rootId || c.id)) }));
+    if (filter === 'favorites') courses = courses.filter(c => c.isFavorite);
+    ctx.body = await schoolView(courses, filter, null, { q, sort });
+  })
+  .get('/school/course/:id', async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const course = await schoolModel.getCourseById(ctx.params.id, getViewerId());
+    const lessons = await schoolModel.listLessons(course.rootId);
+    const certificates = await schoolModel.listCertificates(course.rootId);
+    const fav = await contentFavorites.getFavoriteSet('school').catch(() => new Set());
+    const comments = await getVoteComments(course.rootId || course.id).catch(() => []);
+    const exams = await schoolModel.listExams(course.rootId).catch(() => []);
+    const progress = course.author === getViewerId() ? await schoolModel.progressForCourse(course.rootId).catch(() => ({})) : {};
+    const approved = course.students.includes(getViewerId()) ? await schoolModel.hasPassedCourse(course.rootId, getViewerId()).catch(() => false) : false;
+    ctx.body = await singleCourseView({ ...course, isFavorite: fav.has(String(course.rootId || course.id)) }, lessons, certificates, { comments, exams, progress, approved, spreads: await spreads.forMessage(course.id).catch(() => null) });
+  })
+  .post('/school/create', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body, imageBlob = ctx.request.files?.image ? await handleBlobUpload(ctx, 'image') : null;
+    const courseType = String(b.courseType || 'OPEN').toUpperCase();
+    if (courseType === 'PAID' && !(parseFloat(String(b.price || '').replace(',', '.')) > 0)) throw new Error('Invalid price');
+    await schoolModel.createCourse({ title: stripDangerousTags(b.title), description: stripDangerousTags(b.description), tags: b.tags, price: courseType === 'OPEN' ? '0' : b.price, visibility: courseType === 'INVITE' ? 'INVITE' : 'PUBLIC', startDate: b.startDate, image: imageBlob });
+    try { activityModel.invalidateCache(); } catch (_) {}
+    ctx.redirect('/school?filter=mine');
+  })
+  .post('/school/update/:id', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body, imageBlob = ctx.request.files?.image ? await handleBlobUpload(ctx, 'image') : undefined;
+    const courseType = String(b.courseType || 'OPEN').toUpperCase();
+    if (courseType === 'PAID' && !(parseFloat(String(b.price || '').replace(',', '.')) > 0)) throw new Error('Invalid price');
+    const patch = { title: stripDangerousTags(b.title), description: stripDangerousTags(b.description), tags: b.tags, price: courseType === 'OPEN' ? '0' : b.price, visibility: courseType === 'INVITE' ? 'INVITE' : 'PUBLIC', status: b.status, startDate: b.startDate };
+    if (imageBlob !== undefined) patch.image = imageBlob;
+    await schoolModel.updateCourse(ctx.params.id, patch);
+    try { activityModel.invalidateCache(); } catch (_) {}
+    ctx.redirect('/school?filter=mine');
+  })
+  .post('/school/status/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    await schoolModel.updateCourseStatus(ctx.params.id, String(ctx.request.body.status || '').toUpperCase());
+    try { activityModel.invalidateCache(); } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, '/school?filter=mine', ['/school']));
+  })
+  .post('/school/delete/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    await schoolModel.deleteCourse(ctx.params.id);
+    try { activityModel.invalidateCache(); } catch (_) {}
+    ctx.redirect('/school?filter=mine');
+  })
+  .post('/school/enroll/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    await schoolModel.enroll(ctx.params.id);
+    try {
+      const course = await schoolModel.getCourseById(ctx.params.id, getViewerId());
+      await pmModel.sendMessage([course.author], 'SCHOOL_ENROLLED', `[${getViewerId()}](/author/${encodeURIComponent(getViewerId())}) has enrolled in your course [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
+    } catch (_) {}
+    ctx.redirect(`/school/course/${encodeURIComponent(ctx.params.id)}`);
+  })
+  .post('/school/unenroll/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    await schoolModel.unenroll(ctx.params.id);
+    ctx.redirect(`/school/course/${encodeURIComponent(ctx.params.id)}`);
+  })
+  .post('/school/invite/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const m = await schoolModel.inviteStudent(ctx.params.id, stripDangerousTags(ctx.request.body.students));
+    try {
+      const courseId = m && m.key ? m.key : ctx.params.id;
+      const course = await schoolModel.getCourseById(courseId, getViewerId());
+      const invited = String(ctx.request.body.students || '').split(/[\s,]+/).filter(x => x.startsWith('@'));
+      for (const student of invited) {
+        await pmModel.sendMessage([student], 'SCHOOL_INVITED', `You have been invited to the course [${course.title || 'a course'}](/school/course/${encodeURIComponent(courseId)})`);
+      }
+    } catch (_) {}
+    ctx.redirect(`/school/course/${encodeURIComponent(m && m.key ? m.key : ctx.params.id)}`);
+  })
+  .post('/school/lesson/add/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body;
+    await schoolModel.addLesson(ctx.params.id, { title: stripDangerousTags(b.title), text: stripDangerousTags(b.text), unit: stripDangerousTags(b.unit || ''), order: b.order, sessionDate: b.sessionDate });
+    try {
+      const course = await schoolModel.getCourseById(ctx.params.id, getViewerId());
+      for (const student of (course.students || [])) {
+        await pmModel.sendMessage([student], 'SCHOOL_LESSON_NEW', `New lesson "${stripDangerousTags(b.title)}" in the course [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
+      }
+    } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.id)}`, ['/school']));
+  })
+  .post('/school/lesson/delete/:courseId/:lessonId', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    await schoolModel.deleteLesson(ctx.params.lessonId);
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.courseId)}`, ['/school']));
+  })
+  .post('/school/certificate/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body;
+    await schoolModel.issueCertificate(ctx.params.id, stripDangerousTags(b.student), stripDangerousTags(b.text || ''));
+    try {
+      const course = await schoolModel.getCourseById(ctx.params.id, getViewerId());
+      const student = String(b.student || '').trim();
+      if (student.startsWith('@')) await pmModel.sendMessage([student], 'SCHOOL_CERTIFICATE', `You have received a certificate 🎓 for the course [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
+    } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.id)}`, ['/school']));
+  })
+  .post('/school/opinions/:id/:category', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    try { await schoolModel.createOpinion(ctx.params.id, ctx.params.category); } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.id)}`, ['/school']));
+  })
+  .post('/school/:courseId/comments', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async ctx => commentAction(ctx, 'school', 'courseId'))
+  .post('/school/lesson/complete/:courseId/:lessonId', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const done = String(ctx.request.body.value || 'true') !== 'false';
+    const passedBefore = await schoolModel.hasPassedCourse(ctx.params.courseId, getViewerId()).catch(() => false);
+    try { await schoolModel.markLesson(ctx.params.courseId, ctx.params.lessonId, done); } catch (_) {}
+    try {
+      if (!passedBefore && await schoolModel.hasPassedCourse(ctx.params.courseId, getViewerId())) {
+        const course = await schoolModel.getCourseById(ctx.params.courseId, getViewerId());
+        await pmModel.sendMessage([course.author], 'SCHOOL_PASSED', `[${getViewerId()}](/author/${encodeURIComponent(getViewerId())}) has passed your course [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.courseId)})`);
+      }
+    } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.courseId)}`, ['/school']));
+  })
+  .post('/school/exam/create/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    await schoolModel.createExam(ctx.params.id, stripDangerousTags(ctx.request.body.title), { lessonId: ctx.request.body.lessonId });
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.id)}`, ['/school']));
+  })
+  .post('/school/exam/question/add/:courseId/:examId', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body;
+    await schoolModel.addExamQuestion(ctx.params.courseId, ctx.params.examId, { q: stripDangerousTags(b.q), o1: stripDangerousTags(b.o1), o2: stripDangerousTags(b.o2), o3: stripDangerousTags(b.o3), o4: stripDangerousTags(b.o4), correct: b.correct, points: b.points });
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.courseId)}`, ['/school']));
+  })
+  .post('/school/exam/question/delete/:courseId/:examId/:questionId', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    await schoolModel.deleteExamQuestion(ctx.params.questionId);
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.courseId)}`, ['/school']));
+  })
+  .post('/school/exam/delete/:courseId/:examId', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    await schoolModel.deleteExam(ctx.params.examId);
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.courseId)}`, ['/school']));
+  })
+  .post('/school/exam/take/:courseId/:examId', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const passedBefore = await schoolModel.hasPassedCourse(ctx.params.courseId, getViewerId()).catch(() => false);
+    try { await schoolModel.takeExam(ctx.params.courseId, ctx.params.examId, ctx.request.body); } catch (_) {}
+    try {
+      if (!passedBefore && await schoolModel.hasPassedCourse(ctx.params.courseId, getViewerId())) {
+        const course = await schoolModel.getCourseById(ctx.params.courseId, getViewerId());
+        await pmModel.sendMessage([course.author], 'SCHOOL_PASSED', `[${getViewerId()}](/author/${encodeURIComponent(getViewerId())}) has passed your course [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.courseId)})`);
+      }
+    } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.courseId)}`, ['/school']));
+  })
+  .get('/school/lesson/:courseId/:lessonId', async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const course = await schoolModel.getCourseById(ctx.params.courseId, getViewerId());
+    const lessons = await schoolModel.listLessons(course.rootId);
+    const lesson = lessons.find(l => l.id === ctx.params.lessonId);
+    if (!lesson) { ctx.redirect(`/school/course/${encodeURIComponent(ctx.params.courseId)}`); return; }
+    const materials = await schoolModel.listLessonMaterials(course.rootId, lesson.id).catch(() => []);
+    ctx.body = await require('../views/school_view').singleLessonView(course, lesson, materials, { edit: String(ctx.query.edit || '') === '1' });
+  })
+  .post('/school/lesson/update/:courseId/:lessonId', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body;
+    const updated = await schoolModel.updateLesson(ctx.params.courseId, ctx.params.lessonId, { title: stripDangerousTags(b.title), text: stripDangerousTags(b.text), unit: stripDangerousTags(b.unit || ''), order: b.order, sessionDate: b.sessionDate });
+    ctx.redirect(`/school/lesson/${encodeURIComponent(ctx.params.courseId)}/${encodeURIComponent(updated && updated.key ? updated.key : ctx.params.lessonId)}`);
+  })
+  .post('/school/lesson/media/:courseId/:lessonId', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const uploads = await handleBlobUploads(ctx, 'files', 8);
+    const caption = stripDangerousTags((ctx.request.body.caption || '').trim());
+    for (const media of (uploads || []).filter(Boolean)) {
+      await schoolModel.addLessonMaterial(ctx.params.courseId, ctx.params.lessonId, media, caption);
+    }
+    const text = stripDangerousTags((ctx.request.body.text || '').trim());
+    if (text) await schoolModel.addLessonMaterial(ctx.params.courseId, ctx.params.lessonId, text, caption);
+    ctx.redirect(`/school/lesson/${encodeURIComponent(ctx.params.courseId)}/${encodeURIComponent(ctx.params.lessonId)}`);
+  })
+  .post('/school/lesson/media/delete/:courseId/:lessonId/:materialId', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    await schoolModel.deleteLessonMaterial(ctx.params.materialId);
+    ctx.redirect(`/school/lesson/${encodeURIComponent(ctx.params.courseId)}/${encodeURIComponent(ctx.params.lessonId)}`);
+  })
+  .post('/school/generate-invite/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const { code } = await schoolModel.generateInvite(ctx.params.id);
+      ctx.body = await require('../views/school_view').schoolInvitePage(code);
+    } catch (_) {
+      ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.id)}`, ['/school']));
+    }
+  })
+  .post('/school/join-code', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    const code = String((ctx.request.body || {}).code || '').trim();
+    try {
+      const { courseId } = await schoolModel.joinByInvite(code);
+      ctx.redirect(`/school/course/${encodeURIComponent(courseId)}`);
+    } catch (_) {
+      ctx.redirect('/school');
+    }
+  })
+  .post('/school/grant/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
+    await schoolModel.grantAccess(ctx.params.id, stripDangerousTags(ctx.request.body.student));
+    try {
+      const course = await schoolModel.getCourseById(ctx.params.id, getViewerId());
+      const student = String(ctx.request.body.student || '').trim();
+      if (student.startsWith('@')) await pmModel.sendMessage([student], 'SCHOOL_ADMITTED', `You have been admitted to the course [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
+    } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.id)}`, ['/school']));
+  })
+  .post('/school/favorites/add/:id', koaBody(), async ctx => favAction(ctx, 'school', 'add'))
+  .post('/school/favorites/remove/:id', koaBody(), async ctx => favAction(ctx, 'school', 'remove'))
   .get('/pixelia', async (ctx) => {
     if (!checkMod(ctx, 'pixeliaMod')) { ctx.redirect('/modules'); return; }
     const pixelArt = await pixeliaModel.listPixels();
@@ -1728,41 +2232,6 @@ router
     }
     ctx.body = renderSingleBlockView(block, filter, userId, search, viewMode, restricted);
   })
-  .get("/public/latest", async (ctx) => {
-    if (!checkMod(ctx, 'latestMod')) { ctx.redirect('/modules'); return; }
-    const messages = sanitizeMessages(await post.latest());
-    const spreadMap = await spreads.forMessages((messages || []).map(m => m && m.key)).catch(() => new Map());
-    ctx.body = await latestView({ messages, spreadMap });
-  })
-  .get("/public/latest/extended", async (ctx) => {
-    if (!checkMod(ctx, 'extendedMod')) { ctx.redirect('/modules'); return; }
-    const messages = sanitizeMessages(await post.latestExtended());
-    const spreadMap = await spreads.forMessages((messages || []).map(m => m && m.key)).catch(() => new Map());
-    ctx.body = await extendedView({ messages, spreadMap });
-  })
-  .get("/public/latest/topics", async (ctx) => {
-    if (!checkMod(ctx, 'topicsMod')) { ctx.redirect('/modules'); return; }
-    const messages = sanitizeMessages(await post.latestTopics());
-    const channels = await post.channels();
-    const list = channels.map((c) => {
-      return li(a({ href: `/hashtag/${c}` }, `#${c}`));
-    });
-    const prefix = nav(ul(list));
-    const spreadMap = await spreads.forMessages((messages || []).map(m => m && m.key)).catch(() => new Map());
-    ctx.body = await topicsView({ messages, prefix, spreadMap });
-  })
-  .get("/public/latest/summaries", async (ctx) => {
-    if (!checkMod(ctx, 'summariesMod')) { ctx.redirect('/modules'); return; }
-    const messages = sanitizeMessages(await post.latestSummaries());
-    const spreadMap = await spreads.forMessages((messages || []).map(m => m && m.key)).catch(() => new Map());
-    ctx.body = await summaryView({ messages, spreadMap });
-  })
-  .get("/public/latest/threads", async (ctx) => {
-    if (!checkMod(ctx, 'threadsMod')) { ctx.redirect('/modules'); return; }
-    const messages = sanitizeMessages(await post.latestThreads());
-    const spreadMap = await spreads.forMessages((messages || []).map(m => m && m.key)).catch(() => new Map());
-    ctx.body = await threadsView({ messages, spreadMap });
-  })
   .get('/author/:feed', async (ctx) => {
     const feedId = decodeURIComponent(ctx.params.feed || ''), gt = Number(ctx.request.query.gt || -1), lt = Number(ctx.request.query.lt || -1);
     if (lt > 0 && gt > 0 && gt >= lt) throw new Error('Given search range is empty');
@@ -1800,7 +2269,7 @@ router
     const { bucket: lastActivityBucket } = inhabitantsModel.bucketLastActivity(fullLastTs || null);
     const profileItems = await fetchProfileItems(feedId, rawPrefs);
     const profileFilterType = String(ctx.query.type || '').toLowerCase();
-    const profileSpreadable = new Set(['post','audio','video','image','document','torrent','bookmark','event','calendar','task','votes','vote','market','shop','shopProduct','project','transfer','job','report','chat','chatMessage','pad','padEntry','forum','map']);
+    const profileSpreadable = new Set(['post','audio','video','image','document','torrent','bookmark','event','calendar','task','votes','vote','market','shop','shopProduct','project','industry','industryBuild','industryBlueprint','transfer','housing','job','report','chat','chatMessage','pad','padEntry','forum','map','schoolCourse']);
     const profileSpreadKeys = (allActions || []).filter(a => a && a.id && typeof a.id === 'string' && a.id.startsWith('%') && /\.sha256$/.test(a.id) && profileSpreadable.has(a.type)).map(a => a.id);
     const spreadMap = await spreads.forMessages(profileSpreadKeys).catch(() => new Map());
     await warmAuthorNames(allActions, sanitizedMsgs, profileItems);
@@ -1822,6 +2291,7 @@ router
     const applySearchPrivacy = (msgs) => msgs.filter(msg => {
       const c = msg.value?.content;
       if (!c) return true;
+      if (c.type === 'pub') return false;
       if (Array.isArray(c.recps)) return false;
       if (c.type === 'post' && (c.private === true || c.recps)) return false;
       if (c.tribeId && anonTribeIds.has(c.tribeId)) return false;
@@ -1829,6 +2299,8 @@ router
       if (c.type === 'task' && String(c.isPublic).toUpperCase() === 'PRIVATE' && c.author !== userId && !(Array.isArray(c.assignees) && c.assignees.includes(userId))) return false;
       if (c.status === 'PRIVATE') return false;
       if (c.type === 'shop' && (c.visibility === 'CLOSED' || c.encryptedPayload) && c.author !== userId) return false;
+      if (c.type === 'schoolCourse' && c.encryptedPayload) return false;
+      if (c.type === 'schoolCourse' && String(c.visibility || '').toUpperCase() === 'INVITE' && c.author !== userId && !(Array.isArray(c.invited) && c.invited.includes(userId))) return false;
       return true;
     });
     const results = await searchModel.search({ query, types: [] });
@@ -1887,7 +2359,7 @@ router
     const { filter = 'all', q = '', sort = 'recent' } = ctx.query;
     const viewerPrefs = await about.visibilityPrefs(getViewerId()).catch(() => null);
     const items = await imagesModel.listAll({ filter: filter === 'favorites' ? 'all' : filter, q, sort, viewerId: getViewerId() });
-    const fav = await mediaFavorites.getFavoriteSet('images');
+    const fav = await contentFavorites.getFavoriteSet('images');
     let enriched = items.map(x => ({ ...x, isFavorite: fav.has(String(x.rootId || x.key)) }));
     if (filter === 'favorites') enriched = enriched.filter(x => x.isFavorite);
     enriched = await applyListFilters(enriched, ctx);
@@ -1899,14 +2371,14 @@ router
   .get("/images/edit/:id", async (ctx) => {
     if (!checkMod(ctx, 'imagesMod')) { ctx.redirect('/modules'); return; }
     const img = await imagesModel.getImageById(ctx.params.id, getViewerId());
-    const fav = await mediaFavorites.getFavoriteSet('images');
+    const fav = await contentFavorites.getFavoriteSet('images');
     ctx.body = await imageView([{ ...img, isFavorite: fav.has(String(img.rootId || img.key)) }], 'edit', img.key, { returnTo: ctx.query.returnTo || '' });
   })
   .get("/images/:imageId", async (ctx) => {
     if (!checkMod(ctx, 'imagesMod')) { ctx.redirect('/modules'); return; }
     const { imageId } = ctx.params; const { filter = 'all', q = '', sort = 'recent' } = ctx.query;
     const img = await imagesModel.getImageById(imageId, getViewerId());
-    const fav = await mediaFavorites.getFavoriteSet('images');
+    const fav = await contentFavorites.getFavoriteSet('images');
     const comments = await getVoteComments(img.key);
     const imgAuthorPrefs = await about.visibilityPrefs(img.author).catch(() => null);
     await enrichItemLifetime(img, { key: img.key });
@@ -1917,7 +2389,7 @@ router
     const { filter = 'all', q = '', lat, lng, zoom, tribeId, title, description, markerLabel, tags, mapType } = ctx.query;
     const uid = getViewerId();
     const items = await mapsModel.listAll({ filter: filter === 'favorites' ? 'all' : filter, q, viewerId: uid });
-    const fav = await mediaFavorites.getFavoriteSet('maps');
+    const fav = await contentFavorites.getFavoriteSet('maps');
     let enriched = items.map(x => ({ ...x, isFavorite: fav.has(String(x.rootId || x.key)) }));
     if (filter === 'favorites') enriched = enriched.filter(x => x.isFavorite);
     const myTribeIds = await getUserTribeIds(uid);
@@ -1938,7 +2410,7 @@ router
     try { mapItem = await mapsModel.getMapById(ctx.params.id, getViewerId()); } catch (_) { ctx.redirect('/maps?filter=all'); return; }
     if (!mapItem) { ctx.redirect('/maps?filter=all'); return; }
     if (mapItem.author !== getViewerId()) { ctx.redirect(`/maps/${encodeURIComponent(mapItem.key)}`); return; }
-    const fav = await mediaFavorites.getFavoriteSet('maps');
+    const fav = await contentFavorites.getFavoriteSet('maps');
     ctx.body = await mapsView([{ ...mapItem, isFavorite: fav.has(String(mapItem.rootId || mapItem.key)) }], 'edit', mapItem.key, { returnTo: ctx.query.returnTo || '' });
   })
   .get("/maps/:mapId", async (ctx) => {
@@ -1954,7 +2426,7 @@ router
       return;
     }
     if (!mapItem) { ctx.redirect('/maps?filter=all'); return; }
-    const fav = await mediaFavorites.getFavoriteSet('maps');
+    const fav = await contentFavorites.getFavoriteSet('maps');
     let tribeMembers = [];
     let parentTribe = null;
     if (mapItem.tribeId) {
@@ -1979,7 +2451,7 @@ router
     const { filter = 'all', q = '', sort = 'recent' } = ctx.query;
     const viewerPrefs = await about.visibilityPrefs(getViewerId()).catch(() => null);
     const items = await audiosModel.listAll({ filter: filter === 'favorites' ? 'all' : filter, q, sort, viewerId: getViewerId() });
-    const fav = await mediaFavorites.getFavoriteSet('audios');
+    const fav = await contentFavorites.getFavoriteSet('audios');
     let enriched = items.map(x => ({ ...x, isFavorite: fav.has(String(x.rootId || x.key)) }));
     if (filter === 'favorites') enriched = enriched.filter(x => x.isFavorite);
     enriched = await applyListFilters(enriched, ctx);
@@ -1991,14 +2463,14 @@ router
   .get("/audios/edit/:id", async (ctx) => {
     if (!checkMod(ctx, 'audiosMod')) { ctx.redirect('/modules'); return; }
     const audio = await audiosModel.getAudioById(ctx.params.id, getViewerId());
-    const fav = await mediaFavorites.getFavoriteSet('audios');
+    const fav = await contentFavorites.getFavoriteSet('audios');
     ctx.body = await audioView([{ ...audio, isFavorite: fav.has(String(audio.rootId || audio.key)) }], 'edit', audio.key, { returnTo: ctx.query.returnTo || '' });
   })
   .get("/audios/:audioId", async (ctx) => {
     if (!checkMod(ctx, 'audiosMod')) { ctx.redirect('/modules'); return; }
     const { audioId } = ctx.params; const { filter = 'all', q = '', sort = 'recent' } = ctx.query;
     const audio = await audiosModel.getAudioById(audioId, getViewerId());
-    const fav = await mediaFavorites.getFavoriteSet('audios');
+    const fav = await contentFavorites.getFavoriteSet('audios');
     const comments = await getVoteComments(audio.key);
     const audioAuthorPrefs = await about.visibilityPrefs(audio.author).catch(() => null);
     await enrichItemLifetime(audio, { key: audio.key });
@@ -2009,7 +2481,7 @@ router
     const { filter = 'all', q = '', sort = 'recent', tribeId = '' } = ctx.query;
     const viewerPrefs = await about.visibilityPrefs(getViewerId()).catch(() => null);
     const items = await torrentsModel.listAll({ filter: filter === 'favorites' ? 'all' : filter, q, sort, viewerId: getViewerId() });
-    const fav = await mediaFavorites.getFavoriteSet('torrents');
+    const fav = await contentFavorites.getFavoriteSet('torrents');
     let enriched = items.filter(x => !x.tribeId).map(x => ({ ...x, isFavorite: fav.has(String(x.rootId || x.key)) }));
     if (filter === 'favorites') enriched = enriched.filter(x => x.isFavorite);
     enriched = await applyListFilters(enriched, ctx);
@@ -2020,14 +2492,14 @@ router
   .get("/torrents/edit/:id", async (ctx) => {
     if (!checkMod(ctx, 'torrentsMod')) { ctx.redirect('/modules'); return; }
     const torrent = await torrentsModel.getTorrentById(ctx.params.id, getViewerId());
-    const fav = await mediaFavorites.getFavoriteSet('torrents');
+    const fav = await contentFavorites.getFavoriteSet('torrents');
     ctx.body = await torrentsView([{ ...torrent, isFavorite: fav.has(String(torrent.rootId || torrent.key)) }], 'edit', torrent.key, { returnTo: ctx.query.returnTo || '' });
   })
   .get("/torrents/:torrentId", async (ctx) => {
     if (!checkMod(ctx, 'torrentsMod')) { ctx.redirect('/modules'); return; }
     const { torrentId } = ctx.params; const { filter = 'all', q = '', sort = 'recent' } = ctx.query;
     const torrent = await torrentsModel.getTorrentById(torrentId, getViewerId());
-    const fav = await mediaFavorites.getFavoriteSet('torrents');
+    const fav = await contentFavorites.getFavoriteSet('torrents');
     const comments = await getVoteComments(torrent.key);
     const torrentAuthorPrefs = await about.visibilityPrefs(torrent.author).catch(() => null);
     await enrichItemLifetime(torrent, { key: torrent.key });
@@ -2038,7 +2510,7 @@ router
     const { filter = 'all', q = '', sort = 'recent' } = ctx.query;
     const viewerPrefs = await about.visibilityPrefs(getViewerId()).catch(() => null);
     const items = await videosModel.listAll({ filter: filter === 'favorites' ? 'all' : filter, q, sort, viewerId: getViewerId() });
-    const fav = await mediaFavorites.getFavoriteSet('videos');
+    const fav = await contentFavorites.getFavoriteSet('videos');
     let enriched = items.map(x => ({ ...x, isFavorite: fav.has(String(x.rootId || x.key)) }));
     if (filter === 'favorites') enriched = enriched.filter(x => x.isFavorite);
     enriched = await applyListFilters(enriched, ctx);
@@ -2050,14 +2522,14 @@ router
   .get("/videos/edit/:id", async (ctx) => {
     if (!checkMod(ctx, 'videosMod')) { ctx.redirect('/modules'); return; }
     const video = await videosModel.getVideoById(ctx.params.id, getViewerId());
-    const fav = await mediaFavorites.getFavoriteSet('videos');
+    const fav = await contentFavorites.getFavoriteSet('videos');
     ctx.body = await videoView([{ ...video, isFavorite: fav.has(String(video.rootId || video.key)) }], 'edit', video.key, { returnTo: ctx.query.returnTo || '' });
   })
   .get("/videos/:videoId", async (ctx) => {
     if (!checkMod(ctx, 'videosMod')) { ctx.redirect('/modules'); return; }
     const { videoId } = ctx.params; const { filter = 'all', q = '', sort = 'recent' } = ctx.query;
     const video = await videosModel.getVideoById(videoId, getViewerId());
-    const fav = await mediaFavorites.getFavoriteSet('videos');
+    const fav = await contentFavorites.getFavoriteSet('videos');
     const comments = await getVoteComments(video.key);
     const videoAuthorPrefs = await about.visibilityPrefs(video.author).catch(() => null);
     await enrichItemLifetime(video, { key: video.key });
@@ -2067,7 +2539,7 @@ router
     const { filter = 'all', q = '', sort = 'recent' } = ctx.query;
     const viewerPrefs = await about.visibilityPrefs(getViewerId()).catch(() => null);
     const items = await documentsModel.listAll({ filter: filter === 'favorites' ? 'all' : filter, q, sort });
-    const fav = await mediaFavorites.getFavoriteSet('documents');
+    const fav = await contentFavorites.getFavoriteSet('documents');
     let enriched = items.map(x => ({ ...x, isFavorite: fav.has(String(x.rootId || x.key)) }));
     if (filter === 'favorites') enriched = enriched.filter(x => x.isFavorite);
     enriched = await applyListFilters(enriched, ctx);
@@ -2078,13 +2550,13 @@ router
   })
   .get("/documents/edit/:id", async (ctx) => {
     const doc = await documentsModel.getDocumentById(ctx.params.id);
-    const fav = await mediaFavorites.getFavoriteSet('documents');
+    const fav = await contentFavorites.getFavoriteSet('documents');
     ctx.body = await documentView([{ ...doc, isFavorite: fav.has(String(doc.rootId || doc.key)) }], 'edit', doc.key, { returnTo: ctx.query.returnTo || '' });
   })
   .get("/documents/:documentId", async (ctx) => {
     const { filter = "all", q = "", sort = "recent" } = ctx.query;
     const document = await documentsModel.getDocumentById(ctx.params.documentId);
-    const fav = await mediaFavorites.getFavoriteSet('documents');
+    const fav = await contentFavorites.getFavoriteSet('documents');
     Object.assign(document, { isFavorite: fav.has(String(document.rootId || document.key)) });
     const comments = await getVoteComments(document.rootId || document.key);
     const docAuthorPrefs = await about.visibilityPrefs(document.author).catch(() => null);
@@ -2098,7 +2570,8 @@ router
   })
   .get('/cv', async ctx => {
     const cv = await cvModel.getCVByUserId()
-    ctx.body = await cvView(cv)
+    const certificates = checkMod(ctx, 'schoolMod') ? await schoolModel.listCertificatesForStudent(getViewerId()).catch(() => []) : []
+    ctx.body = await cvView(cv, certificates)
   })
   .get('/cv/create', async ctx => {
     ctx.body = await createCVView()
@@ -2136,18 +2609,21 @@ router
     ctx.body = await privateView({ messages }, returnFilter || 'all', decrypted);
   })
   .get('/tags', async ctx => {
-    const filter = qf(ctx), tags = await tagsModel.listTags(filter);
-    ctx.body = await tagsView(tags, filter);
+    const filter = qf(ctx), search = String(ctx.query.search || '').trim();
+    const tags = await tagsModel.listTags(filter, search);
+    ctx.body = await tagsView(tags, filter, search);
   })
   .get('/reports', async ctx => {
     const filter = qf(ctx);
+    const q = String(ctx.query.q || '').trim();
     let reports = await enrichWithComments(await reportsModel.listAll());
+    reports = applyTextSearch(reports, q, ['title', 'description', 'category', 'tags']);
     reports = await applyListFilters(reports, ctx);
     try { reports = await lifetime.enrichAndFilter(reports); } catch (_) {}
     await enrichMsgSize(reports);
     const spreadMap = await spreads.forMessages((reports || []).map(x => x && (x.id || x.key)));
     await warmAuthorNames(reports);
-    ctx.body = await reportView(reports, filter, null, ctx.query.category || '', { spreadMap });
+    ctx.body = await reportView(reports, filter, null, ctx.query.category || '', { spreadMap, q, prefillTitle: ctx.query.title || '', prefillDescription: ctx.query.description || '' });
   })
   .get('/reports/edit/:id', async ctx => {
     const report = await reportsModel.getReportById(ctx.params.id);
@@ -2158,23 +2634,36 @@ router
     const comments = await getVoteComments(reportId);
     await enrichMsgSize([report]);
     await enrichItemLifetime(report);
-    ctx.body = await singleReportView(withCount(report, comments), filter, comments, { spreads: await spreads.forMessage(report.id).catch(() => null) });
+    ctx.body = await singleReportView(await withFavorite(withCount(report, comments), 'reports'), filter, comments, { spreads: await spreads.forMessage(report.id).catch(() => null) });
   })
   .get('/trending', async (ctx) => {
-    const filter = qf(ctx, 'TOP');
+    const filter = qf(ctx, 'ALL');
+    const q = String(ctx.query.q || '').trim();
     let { filtered = [] } = await trendingModel.listTrending(filter);
     filtered = await applyListFilters(filtered, ctx);
+    if (q) {
+      const needle = q.toLowerCase();
+      filtered = filtered.filter(m => {
+        const c = (m && m.value && m.value.content) || {};
+        return [c.title, c.name, c.question, c.description, c.text, c.concept, ...(Array.isArray(c.tags) ? c.tags : [])]
+          .some(v => String(v || '').toLowerCase().includes(needle));
+      });
+    }
     const spreadMap = new Map();
     const results = await Promise.all(filtered.map(it => it && it.key ? spreads.forMessage(it.key).catch(() => null) : Promise.resolve(null)));
     filtered.forEach((it, i) => { if (it && it.key && results[i]) spreadMap.set(it.key, results[i]); });
     await warmAuthorNames(filtered);
-    ctx.body = await trendingView(filtered, filter, trendingModel.categories, spreadMap);
+    ctx.body = await trendingView(filtered, filter, trendingModel.categories, spreadMap, q);
   })
   .get('/agenda', async (ctx) => {
     const filter = qf(ctx);
+    const q = String(ctx.query.q || '').trim();
     let data = await agendaModel.listAgenda(filter);
-    if (Array.isArray(data)) data = await applyListFilters(data, ctx);
-    ctx.body = await agendaView(data, filter);
+    if (data && Array.isArray(data.items)) {
+      const visible = await applyListFilters(data.items, ctx);
+      data = { ...data, items: applyTextSearch(visible, q, ['title', 'description', 'name', 'concept', 'location', 'tags']) };
+    }
+    ctx.body = await agendaView(data, filter, q);
   })
   .get("/hashtag/:hashtag", async (ctx) => {
     const { hashtag } = ctx.params;
@@ -2196,7 +2685,7 @@ router
       ctx.body = renderPendingFollows(enriched);
       return;
     }
-    if (['CVs', 'MATCHSKILLS'].includes(filter)) {
+    if (filter === 'CVs') {
       Object.assign(query, {
         location: ctx.query.location || '',
         language: ctx.query.language || '',
@@ -2330,7 +2819,7 @@ router
   .get('/inhabitant/:id', async (ctx) => {
     const id = ctx.params.id;
     const aboutModel = about;
-    const [aboutMsg, cv, feed, photo, bank, lastTs, visibilityPrefs, carbonGrams, larpHouseKey, deviceSource] = await Promise.all([
+    const [aboutMsg, cv, feed, photo, bank, lastTs, visibilityPrefs, carbonGrams, larpHouseKey, deviceSource, relationship] = await Promise.all([
       inhabitantsModel.getLatestAboutById(id),
       inhabitantsModel.getCVByUserId(id),
       inhabitantsModel.getFeedByUserId(id),
@@ -2340,7 +2829,8 @@ router
       aboutModel.visibilityPrefs(id).catch(() => null),
       getCarbonGramsForFeed(id).catch(() => 0),
       larpModel.getUserHouse(id).catch(() => null),
-      aboutModel.deviceSource(id).catch(() => null)
+      aboutModel.deviceSource(id).catch(() => null),
+      friend.getRelationship(id).catch(() => null)
     ]);
     const larpHouse = larpHouseKey ? { key: larpHouseKey, ...larpModel.getHouse(larpHouseKey) } : null;
     const bucketInfo = inhabitantsModel.bucketLastActivity(lastTs || null);
@@ -2352,7 +2842,7 @@ router
     const totalClaimed = bank?.totalClaimed || 0;
     const oasisVersion = (String(id) === String(currentUserId) ? OASIS_VERSION : null) || await getOasisVersion(id);
     await warmAuthorNames(feed);
-    ctx.body = await inhabitantsProfileView({ about: aboutMsg, cv, feed, photo, karmaScore, estimatedUBI, lastClaimedDate, totalClaimed, carbonGrams, larpHouse, lastActivityBucket: bucketInfo.bucket, viewedId: id, visibilityPrefs, deviceSource, stats, oasisVersion }, currentUserId, fediverseModel.hasAccount());
+    ctx.body = await inhabitantsProfileView({ about: aboutMsg, cv, feed, photo, relationship, karmaScore, estimatedUBI, lastClaimedDate, totalClaimed, carbonGrams, larpHouse, lastActivityBucket: bucketInfo.bucket, viewedId: id, visibilityPrefs, deviceSource, stats, oasisVersion }, currentUserId, fediverseModel.hasAccount());
   })
   .get('/parliament', async (ctx) => {
     if (!checkMod(ctx, 'parliamentMod')) return ctx.redirect('/modules');
@@ -2374,7 +2864,11 @@ router
       inhabitantsModel.listInhabitants({ filter: 'all', includeInactive: true })
     ]);
     const inhabitantsTotal = Array.isArray(inhabitantsAll) ? inhabitantsAll.length : 0;
-    const governmentCard = governmentCardRaw ? { ...governmentCardRaw, inhabitantsTotal } : null;
+    let governmentCard = governmentCardRaw ? { ...governmentCardRaw, inhabitantsTotal, expired: false } : null;
+    if (!governmentCard) {
+      const latest = await parliamentModel.getLatestGovernmentCard().catch(() => null);
+      if (latest) governmentCard = { ...latest, inhabitantsTotal };
+    }
     const leader = pickLeader(candidatures || []);
     const getActorMeta = async (type, id) => (type === 'tribe' || type === 'inhabitant') ? parliamentModel.getActorMeta({ targetType: type, targetId: id }) : null;
     const leaderMeta = leader ? await getActorMeta(leader.targetType || leader.powerType || 'inhabitant', leader.targetId || leader.powerId) : null;
@@ -2415,7 +2909,7 @@ router
     try { await courtsModel.sweepCases(); } catch (_) {}
     const filter = String(ctx.query.filter || 'cases').toLowerCase(), search = String(ctx.query.search || '').trim();
     const currentUserId = await courtsModel.getCurrentUserId();
-    const state = { filter, search, cases: [], myCases: [], trials: [], history: [], nominations: [], userId: currentUserId };
+    const state = { filter, search, cases: [], myCases: [], trials: [], history: [], nominations: [], userId: currentUserId, prefill: { titleSuffix: ctx.query.titleSuffix || '', respondentId: ctx.query.respondentId || '', method: (ctx.query.method || '').toUpperCase(), titlePreset: ctx.query.titlePreset || '' } };
     const searchFilter = (items) => !search ? items : items.filter(c => [c.title, c.description].some(s => String(s || '').toLowerCase().includes(search.toLowerCase())));
     if (filter === 'cases') state.cases = searchFilter((await courtsModel.listCases('open')).map(c => ({ ...c, respondent: c.respondentId || c.respondent })));
     if (filter === 'mycases' || filter === 'actions') {
@@ -2509,6 +3003,10 @@ router
       const forums = await listByTribeAllChain(tribe.id, 'forum');
       const replies = await listByTribeAllChain(tribe.id, 'forum-reply');
       sectionData = [...forums, ...replies];
+    } else if (section === 'polls') {
+      sectionData = checkMod(ctx, 'pollsMod')
+        ? await pollsModel.listAll('ALL', { tribeId: tribe.id }).catch(() => [])
+        : [];
     } else if (section === 'subtribes') {
       sectionData = await tribesModel.listSubTribes(tribe.id, uid);
     } else if (mediaSections[section]) {
@@ -2533,14 +3031,48 @@ router
       ]);
       const tribeChainSet = new Set(tribeChain);
       const toStandalone = (type, url) => (item) => ({ contentType: type, id: item.rootId || item.key, title: item.title || '', author: item.author, createdAt: item.createdAt, directUrl: url(item) });
+      const allTribePolls = checkMod(ctx, 'pollsMod')
+        ? (await Promise.all([...tribeChainSet].map(tid => pollsModel.listAll('ALL', { tribeId: tid }).catch(() => [])))).flat()
+        : [];
       const standaloneItems = [
+        ...allTribePolls.filter(p => !p.undecryptable).map(p => ({
+          contentType: 'poll', id: p.id, title: p.question, author: p.author,
+          createdAt: p.createdAt, directUrl: `/tribe/${encodeURIComponent(tribe.id)}?section=polls`
+        })),
         ...allPadsRaw.filter(p => tribeChainSet.has(p.tribeId)).map(toStandalone('pad', p => `/pads/${encodeURIComponent(p.rootId)}`)),
         ...allChatsRaw.filter(c => tribeChainSet.has(c.tribeId)).map(toStandalone('chat', c => `/chats/${encodeURIComponent(c.rootId || c.key)}`)),
         ...allCalsRaw.filter(c => tribeChainSet.has(c.tribeId)).map(toStandalone('calendar', c => `/calendars/${encodeURIComponent(c.rootId)}`)),
         ...allMapsRaw.filter(m => tribeChainSet.has(m.tribeId)).map(toStandalone('map', m => `/maps/${encodeURIComponent(m.key || m.id)}`)),
         ...allTorrentsRaw.filter(t => tribeChainSet.has(t.tribeId)).map(toStandalone('torrent', t => `/torrents/${encodeURIComponent(t.rootId || t.key)}`))
       ];
-      const combined = [...allContent, ...subContent, ...standaloneItems];
+      const subTribeNameById = new Map(subTribes.map(st => [st.id, st.title]));
+      const chatThreadItems = [];
+      for (const c of allChatsRaw) {
+        const inChain = tribeChainSet.has(c.tribeId);
+        const inSub = subTribeNameById.has(c.tribeId);
+        if (!inChain && !inSub) continue;
+        const root = c.rootId || c.key;
+        if (!root) continue;
+        let msgs = [];
+        try { msgs = await chatsModel.listMessages(root); } catch (_) { msgs = []; }
+        const withText = (msgs || []).filter(m => m && typeof m.text === 'string' && m.text.trim());
+        if (!withText.length) continue;
+        withText.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        const last = withText[withText.length - 1];
+        chatThreadItems.push({
+          contentType: 'chatThread',
+          id: root,
+          title: c.title || '',
+          author: c.author,
+          createdAt: last.createdAt,
+          _ts: Date.parse(last.createdAt) || 0,
+          directUrl: `/chats/${encodeURIComponent(root)}`,
+          ...(inSub ? { tribeName: subTribeNameById.get(c.tribeId) } : {}),
+          description: c.description || '',
+          replies: withText.slice(-6).map(m => ({ author: m.author, text: m.text, createdAt: m.createdAt }))
+        });
+      }
+      const combined = [...allContent, ...subContent, ...standaloneItems, ...chatThreadItems];
       const allInhabitants = await inhabitantsModel.listInhabitants({ filter: 'all', includeInactive: true });
       const allMembers = [...new Set([...tribe.members, ...subTribes.flatMap(st => st.members || [])])];
       const memberMap = new Map(allInhabitants.filter(u => allMembers.includes(u.id)).map(u => [u.id, u]));
@@ -2673,12 +3205,21 @@ router
       const isCreator = tribe.author === uid;
       const isMember = Array.isArray(tribe.members) && tribe.members.includes(uid);
       if (isCreator) { try { await parliamentModel.tribe.ensureTerm(tribe.id); } catch (_) {} }
-      const [term, candidatures, rules, globalTermBase] = await Promise.all([
+      let [term, candidatures, rules, globalTermBase] = await Promise.all([
         parliamentModel.tribe.getCurrentTerm(tribe.id).catch(() => null),
         parliamentModel.tribe.listCandidatures(tribe.id).catch(() => []),
         parliamentModel.tribe.listRules(tribe.id).catch(() => []),
         parliamentModel.getCurrentTerm().catch(() => null)
       ]);
+      if (term && term.startAt) {
+        const tribeTermDays = parliamentModel.tribe.TERM_DAYS || 60;
+        let cStart = moment(term.startAt);
+        let cEnd = term.endAt ? moment(term.endAt) : cStart.clone().add(tribeTermDays, 'days');
+        const now = moment();
+        let rolled = false;
+        while (cEnd.isValid() && cEnd.isSameOrBefore(now)) { cStart = cEnd.clone(); cEnd = cEnd.clone().add(tribeTermDays, 'days'); rolled = true; }
+        if (rolled) term = { ...term, startAt: cStart.toISOString(), endAt: cEnd.toISOString(), method: 'ANARCHY', powerType: 'none', powerId: null, leaders: [], winnerVotes: 0, totalVotes: 0 };
+      }
       const globalStart = globalTermBase?.startAt || null;
       const alreadyPublishedThisGlobalCycle = await parliamentModel.tribe.hasCandidatureInGlobalCycle(tribe.id, globalStart).catch(() => false);
       const leaders = Array.isArray(term?.leaders) ? term.leaders : [];
@@ -2732,7 +3273,7 @@ router
     ctx.body = await tribeView(tribe, uid, query, section, sectionData);
   })
   .get('/activity', async ctx => {
-    const filter = qf(ctx, 'recent'), userId = getViewerId();
+    const filter = qf(ctx, 'all'), userId = getViewerId();
     const q = String((ctx.query && ctx.query.q) || '');
     try { await bankingModel.ensureSelfAddressPublished(); } catch (_) {}
     try { await bankingModel.getUserEngagementScore(userId); } catch (_) {}
@@ -2776,7 +3317,7 @@ router
     }
     allActions = await applyListFilters(allActions, ctx);
     const spreadMap = new Map();
-    const SPREADABLE = new Set(['post','audio','video','image','document','torrent','bookmark','event','calendar','task','votes','vote','market','shop','shopProduct','project','transfer','job','report','chat','chatMessage','pad','padEntry','forum','map']);
+    const SPREADABLE = new Set(['post','audio','video','image','document','torrent','bookmark','event','calendar','task','votes','vote','market','shop','shopProduct','project','industry','industryBuild','industryBlueprint','transfer','housing','job','report','chat','chatMessage','pad','padEntry','forum','map','schoolCourse']);
     const targets = (allActions || []).filter(a => a && a.id && typeof a.id === 'string' && a.id.startsWith('%') && /\.sha256$/.test(a.id) && SPREADABLE.has(a.type));
     const results = await Promise.all(targets.map(a => spreads.forMessage(a.id).catch(() => null)));
     targets.forEach((a, i) => { if (results[i]) spreadMap.set(a.id, results[i]); });
@@ -2806,7 +3347,8 @@ router
         }
       }
     } catch (_) {}
-    ctx.body = activityView(allActions, filter, userId, q, { spreadMap });
+    const favIndex = await contentFavorites.getFavoriteIndex().catch(() => new Map());
+    ctx.body = activityView(allActions, filter, userId, q, { spreadMap, favIndex, returnTo: `/activity?filter=${encodeURIComponent(filter)}` });
   })
   .get("/profile", async (ctx) => {
     const myFeedId = await meta.myFeedId(), gt = Number(ctx.request.query.gt || -1), lt = Number(ctx.request.query.lt || -1);
@@ -2843,7 +3385,7 @@ router
     const baseUrl = resolveExternalBaseUrl(ctx);
     const profileItems = await fetchProfileItems(myFeedId, rawPrefs);
     const profileFilterType = String(ctx.query.type || '').toLowerCase();
-    const profileSpreadable = new Set(['post','audio','video','image','document','torrent','bookmark','event','calendar','task','votes','vote','market','shop','shopProduct','project','transfer','job','report','chat','chatMessage','pad','padEntry','forum','map']);
+    const profileSpreadable = new Set(['post','audio','video','image','document','torrent','bookmark','event','calendar','task','votes','vote','market','shop','shopProduct','project','industry','industryBuild','industryBlueprint','transfer','housing','job','report','chat','chatMessage','pad','padEntry','forum','map','schoolCourse']);
     const profileSpreadKeys = (allActions || []).filter(a => a && a.id && typeof a.id === 'string' && a.id.startsWith('%') && /\.sha256$/.test(a.id) && profileSpreadable.has(a.type)).map(a => a.id);
     const spreadMap = await spreads.forMessages(profileSpreadKeys).catch(() => new Map());
     ctx.body = await authorView({ feedId: myFeedId, oasisVersion: OASIS_VERSION || await getOasisVersion(myFeedId), messages: sanitizeMessages(messages), firstPost, lastPost, name, description, avatarUrl: getAvatarUrl(image), relationship: { me: true }, ecoAddress, karmaScore: bankData.karmaScore, estimatedUBI: bankData.estimatedUBI || 0, lastClaimedDate: bankData.lastClaimedDate || null, totalClaimed: bankData.totalClaimed || 0, carbonGrams, larpHouse, lastActivityBucket, visibilityPrefs, stats, baseUrl, userActions, allActions, profileItems, profileFilterType, gpgFingerprint, spreadMap, fediverseConfigured: fediverseModel.hasAccount() });
@@ -2900,6 +3442,7 @@ router
     const body = ctx.request.body || {};
     const flag = (v) => v === '1' || v === 'on' || v === true;
     const clearnetShops     = flag(body.vis_clearnetShops);
+    const clearnetSchool    = flag(body.vis_clearnetSchool);
     const clearnetJobs      = flag(body.vis_clearnetJobs);
     const clearnetEvents    = flag(body.vis_clearnetEvents);
     const clearnetProjects  = flag(body.vis_clearnetProjects);
@@ -2932,8 +3475,9 @@ router
       gpg:      flag(body.vis_gpg),
       fediverse: flag(body.vis_fediverse),
       fediverseHandle: typeof body.fediverseHandle === 'string' ? body.fediverseHandle : '',
-      clearnet: clearnetShops || clearnetJobs || clearnetEvents || clearnetProjects || clearnetPosts || clearnetAudios || clearnetVideos || clearnetImages || clearnetDocuments || clearnetTorrents || clearnetBookmarks,
+      clearnet: clearnetShops || clearnetSchool || clearnetJobs || clearnetEvents || clearnetProjects || clearnetPosts || clearnetAudios || clearnetVideos || clearnetImages || clearnetDocuments || clearnetTorrents || clearnetBookmarks,
       clearnetShops,
+      clearnetSchool,
       clearnetJobs,
       clearnetEvents,
       clearnetProjects,
@@ -3004,7 +3548,7 @@ router
     const myFeedId = await meta.myFeedId();
     const current = await about.visibilityPrefs(myFeedId).catch(() => null) || {};
     const subKeys = [
-      'clearnetShops', 'clearnetJobs', 'clearnetEvents', 'clearnetProjects',
+      'clearnetShops', 'clearnetSchool', 'clearnetJobs', 'clearnetEvents', 'clearnetProjects',
       'clearnetPosts', 'clearnetAudios', 'clearnetVideos', 'clearnetImages',
       'clearnetDocuments', 'clearnetTorrents'
     ];
@@ -3016,9 +3560,6 @@ router
       await post.publishProfileEdit({ visibilityPrefs: nextPrefs });
     } catch (e) { console.error('profile/clearnet-toggle:', e.message); }
     ctx.redirect('/profile');
-  })
-  .get("/publish/custom", async (ctx) => {
-    ctx.body = await publishCustomView();
   })
   .get("/json/:message", async (ctx) => {
     if (config.public) {
@@ -3148,11 +3689,21 @@ router
         },
       }).png().toBuffer();
     };
+    const avatarFallback = ctx.query.fallback === 'avatar';
+    const fallbackImage = async () => {
+      ctx.set("Content-Type", "image/png");
+      ctx.set("Cache-Control", "no-cache");
+      if (avatarFallback) {
+        try {
+          return fs.readFileSync(path.join(__dirname, "../client/assets/images/default-avatar.png"));
+        } catch (_) {}
+      }
+      return fakeImage();
+    };
     try {
-      const buffer = await blob.getResolved({ blobId });
+      const buffer = avatarFallback ? await blob.getCached({ blobId }) : await blob.getResolved({ blobId });
       if (!buffer) {
-        ctx.set("Content-Type", "image/png");
-        ctx.body = await fakeImage();
+        ctx.body = await fallbackImage();
         return;
       }
       const fileType = await FileType.fromBuffer(buffer);
@@ -3167,8 +3718,7 @@ router
         ctx.body = buffer;
       }
     } catch (err) {
-      ctx.set("Content-Type", "image/png");
-      ctx.body = await fakeImage();
+      ctx.body = await fallbackImage();
     }
   })
   .get("/settings", async (ctx) => {
@@ -3278,7 +3828,19 @@ router
         return !sc || (nowTs - sc) < PEER_IDLE_MAX_MS;
       })
       .sort((a, b) => (a.state === 'connected' ? -1 : 1) - (b.state === 'connected' ? -1 : 1));
-    ctx.body = await peersView({ onlinePeers: await meta.onlinePeers(), discoveredPeers, unknownPeers, lanBroadcastActive, technicalPeers });
+    const onlinePeersList = await meta.onlinePeers();
+    const versionKeys = new Set();
+    for (const coll of [onlinePeersList, discoveredPeers, unknownPeers]) {
+      for (const entry of (coll || [])) {
+        const k = entry && entry[1] && entry[1].key;
+        if (k) versionKeys.add(k);
+      }
+    }
+    const versions = {};
+    await Promise.all(Array.from(versionKeys).map(async (k) => {
+      versions[k] = String(k) === String(getViewerId()) ? OASIS_VERSION : await getOasisVersion(k).catch(() => null);
+    }));
+    ctx.body = await peersView({ onlinePeers: onlinePeersList, discoveredPeers, unknownPeers, lanBroadcastActive, technicalPeers, versions });
   })
   .get("/graphos", async (ctx) => {
     if (!checkMod(ctx, 'graphosMod')) return ctx.redirect('/modules');
@@ -3336,8 +3898,6 @@ router
     };
     const onlineKeys = keysOf(onlinePeers);
     const unknownKeys = keysOf(unknownPeers);
-    // Nodes partition into discovered vs unknown (total = discovered + unknown);
-    // "online" is an orthogonal status flag (a subset of the nodes).
     const seen = new Set([myId]);
     const nodes = [];
     const addFrom = (entries) => {
@@ -3400,7 +3960,7 @@ router
         if (tr && tr.openInviteCode) h.openInviteCode = tr.openInviteCode;
       }
     } catch (_) {}
-    ctx.body = larpListView({ filter, houses, myHouseKey, cycle, governingKey, governingHouse, governingMembers, governingPosts, canPost });
+    ctx.body = larpListView({ filter, houses, myHouseKey, cycle, governingKey, governingHouse, governingMembers, governingPosts, canPost, q: String(ctx.query.q || '').trim() });
   })
   .get("/larp/test", async (ctx) => {
     if (!checkMod(ctx, 'larpMod')) return ctx.redirect('/modules');
@@ -3495,7 +4055,8 @@ router
     const houseKey = String((ctx.request.body && ctx.request.body.house) || '').toLowerCase();
     if (houseKey !== 'academia') { ctx.redirect('/larp'); return; }
     try { await larpModel.publishJoin('academia'); } catch (_) {}
-    ctx.redirect('/larp/academia');
+    const larpReturnTo = String((ctx.request.body && ctx.request.body.returnTo) || '');
+    ctx.redirect(larpReturnTo === '/welcome' ? '/welcome' : '/larp/academia');
   })
   .post("/larp/leave", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'larpMod')) return ctx.redirect('/modules');
@@ -3520,8 +4081,11 @@ router
     const text = stripDangerousTags(String(b.text || ''));
     const myFeedId = await meta.myFeedId();
     const myHouseKey = await larpModel.getUserHouse(myFeedId).catch(() => null);
-    if (myHouseKey !== houseKey || houseKey === 'academia') { ctx.redirect('/larp'); return; }
-    try { await larpModel.publishHousePost({ house: houseKey, text }); } catch (_) {}
+    if (myHouseKey !== houseKey) { ctx.redirect('/larp'); return; }
+    try { await larpModel.publishHousePost({ house: houseKey, text }); }
+    catch (e) {
+      if (isSsbTooLargeError(e)) { sendErrorPage(ctx, require('../views/main_views').i18n.publishTooLong || 'Your post is too long. Please shorten it.', { status: 400 }); return; }
+    }
     ctx.redirect(`/larp/${encodeURIComponent(houseKey)}`);
   })
   .get("/invites", async (ctx) => {
@@ -3535,58 +4099,34 @@ router
     ctx.body = await likesView({ messages, feed, name: await about.name(feed), spreadMap });
   })
   .get("/mentions", async (ctx) => {
-    const { messages, myFeedId } = await post.mentionsMe();
-    const tribeMentions = [];
-    try {
-      const allTribes = await tribesModel.listAll();
-      const myTribes = allTribes.filter(t => t.members.includes(myFeedId));
-      for (const t of myTribes) {
-        const items = await tribesContentModel.listByTribe(t.id, null).catch(() => []);
-        for (const item of items) {
-          const text = (item.description || '') + ' ' + (item.title || '');
-          if (text.includes(myFeedId) || text.includes(myFeedId.slice(1))) {
-            tribeMentions.push({
-              key: item.id,
-              value: {
-                author: item.author,
-                timestamp: Date.parse(item.createdAt) || item._ts || Date.now(),
-                content: {
-                  type: 'tribe-content',
-                  text: item.description || item.title || '',
-                  tribeId: t.id,
-                  tribeName: t.title,
-                  contentType: item.contentType,
-                  mentions: { _self: [{ link: myFeedId }] }
-                }
-              }
-            });
-          }
-        }
-      }
-    } catch (_) {}
-    const combined = [...(Array.isArray(messages) ? messages : []), ...tribeMentions];
-    for (const msg of combined) {
-      if (!msg.value) continue;
-      const authorId = msg.value.author;
-      if (authorId) {
-        if (!msg.value.meta) msg.value.meta = {};
-        if (!msg.value.meta.author) msg.value.meta.author = {};
-        if (!msg.value.meta.author.name) {
-          try { msg.value.meta.author.name = await about.name(authorId); } catch (_) {}
-        }
-      }
-    }
-    ctx.body = await mentionsView({ messages: combined, myFeedId });
+    const filter = String(ctx.query.filter || 'ALL');
+    const q = String(ctx.query.q || '').trim();
+    const all = await mentionsModel.listMentions('ALL', { q });
+    const counts = await mentionsModel.countTypes(all);
+    const items = filter === 'ALL' ? all : all.filter(x => x.type === filter);
+    await warmAuthorNames(items);
+    try { mentionsModel.markSeen(all); } catch (_) {}
+    sharedState.setMentionsCount(0);
+    ctx.body = await mentionsView(items, filter, { counts, total: all.length, q });
   })
   .get('/opinions', async (ctx) => {
-    const filter = qf(ctx, 'TOP');
+    const filter = qf(ctx, 'ALL');
+    const q = String(ctx.query.q || '').trim();
     let opinions = await opinionsModel.listOpinions(filter);
     if (Array.isArray(opinions)) opinions = await applyListFilters(opinions, ctx);
+    if (q && Array.isArray(opinions)) {
+      const needle = q.toLowerCase();
+      opinions = opinions.filter(m => {
+        const c = (m && m.value && m.value.content) || {};
+        return [c.title, c.name, c.question, c.description, c.text, c.concept, ...(Array.isArray(c.tags) ? c.tags : [])]
+          .some(v => String(v || '').toLowerCase().includes(needle));
+      });
+    }
     const spreadMap = new Map();
     const list = Array.isArray(opinions) ? opinions : [];
     const results = await Promise.all(list.map(it => it && it.key ? spreads.forMessage(it.key).catch(() => null) : Promise.resolve(null)));
     list.forEach((it, i) => { if (it && it.key && results[i]) spreadMap.set(it.key, results[i]); });
-    ctx.body = await opinionsView(opinions, filter, spreadMap);
+    ctx.body = await opinionsView(opinions, filter, spreadMap, q);
   })
   .get("/feed", async (ctx) => {
     const filter = String(ctx.query.filter || "ALL").toUpperCase();
@@ -3607,8 +4147,9 @@ router
     const feed = await feedModel.getFeedById(ctx.params.feedId);
     if (!feed) { ctx.redirect('/feed'); return; }
     const comments = await feedModel.getComments(ctx.params.feedId).catch(() => []);
-    ctx.body = singleFeedView(feed, comments);
+    ctx.body = singleFeedView(feed, comments, { spreads: await spreads.forMessage(feed.key).catch(() => null) });
   })
+  .get("/multiverse", async (ctx) => { ctx.redirect('/fediverse'); })
   .get("/fediverse", async (ctx) => {
     if (!checkMod(ctx, 'fediverseMod')) { ctx.redirect('/modules'); return; }
     const account = fediverseModel.getAccount();
@@ -3758,15 +4299,186 @@ router
     try { await post.publishFediverseHandle(''); } catch (_) {}
     ctx.redirect('/settings');
   })
+  .get('/data', async ctx => {
+    const filter = String(ctx.query.filter || 'ALL').toUpperCase();
+    const q = String(ctx.query.q || '').trim();
+    const [{ matches, total, hasProfile }, cohesion] = await Promise.all([
+      dataModel.listMatches(filter, { q }),
+      dataModel.cohesion().catch(() => null)
+    ]);
+    await warmAuthorNames(matches);
+    ctx.body = await dataView({ filter, q, matches, total, hasProfile, cohesion });
+  })
+  .get('/polls', async ctx => {
+    if (!checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
+    const filter = String(ctx.query.filter || 'ALL').toUpperCase();
+    const q = String(ctx.query.q || '').trim();
+    if (filter === 'CREATE') { ctx.body = await pollsView([], 'CREATE', { q }); return; }
+    if (filter === 'EDIT') {
+      const poll = await pollsModel.getPollById(String(ctx.query.id || ''), getViewerId()).catch(() => null);
+      if (!poll || poll.author !== getViewerId()) { ctx.redirect('/polls'); return; }
+      ctx.body = await pollsView([], 'EDIT', { poll });
+      return;
+    }
+    const fav = await contentFavorites.getFavoriteSet('polls');
+    let polls = await pollsModel.listAll(filter, { q, favorites: [...fav] });
+    polls = polls.map(p => ({ ...p, isFavorite: fav.has(String(p.id)) }));
+    polls = await applyListFilters(polls, ctx);
+    try { polls = await lifetime.enrichAndFilter(polls, { getKey: (x) => x.id }); } catch (_) {}
+    const spreadMap = await spreads.forMessages(polls.map(p => p.id)).catch(() => new Map());
+    await warmAuthorNames(polls);
+    ctx.body = await pollsView(polls, filter, { q, spreadMap });
+  })
+  .get('/polls/:pollId', async ctx => {
+    if (!checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
+    const poll = await pollsModel.getPollById(ctx.params.pollId, getViewerId());
+    if (poll.chatId) { ctx.redirect(`/chats/${encodeURIComponent(poll.chatId)}`); return; }
+    const comments = await getVoteComments(poll.id);
+    const fav = await contentFavorites.getFavoriteSet('polls');
+    await enrichItemLifetime(poll, { key: poll.id });
+    await warmAuthorNames([poll], comments);
+    ctx.body = await singlePollView(
+      { ...poll, isFavorite: fav.has(String(poll.id)) },
+      comments,
+      {
+        spreads: await spreads.forMessage(poll.id).catch(() => null),
+        filter: String(ctx.query.filter || 'ALL').toUpperCase(),
+        q: String(ctx.query.q || '').trim()
+      }
+    );
+  })
+  .post('/polls/create', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body || {};
+    try {
+      await pollsModel.createPoll({
+        question: stripDangerousTags(b.question),
+        options: stripDangerousTags(String(b.options || '')).split('\n'),
+        anonymous: [].concat(b.anonymous).includes('1'),
+        multiple: [].concat(b.multiple).includes('1'),
+        deadline: b.deadline,
+        tags: b.tags
+      });
+    } catch (err) { sendErrorPage(ctx, err.message || String(err), { status: 400 }); return; }
+    try { activityModel.invalidateCache(); } catch (_) {}
+    ctx.redirect('/polls?filter=MINE');
+  })
+  .post('/polls/update/:id', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body || {};
+    try {
+      await pollsModel.updatePoll(ctx.params.id, {
+        question: stripDangerousTags(b.question),
+        options: stripDangerousTags(String(b.options || '')).split('\n'),
+        anonymous: [].concat(b.anonymous).includes('1'),
+        multiple: [].concat(b.multiple).includes('1'),
+        deadline: b.deadline,
+        tags: b.tags
+      });
+    } catch (err) { sendErrorPage(ctx, err.message || String(err), { status: 400 }); return; }
+    ctx.redirect(`/polls/${encodeURIComponent(ctx.params.id)}`);
+  })
+  .post('/polls/vote/:id', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
+    const choices = [].concat(ctx.request.body.choices || []).filter(Boolean);
+    try { await pollsModel.vote(ctx.params.id, choices); }
+    catch (err) { sendErrorPage(ctx, err.message || String(err), { status: 400 }); return; }
+    try { activityModel.invalidateCache(); } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/polls/${encodeURIComponent(ctx.params.id)}`, ['/polls', '/chats', '/tribe']));
+  })
+  .post('/polls/close/:id', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
+    try { await pollsModel.closePoll(ctx.params.id); } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/polls/${encodeURIComponent(ctx.params.id)}`, ['/polls', '/chats', '/tribe']));
+  })
+  .post('/polls/delete/:id', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
+    let poll = null;
+    try { poll = await pollsModel.getPollById(ctx.params.id, getViewerId()); } catch (_) {}
+    try { await pollsModel.deletePoll(ctx.params.id); } catch (_) {}
+    if (poll && poll.chatId) { ctx.redirect(`/chats/${encodeURIComponent(poll.chatId)}`); return; }
+    ctx.redirect('/polls?filter=MINE');
+  })
+  .post('/polls/opinions/:pollId/:category', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
+    try { await pollsModel.createOpinion(ctx.params.pollId, ctx.params.category); } catch (_) {}
+    try { activityModel.invalidateCache(); } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/polls/${encodeURIComponent(ctx.params.pollId)}`, ['/polls']));
+  })
+  .post('/polls/:pollId/comments', koaBodyMiddleware, async ctx => commentAction(ctx, 'polls', 'pollId'))
+  .post('/polls/favorites/add/:id', koaBody(), async ctx => favAction(ctx, 'polls', 'add'))
+  .post('/polls/favorites/remove/:id', koaBody(), async ctx => favAction(ctx, 'polls', 'remove'))
+  .get('/blogs', async ctx => {
+    if (!checkMod(ctx, 'blogsMod')) { ctx.redirect('/modules'); return; }
+    const filter = String(ctx.query.filter || 'ALL').toUpperCase();
+    const q = String(ctx.query.q || '').trim();
+    if (filter === 'CREATE') { ctx.body = await blogView([], 'CREATE', { q }); return; }
+    const fav = await contentFavorites.getFavoriteSet('blogs');
+    let blogs = await blogModel.listAll(filter, { q, favorites: [...fav] });
+    blogs = await applyListFilters(blogs, ctx);
+    const spreadMap = await spreads.forMessages((blogs || []).map(b => b && b.id)).catch(() => new Map());
+    await warmAuthorNames(blogs);
+    ctx.body = await blogView(blogs, filter, { q, spreadMap });
+  })
+  .get('/blogs/:blogId', async ctx => {
+    if (!checkMod(ctx, 'blogsMod')) { ctx.redirect('/modules'); return; }
+    let blog = await blogModel.getBlogById(ctx.params.blogId).catch(() => null);
+    if (!blog) {
+      const target = await blogModel.blogHrefFor(ctx.params.blogId).catch(() => null);
+      if (target && !target.startsWith(`/blogs/${encodeURIComponent(ctx.params.blogId)}`)) { ctx.redirect(target); return; }
+      ctx.redirect('/blogs');
+      return;
+    }
+    const comments = await getVoteComments(blog.id);
+    const fav = await contentFavorites.getFavoriteSet('blogs');
+    await warmAuthorNames([blog], comments);
+    ctx.body = await singleBlogView(
+      { ...blog, isFavorite: fav.has(String(blog.id)) },
+      comments,
+      { spreads: await spreads.forMessage(blog.id).catch(() => null) }
+    );
+  })
+  .post('/blogs/create', koaBody({ multipart: true, urlencoded: true, formidable: { multiples: true, maxFileSize: maxSize } }), async ctx => {
+    if (!checkMod(ctx, 'blogsMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body;
+    let text = stripDangerousTags((b.text || '').toString().trim());
+    const subject = stripDangerousTags((b.subject || '').toString().trim());
+    const blobMarkdown = await handleBlobUploads(ctx, 'blob', 9);
+    if (blobMarkdown.length) text += blobMarkdown.join('');
+    const allowComments = [].concat(b.allowComments).includes('1');
+    let mentions = [];
+    try { mentions = await extractMentions(text); } catch (_) { mentions = []; }
+    try {
+      await blogModel.createBlog({ text, subject, mentions, allowComments });
+    } catch (err) { sendErrorPage(ctx, err.message || String(err), { status: 400 }); return; }
+    try { activityModel.invalidateCache(); } catch (_) {}
+    ctx.redirect('/blogs?filter=MINE');
+  })
+  .post('/blogs/opinions/:blogId/:category', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'blogsMod')) { ctx.redirect('/modules'); return; }
+    try { await blogModel.createOpinion(ctx.params.blogId, ctx.params.category); } catch (_) {}
+    try { activityModel.invalidateCache(); } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/blogs/${encodeURIComponent(ctx.params.blogId)}`, ['/blogs']));
+  })
+  .post('/blogs/:blogId/comments', koaBodyMiddleware, async ctx => {
+    if (!checkMod(ctx, 'blogsMod')) { ctx.redirect('/modules'); return; }
+    const blog = await blogModel.getBlogById(ctx.params.blogId).catch(() => null);
+    if (!blog || !blog.allowComments) { ctx.redirect(`/blogs/${encodeURIComponent(ctx.params.blogId)}`); return; }
+    return commentAction(ctx, 'blogs', 'blogId');
+  })
+  .post('/blogs/favorites/add/:id', koaBody(), async ctx => favAction(ctx, 'blogs', 'add'))
+  .post('/blogs/favorites/remove/:id', koaBody(), async ctx => favAction(ctx, 'blogs', 'remove'))
   .get('/forum', async ctx => {
     if (!checkMod(ctx, 'forumMod')) { ctx.redirect('/modules'); return; }
-    const filter = qf(ctx, 'hot');
+    const filter = qf(ctx, 'all');
+    const q = String(ctx.query.q || '').trim();
     let forums = await forumModel.listAll(filter);
+    forums = applyTextSearch(forums, q, ['title', 'text', 'category']);
     forums = await applyListFilters(forums, ctx);
     try { forums = await lifetime.enrichAndFilter(forums); } catch (_) {}
     const spreadMap = await spreads.forMessages((forums || []).map(x => x && (x.key || x.id)));
     await warmAuthorNames(forums);
-    ctx.body = await forumView(forums, filter, { spreadMap });
+    ctx.body = await forumView(forums, filter, { spreadMap, q });
   })
   .get('/forum/:forumId', async ctx => {
     const msg = await forumModel.getMessageById(ctx.params.forumId), isReply = Boolean(msg.root), forumId = isReply ? msg.root : ctx.params.forumId;
@@ -3775,16 +4487,116 @@ router
     try { const oi = await forumModel.getOpenInvite(forumId).catch(() => null); if (oi && forumObj) forumObj.openInviteCode = oi.code; } catch (_) {}
     const forumMsgs = await forumModel.getMessagesByForumId(forumId);
     await warmAuthorNames(forumObj, forumMsgs);
-    ctx.body = await singleForumView(forumObj, forumMsgs, ctx.query.filter, isReply ? ctx.params.forumId : null, { spreads: spreadInfo });
+    ctx.body = await singleForumView(await withFavorite(forumObj, 'forum'), forumMsgs, ctx.query.filter, isReply ? ctx.params.forumId : null, { spreads: spreadInfo });
+  })
+  .get('/welcome', async (ctx) => {
+    const lang = ctx.cookies.get('language') || getConfig().language || 'en';
+    const available = {
+      language: true,
+      profile: true,
+      federation: checkMod(ctx, 'invitesMod'),
+      larp: checkMod(ctx, 'larpMod'),
+      ux: true,
+      backup: checkMod(ctx, 'legacyMod'),
+      greeting: checkMod(ctx, 'feedMod')
+    };
+    try {
+      const status = await onboardingModel.status(available);
+      ctx.body = await welcomeView(status, lang, status.profile);
+    } catch (error) { sendErrorPage(ctx, error.message || String(error), { status: 500 }); }
+  })
+  .post('/welcome/profile', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    const body = ctx.request.body || {};
+    const imageFile = ctx.request.files?.image;
+    const mime = imageFile?.mimetype || imageFile?.type || '';
+    const image = mime.startsWith('image/') && imageFile?.filepath
+      ? await promisesFs.readFile(imageFile.filepath).catch(() => undefined)
+      : undefined;
+    try {
+      await post.publishProfileEdit({
+        name: stripDangerousTags(String(body.name || '')).trim(),
+        description: stripDangerousTags(String(body.description || '')).trim(),
+        image
+      });
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }); return; }
+    ctx.redirect('/welcome');
+  })
+  .post('/welcome/greeting', koaBody(), async (ctx) => {
+    const text = stripDangerousTags(String((ctx.request.body || {}).text || ''));
+    try {
+      const mentions = await extractMentions(text);
+      await feedModel.createFeed(text, mentions);
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }); return; }
+    ctx.redirect('/welcome');
+  })
+  .post('/welcome/ux', koaBody(), async (ctx) => {
+    const cfg = getConfig();
+    const v = String((ctx.request.body || {}).ux || '').trim().toLowerCase();
+    const aiNavEnabled = cfg.modules && cfg.modules.aiNavMod === 'on';
+    const chatsEnabled = cfg.modules && cfg.modules.chatsMod === 'on';
+    const next = (v === 'ainav' && aiNavEnabled) ? 'ainav' : (v === 'chats' && chatsEnabled) ? 'chats' : 'blocks';
+    cfg.ux = { ...(cfg.ux && typeof cfg.ux === 'object' ? cfg.ux : {}), current: next };
+    saveConfig(cfg);
+    try { onboardingModel.markStep('ux'); } catch (_) {}
+    ctx.redirect('/welcome');
+  })
+  .post('/welcome/dismiss', koaBody(), async (ctx) => {
+    try { onboardingModel.dismiss(); } catch (_) {}
+    safeRefererRedirect(ctx, '/');
+  })
+  .post('/ai/suggestion/dismiss', koaBody(), async (ctx) => {
+    const current = sharedState.getBestMatch ? sharedState.getBestMatch() : null;
+    if (current && current.href) sharedState.setDismissedSuggestion(current.href);
+    safeRefererRedirect(ctx, '/');
   })
   .get('/legacy', async (ctx) => {
     if (!checkMod(ctx, 'legacyMod')) return ctx.redirect('/modules');
     try { ctx.body = await legacyView(); } catch (error) { sendErrorPage(ctx, error.message); }
   })
+  .get('/dev', async (ctx) => {
+    if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
+    if (!checkMod(ctx, 'devMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const group = String(ctx.query.group || '');
+      const tree = group ? devModel.listGroup(group) : devModel.listTree(ctx.query.path || '');
+      ctx.body = await devTreeView(tree, devModel.projectStats());
+    } catch (_) { ctx.redirect('/dev'); }
+  })
+  .get('/dev/file', async (ctx) => {
+    if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
+    if (!checkMod(ctx, 'devMod')) { ctx.redirect('/modules'); return; }
+    try {
+      ctx.body = await devFileView(devModel.readFile(ctx.query.path || '', { from: ctx.query.from }));
+    } catch (_) { ctx.redirect('/dev'); }
+  })
+  .get('/dev/raw', async (ctx) => {
+    if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
+    if (!checkMod(ctx, 'devMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const file = devModel.rawFile(ctx.query.path || '');
+      ctx.set('Content-Type', 'text/plain; charset=utf-8');
+      ctx.body = file.content;
+    } catch (_) { ctx.redirect('/dev'); }
+  })
+  .get('/dev/search', async (ctx) => {
+    if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
+    if (!checkMod(ctx, 'devMod')) { ctx.redirect('/modules'); return; }
+    const ext = String(ctx.query.ext || '');
+    try {
+      ctx.body = await devSearchView(devModel.searchCode(ctx.query.q || '', { ext }), ext);
+    } catch (_) { ctx.redirect('/dev'); }
+  })
+  .get('/dev/map', async (ctx) => {
+    if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
+    if (!checkMod(ctx, 'devMod')) { ctx.redirect('/modules'); return; }
+    try {
+      ctx.body = await devMapView(devModel.moduleMap());
+    } catch (_) { ctx.redirect('/dev'); }
+  })
   .get('/bookmarks', async (ctx) => {
     if (!checkMod(ctx, 'bookmarksMod')) return ctx.redirect('/modules');
     const filter = qf(ctx), q = ctx.query.q || '', sort = ctx.query.sort || 'recent', viewerId = getViewerId();
-    const favs = await mediaFavorites.getFavoriteSet("bookmarks");
+    const favs = await contentFavorites.getFavoriteSet("bookmarks");
     let bookmarks = (await bookmarksModel.listAll({ viewerId, filter: filter === "favorites" ? "all" : filter, q, sort })).map(b => ({ ...b, isFavorite: favs.has(String(b.rootId || b.id)) }));
     if (filter === "favorites") bookmarks = bookmarks.filter(b => b.isFavorite);
     bookmarks = await applyListFilters(bookmarks, ctx);
@@ -3795,25 +4607,27 @@ router
   })
   .get("/bookmarks/edit/:id", async (ctx) => {
     if (!checkMod(ctx, 'bookmarksMod')) return ctx.redirect('/modules');
-    const bookmark = await bookmarksModel.getBookmarkById(ctx.params.id, getViewerId()), favs = await mediaFavorites.getFavoriteSet("bookmarks");
+    const bookmark = await bookmarksModel.getBookmarkById(ctx.params.id, getViewerId()), favs = await contentFavorites.getFavoriteSet("bookmarks");
     ctx.body = await bookmarkView([{ ...bookmark, isFavorite: favs.has(String(bookmark.rootId || bookmark.id)) }], "edit", bookmark.id, { returnTo: ctx.query.returnTo || "" });
   })
   .get('/bookmarks/:bookmarkId', async (ctx) => {
     if (!checkMod(ctx, 'bookmarksMod')) return ctx.redirect('/modules');
-    const filter = qf(ctx), q = ctx.query.q || '', sort = ctx.query.sort || 'recent', favs = await mediaFavorites.getFavoriteSet("bookmarks");
+    const filter = qf(ctx), q = ctx.query.q || '', sort = ctx.query.sort || 'recent', favs = await contentFavorites.getFavoriteSet("bookmarks");
     const bookmark = await bookmarksModel.getBookmarkById(ctx.params.bookmarkId), root = bookmark.rootId || bookmark.id, comments = await getVoteComments(root);
     await enrichItemLifetime(bookmark);
     ctx.body = await singleBookmarkView({ ...bookmark, commentCount: comments.length, isFavorite: favs.has(String(root)) }, filter, comments, { q, sort, returnTo: safeReturnTo(ctx, `/bookmarks?filter=${encodeURIComponent(filter)}`, ['/bookmarks']), spreads: await spreads.forMessage(bookmark.id) });
   })
   .get('/tasks', async ctx => {
     const filter = qf(ctx);
+    const q = String(ctx.query.q || '').trim();
     let tasks = await enrichWithComments(await tasksModel.listAll());
+    tasks = applyTextSearch(tasks, q, ['title', 'description', 'location', 'tags']);
     tasks = await applyListFilters(tasks, ctx);
     try { tasks = await lifetime.enrichAndFilter(tasks); } catch (_) {}
     await enrichMsgSize(tasks);
     const spreadMap = await spreads.forMessages((tasks || []).map(x => x && (x.id || x.key)));
     await warmAuthorNames(tasks);
-    ctx.body = await taskView(tasks, filter, null, ctx.query.returnTo, { spreadMap });
+    ctx.body = await taskView(tasks, filter, null, ctx.query.returnTo, { spreadMap, q, prefillTitle: ctx.query.title || '', prefillDescription: ctx.query.description || '' });
   })
   .get('/tasks/edit/:id', async ctx => {
     const id = ctx.params.id;
@@ -3825,19 +4639,21 @@ router
     const comments = await getVoteComments(taskId);
     await enrichMsgSize([task]);
     await enrichItemLifetime(task);
-    ctx.body = await singleTaskView(withCount(task, comments), filter, comments, { spreads: await spreads.forMessage(task.id).catch(() => null) });
+    ctx.body = await singleTaskView(await withFavorite(withCount(task, comments), 'tasks'), filter, comments, { spreads: await spreads.forMessage(task.id).catch(() => null) });
   })
   .get('/events', async (ctx) => {
     if (!checkMod(ctx, 'eventsMod')) { ctx.redirect('/modules'); return; }
     const filter = qf(ctx);
+    const q = String(ctx.query.q || '').trim();
     let events = await enrichWithComments(await eventsModel.listAll(null, filter));
+    events = applyTextSearch(events, q, ['title', 'description', 'location', 'tags']);
     events = await applyListFilters(events, ctx);
     try { events = await lifetime.enrichAndFilter(events); } catch (_) {}
     await enrichMsgSize(events);
     const viewerPrefs = await about.visibilityPrefs(getViewerId()).catch(() => null);
     const spreadMap = await spreads.forMessages((events || []).map(x => x && (x.id || x.key)));
     await warmAuthorNames(events);
-    ctx.body = await eventView(events, filter, null, ctx.query.returnTo, { viewerPrefs, spreadMap });
+    ctx.body = await eventView(events, filter, null, ctx.query.returnTo, { viewerPrefs, spreadMap, q });
   })
   .get('/events/edit/:id', async (ctx) => {
     if (!checkMod(ctx, 'eventsMod')) { ctx.redirect('/modules'); return; }
@@ -3858,7 +4674,7 @@ router
     try { const oi = await eventsModel.getOpenInvite(eventId).catch(() => null); if (oi) event.openInviteCode = oi.code; } catch (_) {}
     const evAuthorPrefs2 = await about.visibilityPrefs(event.organizer).catch(() => null);
     await warmAuthorNames(event, comments);
-    ctx.body = await singleEventView(withCount(event, comments), filter, comments, { mapData, baseUrl: resolveExternalBaseUrl(ctx), authorPrefs: evAuthorPrefs2, linkedCalendarId, spreads: await spreads.forMessage(event.id).catch(() => null) });
+    ctx.body = await singleEventView(await withFavorite(withCount(event, comments), 'events'), filter, comments, { mapData, baseUrl: resolveExternalBaseUrl(ctx), authorPrefs: evAuthorPrefs2, linkedCalendarId, spreads: await spreads.forMessage(event.id).catch(() => null) });
   })
   .get('/c/events/:eventId', async (ctx) => {
     let event;
@@ -3879,26 +4695,28 @@ router
   })
   .get('/votes', async ctx => {
     const filter = qf(ctx);
+    const q = String(ctx.query.q || '').trim();
     let voteList = await enrichWithComments(await votesModel.listAll(filter));
     voteList = await applyListFilters(voteList, ctx);
+    voteList = applyTextSearch(voteList, q, ['question', 'tags']);
     try { voteList = await lifetime.enrichAndFilter(voteList, { getAuthor: (x) => x.createdBy }); } catch (_) {}
     await enrichMsgSize(voteList);
     const spreadMap = await spreads.forMessages((voteList || []).map(x => x && (x.id || x.key)));
     await warmAuthorNames(voteList);
-    ctx.body = await voteView(voteList, filter, null, [], filter, { spreadMap });
+    ctx.body = await voteView(voteList, filter, null, [], filter, { spreadMap, q, ...voteFormState(ctx) });
   })
   .get('/votes/edit/:id', async ctx => {
     const id = ctx.params.id;
     const activeFilter = (ctx.query.filter || 'mine');
     const voteData = await votesModel.getVoteById(id);
-    ctx.body = await voteView([voteData], 'edit', id, [], activeFilter);
+    ctx.body = await voteView([voteData], 'edit', id, [], activeFilter, voteFormState(ctx));
   })
   .get('/votes/:voteId', async ctx => {
     const { voteId } = ctx.params, filter = qf(ctx), voteData = await votesModel.getVoteById(voteId);
     const comments = await getVoteComments(voteId);
     await enrichMsgSize([voteData]);
     await enrichItemLifetime(voteData, { author: voteData.createdBy });
-    ctx.body = await voteView([withCount(voteData, comments)], 'detail', voteId, comments, filter, { spreads: await spreads.forMessage(voteId).catch(() => null) });
+    ctx.body = await voteView([await withFavorite(withCount(voteData, comments), 'votes')], 'detail', voteId, comments, filter, { spreads: await spreads.forMessage(voteId).catch(() => null) });
   })
   .get("/market", async (ctx) => {
     if (!checkMod(ctx, 'marketMod')) { ctx.redirect('/modules'); return; }
@@ -3913,7 +4731,7 @@ router
     }
     const spreadMap = await spreads.forMessages((marketItems || []).map(x => x && (x.id || x.key)));
     await warmAuthorNames(marketItems);
-    ctx.body = await marketView(marketItems, filter, null, { q, minPrice, maxPrice, sort, spreadMap });
+    ctx.body = await marketView(marketItems, filter, null, { q, minPrice, maxPrice, sort, spreadMap, industry: ctx.query.industry || "", title: ctx.query.title || "", description: ctx.query.description || "", price: ctx.query.price || "", tags: ctx.query.tags || "", stock: ctx.query.stock || "" });
   })
   .get("/market/edit/:id", async (ctx) => {
     if (!checkMod(ctx, 'marketMod')) { ctx.redirect('/modules'); return; }
@@ -3945,7 +4763,7 @@ router
       return `/market${params.length ? `?${params.join("&")}` : ""}`
     })()
     await enrichItemLifetime(item, { author: item.seller, createdAt: item.updatedAt || item.createdAt })
-    ctx.body = await singleMarketView(withCount(item, comments), filter, comments, { q, minPrice, maxPrice, sort, returnTo, mapData, zoom, spreads: await spreads.forMessage(item.id).catch(() => null) })
+    ctx.body = await singleMarketView(await withFavorite(withCount(item, comments), 'market'), filter, comments, { q, minPrice, maxPrice, sort, returnTo, mapData, zoom, spreads: await spreads.forMessage(item.id).catch(() => null) })
   })
   .get('/jobs', async (ctx) => {
     if (!checkMod(ctx, 'jobsMod')) { ctx.redirect('/modules'); return; }
@@ -3957,6 +4775,11 @@ router
       minSalary: ctx.query.minSalary ?? '',
       maxSalary: ctx.query.maxSalary ?? '',
       sort: ctx.query.sort || 'recent',
+      industry: ctx.query.industry || '',
+      title: ctx.query.title || '',
+      description: ctx.query.description || '',
+      tasks: ctx.query.tasks || '',
+      salary: ctx.query.salary || '',
       viewerPrefs
     }
     if (filter === 'CREATE') {
@@ -4028,7 +4851,63 @@ router
     }
     const jobAuthorPrefs2 = await about.visibilityPrefs(job.author).catch(() => null);
     await enrichItemLifetime(job)
-    ctx.body = await singleJobsView(withCount(job, comments), filter, comments, { ...params, mapData, candidates, baseUrl: resolveExternalBaseUrl(ctx), authorPrefs: jobAuthorPrefs2, spreads: await spreads.forMessage(job.id).catch(() => null) })
+    ctx.body = await singleJobsView(await withFavorite(withCount(job, comments), 'jobs'), filter, comments, { ...params, mapData, candidates, baseUrl: resolveExternalBaseUrl(ctx), authorPrefs: jobAuthorPrefs2, spreads: await spreads.forMessage(job.id).catch(() => null) })
+  })
+  .get('/housing', async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    const filter = String(ctx.query.filter || 'ALL').toUpperCase()
+    const query = {
+      search: ctx.query.search || '',
+      minPrice: ctx.query.minPrice ?? '',
+      maxPrice: ctx.query.maxPrice ?? '',
+      place: ctx.query.place || '',
+      sort: ctx.query.sort || 'recent'
+    }
+    query.maxImages = housingModel.MAX_IMAGES
+    if (filter === 'CREATE') { ctx.body = await housingView([], 'CREATE', query); return }
+    const viewerId = getViewerId()
+    let items = await housingModel.listHousing(filter, viewerId, query)
+    await enrichWithComments(items)
+    items = await applyListFilters(items, ctx)
+    if (filter !== 'MINE') {
+      try { items = await lifetime.enrichAndFilter(items); } catch (_) {}
+    }
+    await enrichMsgSize(items)
+    const spreadMap = await spreads.forMessages((items || []).map(x => x && (x.id || x.key)));
+    await warmAuthorNames(items);
+    ctx.body = await housingView(items, filter, { ...query, spreadMap })
+  })
+  .get('/housing/edit/:id', async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    let item;
+    try { item = await housingModel.getHousingById(ctx.params.id, getViewerId()); } catch (_) { ctx.redirect('/housing?filter=MINE'); return; }
+    if (!item || String(item.author) !== String(getViewerId())) { ctx.redirect('/housing?filter=MINE'); return; }
+    ctx.body = await housingView([item], 'EDIT', { maxImages: housingModel.MAX_IMAGES })
+  })
+  .get('/housing/:housingId', async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    let housingId = ctx.params.housingId
+    if (housingId && housingId.startsWith('%25')) {
+      try { housingId = decodeURIComponent(housingId); } catch (_) {}
+    }
+    const filter = String(ctx.query.filter || 'ALL').toUpperCase()
+    const params = {
+      search: ctx.query.search || '',
+      minPrice: ctx.query.minPrice ?? '',
+      maxPrice: ctx.query.maxPrice ?? '',
+      place: ctx.query.place || '',
+      sort: ctx.query.sort || 'recent',
+      returnTo: safeReturnTo(ctx, `/housing?filter=${encodeURIComponent(filter)}`, ['/housing'])
+    }
+    let item;
+    try { item = await housingModel.getHousingById(housingId, getViewerId()); } catch (e) {
+      sendErrorPage(ctx, `Housing not found or invalid id: ${housingId}`, { status: 404 }); return;
+    }
+    if (!item) { sendErrorPage(ctx, `Housing not found: ${housingId}`, { status: 404 }); return; }
+    const [comments, mapData] = await Promise.all([getVoteComments(housingId), resolveMapUrl(item.mapUrl)])
+    await enrichMsgSize([item])
+    await enrichItemLifetime(item)
+    ctx.body = await singleHousingView(await withFavorite(withCount(item, comments), 'housing'), filter, comments, { ...params, mapData, spreads: await spreads.forMessage(item.id).catch(() => null) })
   })
   .get('/c/jobs/:jobId', async (ctx) => {
     let job;
@@ -4064,7 +4943,7 @@ router
       return;
     }
     const items = await shopsModel.listAll({ filter: filter === 'favorites' ? 'all' : filter, q, sort, viewerId: getViewerId() });
-    const fav = await mediaFavorites.getFavoriteSet('shops');
+    const fav = await contentFavorites.getFavoriteSet('shops');
     let enriched = items.map(x => ({ ...x, isFavorite: fav.has(String(x.rootId || x.key)) }));
     if (filter === 'favorites') enriched = enriched.filter(x => x.isFavorite);
     enriched = await applyListFilters(enriched, ctx);
@@ -4081,7 +4960,7 @@ router
     if (!checkMod(ctx, 'shopsMod')) { ctx.redirect('/modules'); return; }
     const shop = await shopsModel.getShopById(ctx.params.id);
     if (!shop) { ctx.redirect('/shops'); return; }
-    const fav = await mediaFavorites.getFavoriteSet('shops');
+    const fav = await contentFavorites.getFavoriteSet('shops');
     ctx.body = await shopsView([{ ...shop, isFavorite: fav.has(String(shop.rootId || shop.key)) }], 'edit', shop, { returnTo: ctx.query.returnTo || '' });
   })
   .get("/shops/product/edit/:id", async (ctx) => {
@@ -4099,7 +4978,8 @@ router
     const myPurchases = await shopsModel.listMyPurchases().catch(() => []);
     const productRootId = product.rootId || product.key;
     const canRate = myPurchases.some(o => o.productId === productRootId && String(o.status || '').toUpperCase() === 'RECEIVED');
-    ctx.body = await singleProductView(withCount(product, comments), shop, comments, { shopId: product.shopId, canRate, returnTo: safeReturnTo(ctx, `/shops/${encodeURIComponent(product.shopId)}`, ['/shops']) });
+    const productFav = await contentFavorites.getFavoriteSet('shopProducts');
+    ctx.body = await singleProductView({ ...withCount(product, comments), isFavorite: productFav.has(String(product.rootId || product.key)) }, shop, comments, { shopId: product.shopId, canRate, returnTo: safeReturnTo(ctx, `/shops/${encodeURIComponent(product.shopId)}`, ['/shops']), spreads: await spreads.forMessage(product.key).catch(() => null) });
   })
   .get("/c/audios/:id", async (ctx) => {
     let item; try { item = await audiosModel.getAudioById(ctx.params.id); } catch (_) {}
@@ -4228,6 +5108,18 @@ router
       snippet: m.description || '',
       meta: m.createdAt ? new Date(m.createdAt).toISOString().slice(0, 10) : ''
     });
+    if (prefs.clearnetSchool) {
+      try {
+        const courses = await schoolModel.listCourses('ALL', feedId, {}).catch(() => []);
+        items.school = (courses || []).filter(c => c.author === feedId && c.visibility === 'PUBLIC' && !(Number(c.price) > 0)).slice(0, MAX_PER_SECTION).map(c => ({
+          id: c.id,
+          title: c.title || 'Untitled',
+          image: c.image || null,
+          snippet: c.description || '',
+          meta: c.startDate ? new Date(c.startDate).toISOString().slice(0, 10) : ''
+        }));
+      } catch (_) {}
+    }
     if (prefs.clearnetShops) {
       try {
         const shops = await shopsModel.listAll({ filter: 'all' }).catch(() => []);
@@ -4364,6 +5256,24 @@ router
     ctx.type = 'text/html';
     ctx.body = await clearnetInhabitantView({ feedId, name, description, image: safeImage, prefs, items, filterType });
   })
+  .get("/c/school/:courseId", async (ctx) => {
+    let course;
+    try { course = await schoolModel.getCourseById(ctx.params.courseId, null); } catch (_) {}
+    if (!course || course.visibility !== 'PUBLIC' || Number(course.price) > 0) {
+      ctx.type = 'text/html';
+      ctx.body = require('../views/clearnet_view').renderClearnetNotFound();
+      return;
+    }
+    const courseAuthorPrefs = await about.visibilityPrefs(course.author).catch(() => null);
+    if (!courseAuthorPrefs || courseAuthorPrefs.clearnetSchool !== true) {
+      ctx.type = 'text/html';
+      ctx.body = require('../views/clearnet_view').renderClearnetNotFound();
+      return;
+    }
+    const lessons = await schoolModel.listLessons(course.rootId).catch(() => []);
+    ctx.type = 'text/html';
+    ctx.body = await require('../views/school_view').clearnetCourseView(course, lessons);
+  })
   .get("/c/shops/:shopId", async (ctx) => {
     const shop = await shopsModel.getShopById(ctx.params.shopId).catch(() => null);
     if (!shop || String(shop.visibility || '').toUpperCase() === 'CLOSED') {
@@ -4392,7 +5302,7 @@ router
     const shop = await shopsModel.getShopById(ctx.params.shopId);
     if (!shop) { ctx.redirect('/shops'); return; }
     if (shop.encrypted && shop.undecryptable && shop.author !== getViewerId()) { ctx.redirect('/invites#invites-shops'); return; }
-    const fav = await mediaFavorites.getFavoriteSet('shops');
+    const fav = await contentFavorites.getFavoriteSet('shops');
     const [products, comments, mapData] = await Promise.all([shopsModel.listProducts(shop.rootId || shop.key), getVoteComments(shop.key), resolveMapUrl(shop.mapUrl)]);
     const baseUrl = resolveExternalBaseUrl(ctx);
     const authorPrefs = await about.visibilityPrefs(shop.author).catch(() => null);
@@ -4437,7 +5347,7 @@ router
     }
     const modelFilter = filter === "favorites" ? "all" : filter;
     const items = await chatsModel.listAll({ filter: modelFilter, q, viewerId });
-    const fav = await mediaFavorites.getFavoriteSet('chats');
+    const fav = await contentFavorites.getFavoriteSet('chats');
     const myTribeIds = await getUserTribeIds(viewerId);
     const enriched = items.filter(x => !x.tribeId).map(x => ({ ...x, isFavorite: fav.has(String(x.rootId || x.key)) }));
     let finalList = filter === "favorites" ? enriched.filter(x => x.isFavorite) : enriched;
@@ -4445,7 +5355,14 @@ router
     try { finalList = await lifetime.enrichAndFilter(finalList, { getKey: (x) => x.rootId || x.key }); } catch (_) {}
     const spreadMap = await spreads.forMessages((finalList || []).map(x => x && (x.key || x.id)));
     await warmAuthorNames(finalList);
-    ctx.body = await chatsView(finalList, filter, null, { q, spreadMap });
+    const uxChatsMode = getConfig().ux?.current === 'chats';
+    if (uxChatsMode && filter === 'all' && !q && finalList.length) {
+      const actTs = (c) => Math.max(Number(c.lastMsgAt || 0), Date.parse(c.updatedAt || '') || 0, Date.parse(c.createdAt || '') || 0);
+      const first = finalList.slice().sort((a, b) => actTs(b) - actTs(a))[0];
+      ctx.redirect(`/chats/${encodeURIComponent(first.rootId || first.key)}`);
+      return;
+    }
+    ctx.body = await chatsView(finalList, filter, null, { q, spreadMap, workspace: uxChatsMode });
   })
   .get("/chats/edit/:id", async (ctx) => {
     if (!checkMod(ctx, 'chatsMod')) { ctx.redirect('/modules'); return; }
@@ -4473,10 +5390,21 @@ router
       const isOpen = String(chat.status || '').toUpperCase() === 'OPEN';
       if (!isOpen && chat.author !== uid && !members.includes(uid)) { ctx.redirect('/chats?filter=all'); return; }
     }
-    const fav = await mediaFavorites.getFavoriteSet('chats');
+    const fav = await contentFavorites.getFavoriteSet('chats');
     const messages = await chatsModel.listMessages(chat.rootId || chat.key);
     const isTribeMember = !!parentTribe;
-    ctx.body = await singleChatView({ ...chat, isFavorite: fav.has(String(chat.rootId || chat.key)), isTribeMember }, filter, messages, { q, returnTo: safeReturnTo(ctx, `/chats?filter=${encodeURIComponent(filter)}`, ['/chats']) });
+    const pollsEnabled = checkMod(ctx, 'pollsMod');
+    const chatPolls = pollsEnabled
+      ? await pollsModel.listAll('ALL', { chatId: chat.rootId || chat.key }).catch(() => [])
+      : [];
+    const uxChats = getConfig().ux?.current === 'chats';
+    let allChats = [];
+    if (uxChats) {
+      try {
+        allChats = (await chatsModel.listAll({ filter: 'all', q: '', viewerId: uid })).filter(x => !x.tribeId);
+      } catch (_) { allChats = []; }
+    }
+    ctx.body = await singleChatView({ ...chat, isFavorite: fav.has(String(chat.rootId || chat.key)), isTribeMember }, filter, messages, { q, polls: chatPolls, pollsEnabled, returnTo: safeReturnTo(ctx, `/chats?filter=${encodeURIComponent(filter)}`, ['/chats']), spreads: await spreads.forMessage(chat.key).catch(() => null), workspace: uxChats, allChats });
   })
   .get("/pads", async (ctx) => {
     if (!checkMod(ctx, 'padsMod')) { ctx.redirect('/modules'); return; }
@@ -4493,7 +5421,7 @@ router
     const q = String(ctx.query.q || "").trim();
     const tribeId = ctx.query.tribeId || "";
     const pads = await padsModel.listAll({ filter, viewerId: uid });
-    const fav = await mediaFavorites.getFavoriteSet('pads');
+    const fav = await contentFavorites.getFavoriteSet('pads');
     let enriched = pads.filter(p => !p.tribeId).map(p => ({ ...p, isFavorite: fav.has(String(p.rootId)) }));
     enriched = await applyListFilters(enriched, ctx);
     try { enriched = await lifetime.enrichAndFilter(enriched, { getKey: (x) => x.rootId || x.key }); } catch (_) {}
@@ -4520,7 +5448,7 @@ router
       const isOpen = String(pad.status || '').toUpperCase() === 'OPEN';
       if (!isOpen && pad.author !== uid && !members.includes(uid)) { ctx.redirect('/pads?filter=all'); return; }
     }
-    const fav = await mediaFavorites.getFavoriteSet('pads');
+    const fav = await contentFavorites.getFavoriteSet('pads');
     const entries = await padsModel.getEntries(pad.rootId);
     const versionKey = ctx.query.version || null;
     const selectedVersion = versionKey
@@ -4546,7 +5474,7 @@ router
     const tribeId = ctx.query.tribeId || "";
     const modelFilter = filter === "favorites" ? "all" : filter;
     const calendars = await calendarsModel.listAll({ filter: modelFilter, viewerId: uid });
-    const fav = await mediaFavorites.getFavoriteSet('calendars');
+    const fav = await contentFavorites.getFavoriteSet('calendars');
     const myTribeIds = await getUserTribeIds(uid);
     const enriched = calendars.filter(c => !c.tribeId).map(c => ({ ...c, isFavorite: fav.has(String(c.rootId)) }));
     let finalList = filter === "favorites" ? enriched.filter(c => c.isFavorite) : enriched;
@@ -4581,7 +5509,7 @@ router
     for (const d of dates) {
       notesByDate[d.key] = await calendarsModel.getNotesForDate(cal.rootId, d.key);
     }
-    const fav = await mediaFavorites.getFavoriteSet('calendars');
+    const fav = await contentFavorites.getFavoriteSet('calendars');
     const month = String(ctx.query.month || "").trim() || null;
     const day = String(ctx.query.day || "").trim() || null;
     await enrichItemLifetime(cal, { key: cal.rootId });
@@ -4592,18 +5520,24 @@ router
     const filter = String(ctx.query.filter || "ALL").toUpperCase()
     const viewerPrefs = await about.visibilityPrefs(getViewerId()).catch(() => null);
     if (filter === "CREATE") {
-      ctx.body = await projectsView([], "CREATE", null, { viewerPrefs })
+      const prefill = {
+        title: String(ctx.query.title || ""),
+        description: String(ctx.query.description || ""),
+        goal: String(ctx.query.goal || "")
+      }
+      ctx.body = await projectsView([], "CREATE", null, { viewerPrefs, prefill })
       return
     }
+    const q = String(ctx.query.q || '').trim()
     const modelFilter = filter === "BACKERS" ? "ALL" : filter
-    let projects = await projectsModel.listProjects(modelFilter)
+    let projects = await projectsModel.listProjects(modelFilter, { q })
     await enrichWithComments(projects)
     projects = await applyListFilters(projects, ctx)
     try { projects = await lifetime.enrichAndFilter(projects); } catch (_) {}
     await enrichMsgSize(projects)
     const spreadMap = await spreads.forMessages((projects || []).map(x => x && (x.id || x.key)));
     await warmAuthorNames(projects);
-    ctx.body = await projectsView(projects, filter, null, { viewerPrefs, spreadMap })
+    ctx.body = await projectsView(projects, filter, null, { viewerPrefs, spreadMap, q })
   })
   .get("/projects/edit/:id", async (ctx) => {
     if (!checkMod(ctx, 'projectsMod')) { ctx.redirect('/modules'); return; }
@@ -4620,7 +5554,7 @@ router
     const [comments, mapData] = await Promise.all([getVoteComments(projectId), resolveMapUrl(project.mapUrl)])
     await enrichMsgSize([project])
     await enrichItemLifetime(project, { key: project.id || project.key })
-    ctx.body = await singleProjectView(withCount(project, comments), filter, comments, { mapData, zoom, baseUrl: resolveExternalBaseUrl(ctx), spreads: await spreads.forMessage(project.id).catch(() => null) })
+    ctx.body = await singleProjectView(await withFavorite(withCount(project, comments), 'projects'), filter, comments, { mapData, zoom, baseUrl: resolveExternalBaseUrl(ctx), spreads: await spreads.forMessage(project.id).catch(() => null) })
   })
   .get("/c/projects/:projectId", async (ctx) => {
     let project;
@@ -4638,6 +5572,242 @@ router
     }
     ctx.type = 'text/html';
     ctx.body = await clearnetProjectView(project);
+  })
+  .get("/industry", async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    const filter = String(ctx.query.filter || "ALL").toUpperCase()
+    if (filter === "CREATE" || filter === "RULES") { ctx.body = await industryView([], filter); return }
+    if (filter === "BLUEPRINTS" || filter === "BUILDS") {
+      const q = String(ctx.query.search || "").trim().toLowerCase()
+      let items = filter === "BLUEPRINTS"
+        ? await industryModel.listAllBlueprints().catch(() => [])
+        : await industryModel.listAllBuilds().catch(() => [])
+      if (q) items = items.filter(x => [x.name, x.title, x.description, x.notes, x.facilityName].some(v => String(v || "").toLowerCase().includes(q)))
+      const spreadMap = await spreads.forMessages((items || []).map(x => x && (x.id || x.key))).catch(() => new Map())
+      ctx.body = await industryView(items, filter, { spreadMap })
+      return
+    }
+    const search = String(ctx.query.search || "").trim()
+    const sector = String(ctx.query.sector || "").trim().toLowerCase()
+    let facilities = await industryModel.listFacilities(filter)
+    if (sector) facilities = facilities.filter(x => x.sector === sector)
+    if (search) {
+      const q = search.toLowerCase()
+      facilities = facilities.filter(x => [x.name, x.description, x.sector].some(v => String(v || "").toLowerCase().includes(q)))
+    }
+    try { facilities = await lifetime.enrichAndFilter(facilities); } catch (_) {}
+    await enrichMsgSize(facilities)
+    const spreadMap = await spreads.forMessages((facilities || []).map(x => x && (x.id || x.key)));
+    await warmAuthorNames(facilities);
+    ctx.body = await industryView(facilities, filter, { spreadMap, search, sector })
+  })
+  .get("/industry/edit/:id", async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    const fc = await industryModel.getFacilityById(ctx.params.id)
+    ctx.body = await industryView([fc], "EDIT")
+  })
+  .get("/industry/build/:id", async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const build = await industryModel.getBuild(ctx.params.id)
+      ctx.body = await singleBuildView(build, { kind: ctx.query.kind, spreads: await spreads.forMessage(build.id).catch(() => null) })
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 404 }) }
+  })
+  .get("/industry/builds/:id/edit", async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const build = await industryModel.getBuild(ctx.params.id)
+      const fc = await industryModel.getFacilityById(build.facilityId)
+      ctx.body = await buildEditView(build, fc)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 404 }) }
+  })
+  .get("/industry/blueprint/:id", async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const bp = await industryModel.getBlueprint(ctx.params.id)
+      ctx.body = await singleBlueprintView(bp, { spreads: await spreads.forMessage(bp.id).catch(() => null) })
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 404 }) }
+  })
+  .get("/industry/blueprints/:id/edit", async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const bp = await industryModel.getBlueprint(ctx.params.id)
+      const fc = await industryModel.getFacilityById(bp.facility)
+      ctx.body = await blueprintEditView(bp, fc)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 404 }) }
+  })
+  .get("/industry/:id", async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    const filter = String(ctx.query.filter || "ALL").toUpperCase()
+    const facility = await industryModel.getFacilityById(ctx.params.id)
+    const zoom = parseInt(ctx.query.zoom) || 2;
+    const [mapData, blueprints, builds, allJobs] = await Promise.all([
+      resolveMapUrl(facility.mapUrl),
+      industryModel.listBlueprints(ctx.params.id).catch(() => []),
+      industryModel.listBuilds(ctx.params.id, 'ALL').catch(() => []),
+      checkMod(ctx, 'jobsMod') ? jobsModel.listJobs('ALL', getViewerId()).catch(() => []) : Promise.resolve([])
+    ])
+    const facilityRef = facility.root || facility.id
+    const facilityJobs = (allJobs || []).filter(j => j && j.industry === facilityRef)
+    await enrichMsgSize([facility])
+    await enrichItemLifetime(facility, { key: facility.id || facility.key })
+    const childSpreadMap = await spreads.forMessages([...(blueprints || []), ...(builds || [])].map(x => x && (x.id || x.key))).catch(() => new Map())
+    ctx.body = await singleFacilityView(facility, filter, { mapData, zoom, blueprints, builds, facilityJobs, childSpreadMap, spreads: await spreads.forMessage(facility.id).catch(() => null) })
+  })
+  .post("/industry/create", koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const image = ctx.request.files?.image ? await handleBlobUpload(ctx, "image") : null
+      const res = await industryModel.createFacility({ ...(ctx.request.body || {}), image })
+      ctx.redirect(`/industry/${encodeURIComponent(res.key)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/update/:id", koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const image = ctx.request.files?.image ? await handleBlobUpload(ctx, "image") : undefined
+      await industryModel.updateFacility(ctx.params.id, { ...(ctx.request.body || {}), ...(image !== undefined ? { image } : {}) })
+      ctx.redirect(`/industry/${encodeURIComponent(ctx.params.id)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/delete/:id", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try { await industryModel.deleteFacility(ctx.params.id); ctx.redirect('/industry?filter=MINE') }
+    catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/join/:id", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try { await industryModel.joinFacility(ctx.params.id); safeRefererRedirect(ctx, `/industry/${encodeURIComponent(ctx.params.id)}`) }
+    catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/apply/:id", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const before = await industryModel.getFacilityById(ctx.params.id).catch(() => null)
+      await industryModel.joinFacility(ctx.params.id)
+      if (before && before.membershipPolicy === 'vote') {
+        const me = getViewerId()
+        for (const m of (before.members || [])) { if (m !== me) { try { await pmModel.sendMessage([m], "INDUSTRY_APPLICATION", `A new habitant requested to join [${before.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)})`); } catch (_) {} } }
+      }
+      safeRefererRedirect(ctx, `/industry/${encodeURIComponent(ctx.params.id)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/leave/:id", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try { await industryModel.leaveFacility(ctx.params.id); safeRefererRedirect(ctx, `/industry/${encodeURIComponent(ctx.params.id)}`) }
+    catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/invite/:id", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    const invitee = ctx.request.body.invitee
+    try {
+      await industryModel.inviteToFacility(ctx.params.id, invitee)
+      try { const fc = await industryModel.getFacilityById(ctx.params.id); await pmModel.sendMessage([invitee], "INDUSTRY_INVITED", `You have been invited to join [${fc.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)})`); } catch (_) {}
+      safeRefererRedirect(ctx, `/industry/${encodeURIComponent(ctx.params.id)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/govern/:id", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    const subject = ctx.request.body.subject, ref = ctx.request.body.ref
+    try {
+      const before = await industryModel.getFacilityById(ctx.params.id).catch(() => null)
+      await industryModel.voteGovernance(ctx.params.id, subject, ref, ctx.request.body.choice)
+      const after = await industryModel.getFacilityById(ctx.params.id).catch(() => null)
+      const me = getViewerId()
+      if (subject === 'admit' && ref && before && after && !before.members.includes(ref) && after.members.includes(ref)) {
+        try { await pmModel.sendMessage([ref], "INDUSTRY_ADMITTED", `You have been admitted to [${after.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)})`); } catch (_) {}
+      }
+      if (subject === 'dissolve' && before && after && before.status !== 'DISSOLVED' && after.status === 'DISSOLVED') {
+        for (const m of (after.members || [])) { if (m !== me) { try { await pmModel.sendMessage([m], "INDUSTRY_DISSOLVED", `The facility [${after.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)}) has been dissolved by collective vote`); } catch (_) {} } }
+      }
+      safeRefererRedirect(ctx, `/industry/${encodeURIComponent(ctx.params.id)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post('/industry/opinions/:id/:category', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try { await industryModel.createOpinion(ctx.params.id, ctx.params.category); }
+    catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }); return; }
+    safeRefererRedirect(ctx, `/industry/${encodeURIComponent(ctx.params.id)}`)
+  })
+  .post("/industry/:fid/blueprints", koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const image = ctx.request.files?.image ? await handleBlobUpload(ctx, "image") : null
+      await industryModel.createBlueprint(ctx.params.fid, { ...(ctx.request.body || {}), image })
+      safeRefererRedirect(ctx, `/industry/${encodeURIComponent(ctx.params.fid)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/blueprints/:id/update", koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const image = ctx.request.files?.image ? await handleBlobUpload(ctx, "image") : undefined
+      await industryModel.updateBlueprint(ctx.params.id, { ...(ctx.request.body || {}), ...(image !== undefined ? { image } : {}) })
+      const bp = await industryModel.getBlueprint(ctx.params.id).catch(() => null)
+      ctx.redirect(bp ? `/industry/${encodeURIComponent(bp.facility)}` : '/industry')
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/blueprints/:id/delete", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    const bp = await industryModel.getBlueprint(ctx.params.id).catch(() => null)
+    try { await industryModel.deleteBlueprint(ctx.params.id) } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }); return }
+    ctx.redirect(bp && bp.facilityId ? `/industry/${encodeURIComponent(bp.facilityId)}` : '/industry?filter=BLUEPRINTS')
+  })
+  .post("/industry/:fid/builds", koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const image = ctx.request.files?.image ? await handleBlobUpload(ctx, "image") : null
+      const res = await industryModel.createBuild(ctx.params.fid, { ...(ctx.request.body || {}), image })
+      ctx.redirect(`/industry/build/${encodeURIComponent(res.key)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/builds/:id/update", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, "industryMod")) { ctx.redirect("/modules"); return; }
+    try {
+      await industryModel.updateBuild(ctx.params.id, ctx.request.body || {})
+      safeRefererRedirect(ctx, `/industry/build/${encodeURIComponent(ctx.params.id)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/builds/:id/delete", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try { await industryModel.deleteBuild(ctx.params.id); ctx.redirect('/industry?filter=BUILDS') }
+    catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/builds/:id/vote", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const before = await industryModel.getBuild(ctx.params.id).catch(() => null)
+      await industryModel.voteBuild(ctx.params.id, ctx.request.body.choice)
+      const after = await industryModel.getBuild(ctx.params.id).catch(() => null)
+      if (before && after && before.status !== 'APPROVED' && after.status === 'APPROVED' && after.proposer !== getViewerId()) {
+        try { await pmModel.sendMessage([after.proposer], "INDUSTRY_BUILD_APPROVED", `Your build [${after.title || 'a build'}](/industry/build/${encodeURIComponent(ctx.params.id)}) has been approved`); } catch (_) {}
+      }
+      safeRefererRedirect(ctx, `/industry/build/${encodeURIComponent(ctx.params.id)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/builds/:id/status", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try { await industryModel.setBuildStatus(ctx.params.id, ctx.request.body.status); safeRefererRedirect(ctx, `/industry/build/${encodeURIComponent(ctx.params.id)}`) }
+    catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/builds/:id/contribute", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body || {}
+    try {
+      await industryModel.contribute(ctx.params.id, b)
+      safeRefererRedirect(ctx, `/industry/build/${encodeURIComponent(ctx.params.id)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
+  })
+  .post("/industry/builds/:id/distribute", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
+    try {
+      const viewer = getViewerId()
+      const res = await industryModel.distributeBuild(ctx.params.id, { outputValue: ctx.request.body.outputValue })
+      for (const alloc of res.plan.allocations) {
+        if (!alloc || !alloc.to || alloc.to === viewer || !(alloc.amount > 0)) continue
+        try { await pmModel.sendMessage([alloc.to], "INDUSTRY_DISTRIBUTED", `Build [${res.build.title || 'a build'}](/industry/build/${encodeURIComponent(ctx.params.id)}) allocated you ${alloc.amount.toFixed(2)} ECO`) } catch (_) {}
+      }
+      safeRefererRedirect(ctx, `/industry/build/${encodeURIComponent(ctx.params.id)}`)
+    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
   })
   .get("/banking", async (ctx) => {
     if (!checkMod(ctx, 'bankingMod')) { ctx.redirect('/modules'); return; }
@@ -4759,8 +5929,10 @@ router
     ctx.body = renderEpochView(epoch, allocations);
   })
   .get("/favorites", async (ctx) => {
-    const filter = qf(ctx), data = await favoritesModel.listAll({ filter });
-    ctx.body = await favoritesView(data.items, filter, data.counts);
+    const filter = qf(ctx), q = String(ctx.query.q || '').trim();
+    const data = await favoritesModel.listAll({ filter });
+    const items = applyTextSearch(data.items, q, ['title', 'name', 'description', 'category', 'url', 'tags']);
+    ctx.body = await favoritesView(items, filter, data.counts, q);
   })
   .get("/logs", async (ctx) => {
     if (!checkMod(ctx, 'logsMod')) { ctx.redirect('/modules'); return; }
@@ -4769,13 +5941,6 @@ router
     if (view === 'create') {
       const mode = ctx.query.mode === 'ai' ? 'ai' : 'manual';
       ctx.body = logsView([], 'today', mode, { view: 'create', aiModOn });
-      return;
-    }
-    if (view === 'edit') {
-      const id = String(ctx.query.id || '');
-      const entry = id ? await logsModel.getLogById(id) : null;
-      if (!entry) { ctx.redirect('/logs'); return; }
-      ctx.body = logsView([], 'today', entry.mode, { view: 'edit', aiModOn, entry });
       return;
     }
     const filter = qf(ctx, 'today');
@@ -4794,7 +5959,8 @@ router
   })
   .get("/logs/view/:id", async (ctx) => {
     if (!checkMod(ctx, 'logsMod')) { ctx.redirect('/modules'); return; }
-    const entry = await logsModel.getLogById(ctx.params.id);
+    const entries = await logsModel.listLogs('always');
+    const entry = entries.find(e => e.key === ctx.params.id);
     if (!entry) { ctx.redirect('/logs'); return; }
     const aiModOn = logsModel.isAImodOn();
     ctx.body = logsView([], 'today', entry.mode, { view: 'detail', aiModOn, entry });
@@ -4809,11 +5975,17 @@ router
     } catch (_) {}
     ctx.redirect('/logs');
   })
-  .post("/logs/edit/:id", koaBody(), async (ctx) => {
+  .get("/logs/edit/:id", async (ctx) => {
+    if (!checkMod(ctx, 'logsMod')) { ctx.redirect('/modules'); return; }
+    const entry = await logsModel.getLogById(ctx.params.id);
+    if (!entry) { ctx.redirect('/logs'); return; }
+    ctx.body = logsView([], 'today', entry.mode, { view: 'edit', aiModOn: logsModel.isAImodOn(), entry });
+  })
+  .post("/logs/update/:id", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'logsMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body || {};
     try { await logsModel.updateLog(ctx.params.id, { label: b.label || '', text: b.text || '' }); } catch (_) {}
-    ctx.redirect('/logs');
+    ctx.redirect(`/logs/view/${encodeURIComponent(ctx.params.id)}`);
   })
   .post("/logs/delete/:id", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'logsMod')) { ctx.redirect('/modules'); return; }
@@ -4847,6 +6019,10 @@ router
   })  
   .get("/thread/:message", async (ctx) => {
     const { message } = ctx.params;
+    if (checkMod(ctx, 'blogsMod')) {
+      const target = await blogModel.blogHrefFor(message).catch(() => null);
+      if (target) { ctx.redirect(target); return; }
+    }
     const thread = async (message) => {
       const messages = await post.fromThread(message);
       const spreadMap = await spreads.forMessages((messages || []).map(m => m && m.key)).catch(() => new Map());
@@ -4864,7 +6040,7 @@ router
     ctx.body = await subtopicView({ messages, myFeedId, spreadMap });
   })
   .get("/publish", async (ctx) => {
-    ctx.body = await publishView();
+    ctx.redirect('/blogs?filter=CREATE');
   })
   .get("/comment/:message", async (ctx) => {
     const { messages, myFeedId, parentMessage } =
@@ -4971,6 +6147,46 @@ router
     const tr = await transfersModel.getTransferById(ctx.params.id, getViewerId());
     ctx.body = await transferView([tr], 'edit', ctx.params.id, {});
   })
+  .post('/transfers/:id/share', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'transfersMod')) { ctx.redirect('/modules'); return; }
+    const transfer = await transfersModel.getTransferById(ctx.params.id, getViewerId()).catch(() => null);
+    if (!transfer) { ctx.redirect('/transfers'); return; }
+    const pdf = buildSmartContractPdf({ transfer, block: null, viewerId: null });
+    const slug = String(transfer.concept || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+    await sharePdfBuffer(ctx, pdf, `oasis-smart-contract-${slug || 'transfer'}.pdf`, transfer.concept || '');
+  })
+  .get('/reports/:id/pdf', async ctx => sendContentPdf(ctx, 'reports', ctx.params.id))
+  .post('/reports/:id/share', koaBody(), async ctx => sharePdfAsPm(ctx, 'reports', ctx.params.id))
+  .get('/votes/:id/pdf', async ctx => sendContentPdf(ctx, 'votes', ctx.params.id))
+  .post('/votes/:id/share', koaBody(), async ctx => sharePdfAsPm(ctx, 'votes', ctx.params.id))
+  .get('/events/:id/pdf', async ctx => sendContentPdf(ctx, 'events', ctx.params.id))
+  .post('/events/:id/share', koaBody(), async ctx => sharePdfAsPm(ctx, 'events', ctx.params.id))
+  .get('/tasks/:id/pdf', async ctx => sendContentPdf(ctx, 'tasks', ctx.params.id))
+  .post('/tasks/:id/share', koaBody(), async ctx => sharePdfAsPm(ctx, 'tasks', ctx.params.id))
+  .get('/calendars/:id/pdf', async ctx => sendContentPdf(ctx, 'calendars', ctx.params.id))
+  .post('/calendars/:id/share', koaBody(), async ctx => sharePdfAsPm(ctx, 'calendars', ctx.params.id))
+  .get('/cv/pdf', async ctx => sendContentPdf(ctx, 'cv', null))
+  .get('/cv/pdf/:id', async ctx => {
+    const targetId = ctx.params.id;
+    const viewerId = getViewerId();
+    const cv = await cvModel.getCVByUserId(targetId).catch(() => null);
+    const hidden = cv && String(cv.visibility || '').toUpperCase() === 'HIDDEN';
+    if (!cv || (hidden && String(targetId) !== String(viewerId))) { ctx.redirect('/inhabitants?filter=CVs'); return; }
+    const pdf = buildContentPdf('cv', cv, {}, String(targetId) === String(viewerId) ? viewerId : null);
+    ctx.set('Content-Type', 'application/pdf');
+    ctx.set('Content-Disposition', `attachment; filename="${pdfFilename('cv', cv)}"`);
+    ctx.body = pdf;
+  })
+  .post('/cv/share', koaBody(), async ctx => sharePdfAsPm(ctx, 'cv', null))
+  .post('/cv/share/:id', koaBody(), async ctx => {
+    const targetId = ctx.params.id;
+    const viewerId = getViewerId();
+    const cv = await cvModel.getCVByUserId(targetId).catch(() => null);
+    const hidden = cv && String(cv.visibility || '').toUpperCase() === 'HIDDEN';
+    if (!cv || (hidden && String(targetId) !== String(viewerId))) { ctx.redirect('/inhabitants?filter=CVs'); return; }
+    const pdf = buildContentPdf('cv', cv, {}, null);
+    await sharePdfBuffer(ctx, pdf, pdfFilename('cv', cv), cv.name || targetId);
+  })
   .get('/transfers/contract/:transferId', async ctx => {
     if (!checkMod(ctx, 'transfersMod')) { ctx.redirect('/modules'); return; }
     const transfer = await transfersModel.getTransferById(ctx.params.transferId, getViewerId());
@@ -5021,7 +6237,10 @@ router
       } catch (_) { block = null; }
     }
     await enrichItemLifetime(transfer, { author: transfer.from });
-    ctx.body = await singleTransferView(transfer, filter, { q: ctx.query.q || '', minAmount: ctx.query.minAmount ?? '', maxAmount: ctx.query.maxAmount ?? '', sort: ctx.query.sort || 'recent', returnTo: safeReturnTo(ctx, `/transfers?filter=${encodeURIComponent(filter)}`, ['/transfers']), block, spreads: await spreads.forMessage(transfer.id).catch(() => null) });
+    const comments = await getVoteComments(transfer.id);
+    const fav = await contentFavorites.getFavoriteSet('transfers');
+    await warmAuthorNames([transfer], comments);
+    ctx.body = await singleTransferView({ ...transfer, isFavorite: fav.has(String(transfer.id)) }, filter, { q: ctx.query.q || '', minAmount: ctx.query.minAmount ?? '', maxAmount: ctx.query.maxAmount ?? '', sort: ctx.query.sort || 'recent', returnTo: safeReturnTo(ctx, `/transfers?filter=${encodeURIComponent(filter)}`, ['/transfers']), block, comments, spreads: await spreads.forMessage(transfer.id).catch(() => null) });
   })
   .post('/ai', koaBody(), async (ctx) => {
     const { input } = ctx.request.body;
@@ -5228,18 +6447,17 @@ router
     try {
       const embedder = require('../AI/embedder');
       const routesIndex = require('../AI/routes_index');
-      if (!embedder.isInstalled()) {
-        ctx.redirect('/search?query=' + encodeURIComponent(raw));
-        return;
-      }
-      const vec = await embedder.embed(raw);
-      if (!vec) {
-        ctx.redirect('/search?query=' + encodeURIComponent(raw));
-        return;
-      }
       const isModuleEnabled = (modName) => checkMod(ctx, modName);
-      const best = await routesIndex.resolveBest(vec, { isModuleEnabled, embed: embedder.embed });
-      if (best && best.path) { ctx.redirect(best.path); return; }
+      if (embedder.isInstalled()) {
+        const vec = await embedder.embed(raw);
+        if (vec) {
+          const best = await routesIndex.resolveBest(vec, { isModuleEnabled, embed: embedder.embed });
+          if (best && best.path) { ctx.redirect(best.path); return; }
+        }
+      }
+      const { aiNavResultsView } = require('../views/main_views');
+      const results = routesIndex.resolveKeywordTopK({ isModuleEnabled }, raw, 8);
+      if (Array.isArray(results) && results.length) { ctx.body = await aiNavResultsView({ query: raw, results }); return; }
     } catch (_) {}
     ctx.redirect('/search?query=' + encodeURIComponent(raw));
   })
@@ -5294,7 +6512,15 @@ router
       ctx.body = await pmView('', '', '', false, key);
       return;
     }
-    await pmModel.sendMessage(recipientsArr, cleanSubject, cleanText);
+    try {
+      await pmModel.sendMessage(recipientsArr, cleanSubject, cleanText);
+    } catch (e) {
+      if (isSsbTooLargeError(e)) {
+        sendErrorPage(ctx, require('../views/main_views').i18n.publishTooLong || 'Your message is too long. Please shorten it.', { status: 400 });
+        return;
+      }
+      throw e;
+    }
     await refreshInboxCount();
     ctx.redirect('/inbox?filter=sent');
   })
@@ -5331,7 +6557,6 @@ router
         cleanup(); ctx.redirect('/pm?fileerror=mutual#fileshare'); return;
       }
     }
-    const fmtB = (n) => { const x = Number(n) || 0; if (x < 1024) return x + ' B'; const u = ['KB','MB','GB','TB']; let v = x / 1024, i = 0; while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; } return v.toFixed(v >= 100 || i === 0 ? 0 : 1) + ' ' + u[i]; };
     if (!file || !file.filepath || !file.size) { cleanup(); ctx.redirect('/pm?fileerror=nofile#fileshare'); return; }
     if (file.size > FILESHARE_MAX_SIZE) { cleanup(); ctx.redirect('/pm?fileerror=size#fileshare'); return; }
     let pointer;
@@ -5349,7 +6574,7 @@ router
       recipient, subject: stripDangerousTags(b.subject || ''),
       manifestBlobId: pointer.manifestBlobId, keyHex: pointer.key,
       filename: pointer.filename, mime: pointer.mime, size: pointer.size,
-      sizeLabel: fmtB(pointer.size), crypter: useCrypter, sharedKey
+      sizeLabel: formatFileSize(pointer.size), crypter: useCrypter, sharedKey
     });
   })
   .post('/pm/file', koaBodyFileshare, async ctx => {
@@ -5464,6 +6689,7 @@ router
     const applySearchPrivacy = (msgs) => msgs.filter(msg => {
       const c = msg.value?.content;
       if (!c) return true;
+      if (c.type === 'pub') return false;
       if (Array.isArray(c.recps)) return false;
       if (c.type === 'post' && (c.private === true || c.recps)) return false;
       if (c.tribeId && anonTribeIds.has(c.tribeId)) return false;
@@ -5471,6 +6697,8 @@ router
       if (c.type === 'task' && String(c.isPublic).toUpperCase() === 'PRIVATE' && c.author !== userId && !(Array.isArray(c.assignees) && c.assignees.includes(userId))) return false;
       if (c.status === 'PRIVATE') return false;
       if (c.type === 'shop' && (c.visibility === 'CLOSED' || c.encryptedPayload) && c.author !== userId) return false;
+      if (c.type === 'schoolCourse' && c.encryptedPayload) return false;
+      if (c.type === 'schoolCourse' && String(c.visibility || '').toUpperCase() === 'INVITE' && c.author !== userId && !(Array.isArray(c.invited) && c.invited.includes(userId))) return false;
       return true;
     });
     const results = await searchModel.search({ query, types });
@@ -5551,29 +6779,6 @@ router
   });
   ctx.redirect(`/thread/${encodeURIComponent(parent.key)}`);
   })
-  .post("/publish/preview", koaBody({multipart: true, formidable: { multiples: false, maxFileSize: maxSize }, urlencoded: true }), async (ctx) => {
-    const cw = stripDangerousTags(ctx.request.body.contentWarning?.toString().trim() || "");
-    ctx.body = await previewView({ previewData: await preparePreview(ctx), contentWarning: cw.length > 0 ? cw : undefined });
-  })
-  .post("/publish", koaBody({ multipart: true, urlencoded: true, formidable: { multiples: false, maxFileSize: maxSize } }), async (ctx) => {
-    const b = ctx.request.body, text = stripDangerousTags(b.text?.toString().trim() || ""), cw = stripDangerousTags(b.contentWarning?.toString().trim() || "");
-    let mentions = [];
-    try { mentions = JSON.parse(b.mentions || "[]"); } catch { mentions = await extractMentions(text); }
-    await post.root({ text, mentions, contentWarning: cw.length > 0 ? cw : undefined });
-    try { activityModel.invalidateCache(); } catch (_) {}
-    ctx.redirect("/public/latest");
-  })
-  .post("/publish/custom", koaBody(), async (ctx) => {
-    const text = String(ctx.request.body.text);
-    const obj = JSON.parse(text);
-    const ALLOWED_TYPES = ['post','about','contact','vote','pub','channel'];
-    if (!obj.type || !ALLOWED_TYPES.includes(obj.type)) { ctx.throw(400, 'Invalid message type'); return; }
-    const sanitizeObj = (o) => { for (const k of Object.keys(o)) { if (typeof o[k] === 'string') o[k] = stripDangerousTags(o[k]); else if (o[k] && typeof o[k] === 'object') sanitizeObj(o[k]); } };
-    sanitizeObj(obj);
-    ctx.body = await post.publishCustom(obj);
-    try { activityModel.invalidateCache(); } catch (_) {}
-    ctx.redirect(`/public/latest`);
-  })
   .post("/follow/:feed", koaBody(), async (ctx) => {
     ctx.body = await friend.follow(ctx.params.feed);
     safeRefererRedirect(ctx, '/inhabitants');
@@ -5593,7 +6798,7 @@ router
   .post("/spread/:message", koaBody(), async (ctx) => {
     const { message } = ctx.params;
     const ref = ctx.request.header.referer;
-    let target = '/public/latest';
+    let target = '/blogs';
     try {
       if (ref) {
         const u = new URL(ref);
@@ -5678,7 +6883,7 @@ router
   .post("/like/:message", koaBody(), async (ctx) => {
     const { message } = ctx.params, voteValue = Number(ctx.request.body.voteValue);
     const ref = ctx.request.header.referer;
-    let target = '/public/latest';
+    let target = '/blogs';
     try {
       if (ref) {
         const u = new URL(ref);
@@ -5751,16 +6956,20 @@ router
     const pw = ctx.request.body.password;
     if (!pw || pw.length < 32) return ctx.redirect('/legacy');
     try {
-      ctx.body = { message: 'Data exported successfully!', file: await legacyModel.exportData({ password: pw }) };
-      ctx.redirect('/legacy');
-    } catch (error) { ctx.status = 500; ctx.body = { error: `Error: ${error.message}` }; ctx.redirect('/legacy'); }
+      const { filename, data } = await legacyModel.exportData({ password: pw });
+      ctx.set('Content-Type', 'application/octet-stream');
+      ctx.set('Content-Disposition', `attachment; filename="${filename}"`);
+      ctx.set('Content-Length', String(data.length));
+      ctx.body = data;
+      try { onboardingModel.markStep('backup'); } catch (_) {}
+    } catch (error) { sendErrorPage(ctx, error.message); }
   })
-  .post('/legacy/import', koaBody({ 
-    multipart: true, 
-    formidable: { 
-      keepExtensions: true, 
-      uploadDir: '/tmp', 
-      } 
+  .post('/legacy/import', koaBody({
+    multipart: true,
+    formidable: {
+      keepExtensions: true,
+      uploadDir: os.tmpdir(),
+      }
     }), async (ctx) => {
     const uploadedFile = ctx.request.files?.uploadedFile, pw = ctx.request.body.importPassword;
     if (!uploadedFile) { ctx.body = { error: 'No file uploaded' }; return ctx.redirect('/legacy'); }
@@ -5801,7 +7010,7 @@ router
     const { feedId, category } = ctx.params;
     try {
       await feedModel.addOpinion(feedId, category);
-    } catch { /* already voted or invalid — ignore */ }
+    } catch {}
     try { activityModel.invalidateCache(); } catch (_) {}
     ctx.redirect(ctx.get("Referer") || "/feed");
   })
@@ -5823,13 +7032,13 @@ router
   .post("/bookmarks/create", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'bookmarksMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body;
-    await bookmarksModel.createBookmark(stripDangerousTags(b.url), b.tags, stripDangerousTags(b.description), b.category, b.lastVisit);
+    await bookmarksModel.createBookmark(stripDangerousTags(b.url), b.tags, stripDangerousTags(b.description), b.lastVisit);
     ctx.redirect(safeReturnTo(ctx, '/bookmarks?filter=all', ['/bookmarks']));
   })
   .post("/bookmarks/update/:id", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'bookmarksMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body;
-    await bookmarksModel.updateBookmarkById(ctx.params.id, { url: stripDangerousTags(b.url), tags: b.tags, description: stripDangerousTags(b.description), category: b.category, lastVisit: b.lastVisit });
+    await bookmarksModel.updateBookmarkById(ctx.params.id, { url: stripDangerousTags(b.url), tags: b.tags, description: stripDangerousTags(b.description), lastVisit: b.lastVisit });
     ctx.redirect(safeReturnTo(ctx, '/bookmarks?filter=mine', ['/bookmarks']));
   })
   .post("/bookmarks/delete/:id", koaBody(), async ctx => deleteAction(ctx, 'bookmarks'))
@@ -5840,13 +7049,13 @@ router
   .post("/images/create", koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
     if (!checkMod(ctx, 'imagesMod')) { ctx.redirect('/modules'); return; }
     const blob = await handleBlobUpload(ctx, 'image'), b = ctx.request.body;
-    await imagesModel.createImage(blob, b.tags, stripDangerousTags(b.title), stripDangerousTags(b.description), parseBool01(b.meme), stripDangerousTags(b.mapUrl || ""));
+    await imagesModel.createImage(blob, b.tags, stripDangerousTags(b.title), stripDangerousTags(b.description), stripDangerousTags(b.mapUrl || ""));
     ctx.redirect(safeReturnTo(ctx, '/images?filter=all', ['/images']));
   })
   .post("/images/update/:id", koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
     if (!checkMod(ctx, 'imagesMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body, blob = ctx.request.files?.image ? await handleBlobUpload(ctx, 'image') : null;
-    await imagesModel.updateImageById(ctx.params.id, blob, b.tags, stripDangerousTags(b.title), stripDangerousTags(b.description), parseBool01(b.meme), stripDangerousTags(b.mapUrl || ""));
+    await imagesModel.updateImageById(ctx.params.id, blob, b.tags, stripDangerousTags(b.title), stripDangerousTags(b.description), stripDangerousTags(b.mapUrl || ""));
     ctx.redirect(safeReturnTo(ctx, '/images?filter=mine', ['/images']));
   })
   .post("/images/delete/:id", koaBody(), async ctx => deleteAction(ctx, 'images'))
@@ -5894,7 +7103,7 @@ router
     if (!checkMod(ctx, 'mapsMod')) { ctx.redirect('/modules'); return; }
     try {
       const code = await mapsModel.generateInvite(ctx.params.id);
-      ctx.body = `<html><body><p>Map invite code: <code>${code}</code></p><p><a href="/maps/${encodeURIComponent(ctx.params.id)}">Back</a></p></body></html>`;
+      ctx.body = renderMapInvitePage(code);
     } catch (e) {
       ctx.redirect(`/maps/${encodeURIComponent(ctx.params.id)}`);
     }
@@ -6201,6 +7410,22 @@ router
     await tribesContentModel.updateStatus(ctx.params.taskId, ctx.request.body.status);
     ctx.redirect(`/tribe/${encodeURIComponent(ctx.params.id)}?section=tasks`);
   })
+  .post('/tribe/:id/polls/create', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'tribesMod') || !checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
+    const tribe = await tribesModel.getTribeById(ctx.params.id);
+    if (!tribe || !tribe.members.includes(getViewerId())) { sendErrorPage(ctx, 'Forbidden', { status: 403 }); return; }
+    const b = ctx.request.body || {};
+    try {
+      await pollsModel.createPoll({
+        question: stripDangerousTags(b.question),
+        options: stripDangerousTags(String(b.options || '')).split('\n'),
+        anonymous: [].concat(b.anonymous).includes('1'),
+        multiple: [].concat(b.multiple).includes('1'),
+        tribeId: tribe.id
+      });
+    } catch (err) { sendErrorPage(ctx, err.message || String(err), { status: 400 }); return; }
+    ctx.redirect(`/tribe/${encodeURIComponent(ctx.params.id)}?section=polls`);
+  })
   .post('/tribe/:id/votations/create', koaBody(), async ctx => {
     if (!checkMod(ctx, 'tribesMod')) { ctx.redirect('/modules'); return; }
     const tribe = await tribesModel.getTribeById(ctx.params.id);
@@ -6316,18 +7541,22 @@ router
   })
   .post('/tasks/create', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async ctx => {
     const b = ctx.request.body;
-    const imageMarkdown = ctx.request.files?.image ? await handleBlobUpload(ctx, 'image') : null;
-    let desc = stripDangerousTags(b.description);
-    if (imageMarkdown) desc = (desc ? desc + '\n' : '') + imageMarkdown;
-    await tasksModel.createTask(stripDangerousTags(b.title), desc, b.startTime, b.endTime, b.priority, stripDangerousTags(b.location), b.tags, b.isPublic);
+    const media = await readGalleryUpload(ctx);
+    const draftImages = mergeGallery(media.keep, media.uploaded, media.removeIndex);
+    if (media.isMediaAction) {
+      ctx.body = await taskView([], 'create', null, b.returnTo, { draft: { ...b, images: draftImages } });
+      return;
+    }
+    await tasksModel.createTask(stripDangerousTags(b.title), stripDangerousTags(b.description), b.startTime, b.endTime, b.priority, stripDangerousTags(b.location), b.tags, b.isPublic, { images: draftImages, video: media.clip || '' });
     ctx.redirect(safeReturnTo(ctx, '/tasks?filter=mine', ['/tasks']));
   })
   .post('/tasks/update/:id', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async ctx => {
     const b = ctx.request.body, tags = Array.isArray(b.tags) ? b.tags.filter(Boolean) : (typeof b.tags === 'string' ? b.tags.split(',').map(t => t.trim()).filter(Boolean) : []);
-    const imageMarkdown = ctx.request.files?.image ? await handleBlobUpload(ctx, 'image') : null;
-    let desc = stripDangerousTags(b.description);
-    if (imageMarkdown) desc = (desc ? desc + '\n' : '') + imageMarkdown;
-    await tasksModel.updateTaskById(ctx.params.id, { title: stripDangerousTags(b.title), description: desc, startTime: b.startTime, endTime: b.endTime, priority: b.priority, location: stripDangerousTags(b.location), tags, isPublic: b.isPublic });
+    const media = await readGalleryUpload(ctx);
+    let current = [];
+    try { current = (await tasksModel.getTaskById(ctx.params.id)).images || []; } catch (_) { current = []; }
+    await tasksModel.updateTaskById(ctx.params.id, { title: stripDangerousTags(b.title), description: stripDangerousTags(b.description), startTime: b.startTime, endTime: b.endTime, priority: b.priority, location: stripDangerousTags(b.location), tags, isPublic: b.isPublic, ...galleryPatch(media, current) });
+    if (media.isMediaAction) { ctx.redirect(`/tasks/edit/${encodeURIComponent(ctx.params.id)}`); return; }
     ctx.redirect(safeReturnTo(ctx, '/tasks?filter=mine', ['/tasks']));
   })
   .post('/tasks/assign/:id', koaBody(), async ctx => {
@@ -6344,26 +7573,37 @@ router
   })
   .post('/tasks/:taskId/comments', koaBodyMiddleware, async ctx => commentAction(ctx, 'tasks', 'taskId'))
   .post('/reports/create', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async ctx => {
-    const b = ctx.request.body, image = await handleBlobUpload(ctx, 'image');
-    await reportsModel.createReport(stripDangerousTags(b.title), stripDangerousTags(b.description), b.category, image, b.tags, b.severity, {
+    const b = ctx.request.body;
+    const media = await readGalleryUpload(ctx);
+    const draftImages = mergeGallery(media.keep, media.uploaded, media.removeIndex);
+    if (media.isMediaAction) {
+      ctx.body = await reportView([], 'create', null, b.category || '', { draft: { ...b, images: draftImages } });
+      return;
+    }
+    await reportsModel.createReport(stripDangerousTags(b.title), stripDangerousTags(b.description), b.category, null, b.tags, b.severity, {
       stepsToReproduce: stripDangerousTags(b.stepsToReproduce), expectedBehavior: stripDangerousTags(b.expectedBehavior), actualBehavior: stripDangerousTags(b.actualBehavior), environment: stripDangerousTags(b.environment), reproduceRate: b.reproduceRate,
       problemStatement: stripDangerousTags(b.problemStatement), userStory: stripDangerousTags(b.userStory), acceptanceCriteria: stripDangerousTags(b.acceptanceCriteria),
       whatHappened: stripDangerousTags(b.whatHappened), reportedUser: b.reportedUser, evidenceLinks: stripDangerousTags(b.evidenceLinks),
-      contentLocation: stripDangerousTags(b.contentLocation), whyInappropriate: stripDangerousTags(b.whyInappropriate), requestedAction: stripDangerousTags(b.requestedAction)
-    });
+      contentLocation: stripDangerousTags(b.contentLocation), whyInappropriate: stripDangerousTags(b.whyInappropriate)
+    }, { images: draftImages, video: media.clip || '' });
     ctx.redirect('/reports');
   })
   .post('/reports/update/:id', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async ctx => {
-    const b = ctx.request.body, image = await handleBlobUpload(ctx, 'image');
+    const b = ctx.request.body;
+    const media = await readGalleryUpload(ctx);
+    let current = [];
+    try { current = (await reportsModel.getReportById(ctx.params.id)).images || []; } catch (_) { current = []; }
     await reportsModel.updateReportById(ctx.params.id, {
-      title: stripDangerousTags(b.title), description: stripDangerousTags(b.description), category: b.category, image, tags: b.tags, severity: b.severity,
+      title: stripDangerousTags(b.title), description: stripDangerousTags(b.description), category: b.category, tags: b.tags, severity: b.severity,
+      ...galleryPatch(media, current),
       template: {
         stepsToReproduce: stripDangerousTags(b.stepsToReproduce), expectedBehavior: stripDangerousTags(b.expectedBehavior), actualBehavior: stripDangerousTags(b.actualBehavior), environment: stripDangerousTags(b.environment), reproduceRate: b.reproduceRate,
         problemStatement: stripDangerousTags(b.problemStatement), userStory: stripDangerousTags(b.userStory), acceptanceCriteria: stripDangerousTags(b.acceptanceCriteria),
         whatHappened: stripDangerousTags(b.whatHappened), reportedUser: stripDangerousTags(b.reportedUser), evidenceLinks: stripDangerousTags(b.evidenceLinks),
-        contentLocation: stripDangerousTags(b.contentLocation), whyInappropriate: stripDangerousTags(b.whyInappropriate), requestedAction: stripDangerousTags(b.requestedAction)
+        contentLocation: stripDangerousTags(b.contentLocation), whyInappropriate: stripDangerousTags(b.whyInappropriate)
       }
     });
+    if (media.isMediaAction) { ctx.redirect(`/reports/edit/${encodeURIComponent(ctx.params.id)}`); return; }
     ctx.redirect('/reports?filter=mine');
   })
   .post('/reports/delete/:id', async ctx => {
@@ -6381,10 +7621,21 @@ router
   .post('/reports/:reportId/comments', koaBodyMiddleware, async ctx => commentAction(ctx, 'reports', 'reportId'))
   .post('/events/create', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
     const b = ctx.request.body;
-    const imageMarkdown = ctx.request.files?.image ? await handleBlobUpload(ctx, 'image') : null;
-    let desc = stripDangerousTags(b.description);
-    if (imageMarkdown) desc = (desc ? desc + '\n' : '') + imageMarkdown;
-    const evResult = await eventsModel.createEvent(stripDangerousTags(b.title), desc, b.date, stripDangerousTags(b.location), b.price, b.url, b.attendees || [], b.tags, b.isPublic, stripDangerousTags(b.mapUrl), b.clearnetPublic);
+    const media = await readGalleryUpload(ctx);
+    const draftImages = mergeGallery(media.keep, media.uploaded, media.removeIndex);
+    if (media.isMediaAction) {
+      const viewerPrefsDraft = await about.visibilityPrefs(getViewerId()).catch(() => null);
+      ctx.body = await eventView([], 'create', null, b.returnTo, { viewerPrefs: viewerPrefsDraft, draft: { ...b, images: draftImages } });
+      return;
+    }
+    const { intervalWeekly, intervalMonthly, intervalYearly } = readInterval(b);
+    const recurrence = {
+      weekly: intervalWeekly,
+      monthly: intervalMonthly,
+      yearly: intervalYearly,
+      until: b.intervalDeadline || b.recurrenceUntil || ''
+    };
+    const evResult = await eventsModel.createEvent(stripDangerousTags(b.title), stripDangerousTags(b.description), b.date, stripDangerousTags(b.location), b.price, b.url, b.attendees || [], b.tags, b.isPublic, stripDangerousTags(b.mapUrl), b.clearnetPublic, { images: draftImages, video: media.clip || '' }, recurrence);
     if ([].concat(b.addToCalendar).includes("1") && evResult && evResult.key) {
       try {
         await calendarsModel.createCalendar({
@@ -6405,10 +7656,9 @@ router
   })
   .post('/events/update/:id', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
     const b = ctx.request.body, existing = await eventsModel.getEventById(ctx.params.id);
-    const imageMarkdown = ctx.request.files?.image ? await handleBlobUpload(ctx, 'image') : null;
-    let desc = stripDangerousTags(b.description);
-    if (imageMarkdown) desc = (desc ? desc + '\n' : '') + imageMarkdown;
-    await eventsModel.updateEventById(ctx.params.id, { title: stripDangerousTags(b.title), description: desc, date: b.date, location: stripDangerousTags(b.location), price: b.price, url: b.url, attendees: b.attendees, tags: b.tags, isPublic: b.isPublic, createdAt: existing.createdAt, organizer: existing.organizer, mapUrl: stripDangerousTags(b.mapUrl), clearnetPublic: b.clearnetPublic });
+    const media = await readGalleryUpload(ctx);
+    await eventsModel.updateEventById(ctx.params.id, { title: stripDangerousTags(b.title), description: stripDangerousTags(b.description), date: b.date, location: stripDangerousTags(b.location), price: b.price, url: b.url, attendees: b.attendees, tags: b.tags, isPublic: b.isPublic, createdAt: existing.createdAt, organizer: existing.organizer, mapUrl: stripDangerousTags(b.mapUrl), clearnetPublic: b.clearnetPublic, ...readInterval(b), recurrenceUntil: b.intervalDeadline || b.recurrenceUntil || '', ...galleryPatch(media, existing.images || []) });
+    if (media.isMediaAction) { ctx.redirect(`/events/edit/${encodeURIComponent(ctx.params.id)}`); return; }
     ctx.redirect(safeReturnTo(ctx, '/events?filter=mine', ['/events']));
   })
   .post('/events/attend/:id', koaBody(), async ctx => {
@@ -6452,12 +7702,22 @@ router
   .post('/votes/create', koaBody(), async ctx => {
     const b = ctx.request.body, defaultOptions = ['YES', 'NO', 'ABSTENTION', 'CONFUSED', 'FOLLOW_MAJORITY', 'NOT_INTERESTED'];
     const parsedOptions = b.options ? b.options.split(',').map(o => o.trim()).filter(Boolean) : defaultOptions;
-    await votesModel.createVote(stripDangerousTags(b.question), b.deadline, parsedOptions, String(b.tags || '').split(',').map(t => t.trim()).filter(Boolean));
+    try {
+      await votesModel.createVote(stripDangerousTags(b.question), b.deadline, parsedOptions, String(b.tags || '').split(',').map(t => t.trim()).filter(Boolean));
+    } catch (err) {
+      ctx.redirect(voteFormRedirect('create', null, err, b));
+      return;
+    }
     ctx.redirect(safeReturnTo(ctx, '/votes?filter=mine', ['/votes']));
   })
   .post('/votes/update/:id', koaBody(), async ctx => {
     const b = ctx.request.body, parsedOptions = b.options ? b.options.split(',').map(o => o.trim()).filter(Boolean) : undefined;
-    await votesModel.updateVoteById(ctx.params.id, { question: stripDangerousTags(b.question), deadline: b.deadline, options: parsedOptions, tags: b.tags ? b.tags.split(',').map(t => t.trim()).filter(Boolean) : [] });
+    try {
+      await votesModel.updateVoteById(ctx.params.id, { question: stripDangerousTags(b.question), deadline: b.deadline, options: parsedOptions, tags: b.tags ? b.tags.split(',').map(t => t.trim()).filter(Boolean) : [] });
+    } catch (err) {
+      ctx.redirect(voteFormRedirect('edit', ctx.params.id, err, b));
+      return;
+    }
     ctx.redirect(safeReturnTo(ctx, '/votes?filter=mine', ['/votes']));
   })
   .post('/votes/delete/:id', koaBody(), async ctx => {
@@ -6712,7 +7972,7 @@ router
     const b = ctx.request.body, image = await handleBlobUpload(ctx, "image"), parsedStock = parseInt(String(b.stock || "0"), 10);
     if (!parsedStock || parsedStock <= 0) ctx.throw(400, "Stock must be a positive number.");
     const pickLast = v => Array.isArray(v) ? v[v.length - 1] : v, shpVal = pickLast(b.includesShipping);
-    await marketModel.createItem(b.item_type, stripDangerousTags(b.title), stripDangerousTags(b.description), image, b.price, b.tags, b.item_status, b.deadline, shpVal === "1" || shpVal === "on" || shpVal === true || shpVal === "true", parsedStock, stripDangerousTags(b.mapUrl), {}, b.visibility);
+    await marketModel.createItem(b.item_type, stripDangerousTags(b.title), stripDangerousTags(b.description), image, b.price, b.tags, b.item_status, b.deadline, shpVal === "1" || shpVal === "on" || shpVal === true || shpVal === "true", parsedStock, stripDangerousTags(b.mapUrl), { industry: stripDangerousTags(b.industry || "") }, b.visibility);
     ctx.redirect(safeReturnTo(ctx, "/market", ["/market"]));
   })
   .post("/market/update/:id", koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
@@ -6758,7 +8018,7 @@ router
     } catch (_) {}
     if (item.item_type === "exchange") await marketModel.setItemAsSold(ctx.params.id);
     else await marketModel.decrementStock(ctx.params.id);
-    try { await mediaFavorites.addFavorite('market', item.id || ctx.params.id); } catch (_) {}
+    try { await contentFavorites.addFavorite('market', item.id || ctx.params.id); } catch (_) {}
     if (item.shopProductId && checkMod(ctx, 'shopsMod')) {
       try { await shopsModel.buyProduct(item.shopProductId); } catch (_) {}
     }
@@ -6784,11 +8044,141 @@ router
     await marketModel.addBidToAuction(ctx.params.id, getViewerId(), ctx.request.body.bidAmount)
     ctx.redirect(safeReturnTo(ctx, "/market?filter=auctions", ["/market"]))
   })
+  .post("/market/opinions/:itemId/:category", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'marketMod')) { ctx.redirect('/modules'); return; }
+    try { await marketModel.createOpinion(ctx.params.itemId, ctx.params.category) } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/market/${encodeURIComponent(ctx.params.itemId)}`, ['/market']))
+  })
   .post("/market/:itemId/comments", koaBodyMiddleware, async ctx => commentAction(ctx, 'market', 'itemId'))
+  .post('/housing/create', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body
+    const media = await readGalleryUpload(ctx)
+    const images = mergeGallery(media.keep, media.uploaded, media.removeIndex)
+    const clip = media.clip
+    if (media.isMediaAction) {
+      ctx.body = await housingView([], 'CREATE', { maxImages: housingModel.MAX_IMAGES, draft: { ...b, images } })
+      return
+    }
+    let created = null
+    try {
+      created = await housingModel.createHousing({
+        housing_type: stripDangerousTags(b.housing_type),
+        property_type: stripDangerousTags(b.property_type),
+        title: stripDangerousTags(b.title),
+        description: stripDangerousTags(b.description),
+        rules: stripDangerousTags(b.rules),
+        place: stripDangerousTags(b.place),
+        mapUrl: stripDangerousTags(b.mapUrl),
+        price: b.price,
+        rooms: b.rooms,
+        size: b.size,
+        capacity: b.capacity,
+        availableFrom: b.availableFrom,
+        availableTo: b.availableTo,
+        images,
+        video: clip || '',
+        tags: b.tags,
+        visibility: b.visibility
+      })
+    } catch (err) { sendErrorPage(ctx, err.message || String(err), { status: 400 }); return }
+    ctx.redirect(safeReturnTo(ctx, '/housing?filter=MINE', ['/housing']))
+  })
+  .post('/housing/update/:id', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body
+    const uploaded = await handleBlobUploads(ctx, 'images')
+    const newClip = ctx.request.files?.video ? await handleBlobUpload(ctx, 'video') : null
+    const patch = {
+      housing_type: stripDangerousTags(b.housing_type),
+      property_type: stripDangerousTags(b.property_type),
+      title: stripDangerousTags(b.title),
+      description: stripDangerousTags(b.description),
+      rules: stripDangerousTags(b.rules),
+      place: stripDangerousTags(b.place),
+      mapUrl: stripDangerousTags(b.mapUrl),
+      price: b.price,
+      rooms: b.rooms,
+      size: b.size,
+      capacity: b.capacity,
+      availableFrom: b.availableFrom,
+      availableTo: b.availableTo,
+      tags: b.tags,
+      visibility: b.visibility
+    }
+    const removeIndex = b.removePhoto !== undefined && b.removePhoto !== '' ? parseInt(b.removePhoto, 10) : -1
+    if (uploaded.length || removeIndex >= 0) {
+      let current = []
+      try { current = (await housingModel.getHousingById(ctx.params.id, getViewerId())).images || [] } catch (_) { current = [] }
+      if (removeIndex >= 0) current = current.filter((_, i) => i !== removeIndex)
+      patch.images = [...current, ...uploaded]
+    }
+    if (newClip) patch.video = newClip
+    else if (b.action === 'removeVideo') patch.video = ''
+    try { await housingModel.updateHousing(ctx.params.id, patch) }
+    catch (err) { sendErrorPage(ctx, err.message || String(err), { status: 400 }); return }
+    if (b.action === 'addPhoto' || b.action === 'addVideo' || b.action === 'removeVideo' || removeIndex >= 0) { ctx.redirect(`/housing/edit/${encodeURIComponent(ctx.params.id)}`); return }
+    ctx.redirect(safeReturnTo(ctx, '/housing?filter=MINE', ['/housing']))
+  })
+  .post('/housing/delete/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    let item = null
+    try { item = await housingModel.getHousingById(ctx.params.id, getViewerId()) } catch (_) {}
+    try { await housingModel.deleteHousing(ctx.params.id) } catch (_) {}
+    await notifyHousingRequesters(item, 'deleted')
+    ctx.redirect(safeReturnTo(ctx, '/housing?filter=MINE', ['/housing']))
+  })
+  .post('/housing/status/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    const nextStatus = String(ctx.request.body.status || '').toUpperCase()
+    let item = null
+    try { item = await housingModel.getHousingById(ctx.params.id, getViewerId()) } catch (_) {}
+    try { await housingModel.updateHousingStatus(ctx.params.id, nextStatus) } catch (_) {}
+    if (nextStatus === 'CLOSED') await notifyHousingRequesters(item, 'closed')
+    ctx.redirect(safeReturnTo(ctx, '/housing?filter=MINE', ['/housing']))
+  })
+  .post('/housing/visibility/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    const next = String(ctx.request.body?.visibility || '').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'PUBLIC'
+    try { await housingModel.updateHousing(ctx.params.id, { visibility: next }) } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/housing/${encodeURIComponent(ctx.params.id)}`, ['/housing']))
+  })
+  .post('/housing/request/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    let item = null
+    try { item = await housingModel.getHousingById(ctx.params.id, getViewerId()) } catch (_) {}
+    if (!item) { ctx.redirect(safeReturnTo(ctx, '/housing', ['/housing'])); return }
+    try {
+      const res = await housingModel.requestHousing(ctx.params.id)
+      if (!res || !res.alreadyRequested) {
+        try { await pmModel.sendMessage([item.author], 'HOUSING_REQUESTED', `A new habitant has requested your place [${item.title || 'a place'}](/housing/${encodeURIComponent(item.id)})`) } catch (_) {}
+      }
+    } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, '/housing', ['/housing']))
+  })
+  .post('/housing/cancel/:id', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    let item = null
+    try { item = await housingModel.getHousingById(ctx.params.id, getViewerId()) } catch (_) {}
+    if (!item) { ctx.redirect(safeReturnTo(ctx, '/housing', ['/housing'])); return }
+    try {
+      const res = await housingModel.cancelRequest(ctx.params.id)
+      if (!res || !res.notRequested) {
+        try { await pmModel.sendMessage([item.author], 'HOUSING_CANCELLED', `A habitant has cancelled the request on your place [${item.title || 'a place'}](/housing/${encodeURIComponent(item.id)})`) } catch (_) {}
+      }
+    } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, '/housing', ['/housing']))
+  })
+  .post('/housing/opinions/:housingId/:category', koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'housingMod')) { ctx.redirect('/modules'); return; }
+    try { await housingModel.createOpinion(ctx.params.housingId, ctx.params.category) } catch (_) {}
+    ctx.redirect(safeReturnTo(ctx, `/housing/${encodeURIComponent(ctx.params.housingId)}`, ['/housing']))
+  })
+  .post('/housing/:housingId/comments', koaBodyMiddleware, async ctx => commentAction(ctx, 'housing', 'housingId'))
   .post('/jobs/create', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
     if (!checkMod(ctx, 'jobsMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body, imageBlob = ctx.request.files?.image ? await handleBlobUpload(ctx, 'image') : null;
-    await jobsModel.createJob({ job_type: stripDangerousTags(b.job_type), title: stripDangerousTags(b.title), description: stripDangerousTags(b.description), requirements: stripDangerousTags(b.requirements), languages: stripDangerousTags(b.languages), job_time: b.job_time, tasks: stripDangerousTags(b.tasks), location: stripDangerousTags(b.location), vacants: b.vacants ? parseInt(b.vacants, 10) : 1, salary: b.salary != null && b.salary !== '' ? parseFloat(String(b.salary).replace(',', '.')) : 0, hoursOffered: b.hoursOffered != null && b.hoursOffered !== '' ? parseFloat(String(b.hoursOffered).replace(',', '.')) : 0, hoursRequested: b.hoursRequested != null && b.hoursRequested !== '' ? parseFloat(String(b.hoursRequested).replace(',', '.')) : 0, exchangeSkill: stripDangerousTags(b.exchangeSkill || ''), tags: b.tags, image: imageBlob, mapUrl: stripDangerousTags(b.mapUrl), visibility: b.visibility, clearnetPublic: b.clearnetPublic });
+    await jobsModel.createJob({ job_type: stripDangerousTags(b.job_type), title: stripDangerousTags(b.title), description: stripDangerousTags(b.description), requirements: stripDangerousTags(b.requirements), languages: stripDangerousTags(b.languages), job_time: b.job_time, tasks: stripDangerousTags(b.tasks), location: stripDangerousTags(b.location), vacants: b.vacants ? parseInt(b.vacants, 10) : 1, salary: b.salary != null && b.salary !== '' ? parseFloat(String(b.salary).replace(',', '.')) : 0, hoursOffered: b.hoursOffered != null && b.hoursOffered !== '' ? parseFloat(String(b.hoursOffered).replace(',', '.')) : 0, hoursRequested: b.hoursRequested != null && b.hoursRequested !== '' ? parseFloat(String(b.hoursRequested).replace(',', '.')) : 0, exchangeSkill: stripDangerousTags(b.exchangeSkill || ''), tags: b.tags, image: imageBlob, mapUrl: stripDangerousTags(b.mapUrl), industry: stripDangerousTags(b.industry || ''), visibility: b.visibility, clearnetPublic: b.clearnetPublic });
     ctx.redirect(safeReturnTo(ctx, '/jobs?filter=MINE', ['/jobs']));
   })
   .post('/jobs/update/:id', koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
@@ -6913,6 +8303,8 @@ router
     }
   })
   .post("/shops/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'shops', 'add'))
+  .post("/shopProducts/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'shopProducts', 'add'))
+  .post("/shopProducts/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'shopProducts', 'remove'))
   .post("/shops/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'shops', 'remove'))
   .post("/shops/opinions/:shopId/:category", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'shopsMod')) { ctx.redirect('/modules'); return; }
@@ -6964,7 +8356,12 @@ router
     await shopsModel.buyProduct(ctx.params.id);
     try {
       const pr = await shopsModel.getProductById(ctx.params.id).catch(() => null);
-      await mediaFavorites.addFavorite('shopProducts', (pr && pr.rootId) || ctx.params.id);
+      if (pr && pr.author && String(pr.author) !== String(getViewerId())) {
+        try {
+          await pmModel.sendMessage([pr.author], "SHOP_SOLD", `product "${pr.title}" has been sold -> /shops/product/${ctx.params.id}  OASIS ID: ${getViewerId()}  for: ${pr.price} ECO`);
+        } catch (_) {}
+      }
+      await contentFavorites.addFavorite('shopProducts', (pr && pr.rootId) || ctx.params.id);
     } catch (_) {}
     if (checkMod(ctx, 'marketMod')) {
       try { const mi = await marketModel.getItemByShopProductId(ctx.params.id); if (mi) await marketModel.decrementStock(mi.id); } catch (_) {}
@@ -7066,6 +8463,36 @@ router
   })
   .post("/chats/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'chats', 'add'))
   .post("/chats/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'chats', 'remove'))
+  .post("/chats/:chatId/polls/create", koaBody(), async (ctx) => {
+    if (!checkMod(ctx, 'chatsMod') || !checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
+    const uid = getViewerId();
+    const chat = await chatsModel.getChatById(ctx.params.chatId).catch(() => null);
+    if (!chat) { ctx.redirect('/chats'); return; }
+    const members = Array.isArray(chat.members) ? chat.members : [];
+    const isOpen = String(chat.status || '').toUpperCase() === 'OPEN';
+    if (String(chat.status || '').toUpperCase() === 'CLOSED') { ctx.redirect(`/chats/${encodeURIComponent(ctx.params.chatId)}`); return; }
+    if (chat.tribeId) {
+      try {
+        const t = await tribesModel.getTribeById(chat.tribeId);
+        if (!t.members.includes(uid)) { sendErrorPage(ctx, "Forbidden", { status: 403 }); return; }
+      } catch { sendErrorPage(ctx, "Forbidden", { status: 403 }); return; }
+    } else if (!isOpen && chat.author !== uid && !members.includes(uid)) {
+      sendErrorPage(ctx, "Forbidden", { status: 403 }); return;
+    }
+    const b = ctx.request.body || {};
+    try {
+      await pollsModel.createPoll({
+        question: stripDangerousTags(b.question),
+        options: stripDangerousTags(String(b.options || '')).split('\n'),
+        anonymous: [].concat(b.anonymous).includes('1'),
+        multiple: [].concat(b.multiple).includes('1'),
+        chatId: chat.rootId || chat.key,
+        tribeId: chat.tribeId || null
+      });
+    } catch (err) { sendErrorPage(ctx, err.message || String(err), { status: 400 }); return; }
+    try { activityModel.invalidateCache(); } catch (_) {}
+    ctx.redirect(`/chats/${encodeURIComponent(ctx.params.chatId)}`);
+  })
   .post("/chats/:chatId/message", koaBody({ multipart: true }), async (ctx) => {
     if (!checkMod(ctx, 'chatsMod')) { ctx.redirect('/modules'); return; }
     const uid = getViewerId();
@@ -7079,7 +8506,16 @@ router
     const text = stripDangerousTags(String(ctx.request.body.text || '').trim());
     const imageBlob = ctx.request.files?.image ? extractBlobId(await handleBlobUpload(ctx, 'image')) : null;
     if (!text && !imageBlob) { ctx.redirect(`/chats/${encodeURIComponent(ctx.params.chatId)}`); return; }
-    await chatsModel.sendMessage(ctx.params.chatId, text, imageBlob);
+    try {
+      await chatsModel.sendMessage(ctx.params.chatId, text, imageBlob);
+    } catch (err) {
+      if (err && err.code === 'CHAT_RATE_LIMIT') {
+        const { i18n } = require('../views/main_views');
+        sendErrorPage(ctx, i18n.chatRateLimitMessage, { title: i18n.chatRateLimitTitle, status: 429 });
+        return;
+      }
+      throw err;
+    }
     ctx.redirect(safeReturnTo(ctx, `/chats/${encodeURIComponent(ctx.params.chatId)}`, ['/chats']));
   })
   .post("/pads/create", koaBody(), async (ctx) => {
@@ -7181,6 +8617,27 @@ router
   })
   .post("/pads/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'pads', 'add'))
   .post("/pads/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'pads', 'remove'))
+  .post("/forum/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'forum', 'add'))
+  .post("/forum/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'forum', 'remove'))
+  .post("/events/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'events', 'add'))
+  .post("/events/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'events', 'remove'))
+  .post("/tasks/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'tasks', 'add'))
+  .post("/tasks/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'tasks', 'remove'))
+  .post("/reports/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'reports', 'add'))
+  .post("/reports/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'reports', 'remove'))
+  .post("/votes/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'votes', 'add'))
+  .post("/votes/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'votes', 'remove'))
+  .post("/jobs/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'jobs', 'add'))
+  .post("/jobs/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'jobs', 'remove'))
+  .post("/housing/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'housing', 'add'))
+  .post("/housing/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'housing', 'remove'))
+  .post("/projects/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'projects', 'add'))
+  .post("/projects/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'projects', 'remove'))
+  .post("/transfers/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'transfers', 'add'))
+  .post("/transfers/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'transfers', 'remove'))
+  .post("/transfers/:transferId/comments", koaBodyMiddleware, async ctx => commentAction(ctx, 'transfers', 'transferId'))
+  .post("/market/favorites/add/:id", koaBody(), async ctx => favAction(ctx, 'market', 'add'))
+  .post("/market/favorites/remove/:id", koaBody(), async ctx => favAction(ctx, 'market', 'remove'))
   .post("/calendars/create", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'calendarsMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body || {};
@@ -7189,9 +8646,7 @@ router
       const t = await tribesModel.getTribeById(tribeId).catch(() => null);
       if (!t || !t.members.includes(getViewerId())) { ctx.status = 403; ctx.redirect('/tribes'); return; }
     }
-    const intervalWeekly  = [].concat(b.intervalWeekly).includes("1");
-    const intervalMonthly = [].concat(b.intervalMonthly).includes("1");
-    const intervalYearly  = [].concat(b.intervalYearly).includes("1");
+    const { intervalWeekly, intervalMonthly, intervalYearly } = readInterval(b);
     try {
       const msg = await calendarsModel.createCalendar({
         title: stripDangerousTags(b.title || ""),
@@ -7202,6 +8657,8 @@ router
         firstDateLabel: stripDangerousTags(b.firstDateLabel || ""),
         firstNote: stripDangerousTags(b.firstNote || ""),
         intervalWeekly, intervalMonthly, intervalYearly,
+        intervalDeadline: b.intervalDeadline || "",
+        mapUrl: stripDangerousTags(b.mapUrl || ""),
         tribeId
       });
       ctx.redirect(tribeId ? `/tribe/${encodeURIComponent(tribeId)}?section=calendars` : `/calendars/${encodeURIComponent(msg.key)}`);
@@ -7223,7 +8680,8 @@ router
         title: stripDangerousTags(b.title || ""),
         status: b.status || "OPEN",
         deadline: b.deadline || "",
-        tags: b.tags || ""
+        tags: b.tags || "",
+        mapUrl: stripDangerousTags(b.mapUrl || "")
       });
     } catch (_) {}
     ctx.redirect(`/calendars/${encodeURIComponent(ctx.params.id)}`);
@@ -7299,9 +8757,7 @@ router
       } catch { sendErrorPage(ctx, "Forbidden", { status: 403 }); return; }
     }
     const b = ctx.request.body || {};
-    const intervalWeekly  = [].concat(b.intervalWeekly).includes("1");
-    const intervalMonthly = [].concat(b.intervalMonthly).includes("1");
-    const intervalYearly  = [].concat(b.intervalYearly).includes("1");
+    const { intervalWeekly, intervalMonthly, intervalYearly } = readInterval(b);
     try {
       const dateMsgs = await calendarsModel.addDate(ctx.params.id, b.date || "", stripDangerousTags(b.label || ""), intervalWeekly, intervalMonthly, intervalYearly, b.intervalDeadline || "");
       const noteText = stripDangerousTags(String(b.text || "").trim());
@@ -7543,6 +8999,20 @@ router
     console.warn("oasis@version: in-app auto-update is disabled for this Dockerized deployment. Update from the host repository and rebuild the container.");
     safeRefererRedirect(ctx, '/settings');
   })
+  .post("/settings/workflow", koaBody(), async (ctx) => {
+    if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
+    const workflow = workflowsModel.getWorkflow(String(ctx.request.body.workflow || '').trim());
+    if (!workflow) { ctx.redirect('/settings'); return; }
+    const cfg = getConfig();
+    const enabled = new Set(workflowsModel.modulesOf(workflow));
+    workflowsModel.ALL_MODULES.forEach(mod => { cfg.modules[`${mod}Mod`] = enabled.has(mod) ? 'on' : 'off'; });
+    cfg.themes.current = workflow.theme;
+    if (workflow.homePage) cfg.homePage = workflow.homePage;
+    if (!enabled.has('aiNav') && cfg.ux) cfg.ux.current = 'blocks';
+    saveConfig(cfg);
+    ctx.cookies.set("theme", cfg.themes.current, { httpOnly: true, sameSite: 'strict', secure: ctx.secure });
+    ctx.redirect("/settings");
+  })
   .post("/settings/theme", koaBody(), async (ctx) => {
     const theme = String(ctx.request.body.theme || "").trim(), cfg = getConfig();
     cfg.themes.current = theme || "Dark-SNH";
@@ -7556,6 +9026,7 @@ router
     cfg.language = lang;
     fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2));
     ctx.cookies.set("language", lang, { maxAge: 365 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'strict', secure: ctx.secure });
+    try { onboardingModel.markStep('language'); } catch (_) {}
     safeRefererRedirect(ctx, '/settings');
   })
   .post("/settings/conn/start", koaBody(), async ctx => { await meta.connStart(); ctx.redirect("/peers"); })
@@ -7576,7 +9047,7 @@ router
       } catch (_) {}
     }
     try { await meta.acceptInvite(invite); } catch (_) {}
-    ctx.redirect("/invites");
+    safeRefererRedirect(ctx, "/invites");
   })
   .post("/invites/inhabitant/follow", koaBody(), async (ctx) => {
     const feedId = String(ctx.request.body?.feedId || '').trim();
@@ -7959,10 +9430,11 @@ router
     const cfg = getConfig();
     const v = String(ctx.request.body.ux || "").trim().toLowerCase();
     const aiNavEnabled = cfg.modules && cfg.modules.aiNavMod === 'on';
-    const next = (v === "ainav" && aiNavEnabled) ? "ainav" : "blocks";
+    const chatsEnabled = cfg.modules && cfg.modules.chatsMod === 'on';
+    const next = (v === "ainav" && aiNavEnabled) ? "ainav" : (v === "chats" && chatsEnabled) ? "chats" : "blocks";
     cfg.ux = { ...(cfg.ux && typeof cfg.ux === 'object' ? cfg.ux : {}), current: next };
     saveConfig(cfg);
-    ctx.redirect(next === "ainav" ? "/" : "/settings");
+    ctx.redirect(next === "ainav" ? "/" : next === "chats" ? "/chats" : "/settings");
   })
   .post("/settings/lan-broadcasting", koaBody(), async (ctx) => {
     const enabled = !!(ctx.request.body && (ctx.request.body.lanBroadcasting === 'on' || ctx.request.body.lanBroadcasting === '1' || ctx.request.body.lanBroadcasting === 'true'));
@@ -8013,11 +9485,12 @@ router
   .post("/settings/rebuild", async ctx => { meta.rebuild(); ctx.redirect("/settings"); })
   .post("/modules/preset", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
-    const ALL_MODULES = ['popular', 'topics', 'summaries', 'latest', 'threads', 'multiverse', 'fediverse', 'invites', 'wallet', 'legacy', 'cipher', 'bookmarks', 'calendars', 'chats', 'videos', 'docs', 'audios', 'tags', 'images', 'maps', 'trending', 'events', 'tasks', 'market', 'tribes', 'larp', 'votes', 'reports', 'opinions', 'pads', 'transfers', 'feed', 'pixelia', 'melody', 'agenda', 'favorites', 'ai', 'forum', 'games', 'jobs', 'projects', 'shops', 'banking', 'parliament', 'courts', 'logs', 'torrents'];
+    const ALL_MODULES = workflowsModel.ALL_MODULES;
     const PRESETS = {
-      minimal: ['feed', 'forum', 'games', 'images', 'videos', 'audios', 'bookmarks', 'tags', 'trending', 'popular', 'latest', 'threads', 'opinions', 'cipher', 'legacy'],
-      social: ['agenda', 'audios', 'bookmarks', 'calendars', 'chats', 'cipher', 'courts', 'docs', 'events', 'favorites', 'fediverse', 'feed', 'forum', 'games', 'images', 'invites', 'larp', 'legacy', 'logs', 'maps', 'multiverse', 'opinions', 'pads', 'parliament', 'pixelia', 'melody', 'projects', 'reports', 'tags', 'tasks', 'threads', 'trending', 'tribes', 'videos', 'votes'],
-      economy: ['agenda', 'audios', 'bookmarks', 'calendars', 'chats', 'cipher', 'courts', 'docs', 'events', 'favorites', 'fediverse', 'feed', 'forum', 'games', 'images', 'invites', 'larp', 'legacy', 'logs', 'maps', 'multiverse', 'opinions', 'pads', 'parliament', 'pixelia', 'melody', 'projects', 'reports', 'tags', 'tasks', 'threads', 'trending', 'tribes', 'videos', 'votes', 'banking', 'wallet', 'transfers', 'market', 'jobs', 'shops'],
+      minimal: ['feed', 'forum', 'games', 'images', 'videos', 'audios', 'bookmarks', 'tags', 'trending', 'blogs', 'polls', 'opinions', 'cipher', 'legacy'],
+      social: ['agenda', 'audios', 'bookmarks', 'calendars', 'chats', 'cipher', 'courts', 'docs', 'events', 'favorites', 'fediverse', 'feed', 'forum', 'games', 'images', 'invites', 'larp', 'legacy', 'logs', 'maps', 'blogs', 'polls', 'opinions', 'pads', 'parliament', 'pixelia', 'melody', 'projects', 'reports', 'school', 'tags', 'tasks', 'trending', 'tribes', 'videos', 'votes'],
+      economy: ['agenda', 'audios', 'bookmarks', 'calendars', 'chats', 'cipher', 'courts', 'docs', 'events', 'favorites', 'fediverse', 'feed', 'forum', 'games', 'images', 'invites', 'larp', 'legacy', 'logs', 'maps', 'blogs', 'polls', 'opinions', 'pads', 'parliament', 'pixelia', 'melody', 'projects', 'reports', 'tags', 'tasks', 'trending', 'tribes', 'videos', 'votes', 'banking', 'wallet', 'transfers', 'market', 'housing', 'jobs', 'shops', 'industry', 'school'],
+      mobile: workflowsModel.MOBILE_MODULES,
       full: ALL_MODULES
     };
     const preset = String(ctx.request.body.preset || '');
@@ -8030,7 +9503,7 @@ router
   })
   .post("/save-modules", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
-    const modules = ['popular', 'topics', 'summaries', 'latest', 'threads', 'multiverse', 'fediverse', 'invites', 'wallet', 'legacy', 'cipher', 'bookmarks', 'calendars', 'chats', 'videos', 'docs', 'audios', 'tags', 'images', 'maps', 'trending', 'events', 'tasks', 'market', 'tribes', 'larp', 'votes', 'reports', 'opinions', 'pads', 'transfers', 'feed', 'pixelia', 'melody', 'agenda', 'favorites', 'ai', 'forum', 'games', 'graphos', 'jobs', 'projects', 'shops', 'banking', 'parliament', 'courts', 'logs', 'torrents'];
+    const modules = workflowsModel.ALL_MODULES;
     const cfg = getConfig();
     modules.forEach(mod => cfg.modules[`${mod}Mod`] = ctx.request.body[`${mod}Form`] === 'on' ? 'on' : 'off');
     saveConfig(cfg);
@@ -8040,14 +9513,7 @@ router
     const aiPrompt = String(ctx.request.body.ai_prompt || "").trim();
     if (aiPrompt.length > 128) { sendErrorPage(ctx, "Prompt too long. Must be 128 characters or fewer.", { status: 400 }); return; }
     const cfg = getConfig();
-    cfg.ai = { ...(cfg.ai || {}), prompt: aiPrompt };
-    saveConfig(cfg);
-    ctx.redirect("/settings");
-  })
-  .post("/settings/pub-id", koaBody(), async (ctx) => {
-    if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
-    const b = ctx.request.body, cfg = getConfig();
-    cfg.walletPub = { pubId: String(b.pub_id || "").trim() };
+    cfg.ai = { ...(cfg.ai || {}), prompt: aiPrompt, suggestions: ctx.request.body.ai_suggestions === 'on' };
     saveConfig(cfg);
     ctx.redirect("/settings");
   })
@@ -8141,9 +9607,11 @@ const middleware = [
       const { i18n } = require('../views/main_views');
       if (err.name === 'FileTooLargeError' || (err.message && err.message.includes('maxFileSize'))) {
         sendErrorPage(ctx, i18n.fileTooLargeMessage, { title: i18n.fileTooLargeTitle, status: 413 });
-      } else {
-        sendErrorPage(ctx, err.message || 'Internal Server Error', { status: err.status || 500 });
+        return;
       }
+      const moduleHome = moduleHomeFor(ctx);
+      if (moduleHome && isMissingContentError(err)) { ctx.redirect(moduleHome); return; }
+      sendErrorPage(ctx, err.message || 'Internal Server Error', { status: err.status || 500 });
     } }
   },
   async (ctx, next) => {
@@ -8160,9 +9628,17 @@ const middleware = [
           sharedState.setCarbonHcT(hcT);
           sharedState.setCarbonHcH(hcH);
         } catch (_) {}
+        try {
+          const dataRes = await dataModel.listMatches('ALL');
+          const top = (dataRes.matches || [])[0] || null;
+          sharedState.setBestMatch(top ? { href: top.href, title: top.title || top.id, kind: top.kind, score: top.score } : null);
+        } catch (_) {}
         try { await refreshInboxCount(); } catch (_) {}
+        try { await refreshMentionsCount(); } catch (_) {}
         try { await calendarsModel.checkDueReminders(); } catch (_) {}
         try { await tasksModel.checkDueReminders(); } catch (_) {}
+        try { await checkPoliticalChanges(); } catch (_) {}
+        try { await checkJobMatches(); } catch (_) {}
         try {
           const peers = await meta.connectedPeers();
           sharedState.setOnlinePeerCount(Array.isArray(peers) ? peers.length : 0);
@@ -8264,7 +9740,9 @@ async function sendWelcomePmIfFirstLaunch() {
       welcomePmAttempted = false;
       return;
     }
-    try { fs.writeFileSync(flagPath, ownId + '\n' + new Date().toISOString() + '\n'); } catch (e) {
+    try {
+      if (!onboardingModel.begin(ownId)) console.error('[welcome-pm] flag write failed');
+    } catch (e) {
       console.error('[welcome-pm] flag write failed:', e && e.message ? e.message : e);
     }
   } catch (err) {
@@ -8272,8 +9750,207 @@ async function sendWelcomePmIfFirstLaunch() {
     welcomePmAttempted = false;
   }
 }
-setTimeout(() => { sendWelcomePmIfFirstLaunch(); }, 20000);
+let welcomePmRetries = 0;
+const welcomePmTick = async () => {
+  if (onboardingModel.firstContactSeen()) return;
+  await sendWelcomePmIfFirstLaunch();
+  if (onboardingModel.firstContactSeen()) return;
+  if (welcomePmRetries++ >= 30) return;
+  setTimeout(welcomePmTick, 4000);
+};
+setTimeout(welcomePmTick, 3000);
 
+const pbFmtDate = (iso) => iso ? moment(iso).format('YYYY-MM-DD HH:mm:ss') : '';
+const pbFmtRemaining = (endIso) => {
+  if (!endIso) return '';
+  const ms = moment(endIso).diff(moment());
+  if (ms <= 0) return '0d 00:00:00';
+  const d = Math.floor(ms / 86400000);
+  const h = Math.floor((ms % 86400000) / 3600000);
+  const mi = Math.floor((ms % 3600000) / 60000);
+  const se = Math.floor((ms % 60000) / 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d}d ${pad(h)}:${pad(mi)}:${pad(se)}`;
+};
+const pbFill = (tpl, vars) => String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+const pbTitleCase = (s) => { const t = String(s || ''); return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : ''; };
+const pbAtId = (id) => id ? '@' + String(id).replace(/^@/, '') : '';
+function buildLarpRulingMsg(data = {}, t = {}) {
+  const house = data.house || {};
+  const name = house.name || data.houseKey || '';
+  const intro = pbFill(t.politicalBotLarpIntro || 'Now {house} rules during this cycle: {cycle}', {
+    house: `[${name}](/larp/${encodeURIComponent(data.houseKey || '')})`,
+    cycle: `[${data.cycleFormatted || ''}](/larp)`
+  });
+  const blocks = [
+    [intro],
+    [name, house.description || ''],
+    [
+      `${t.larpRolesLabel || 'Roles'}: ${house.roles || ''}`,
+      `${t.larpFunctionLabel || 'Function'}: ${house.function || ''}`,
+      `${t.larpMonthLabel || 'Governance cycle'}: ${house.month != null ? house.month : ''}`,
+      `${t.larpMembersCount || 'Members'}: ${data.memberCount || 0}`
+    ],
+    [house.motto ? `“${house.motto}”` : '']
+  ];
+  const body = blocks
+    .map(block => block.filter(l => l != null && String(l).trim() !== '').join('\n'))
+    .filter(Boolean)
+    .join('\n\n');
+  return { subject: 'LARP_RULING', body };
+}
+function pbGovBlock(gov = {}, t = {}) {
+  const lines = [`${t.parliamentGovernmentCard || 'Current Government'}: ${String(gov.method || '').toUpperCase()}`];
+  if (gov.leaderId) lines.push(`${t.politicalBotLeaderLabel || 'Leader'}: ${pbAtId(gov.leaderId)}`);
+  lines.push(`${t.parliamentLegSince || 'CYCLE SINCE'}: ${pbFmtDate(gov.since)}`);
+  lines.push(`${t.parliamentLegEnd || 'CYCLE END'}: ${pbFmtDate(gov.end)}`);
+  lines.push(`${t.parliamentTimeRemaining || 'Time remaining'}: ${pbFmtRemaining(gov.end)}`);
+  lines.push(`${t.parliamentPopulation || 'Population'}: ${gov.population || 0}`);
+  return lines;
+}
+function buildParliamentGovMsg(gov = {}, t = {}) {
+  const govLink = `[${pbTitleCase(gov.method)}](/parliament)`;
+  const intro = gov.leaderId
+    ? pbFill(t.politicalBotParliamentIntroLeader || 'The current government is {gov}, led by {leader}', { gov: govLink, leader: pbAtId(gov.leaderId) })
+    : pbFill(t.politicalBotParliamentIntro || 'The current government is {gov}', { gov: govLink });
+  return { subject: 'PARLIAMENT_GOV', body: [intro, ''].concat(pbGovBlock(gov, t)).join('\n') };
+}
+function buildTribeGovMsg(gov = {}, t = {}) {
+  const govLink = `[${pbTitleCase(gov.method)}](/tribe/${encodeURIComponent(gov.tribeId || '')}?section=governance)`;
+  const vars = { tribe: gov.tribeName || '', gov: govLink, leader: pbAtId(gov.leaderId) };
+  const intro = gov.leaderId
+    ? pbFill(t.politicalBotTribeIntroLeader || 'The current government in the Tribe {tribe} is {gov}, led by {leader}', vars)
+    : pbFill(t.politicalBotTribeIntro || 'The current government in the Tribe {tribe} is {gov}', vars);
+  return { subject: 'TRIBE_GOV', body: [intro, ''].concat(pbGovBlock(gov, t)).join('\n') };
+}
+let jobsBotRunning = false;
+async function checkJobMatches() {
+  if (jobsBotRunning) return;
+  jobsBotRunning = true;
+  try {
+    const viewerId = getViewerId();
+    if (!viewerId) return;
+    const cv = await cvModel.getCVByUserId().catch(() => null);
+    if (!cv || cv.aiManaged === false) return;
+    const threshold = Math.min(100, Math.max(0, Number(cv.matchThreshold) || 80)) / 100;
+    const matches = await dataModel.jobMatchesFor(viewerId, { minScore: threshold }).catch(() => []);
+    if (!matches.length) return;
+    const announced = await pmModel.sentRefs().catch(() => new Set());
+    const i18nAll = require('../client/assets/translations/i18n');
+    const lang = (getConfig() && getConfig().language) || 'en';
+    const t = i18nAll[lang] || i18nAll.en;
+    for (const m of matches.slice(0, 5)) {
+      const ref = `${m.id}|${Math.round(m.score * 100)}`;
+      if (announced.has(`JOB_MATCH|${ref}`)) continue;
+      const pctText = `${Math.round(m.score * 100)}%`;
+      const body = [
+        (t.jobsBotMatchIntro || 'A job matches your curriculum.'),
+        '',
+        `${t.jobsBotMatchJob || 'Job'}: [${m.title || m.id}](${m.href})`,
+        `${t.matchScore || 'Match'}: ${pctText}`,
+        m.common.length ? `${t.commonSkills || 'Common skills'}: ${m.common.slice(0, 10).join(', ')}` : '',
+        '',
+        (t.jobsBotMatchHint || 'You receive this because your curriculum is AI managed. You can turn it off in your CV.')
+      ].filter(Boolean).join('\n');
+      try {
+        await pmModel.sendMessage([], 'JOB_MATCH', body, false, ref);
+        announced.add(`JOB_MATCH|${ref}`);
+      } catch (e) {
+        if (config.debug) console.error('[jobs-bot] send failed:', e && e.message);
+      }
+    }
+  } catch (e) {
+    if (config.debug) console.error('[jobs-bot] failed:', e && e.message);
+  } finally {
+    jobsBotRunning = false;
+  }
+}
+
+let politicalCheckRunning = false;
+async function checkPoliticalChanges() {
+  if (politicalCheckRunning) return;
+  politicalCheckRunning = true;
+  try {
+    const ssbClient = await cooler.open().catch(() => null);
+    if (!ssbClient || !ssbClient.id) return;
+    const ownId = ssbClient.id;
+    const i18nAll = require('../client/assets/translations/i18n');
+    const lang = (getConfig() && getConfig().language) || 'en';
+    const t = i18nAll[lang] || i18nAll.en;
+    const announced = await pmModel.sentRefs().catch(() => new Set());
+    const alreadyAnnounced = (subject, ref) => announced.has(`${subject}|${ref}`);
+    const seen = pmPolicy.readAnnounceSeen();
+    const send = async (subject, body, ref) => {
+      const { send: shouldSend, remember } = pmPolicy.decideAnnouncement({ subject, ref, announced, seen });
+      if (!shouldSend) {
+        if (remember) { seen[subject] = String(ref); pmPolicy.writeAnnounceSeen(seen); }
+        return;
+      }
+      try {
+        await pmModel.sendMessage([], subject, body, false, ref);
+        announced.add(`${subject}|${ref}`);
+        seen[subject] = String(ref);
+        pmPolicy.writeAnnounceSeen(seen);
+      } catch (e) { console.error('[political-bot] send failed:', e && e.message); }
+    };
+
+    try {
+      const houseKey = larpModel.getGoverningHouseKey();
+      if (houseKey) {
+        let cycleFormatted = '';
+        try { cycleFormatted = larpModel.computeCycle().formatted; } catch (_) {}
+        const ref = larpModel.getGoverningPeriodId();
+        if (!alreadyAnnounced('LARP_RULING', ref)) {
+          const house = (larpModel.getHouse && larpModel.getHouse(houseKey)) || {};
+          let memberCount = 0;
+          try { const hc = await larpModel.listHousesWithCounts(); const h = (hc || []).find(x => x.key === houseKey); memberCount = h ? (h.memberCount || 0) : 0; } catch (_) {}
+          const { subject, body } = buildLarpRulingMsg({ houseKey, house, memberCount, cycleFormatted }, t);
+          await send(subject, body, ref);
+        }
+      }
+    } catch (e) { console.error('[political-bot] larp:', e && e.message); }
+
+    try {
+      const card = await parliamentModel.getLatestGovernmentCard().catch(() => null);
+      if (card) {
+        const ref = [String(card.id || card.method || ''), String(card.since || '')].filter(Boolean).join(':');
+        if (ref && !alreadyAnnounced('PARLIAMENT_GOV', ref)) {
+          let population = 0;
+          try { const inh = await inhabitantsModel.listInhabitants({ filter: 'all', includeInactive: true }); population = Array.isArray(inh) ? inh.length : 0; } catch (_) {}
+          const leaderId = (card.powerType === 'inhabitant' && card.powerId) ? card.powerId : null;
+          const { subject, body } = buildParliamentGovMsg({ method: card.method, since: card.since, end: card.end, population, leaderId }, t);
+          await send(subject, body, ref);
+        }
+      }
+    } catch (e) { console.error('[political-bot] parliament:', e && e.message); }
+
+    try {
+      let tribes = [];
+      try { tribes = await tribesModel.listAll(); } catch (_) { tribes = []; }
+      for (const tribe of (tribes || [])) {
+        if (!tribe || !tribe.id) continue;
+        if (!Array.isArray(tribe.members) || !tribe.members.includes(ownId)) continue;
+        if (tribe.parentTribeId) continue;
+        let term = null;
+        try { term = await parliamentModel.tribe.getCurrentTerm(tribe.id); } catch (_) { term = null; }
+        if (!term) continue;
+        const ref = `${tribe.id}:${String(term.id || term.startAt || term.method || '')}`;
+        if (!alreadyAnnounced('TRIBE_GOV', ref)) {
+          const lead = Array.isArray(term.leaders) && term.leaders.length ? term.leaders[0] : null;
+          const leaderId = lead && typeof lead === 'object' ? (lead.id || lead.powerId || null) : lead;
+          const population = Array.isArray(tribe.members) ? tribe.members.length : 0;
+          const { subject, body } = buildTribeGovMsg({ method: term.method, since: term.startAt, end: term.endAt, population, leaderId, tribeId: tribe.id, tribeName: tribe.title || tribe.name || tribe.id }, t);
+          await send(subject, body, ref);
+        }
+      }
+    } catch (e) { console.error('[political-bot] tribe:', e && e.message); }
+
+  } catch (err) {
+    console.error('[political-bot] unexpected:', err && err.message);
+  } finally {
+    politicalCheckRunning = false;
+  }
+}
 async function logClearnetStatus() {
   try {
     const ssbClient = await cooler.open();
@@ -8281,6 +9958,7 @@ async function logClearnetStatus() {
     const prefs = await about.visibilityPrefs(ssbClient.id).catch(() => null);
     const modules = [
       ['Shops',     'clearnetShops'],
+      ['School',    'clearnetSchool'],
       ['Jobs',      'clearnetJobs'],
       ['Events',    'clearnetEvents'],
       ['Projects',  'clearnetProjects'],

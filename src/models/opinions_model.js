@@ -22,12 +22,13 @@ module.exports = ({ cooler }) => {
 
   const validTypes = [
     'bookmark', 'votes', 'transfer',
-    'feed', 'image', 'audio', 'video', 'document', 'torrent'
+    'feed', 'image', 'audio', 'video', 'document', 'torrent',
+    'industry', 'project', 'report', 'task', 'event', 'shopProduct', 'housing', 'market', 'schoolCourse'
   ];
 
   const getPreview = c => {
     if (c.type === 'bookmark' && c.bookmark) return `🔖 ${c.bookmark}`;
-    return c.text || c.description || c.title || '';
+    return c.text || c.description || c.title || c.name || '';
   };
 
   const OPINION_MSG_TYPE = {
@@ -39,7 +40,16 @@ module.exports = ({ cooler }) => {
     audio: 'audioOpinion',
     video: 'videoOpinion',
     document: 'documentOpinion',
-    torrent: 'torrentOpinion'
+    torrent: 'torrentOpinion',
+    industry: 'industryOpinion',
+    project: 'projectOpinion',
+    report: 'reportOpinion',
+    task: 'taskOpinion',
+    event: 'eventOpinion',
+    shopProduct: 'shopOpinion',
+    housing: 'housingOpinion',
+    market: 'marketOpinion',
+    schoolCourse: 'schoolOpinion'
   };
 
   const createVote = async (contentId, category) => {
@@ -72,6 +82,7 @@ module.exports = ({ cooler }) => {
     const tombstoned = buildValidatedTombstoneSet(messages);
     const replaces = new Map();
     const byId = new Map();
+    const authorOf = new Map();
     const opinionMsgs = [];
 
     for (const msg of messages) {
@@ -82,6 +93,7 @@ module.exports = ({ cooler }) => {
         if (tombstoned.has(c.target)) byId.delete(c.target);
         continue;
       }
+      if (key) authorOf.set(key, msg.value.author);
       if (typeof c.type === 'string' && c.type.endsWith('Opinion') && c.target) {
         opinionMsgs.push({ target: c.target, author: msg.value.author, category: c.category });
         continue;
@@ -104,10 +116,10 @@ module.exports = ({ cooler }) => {
     }
 
     for (const [oldId, newId] of Array.from(replaces.entries())) {
-      const oldM = byId.get(oldId);
+      const oldAuthor = authorOf.get(oldId);
       const newM = byId.get(newId);
-      if (!oldM) { replaces.delete(oldId); continue; }
-      if (!newM || String(newM.value.author) !== String(oldM.value.author)) {
+      if (oldAuthor === undefined) { replaces.delete(oldId); continue; }
+      if (!newM || String(newM.value.author) !== String(oldAuthor)) {
         replaces.delete(oldId);
         byId.delete(newId);
       }
@@ -147,6 +159,12 @@ module.exports = ({ cooler }) => {
     }
 
     let filtered = Array.from(byId.values()).filter(m => validTypes.includes(m.value?.content?.type));
+    filtered = filtered.filter(m => {
+      const c = m.value?.content;
+      if (c?.type !== 'schoolCourse') return true;
+      if (c.encryptedPayload) return false;
+      return String(c.visibility || 'PUBLIC').toUpperCase() !== 'INVITE';
+    });
     const blobTypes = ['document', 'image', 'audio', 'video'];
     const blobCheckCache = new Map();
 
@@ -225,6 +243,11 @@ module.exports = ({ cooler }) => {
       }
     }
     filtered = Array.from(bySig.values());
+
+    filtered = filtered.filter(m => {
+      const ops = m.value?.content?.opinions || {};
+      return Object.values(ops).reduce((acc, x) => acc + (Number(x) || 0), 0) > 0;
+    });
 
     if (filter === 'MINE') {
       filtered = filtered.filter(m => m.value.author === userId);

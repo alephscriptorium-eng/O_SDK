@@ -28,7 +28,7 @@ module.exports = ({ cooler }) => {
   return {
     type: 'post',
 
-    async sendMessage(recipients = [], subject = '', text = '', crypter = false) {
+    async sendMessage(recipients = [], subject = '', text = '', crypter = false, ref = '') {
       const ssbClient = await openSsb();
       const recps = uniqueRecps([userId, ...recipients]);
       const content = {
@@ -39,10 +39,24 @@ module.exports = ({ cooler }) => {
         text,
         sentAt: new Date().toISOString(),
         private: true,
+        ...(ref ? { ref: String(ref) } : {}),
         ...(crypter ? { crypter: true } : {})
       };
       const publishAsync = util.promisify(ssbClient.private.publish);
       return publishAsync(content, recps);
+    },
+
+    async sentRefs() {
+      const out = new Set();
+      let messages = [];
+      try { messages = await this.listAllPrivate({ includeDeleted: true }); } catch (_) { return out; }
+      for (const m of (messages || [])) {
+        const c = m && m.value && m.value.content;
+        if (!c || !c.ref) continue;
+        if (m.value.author !== userId) continue;
+        out.add(`${String(c.subject || '')}|${String(c.ref)}`);
+      }
+      return out;
     },
 
     async sendFileShare(recipients = [], subject = '', fileShare = null, crypter = false) {
@@ -102,7 +116,8 @@ module.exports = ({ cooler }) => {
       return publishAsync(tombstone, tombstoneRecps);
     },
 
-    async listAllPrivate() {
+    async listAllPrivate(opts = {}) {
+      const includeDeleted = !!(opts && opts.includeDeleted);
       const ssbClient = await openSsb();
       const raw = await new Promise((resolve, reject) => {
         pull(
@@ -160,7 +175,7 @@ module.exports = ({ cooler }) => {
           }
         }
       }
-      return posts.filter(m => m && m.key && !tombed.has(m.key));
+      return posts.filter(m => m && m.key && (includeDeleted || !tombed.has(m.key)));
     }
   };
 };

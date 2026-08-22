@@ -1,9 +1,11 @@
 const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, progress, video, audio, table, tr, td } = require("../server/node_modules/hyperaxe")
-const { template, i18n, userLink, renderStateChip, renderOpenClosedChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions } = require("./main_views")
+const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
+const { template, i18n, userLink, renderStateChip, renderOpenClosedChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderUrl } = require("../backend/renderUrl")
 const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel } = require("./maps_view")
+const { resolvePhoto } = require("./inhabitants_view")
 
 const renderMediaBlob = (value, attrs = {}) => {
   if (!value) return null
@@ -24,6 +26,8 @@ const userId = config.keys.id
 const FILTERS = [
   { key: "ALL", i18n: "jobsFilterAll", title: "jobsAllTitle" },
   { key: "MINE", i18n: "jobsFilterMine", title: "jobsMineTitle" },
+  { key: "RECENT", i18n: "jobsFilterRecent", title: "jobsRecentTitle" },
+  { key: "TOP", i18n: "jobsFilterTop", title: "jobsTopTitle" },
   { key: "APPLIED", i18n: "jobsFilterApplied", title: "jobsAppliedTitle" },
   { key: "REMOTE", i18n: "jobsFilterRemote", title: "jobsRemoteTitle" },
   { key: "PRESENCIAL", i18n: "jobsFilterPresencial", title: "jobsPresencialTitle" },
@@ -32,16 +36,8 @@ const FILTERS = [
   { key: "EXCHANGE", i18n: "jobsFilterExchange", title: "jobsExchangeTitle" },
   { key: "OPEN", i18n: "jobsFilterOpen", title: "jobsOpenTitle" },
   { key: "CLOSED", i18n: "jobsFilterClosed", title: "jobsClosedTitle" },
-  { key: "RECENT", i18n: "jobsFilterRecent", title: "jobsRecentTitle" },
-  { key: "TOP", i18n: "jobsFilterTop", title: "jobsTopTitle" },
   { key: "CV", i18n: "jobsCV", title: "jobsCVTitle" }
 ]
-
-function resolvePhoto(photoField, size = 256) {
-  if (typeof photoField === "string" && photoField.startsWith("/image/")) return photoField
-  if (typeof photoField === "string" && /^&[A-Za-z0-9+/=]+\.sha256$/.test(photoField)) return `/image/${size}/${encodeURIComponent(photoField)}`
-  return "/assets/images/default-avatar.png"
-}
 
 const safeArr = (v) => (Array.isArray(v) ? v : [])
 const safeText = (v) => String(v || "").trim()
@@ -109,7 +105,7 @@ const renderUpdatedLabel = (createdAt, updatedAt) => {
   const updatedTs = updatedAt ? new Date(updatedAt).getTime() : NaN
   const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs)
   return showUpdated
-    ? span({ class: "votations-comment-date" }, ` | ${i18n.jobsUpdatedAt}: ${moment(updatedAt).format("YYYY/MM/DD HH:mm:ss")}`)
+    ? span({ class: "votations-comment-date" }, ` | ${i18n.jobsUpdatedAt}: ${moment(updatedAt).format("YYYY/MM/DD HH:mm")}`)
     : null
 }
 
@@ -232,6 +228,7 @@ const renderJobList = exports.renderJobList = (jobs, filter, params = {}) => {
         renderJobStatusChip(job.status),
         isHidden ? renderJobHiddenChip() : null,
         isSubscribed ? renderJobAppliedChip() : null,
+        job.industry ? a({ href: `/industry/${encodeURIComponent(job.industry)}` }, renderStateChip("whole", "🏭", String(i18n.industryTitle || "Industry").toUpperCase())) : null,
         renderLifespanChip(job.lifetime, i18n)
       ].filter(Boolean)
       const isExchange = String(job.job_type || "").toLowerCase() === "exchange"
@@ -244,7 +241,7 @@ const renderJobList = exports.renderJobList = (jobs, filter, params = {}) => {
         div(
           { class: "card-header activity-card-header" },
           span(),
-          renderContentActions(job.id, `/jobs/${encodeURIComponent(job.id)}`)
+          renderContentActions(job.id, `/jobs/${encodeURIComponent(job.id)}`, { spread: params.spreadMap && params.spreadMap.get(job.id) || null, author: job.author, favKind: 'jobs', isFavorite: job.isFavorite, reportTitle: job.title })
         ),
         div({ class: "card-section job-card-body" },
           heroNode,
@@ -258,8 +255,7 @@ const renderJobList = exports.renderJobList = (jobs, filter, params = {}) => {
             div({ class: "card-date-highlight" }, compensationText),
             div({ class: "tribe-card-members" },
               span({ class: "tribe-members-count" }, `${i18n.jobSubscribers}: ${subs.length}`)
-            ),
-            div({ class: "card-spread-centered" }, renderSpreadButton(job.id, params.spreadMap && params.spreadMap.get(job.id)))
+            )
           )
         )
       )
@@ -267,10 +263,11 @@ const renderJobList = exports.renderJobList = (jobs, filter, params = {}) => {
   )
 }
 
-const renderJobForm = (job = {}, mode = "create") => {
+const renderJobForm = (job = {}, mode = "create", spreadWarning = null) => {
   const isEdit = mode === "edit"
   return div(
     { class: "div-center job-form" },
+    isEdit ? spreadWarning : null,
     form(
       {
         action: isEdit ? `/jobs/update/${encodeURIComponent(job.id)}` : "/jobs/create",
@@ -278,6 +275,7 @@ const renderJobForm = (job = {}, mode = "create") => {
         enctype: "multipart/form-data"
       },
       input({ type: "hidden", name: "returnTo", value: "/jobs?filter=MINE" }),
+      job.industry ? input({ type: "hidden", name: "industry", value: job.industry }) : null,
       label(i18n.jobType),
       br(),
       select(
@@ -290,7 +288,7 @@ const renderJobForm = (job = {}, mode = "create") => {
       br(),
       label(i18n.jobTitle),
       br(),
-      input({ type: "text", name: "title", required: true, placeholder: i18n.jobTitlePlaceholder, value: job.title || "" }),
+      input({ type: "text", name: "title", maxlength: "100", required: true, placeholder: i18n.jobTitlePlaceholder, value: job.title || "" }),
       br(),
       br(),
       label(i18n.jobImage),
@@ -323,8 +321,8 @@ const renderJobForm = (job = {}, mode = "create") => {
       br(),
       select(
         { name: "job_time", required: true },
-        option({ value: "partial", selected: job.job_time === "partial" }, i18n.jobTimePartial),
-        option({ value: "complete", selected: job.job_time === "complete" }, i18n.jobTimeComplete)
+        option({ value: "partial", ...(job.job_time === "partial" ? { selected: true } : {})}, i18n.jobTimePartial),
+        option({ value: "complete", ...(job.job_time === "complete" ? { selected: true } : {})}, i18n.jobTimeComplete)
       ),
       br(),
       br(),
@@ -337,8 +335,8 @@ const renderJobForm = (job = {}, mode = "create") => {
       br(),
       select(
         { name: "location", required: true },
-        option({ value: "remote", selected: job.location === "remote" }, i18n.jobLocationRemote),
-        option({ value: "presencial", selected: job.location === "presencial" }, i18n.jobLocationPresencial)
+        option({ value: "remote", ...(job.location === "remote" ? { selected: true } : {})}, i18n.jobLocationRemote),
+        option({ value: "presencial", ...(job.location === "presencial" ? { selected: true } : {})}, i18n.jobLocationPresencial)
       ),
       br(),
       br(),
@@ -351,8 +349,8 @@ const renderJobForm = (job = {}, mode = "create") => {
       br(),
       select(
         { name: "visibility" },
-        option({ value: "PUBLIC", selected: (job.visibility || "PUBLIC") === "PUBLIC" }, i18n.visibilityPublic || "Public"),
-        option({ value: "HIDDEN", selected: job.visibility === "HIDDEN" }, i18n.visibilityHidden || "Hidden")
+        option({ value: "PUBLIC", ...((job.visibility || "PUBLIC") === "PUBLIC" ? { selected: true } : {})}, i18n.visibilityPublic || "Public"),
+        option({ value: "HIDDEN", ...(job.visibility === "HIDDEN" ? { selected: true } : {})}, i18n.visibilityHidden || "Hidden")
       ),
       br(),
       br(),
@@ -417,9 +415,23 @@ const renderCVList = (inhabitants) =>
               { class: "inhabitant-details" },
               user.description ? p(...renderUrl(user.description)) : null,
               p(userLink(user.id)),
+              user.skills && user.skills.length
+                ? div({ class: "card-tags" },
+                    user.skills.slice(0, 12).map((skill) =>
+                      a({ href: `/search?query=%23${encodeURIComponent(skill)}`, class: "tag-link" }, `#${skill}`))
+                  )
+                : null,
+              typeof user.matchScore === "number"
+                ? div({ class: "cv-match-row" },
+                    span({ class: "card-label" }, `${i18n.matchScore}: `),
+                    span({ class: "card-value" }, `${Math.round(user.matchScore * 100)}%`)
+                  )
+                : null,
               div(
                 { class: "cv-actions" },
-                form({ method: "GET", action: `/inhabitant/${encodeURIComponent(user.id)}` }, button({ type: "submit", class: "filter-btn" }, i18n.inhabitantviewDetails)),
+                form({ method: "GET", action: `/inhabitant/${encodeURIComponent(user.id)}` }, button({ type: "submit", class: "filter-btn" }, i18n.cvVisitButton)),
+                form({ method: "GET", action: `/cv/pdf/${encodeURIComponent(user.id)}` }, button({ type: "submit", class: "filter-btn" }, i18n.generatePdf)),
+                form({ method: "POST", action: `/cv/share/${encodeURIComponent(user.id)}` }, button({ type: "submit", class: "filter-btn" }, i18n.sharePm)),
                 !isMe ? renderPmButton(user.id) : null
               )
             )
@@ -429,6 +441,10 @@ const renderCVList = (inhabitants) =>
   )
 
 exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
+  if (filter === "EDIT") {
+    const editing = Array.isArray(jobsOrCVs) ? jobsOrCVs[0] : jobsOrCVs
+    params = { ...params, spreadWarning: await renderSpreadEditWarning(editing && editing.id) }
+  }
   const search = safeText(params.search || "")
   const minSalary = params.minSalary ?? ""
   const maxSalary = params.maxSalary ?? ""
@@ -457,7 +473,7 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
           input({ type: "hidden", name: "maxSalary", value: String(maxSalary ?? "") }),
           input({ type: "hidden", name: "sort", value: sort }),
           ...FILTERS.map((f) =>
-            button({ type: "submit", name: "filter", value: f.key, class: filter === f.key ? "filter-btn active" : "filter-btn" }, i18n[f.i18n])
+            button({ type: "submit", name: "filter", value: f.key, class: filter === f.key ? "filter-btn active" : "filter-btn" }, String(i18n[f.i18n]).toUpperCase())
           ),
           button({ type: "submit", name: "filter", value: "CREATE", class: "create-button" }, i18n.jobsCreateJob)
         )
@@ -481,8 +497,16 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
           )
         : filter === "CREATE" || filter === "EDIT"
           ? (() => {
-              const jobToEdit = filter === "EDIT" ? (Array.isArray(jobsOrCVs) ? jobsOrCVs[0] : {}) : {}
-              return renderJobForm(jobToEdit, filter === "EDIT" ? "edit" : "create")
+              const jobToEdit = filter === "EDIT"
+                ? (Array.isArray(jobsOrCVs) ? jobsOrCVs[0] : {})
+                : {
+                    ...(params.industry ? { industry: params.industry } : {}),
+                    ...(params.title ? { title: params.title } : {}),
+                    ...(params.description ? { description: params.description } : {}),
+                    ...(params.tasks ? { tasks: params.tasks } : {}),
+                    ...(params.salary ? { salary: params.salary } : {})
+                  }
+              return renderJobForm(jobToEdit, filter === "EDIT" ? "edit" : "create", params.spreadWarning)
             })()
           : section(
               div(
@@ -500,9 +524,9 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
                     ),
                     select(
                       { name: "sort", class: "filter-box__select" },
-                      option({ value: "recent", selected: sort === "recent" }, i18n.jobsSortRecent),
-                      option({ value: "salary", selected: sort === "salary" }, i18n.jobsSortSalary),
-                      option({ value: "subscribers", selected: sort === "subscribers" }, i18n.jobsSortSubscribers)
+                      option({ value: "recent", ...(sort === "recent" ? { selected: true } : {})}, i18n.jobsSortRecent),
+                      option({ value: "salary", ...(sort === "salary" ? { selected: true } : {})}, i18n.jobsSortSalary),
+                      option({ value: "subscribers", ...(sort === "subscribers" ? { selected: true } : {})}, i18n.jobsSortSubscribers)
                     ),
                     button({ type: "submit", class: "filter-box__button" }, i18n.jobsSearchButton)
                   )
@@ -516,61 +540,12 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
 }
 
 const renderJobCommentsSection = (jobId, returnTo, comments = []) => {
-  const list = safeArr(comments).filter(c => {
-    const t = c && c.value && c.value.content && c.value.content.text
-    return t && String(t).trim()
-  })
-  const commentsCount = list.length
-
-  return div(
-    { id: "comments", class: "vote-comments-section" },
-    div(
-      { class: "comments-count" },
-      span({ class: "card-label" }, i18n.voteCommentsLabel + ": "),
-      span({ class: "card-value" }, String(commentsCount))
-    ),
-    div(
-      { class: "comment-form-wrapper" },
-      h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
-      form(
-        { method: "POST", action: `/jobs/${encodeURIComponent(jobId)}/comments`, class: "comment-form", enctype: "multipart/form-data" },
-        input({ type: "hidden", name: "returnTo", value: returnTo }),
-        textarea({ id: "comment-text", name: "text", rows: 4, class: "comment-textarea", placeholder: i18n.voteNewCommentPlaceholder }),
-        div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
-        br(),
-        button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
-      )
-    ),
-    list.length
-      ? div(
-          { class: "comments-list" },
-          list.map((c) => {
-            const author = c?.value?.author || ""
-            const ts = c?.value?.timestamp || c?.timestamp
-            const absDate = ts ? moment(ts).format("YYYY/MM/DD HH:mm:ss") : ""
-            const relDate = ts ? moment(ts).fromNow() : ""
-            const userName = author && author.includes("@") ? author.split("@")[1] : author
-            const rootId = c?.value?.content ? (c.value.content.fork || c.value.content.root) : null
-            const text = c?.value?.content?.text || ""
-
-            return div(
-              { class: "votations-comment-card" },
-              span(
-                { class: "created-at" },
-                span(i18n.createdBy),
-                author ? userLink(author) : span("(unknown)"),
-                absDate ? span(" | ") : "",
-                absDate ? span({ class: "votations-comment-date" }, absDate) : "",
-                relDate ? span({ class: "votations-comment-date" }, " | ", i18n.sendTime) : "",
-                relDate && rootId ? a({ href: `/thread/${encodeURIComponent(rootId)}#${encodeURIComponent(c.key)}` }, relDate) : ""
-              ),
-              p({ class: "votations-comment-text" }, ...renderUrl(text))
-            )
-          })
-        )
-      : p({ class: "votations-no-comments" }, i18n.voteNoCommentsYet)
-  )
-}
+  return renderSharedCommentsSection({
+    action: `/jobs/${encodeURIComponent(jobId)}/comments`,
+    comments: comments,
+    returnTo: returnTo
+  });
+};
 
 const renderCandidates = (candidates, jobId) => {
   if (!Array.isArray(candidates) || candidates.length === 0) return null;
@@ -633,12 +608,12 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
 
   const ownerActions = renderJobOwnerActions(job, returnTo)
   const applyToggle = renderJobApplyToggle(job, returnTo)
-  const pmBtn = renderPmButton(job.author)
   const visibility = (job.visibility || 'PUBLIC').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'PUBLIC'
   const chips = [
     renderJobStatusChip(job.status),
     visibility === 'HIDDEN' ? renderJobHiddenChip() : null,
     isSubscribed ? renderJobAppliedChip() : null,
+    job.industry ? a({ href: `/industry/${encodeURIComponent(job.industry)}` }, renderStateChip("whole", "🏭", String(i18n.industryTitle || "Industry").toUpperCase())) : null,
     renderLifespanChip(job.lifetime, i18n),
     renderEcoTax(job.msgSize, job.id),
     renderReachChip(isClearnet, i18n)
@@ -660,15 +635,16 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
 
   const sideActions = []
   if (applyToggle) sideActions.push(applyToggle)
-  if (pmBtn) sideActions.push(pmBtn)
   for (const a of ownerActions) sideActions.push(a)
 
   const jobSide = div({ class: "tribe-side" },
+    div({ class: "card-header activity-card-header" },
+      renderContentActions(job.id, null, { spread: params.spreads || null, author: job.author, favKind: 'jobs', isFavorite: job.isFavorite, reportTitle: job.title })
+    ),
     div({ class: "shop-title-row" },
       h2({ class: "tribe-card-title" }, safeText(job.title) || i18n.jobsTitle)
     ),
     chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-    div({ class: "card-spread-centered" }, renderSpreadButton(job.id, params.spreads)),
     job.image
       ? renderMediaBlob(job.image, { class: "tribe-detail-image" })
       : null,
@@ -709,6 +685,7 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
 
   return template(
     i18n.jobsTitle,
+    section(div({ class: "tags-header" }, h2(i18n.jobsTitle), p(i18n.jobsDescription))),
     section(
       div(
         { class: "filters" },
@@ -719,7 +696,7 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
           input({ type: "hidden", name: "maxSalary", value: String(params.maxSalary ?? "") }),
           input({ type: "hidden", name: "sort", value: safeText(params.sort || "recent") }),
           ...FILTERS.map((f) =>
-            button({ type: "submit", name: "filter", value: f.key, class: filter === f.key ? "filter-btn active" : "filter-btn" }, i18n[f.i18n])
+            button({ type: "submit", name: "filter", value: f.key, class: filter === f.key ? "filter-btn active" : "filter-btn" }, String(i18n[f.i18n]).toUpperCase())
           ),
           button({ type: "submit", name: "filter", value: "CREATE", class: "create-button" }, i18n.jobsCreateJob)
         )

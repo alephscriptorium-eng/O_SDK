@@ -589,6 +589,21 @@ function scoreFromActions(actions) {
     else if (t === "chat") score += 1 * decay;
     else if (t === "gamescore") score += 2 * decay;
     else if (t === "pixelia") score += 2 * decay;
+    else if (rawType === "industry") score += 8 * decay;
+    else if (rawType === "industryblueprint") score += 6 * decay;
+    else if (rawType === "industrybuild") score += 8 * decay;
+    else if (rawType === "industrycontribution") score += 4 * decay;
+    else if (rawType === "industryallocation") score += 10 * decay;
+    else if (rawType === "industryvote") score += 2 * decay;
+    else if (rawType === "industrymember") score += 2 * decay;
+    else if (rawType === "industryopinion") score += 1 * decay;
+    else if (rawType === "schoolcourse") score += 10 * decay;
+    else if (rawType === "schoollesson") score += 6 * decay;
+    else if (rawType === "schoolenroll") score += 3 * decay;
+    else if (rawType === "schoolcertificate") score += 12 * decay;
+    else if (rawType === "schoolexam") score += 6 * decay;
+    else if (rawType === "schoolprogress") score += 1 * decay;
+    else if (rawType === "schoolopinion") score += 2 * decay;
   }
   return Math.max(0, Math.round(score));
 }
@@ -752,6 +767,70 @@ async function getUserArchTax(userId) {
     : Date.now();
   const ageDays = Math.max(0, (newestTs - firstTs) / ONE_DAY_MS);
   return archTaxFromDays(ageDays);
+}
+
+let _industryModel = null;
+function industryModel() {
+  if (_industryModel) return _industryModel;
+  if (!services || !services.cooler) return null;
+  try { _industryModel = require("./industry_model")({ cooler: services.cooler }); } catch (_) { _industryModel = null; }
+  return _industryModel;
+}
+
+async function getIndustryBalance(userId) {
+  const uid = resolveUserId(userId);
+  const industry = industryModel();
+  if (!industry) return { received: 0, sent: 0, net: 0, networkTotal: 0 };
+  const builds = await industry.listAllBuilds().catch(() => []);
+  let production = 0;
+  let earned = 0;
+  for (const b of (builds || [])) {
+    const est = parseFloat(b && b.estTotal);
+    if (Number.isFinite(est) && est > 0) production += est;
+    const mine = parseFloat(b && b.points && b.points[uid]);
+    if (Number.isFinite(mine) && mine > 0) earned += mine;
+  }
+  return {
+    received: Number(earned.toFixed(6)),
+    sent: 0,
+    net: Number(earned.toFixed(6)),
+    networkTotal: Number(production.toFixed(6))
+  };
+}
+
+async function getSchoolBalance(userId) {
+  const uid = resolveUserId(userId);
+  const ssb = await openSsb();
+  const collect = (type) => new Promise((resolve) => {
+    if (!ssb.messagesByType) return resolve([]);
+    pull(ssb.messagesByType({ type }), pull.collect((err, msgs) => resolve(err ? [] : msgs)));
+  });
+  const [transfers, confirms] = await Promise.all([collect("transfer"), collect("transferConfirm")]);
+  const confirmsByTarget = new Map();
+  for (const m of confirms) {
+    const c = m.value && m.value.content;
+    if (!c || !c.target) continue;
+    if (!confirmsByTarget.has(c.target)) confirmsByTarget.set(c.target, new Set());
+    if (m.value.author) confirmsByTarget.get(c.target).add(m.value.author);
+  }
+  const monthKey = new Date().toISOString().slice(0, 7);
+  let received = 0;
+  let lifetime = 0;
+  for (const m of transfers) {
+    const c = m.value && m.value.content;
+    if (!c || c.to !== uid) continue;
+    const tags = Array.isArray(c.tags) ? c.tags.map(t => String(t).toUpperCase()) : [];
+    if (!tags.includes("SCHOOL")) continue;
+    const signatures = new Set(Array.isArray(c.confirmedBy) ? c.confirmedBy : []);
+    if (c.from) signatures.add(c.from);
+    for (const a of (confirmsByTarget.get(m.key) || [])) signatures.add(a);
+    if (signatures.size < 2) continue;
+    const amount = parseFloat(c.amount);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    lifetime += amount;
+    if (String(c.createdAt || "").slice(0, 7) === monthKey) received += amount;
+  }
+  return { received: Number(received.toFixed(6)), lifetime: Number(lifetime.toFixed(6)), net: Number(received.toFixed(6)) };
 }
 
 async function getUserEngagementScore(userId) {
@@ -1062,6 +1141,8 @@ async function getLastPublishedTimestamp(userId) {
       allocations = await getUbiAllocationsFromSSB();
     }
     const userBalance = await safeGetBalance("user");
+    const industryBal = await getIndustryBalance(uid).catch(() => ({ received: 0, sent: 0, net: 0, networkTotal: 0 }));
+    const schoolBal = await getSchoolBalance(uid).catch(() => ({ received: 0, lifetime: 0, net: 0 }));
     const epochs = await epochsRepo.list();
     let computed = null;
     try { computed = await computeEpoch({ epochId, userId: uid, rules: DEFAULT_RULES }); } catch {}
@@ -1080,6 +1161,12 @@ async function getLastPublishedTimestamp(userId) {
     const hasValidWallet = !!(userAddress && isValidEcoinAddress(userAddress) && userWalletCfg.url);
     const summary = {
       userBalance,
+      industryBalance: industryBal.net,
+      schoolBalance: schoolBal.net,
+      schoolLifetime: schoolBal.lifetime,
+      industryNetworkTotal: industryBal.networkTotal,
+      industryReceived: industryBal.received,
+      industrySent: industryBal.sent,
       epochId,
       pool: poolForEpoch,
       weightsSum: computed?.epoch?.weightsSum || 0,

@@ -12,16 +12,13 @@ if (!fs.existsSync(configFilePath)) {
       "current": "blocks"
     },
     "modules": {
-      "popularMod": "on",
-      "topicsMod": "on",
-      "summariesMod": "on",
-      "latestMod": "on",
-      "threadsMod": "on",
-      "multiverseMod": "on",
+      "blogsMod": "on",
+      "pollsMod": "on",
       "fediverseMod": "off",
       "invitesMod": "on",
       "walletMod": "on",
       "legacyMod": "on",
+      "devMod": "on",
       "cipherMod": "on",
       "bookmarksMod": "on",
       "videosMod": "on",
@@ -48,10 +45,13 @@ if (!fs.existsSync(configFilePath)) {
       "aiNavMod": "on",
       "forumMod": "on",
       "gamesMod": "on",
+      "housingMod": "on",
       "jobsMod": "on",
       "shopsMod": "on",
       "projectsMod": "on",
+      "industryMod": "on",
       "bankingMod": "on",
+      "schoolMod": "on",
       "parliamentMod": "on",
       "courtsMod": "on",
       "favoritesMod": "on",
@@ -94,8 +94,9 @@ const getConfig = () => {
   if (typeof cfg.ux === 'string') cfg.ux = { current: cfg.ux };
   if (!cfg.ux || typeof cfg.ux !== 'object') cfg.ux = { current: 'blocks' };
   if (cfg.ux.current === 'menus') cfg.ux.current = 'blocks';
-  if (cfg.ux.current !== 'blocks' && cfg.ux.current !== 'ainav') cfg.ux.current = 'blocks';
+  if (cfg.ux.current !== 'blocks' && cfg.ux.current !== 'ainav' && cfg.ux.current !== 'chats') cfg.ux.current = 'blocks';
   if (cfg.ux.current === 'ainav' && cfg.modules && cfg.modules.aiNavMod !== 'on') cfg.ux.current = 'blocks';
+  if (cfg.ux.current === 'chats' && cfg.modules && cfg.modules.chatsMod !== 'on') cfg.ux.current = 'blocks';
   return cfg;
 };
 

@@ -1,6 +1,8 @@
 const pull = require('../server/node_modules/pull-stream');
 const ssbRef = require('../server/node_modules/ssb-ref');
 const { getConfig } = require('../configs/config-manager.js');
+const { buildVoteTally } = require('../backend/vote_tally');
+const { buildValidatedTombstoneSet } = require('./tombstone_validator');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 
 const safeFeedId = (v) => {
@@ -80,7 +82,7 @@ const HIDDEN_ENVELOPE_TYPES = new Set([
   'courts-key'
 ]);
 
-module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
+module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel, industryModel }) => {
   let ssb;
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb };
 
@@ -141,6 +143,69 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
     return t.length > max ? t.slice(0, max - 1) + '…' : t;
   };
 
+  const CHAT_THREAD_LIMIT = 6;
+  const buildChatThreads = async (ssbClient, idToAction, rootOf) => {
+    const replacedChatIds = new Set();
+    for (const a of idToAction.values()) {
+      if (a.type !== 'chat') continue;
+      const rep = a.content && a.content.replaces;
+      if (rep) replacedChatIds.add(rep);
+    }
+    const stateByRoot = new Map();
+    for (const a of idToAction.values()) {
+      if (a.type !== 'chat') continue;
+      const root = rootOf(a.id);
+      const isTip = !replacedChatIds.has(a.id);
+      const prev = stateByRoot.get(root);
+      if (prev && !((isTip && !prev.isTip) || (isTip === prev.isTip && (a.ts || 0) >= prev.ts))) continue;
+      const cc = a.content || {};
+      stateByRoot.set(root, { ts: a.ts || 0, isTip, status: String(cc.status || '').toUpperCase(), tribeId: cc.tribeId || null, title: String(cc.title || ''), description: String(cc.description || ''), members: Array.isArray(cc.members) ? cc.members.length : 0 });
+    }
+    const msgsByRoot = new Map();
+    for (const a of idToAction.values()) {
+      if (a.type !== 'chatMessage') continue;
+      const c = a.content || {};
+      if (c.tribeId || c.encryptedText) continue;
+      const root = c.chatId;
+      if (!root || typeof c.text !== 'string' || !c.text) continue;
+      if (!msgsByRoot.has(root)) msgsByRoot.set(root, []);
+      msgsByRoot.get(root).push(a);
+    }
+    for (const root of msgsByRoot.keys()) {
+      if (stateByRoot.has(root)) continue;
+      const val = await getMsg(ssbClient, root);
+      const cc = val && val.content;
+      if (cc && typeof cc === 'object' && cc.type === 'chat') {
+        stateByRoot.set(root, { ts: 0, status: String(cc.status || '').toUpperCase(), tribeId: cc.tribeId || null, title: String(cc.title || ''), description: String(cc.description || ''), members: Array.isArray(cc.members) ? cc.members.length : 0 });
+      } else {
+        stateByRoot.set(root, null);
+      }
+    }
+    const items = [];
+    for (const [root, msgs] of msgsByRoot.entries()) {
+      const info = stateByRoot.get(root);
+      if (!info || info.tribeId || info.status !== 'OPEN') continue;
+      const asc = msgs.slice().sort((x, y) => (x.ts || 0) - (y.ts || 0));
+      const last = asc[asc.length - 1];
+      items.push({
+        id: `chatthread:${root}`,
+        type: 'chatThread',
+        author: last.author,
+        ts: last.ts || 0,
+        content: {
+          type: 'chatThread',
+          chatRoot: root,
+          title: info.title || '',
+          description: info.description || '',
+          members: info.members || 0,
+          messageCount: asc.length,
+          replies: asc.slice(-CHAT_THREAD_LIMIT).map(m => ({ id: m.id, author: m.author, ts: m.ts || 0, text: (m.content && m.content.text) || '' }))
+        }
+      });
+    }
+    return items;
+  };
+
   return {
     invalidateCache() {
       _feedCache = null;
@@ -165,10 +230,39 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
         );
       });
 
-      const tombstoned = new Set();
+      if (typeof ssbClient.createUserStream === 'function') {
+        const ownResults = await new Promise((resolve) => {
+          pull(
+            ssbClient.createUserStream({ id: userId, reverse: true }),
+            pull.collect((err, msgs) => resolve(err ? [] : msgs))
+          );
+        });
+        const seenKeys = new Set(results.map(m => m && m.key));
+        for (const m of ownResults) {
+          if (m && m.key && !seenKeys.has(m.key)) results.push(m);
+        }
+      }
+
+      const tombstoned = buildValidatedTombstoneSet(results);
       const parentOf = new Map();
       const idToAction = new Map();
       const rawById = new Map();
+      const voteTally = buildVoteTally(results);
+      const pollTally = new Map();
+      for (const m of results) {
+        const c = m && m.value && m.value.content;
+        if (!c || c.type !== 'pollVote' || typeof c.target !== 'string') continue;
+        if (!Array.isArray(c.choices)) continue;
+        const entry = pollTally.get(c.target) || { counts: {}, voters: new Map() };
+        entry.voters.set(m.value.author, { ts: m.value.timestamp || 0, choices: c.choices });
+        pollTally.set(c.target, entry);
+      }
+      for (const entry of pollTally.values()) {
+        entry.counts = {};
+        for (const v of entry.voters.values()) {
+          for (const choice of v.choices) entry.counts[choice] = (entry.counts[choice] || 0) + 1;
+        }
+      }
       const fpIdx = tribeCrypto ? tribeCrypto.buildFingerprintIndex() : null;
       const accessibleTribeIds = await buildAccessibleTribeIds();
 
@@ -191,7 +285,7 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
           continue;
         }
         if (!c.type) continue;
-        if (c.type === 'tombstone' && c.target) { tombstoned.add(c.target); continue }
+        if (c.type === 'tombstone') continue;
         if (c.encryptedPayload && tribeCrypto && !c.tribeId) {
           const pubKey = tryDecryptPublicInviteKey(c.invites);
           if (pubKey) {
@@ -214,6 +308,21 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
         if (c.replaces) parentOf.set(k, c.replaces);
       }
 
+      const forgedParentOf = new Map();
+      const forgedFeedContent = new Map();
+      for (const [child, parent] of Array.from(parentOf.entries())) {
+        const ca = idToAction.get(child);
+        const pa = idToAction.get(parent);
+        if (!pa) { parentOf.delete(child); continue; }
+        if (!ca || String(ca.author) !== String(pa.author)) {
+          forgedParentOf.set(child, parent);
+          if (ca && ca.type === 'feed') forgedFeedContent.set(child, ca.content || {});
+          parentOf.delete(child);
+          idToAction.delete(child);
+          rawById.delete(child);
+        }
+      }
+
       const replacedIds = new Set(parentOf.values());
       const spreadVoteState = new Map();
       const aiHelpfulCounts = new Map();
@@ -225,7 +334,7 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
         const target = String(c.target || '');
         const author = v.author;
         if (!target || !author) continue;
-        const key = `${target} ${author}`;
+        const key = `${target}\u0000${author}`;
         const prev = aiHelpfulSeen.get(key);
         const curTs = v.timestamp || 0;
         if (!prev || curTs > prev.ts) aiHelpfulSeen.set(key, { target, ts: curTs, helpful: c.helpful !== false });
@@ -421,12 +530,46 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
         }
       }
 
+      const feedOpinionsByRoot = new Map();
+      for (const msg of results) {
+        const v = msg && msg.value;
+        const c = v && v.content;
+        if (!c || typeof c !== 'object') continue;
+        const isOpinion = c.type === 'feedOpinion' && typeof c.target === 'string';
+        const isVoteAction = c.type === 'feed-action' && c.action === 'vote' && (typeof c.root === 'string' || typeof c.target === 'string');
+        if (!isOpinion && !isVoteAction) continue;
+        const target = isOpinion ? c.target : String(c.root || c.target);
+        let cur = target;
+        let g = 0;
+        while (g++ < 1000) {
+          if (forgedParentOf.has(cur)) { cur = forgedParentOf.get(cur); continue; }
+          if (parentOf.has(cur)) { cur = parentOf.get(cur); continue; }
+          break;
+        }
+        const r = cur;
+        if (!feedOpinionsByRoot.has(r)) feedOpinionsByRoot.set(r, []);
+        feedOpinionsByRoot.get(r).push({ author: v.author, category: String(c.category || '') });
+      }
+
+      const forgedFeedAggByRoot = new Map();
+      for (const [child, fc] of forgedFeedContent.entries()) {
+        let cur = child;
+        let g = 0;
+        while (g++ < 1000) {
+          if (forgedParentOf.has(cur)) { cur = forgedParentOf.get(cur); continue; }
+          if (parentOf.has(cur)) { cur = parentOf.get(cur); continue; }
+          break;
+        }
+        if (!forgedFeedAggByRoot.has(cur)) forgedFeedAggByRoot.set(cur, []);
+        forgedFeedAggByRoot.get(cur).push(fc);
+      }
+
       const latest = [];
       for (const a of idToAction.values()) {
         if (tombstoned.has(a.id)) continue;
         if (a.type === 'tribe' && parentOf.has(a.id)) continue;
         const c = a.content || {};
-        if (c.root && tombstoned.has(c.root)) continue;
+        if (c.root && tombstoned.has(c.root) && !c.replaces) continue;
         if (a.type === 'vote' && tombstoned.has(c.vote?.link)) continue;
         if (a.type === 'spread' && (c.spreadTargetId || c.vote?.link) && tombstoned.has(c.spreadTargetId || c.vote?.link)) continue;
         if (c.key && tombstoned.has(c.key)) continue;
@@ -445,7 +588,37 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
         }
         const actionRoot = rootOf(a.id);
         const extra = a.type === 'aiExchange' ? { helpfulVotes: aiHelpfulCounts.get(a.id) || 0 } : {};
-        latest.push({ ...a, ...extra, tipId: idToTipId.get(a.id) || a.id, rootId: actionRoot !== a.id ? actionRoot : null });
+        const voteAgg = a.type === 'votes' ? voteTally.get(a.id) : null;
+        if (a.type === 'poll') {
+          const tally = pollTally.get(a.id) || pollTally.get(actionRoot);
+          a.pollCounts = tally ? tally.counts : {};
+          a.pollVoters = tally ? tally.voters.size : 0;
+        }
+        let content = voteAgg ? { ...c, ...voteAgg } : a.content;
+        if (a.type === 'feed') {
+          const base = a.content || {};
+          const opinions = { ...(base.opinions || {}) };
+          const voters = Array.isArray(base.opinions_inhabitants) ? base.opinions_inhabitants.slice() : [];
+          const voterSet = new Set(voters);
+          for (const fc of (forgedFeedAggByRoot.get(actionRoot) || [])) {
+            for (const [cat, n] of Object.entries(fc.opinions || {})) {
+              opinions[cat] = (Number(opinions[cat]) || 0) + (Number(n) || 0);
+            }
+            for (const vt of (Array.isArray(fc.opinions_inhabitants) ? fc.opinions_inhabitants : [])) {
+              if (voterSet.has(vt)) continue;
+              voterSet.add(vt);
+              voters.push(vt);
+            }
+          }
+          for (const op of (feedOpinionsByRoot.get(actionRoot) || [])) {
+            if (!op.author || voterSet.has(op.author)) continue;
+            voterSet.add(op.author);
+            voters.push(op.author);
+            if (op.category) opinions[op.category] = (Number(opinions[op.category]) || 0) + 1;
+          }
+          content = { ...content, opinions, opinions_inhabitants: voters };
+        }
+        latest.push({ ...a, content, ...extra, tipId: idToTipId.get(a.id) || a.id, rootId: actionRoot !== a.id ? actionRoot : null });
       }
 
       let deduped = latest.filter(a => !a.tipId || a.tipId === a.id || (a.type === 'tribe' && !parentOf.has(a.id)));
@@ -473,6 +646,10 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
           if (!prev || effTs > prev.__effTs) byKey.set(key, { ...a, __effTs: effTs });
         } else if (a.type === 'about') {
           const target = c.about || a.author;
+          if (String(target) !== String(a.author)) {
+            byKey.set(`id:${a.id}`, { ...a, __effTs: effTs });
+            continue;
+          }
           const key = `about:${target}`;
           const prev = byKey.get(key);
           const prevContent = prev && (prev.content || {});
@@ -504,11 +681,37 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
 
       deduped = Array.from(byKey.values()).map(x => { delete x.__effTs; delete x.__hasImage; return x });
 
+      if (industryModel && deduped.some(a => a.type === 'industryBuild')) {
+        const builds = await industryModel.listAllBuilds().catch(() => []);
+        const buildStatusById = new Map();
+        for (const b of (builds || [])) buildStatusById.set(b.id || b.key, String(b.status || 'PROPOSED').toUpperCase());
+        deduped = deduped.filter(a => {
+          if (a.type !== 'industryBuild') return true;
+          const st = buildStatusById.get(a.id);
+          if (st === undefined || st === 'PROPOSED' || st === 'REJECTED') return false;
+          a.content = { ...a.content, buildStatus: st };
+          return true;
+        });
+      }
+
+      if (industryModel && deduped.some(a => a.type === 'industryBlueprint')) {
+        const bps = await industryModel.listAllBlueprints().catch(() => []);
+        const bpById = new Map((bps || []).map(b => [b.id || b.key, b]));
+        for (const a of deduped) {
+          if (a.type !== 'industryBlueprint') continue;
+          const b = bpById.get(a.id);
+          if (b && b.estTotal != null) a.content = { ...a.content, estTotal: b.estTotal };
+        }
+      }
+
       const tribeInternalTypes = new Set(['tribe-content', 'tribeParliamentCandidature', 'tribeParliamentTerm', 'tribeParliamentProposal', 'tribeParliamentRule', 'tribeParliamentLaw', 'tribeParliamentRevocation']);
-      const hiddenTypes = new Set(['padEntry', 'chatMessage', 'calendarDate', 'calendarNote', 'calendarReminderSent', 'taskReminderSent', 'feed-action', 'pubBalance', 'pubAvailability', 'log', 'gameScore']);
+      const hiddenTypes = new Set(['padEntry', 'chatMessage', 'calendarDate', 'calendarNote', 'calendarReminderSent', 'taskReminderSent', 'feed-action', 'pubBalance', 'pubAvailability', 'log', 'logPublic', 'gameScore', 'pollVote', 'pollClose', 'pollOpinion', 'curriculum', 'schoolLesson', 'schoolEnroll', 'schoolCertificate', 'schoolProgress', 'schoolExam', 'schoolExamResult', 'school-invite', 'schoolExamQuestion', 'schoolLessonMedia']);
+      const chatThreadItems = await buildChatThreads(ssbClient, idToAction, rootOf, deduped);
+      deduped = deduped.concat(chatThreadItems);
       const isAllowedTribeActivity = (a) => {
         if (tribeInternalTypes.has(a.type)) return false;
         const c = a.content || {};
+        if (a.type === 'poll' && c.chatId) return false;
         if (c.tribeId) return false;
         if (a.type === 'tribe') {
           const isInitial = !c.replaces;
@@ -519,8 +722,8 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
         }
         return true;
       };
-      const itemVisible = (a) => {
-        if (hiddenTypes.has(a.type)) return false;
+      const itemVisible = (a, opts = {}) => {
+        if (hiddenTypes.has(a.type) && !(opts.allowHidden && opts.allowHidden.has(a.type))) return false;
         const c = a.content || {};
         if (c.encryptedPayload) return false;
         if (a.type === 'pad' && c.status !== 'OPEN') return false;
@@ -530,14 +733,18 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
         if (a.type === 'task' && String(c.isPublic || '').toUpperCase() === 'PRIVATE' && a.author !== userId && !(Array.isArray(c.assignees) && c.assignees.includes(userId))) return false;
         if (a.type === 'forum' && c.isPrivate === true && a.author !== userId) return false;
         if (a.type === 'job' && String(c.visibility || '').toUpperCase() === 'HIDDEN' && a.author !== userId && !(Array.isArray(c.subscribers) && c.subscribers.includes(userId))) return false;
+        if (a.type === 'schoolCourse' && c.encryptedPayload) return false;
+        if (a.type === 'schoolCourse' && String(c.visibility || '').toUpperCase() === 'INVITE' && a.author !== userId && !(Array.isArray(c.invited) && c.invited.includes(userId))) return false;
+        if (a.type === 'housing' && String(c.visibility || '').toUpperCase() === 'HIDDEN' && a.author !== userId) return false;
         if (a.type === 'market' && String(c.visibility || '').toUpperCase() === 'HIDDEN' && c.seller !== userId) return false;
         if (a.type === 'shop' && String(c.visibility || '').toUpperCase() === 'CLOSED' && a.author !== userId) return false;
         if (a.type === 'curriculum' && String(c.visibility || '').toUpperCase() === 'HIDDEN' && a.author !== userId) return false;
         if (a.type === 'shopProduct' && c.shopVisibility && String(c.shopVisibility).toUpperCase() === 'CLOSED' && a.author !== userId) return false;
+        if (a.type === 'transfer' && String(c.status || '').toUpperCase() === 'UNCONFIRMED' && a.author !== userId && c.from !== userId && c.to !== userId) return false;
         return true;
       };
-      const isVisible = (a) => {
-        if (!itemVisible(a)) return false;
+      const isVisible = (a, opts) => {
+        if (!itemVisible(a, opts)) return false;
         if (a.type === 'post' || a.type === 'opinion') {
           const c = a.content || {};
           const ref = (typeof c.root === 'string' && c.root)
@@ -556,6 +763,14 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
       if (filter === 'mine') out = deduped.filter(a => a.author === userId && isAllowedTribeActivity(a) && isVisible(a));
       else if (filter === 'recent') { const cutoff = Date.now() - 24 * 60 * 60 * 1000; out = deduped.filter(a => (a.ts || 0) >= cutoff && isAllowedTribeActivity(a) && isVisible(a)) }
       else if (filter === 'all') out = deduped.filter(a => isAllowedTribeActivity(a) && isVisible(a));
+      else if (filter === 'top') {
+        const visible = deduped.filter(a => isAllowedTribeActivity(a) && isVisible(a));
+        const perAuthor = new Map();
+        for (const a of visible) perAuthor.set(a.author, (perAuthor.get(a.author) || 0) + 1);
+        out = visible
+          .map(a => ({ ...a, authorActions: perAuthor.get(a.author) || 0 }))
+          .sort((x, y) => (y.authorActions - x.authorActions) || ((y.ts || 0) - (x.ts || 0)));
+      }
       else if (filter === 'banking') out = deduped.filter(a => a.type === 'bankWallet' || a.type === 'bankClaim' || a.type === 'ubiClaim');
       else if (filter === 'tribe') out = deduped.filter(a => a.type === 'tribe' || String(a.type || '').startsWith('tribe'));
       else if (filter === 'spread') out = deduped.filter(a => a.type === 'spread');
@@ -570,12 +785,17 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel }) => {
         });
       else if (filter === 'task')
         out = deduped.filter(a => a.type === 'task' || a.type === 'taskAssignment');
+      else if (filter === 'votes')
+        out = deduped.filter(a => (a.type === 'votes' || a.type === 'poll') && isAllowedTribeActivity(a) && isVisible(a));
+      else if (filter === 'industry')
+        out = deduped.filter(a => ['industry', 'industryBuild', 'industryBlueprint', 'industryAllocation'].includes(a.type) && isVisible(a));
       else if (filter === 'pad') out = deduped.filter(a => a.type === 'pad' && (a.content || {}).status === 'OPEN');
-      else if (filter === 'chat') out = deduped.filter(a => a.type === 'chat' && (a.content || {}).status === 'OPEN');
+      else if (filter === 'chat') out = deduped.filter(a => (a.type === 'chat' || a.type === 'chatThread') && isAllowedTribeActivity(a) && isVisible(a));
       else if (filter === 'calendar') out = deduped.filter(a => a.type === 'calendar' && (a.content || {}).status === 'OPEN');
+      else if (filter === 'transfer') out = deduped.filter(a => a.type === 'transfer' && isVisible(a));
       else out = deduped.filter(a => a.type === filter);
 
-      out.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      if (filter !== 'top') out.sort((a, b) => (b.ts || 0) - (a.ts || 0));
       return out;
       })();
       _feedCacheInflight.set(cacheKey, promise);
