@@ -65,7 +65,8 @@ export default defineConfig({
         text: 'Operación',
         items: [
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
-          { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' }
+          { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
+          { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' }
         ]
       },
       { text: 'Repo', link: BACK.repo }
@@ -82,7 +83,8 @@ export default defineConfig({
         text: 'Operación',
         items: [
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
-          { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' }
+          { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
+          { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' }
         ]
       }
     ],
