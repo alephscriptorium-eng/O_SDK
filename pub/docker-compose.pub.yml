@@ -67,6 +67,9 @@ services:
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./site:/srv/site:ro
+      # Teatro: contenido pesado (obras) servido desde el volumen de datos,
+      # montado sobre el mountpoint vacío pub/site/teatro/ del repo.
+      - "${OASIS_PUB_TEATRO_DIR:-../volumes-dev/teatro}:/srv/site/teatro:ro"
       - "${OASIS_PUB_CADDY_DATA_DIR:-../volumes-dev/oasis-pub/caddy-data}:/data"
       - "${OASIS_PUB_CADDY_CONFIG_DIR:-../volumes-dev/oasis-pub/caddy-config}:/config"
     depends_on:

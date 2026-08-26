@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teatro · Scriptorium</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/ico.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/ico.png">
+  <link rel="apple-touch-icon" href="/ico.png">
+  <meta name="description"
+    content="Teatro del Scriptorium: catálogo de obras estáticas. Obra Nº 1: Aleph Cero, el archivo de @_dev_aleph_1.">
+  <link rel="stylesheet" href="/assets/fanzine.css">
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(0, 0, 0, 0.05), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(0, 0, 0, 0.04), transparent 28rem),
+        #f6f1e6;
+      max-width: 980px;
+    }
+
+    .nav-top {
+      font-size: 0.62rem;
+      text-align: right;
+      padding: 5px 0 4px;
+      border-bottom: 1px dashed #000;
+      margin-bottom: 2px;
+    }
+
+    .nav-top a {
+      text-decoration: none;
+      color: #000;
+      border-bottom: 1.5px solid #000;
+      letter-spacing: 1px;
+      padding: 1px 2px;
+    }
+
+    .nav-top a:hover {
+      background: #000;
+      color: #fff;
+    }
+
+    .obra-card {
+      border: 2px solid #000;
+      background: #fff;
+      padding: 14px 16px;
+      position: relative;
+    }
+
+    .obra-stamp {
+      display: inline-block;
+      background: #000;
+      color: #fff;
+      padding: 2px 7px;
+      font-size: 0.56rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+
+    .obra-title {
+      font-size: 1.3rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      font-weight: bold;
+      transform: rotate(-0.6deg);
+    }
+
+    .obra-copy {
+      font-size: 0.68rem;
+      line-height: 1.55;
+      margin-bottom: 10px;
+      max-width: 620px;
+    }
+
+    .obra-meta {
+      font-size: 0.6rem;
+      letter-spacing: 1px;
+      opacity: 0.65;
+      margin-bottom: 12px;
+    }
+
+    .door-link {
+      display: inline-block;
+      border: 2px solid #000;
+      padding: 6px 11px;
+      text-decoration: none;
+      color: #000;
+      font-size: 0.64rem;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      font-weight: bold;
+      background: #fff;
+      margin-right: 6px;
+    }
+
+    .door-link:hover {
+      background: #000;
+      color: #fff;
+    }
+
+    .future-card {
+      border: 1.7px dashed #000;
+      padding: 10px 11px;
+      background: #fcfaf4;
+      margin-top: 12px;
+    }
+
+    .future-title {
+      font-size: 0.7rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    .tiny-note {
+      font-size: 0.62rem;
+      line-height: 1.45;
+      opacity: 0.76;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="nav-top">
+    <a href="/">← Escrivivir.Pub</a>
+    · <a href="/scriptorium/">Vestíbulo</a>
+    · <a href="/hackeria/">Hackería</a>
+    · <a href="/parlament/">Parlament</a>
+  </div>
+
+  <header class="header">
+    <div class="stamp">Sala 03</div>
+    <h1>Teatro</h1>
+    <div class="sub">Catálogo de obras del Scriptorium</div>
+    <div class="sub2">Piezas estáticas, sin tramoya: HTML plano, cero JavaScript, todo servido desde casa.</div>
+    <div class="issue">PUB.ESCRIVIVIR.CO · TEATRO · 2026</div>
+  </header>
+
+  <div class="washi"></div>
+
+  <div class="callout tilt-r">
+    Cada obra es un sitio autocontenido: texto verbatim, media local y su corpus descargable.
+  </div>
+
+  <div class="cutout tilt-l">
+    <div class="tape tape-tr"></div>
+    <h3>En cartel</h3>
+
+    <div class="obra-card">
+      <div class="obra-stamp">Obra Nº 1</div>
+      <div class="obra-title">Aleph Cero</div>
+      <div class="obra-copy">
+        El archivo de una cuenta como pieza en actos, escenas y apartes: los 1246 posts de
+        @_dev_aleph_1 en X (2024–2026), con sus hilos, hashtags, media y las voces ajenas
+        recuperadas. Texto verbatim, citado por id, nada inventado.
+      </div>
+      <div class="obra-meta">1246 POSTS · 1077 MEDIA · 156 HILOS · 68 HASHTAGS · ARCHIVO OFICIAL X 2026-07-08</div>
+      <a class="door-link" href="/teatro/aleph-cero/">Ver la obra →</a>
+      <a class="door-link" href="/teatro/aleph-cero/aleph-cero.zip">Descargar zip ↓</a>
+    </div>
+
+    <div class="future-card">
+      <div class="future-title">Próximas obras</div>
+      <div class="tiny-note">El telón queda abierto: nuevas piezas se anuncian en este catálogo.</div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <a href="https://github.com/escrivivir-co/aleph-scriptorium/blob/main/LICENSE.md">vAIGPLv1</a> · teatro · <a
+      href="https://escrivivir-co.github.io/aleph-scriptorium/">scriptorium v1.0.0-beta.1</a> · <a
+      href="https://escrivivir.co">escrivivir.co</a> · 2026
+  </footer>
+
+</body>
+
+</html>

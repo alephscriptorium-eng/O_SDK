@@ -1,0 +1,3 @@
+# Mountpoint del Teatro. El contenido real vive en OASIS_PUB_TEATRO_DIR
+# (/srv/oasis/teatro en el VPS) y se monta encima en pub-web; ver
+# docker-compose.pub.yml y devops/scripts/deploy-teatro.sh.
