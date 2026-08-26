@@ -32,14 +32,17 @@ REMOTE_TEATRO_DIR="${REMOTE_TEATRO_DIR:-/srv/oasis/teatro}"
 [[ -d "$LOCAL_TEATRO_DIR" ]]  || { echo "ERROR: Local teatro dir not found: $LOCAL_TEATRO_DIR"; exit 1; }
 command -v rsync >/dev/null   || { echo "ERROR: rsync no disponible (usar WSL)"; exit 1; }
 
+TMP_WORK="$(mktemp -d)"
+trap 'rm -rf "$TMP_WORK"' EXIT
+
+PUB_KEY_PATH="${PUB_KEY_PATH:-$KEY_PATH.pub}"
+
 # La clave en /mnt/c aparece 0777 en WSL y ssh la rechaza: copia efímera 600.
 key_mode="$(stat -c '%a' "$KEY_PATH" 2>/dev/null || echo 600)"
 if [[ "$key_mode" != "600" && "$key_mode" != "400" ]]; then
-  TMP_KEY="$(mktemp)"
-  trap 'rm -f "$TMP_KEY"' EXIT
-  cat "$KEY_PATH" > "$TMP_KEY"
-  chmod 600 "$TMP_KEY"
-  KEY_PATH="$TMP_KEY"
+  cat "$KEY_PATH" > "$TMP_WORK/key"
+  chmod 600 "$TMP_WORK/key"
+  KEY_PATH="$TMP_WORK/key"
 fi
 SSH_OPTS="-i $KEY_PATH -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
 
@@ -81,6 +84,39 @@ if [[ "${TEATRO_SKIP_ZIP:-0}" != "1" ]]; then
     mv aleph-cero.zip.tmp aleph-cero.zip
     ls -lh aleph-cero.zip
   "
+fi
+
+# ── integridad: checksum en el letrero + firma ssh de la clave del VPS ──
+echo "[deploy-teatro] checksum + letrero…"
+# shellcheck disable=SC2029
+ZIP_SHA="$(ssh $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
+  set -e
+  cd '$REMOTE_TEATRO_DIR/aleph-cero'
+  sha256sum aleph-cero.zip > aleph-cero.zip.sha256
+  cut -d' ' -f1 aleph-cero.zip.sha256
+")"
+echo "[deploy-teatro] SHA-256: $ZIP_SHA"
+# shellcheck disable=SC2029
+ssh $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
+  set -e
+  sed -i 's/__ZIP_SHA256__/$ZIP_SHA/g' \
+    '$REMOTE_TEATRO_DIR/index.html' '$REMOTE_TEATRO_DIR/aleph-cero/index.html'
+"
+
+if [[ -f "$PUB_KEY_PATH" ]]; then
+  echo "[deploy-teatro] firmando el .sha256 en local (la privada no viaja)…"
+  # shellcheck disable=SC2029
+  ssh $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" \
+    "cat '$REMOTE_TEATRO_DIR/aleph-cero/aleph-cero.zip.sha256'" \
+    > "$TMP_WORK/aleph-cero.zip.sha256"
+  ssh-keygen -Y sign -f "$KEY_PATH" -n file -q "$TMP_WORK/aleph-cero.zip.sha256"
+  awk '{print "teatro@escrivivir.co " $1 " " $2}' "$PUB_KEY_PATH" \
+    > "$TMP_WORK/allowed_signers"
+  scp $SSH_OPTS -q \
+    "$TMP_WORK/aleph-cero.zip.sha256.sig" "$TMP_WORK/allowed_signers" \
+    "$REMOTE_USER@$REMOTE_HOST:$REMOTE_TEATRO_DIR/aleph-cero/"
+else
+  echo "[deploy-teatro] AVISO: sin $PUB_KEY_PATH; se publica checksum sin firma."
 fi
 
 echo "[deploy-teatro] Done."
