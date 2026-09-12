@@ -1,4 +1,6 @@
 const pull = require('../server/node_modules/pull-stream');
+const { readTyped } = require('./typed_log');
+const { isContentVisibleTo } = require('./content_visibility');
 const ssbClientGUI = require("../client/gui");
 const coolerInstance = ssbClientGUI({ offline: require('../server/ssb_config').offline });
 const models = require("../models/main_models");
@@ -15,7 +17,10 @@ function toImageUrl(imgId, size=256){
   return `/image/${size}/${encodeURIComponent(imgId)}`;
 }
 
-module.exports = ({ cooler }) => {
+const MIN_SUGGESTION_AFFINITY = 0.1;
+const MAX_SUGGESTED = 12;
+
+module.exports = ({ cooler, tribesModel = null, dataModel = null }) => {
   let ssb;
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb; };
 
@@ -83,13 +88,7 @@ module.exports = ({ cooler }) => {
   };
 
   async function listAllBase(ssbClient) {
-    const authorsMsgs = await new Promise((res, rej) => {
-      pull(
-        ssbClient.createLogStream({ limit: logLimit, reverse: true }),
-        pull.filter(msg => !!msg.value?.author && msg.value?.content?.type !== 'tombstone'),
-        pull.collect((err, msgs) => err ? rej(err) : res(msgs))
-      );
-    });
+    const authorsMsgs = (await readTyped(ssbClient, [], { limit: logLimit, withWindow: true })).filter(msg => !!msg.value?.author && msg.value?.content?.type !== 'tombstone').reverse();
     const uniqueFeedIds = Array.from(new Set(authorsMsgs.map(r => r.value.author).filter(Boolean)));
     const users = await Promise.all(
       uniqueFeedIds.map(async (feedId) => {
@@ -143,21 +142,15 @@ module.exports = ({ cooler }) => {
             (u.id || '').toLowerCase().includes(q)
           );
         }
-        const bytesByAuthor = await new Promise((res) => {
-          pull(
-            ssbClient.createLogStream({ limit: logLimit }),
-            pull.collect((err, msgs) => {
-              if (err || !Array.isArray(msgs)) return res({});
-              const acc = {};
-              for (const m of msgs) {
-                const author = m && m.value && m.value.author;
-                if (!author) continue;
-                try { acc[author] = (acc[author] || 0) + Buffer.byteLength(JSON.stringify(m.value), 'utf8'); } catch (_) {}
-              }
-              res(acc);
-            })
-          );
-        });
+        const bytesByAuthor = await readTyped(ssbClient, [], { limit: logLimit, withWindow: true }).then((msgs) => {
+          const acc = {};
+          for (const m of msgs) {
+            const author = m && m.value && m.value.author;
+            if (!author) continue;
+            try { acc[author] = (acc[author] || 0) + Buffer.byteLength(JSON.stringify(m.value), 'utf8'); } catch (_) {}
+          }
+          return acc;
+        }).catch(() => ({}));
         const withMetrics = await Promise.all(users.map(async u => {
           const karmaScore = await getLastKarmaScore(u.id);
           const bytes = (bytesByAuthor && bytesByAuthor[u.id]) || 0;
@@ -199,73 +192,45 @@ module.exports = ({ cooler }) => {
       if (filter === 'SUGGESTED') {
         const base = await listAllBase(ssbClient);
         const active = filterInactive(base);
-        const cvRecords = await new Promise((res) => {
-          pull(
-            ssbClient.createLogStream({ limit: logLimit, reverse: true }),
-            pull.filter(msg => msg && msg.value && msg.value.content && msg.value.content.type === 'curriculum'),
-            pull.collect((err, msgs) => err ? res([]) : res(msgs))
-          );
-        });
-        const cvByAuthor = new Map();
-        for (const r of cvRecords) {
-          const c = r.value && r.value.content;
-          if (c && c.author && !cvByAuthor.has(c.author)) cvByAuthor.set(c.author, c);
-        }
-        const extractSkills = (cv) => cv ? [
-          ...(cv.personalSkills || []),
-          ...(cv.oasisSkills || []),
-          ...(cv.educationalSkills || []),
-          ...(cv.professionalSkills || [])
-        ].map(s => String(s || '').toLowerCase()).filter(Boolean) : [];
-        const mecv = await this.getCVByUserId().catch(() => null);
-        const mySkills = extractSkills(mecv);
+        const affinities = dataModel ? await dataModel.authorAffinities().catch(() => null) : null;
+        const byAuthor = affinities ? affinities.byAuthor : new Map();
         const rels = await Promise.all(
           active.map(async u => {
             if (u.id === userId) return null;
             const rel = await friend.getRelationship(u.id).catch(() => ({}));
             const n = normalizeRel(rel);
             if (n.iFollow || n.blocking || n.blockedBy) return null;
+            const aff = byAuthor.get(u.id) || { score: 0, common: [], reasons: [] };
+            const tribeMate = aff.reasons.includes('tribe');
+            if (aff.score < MIN_SUGGESTION_AFFINITY && !n.followsMe && !tribeMate) return null;
+            const social = (n.followsMe ? 0.15 : 0) + (tribeMate ? 0.1 : 0);
+            const activityBonus = u.lastActivityBucket === 'green' ? 0.05 : (u.lastActivityBucket === 'orange' ? 0.02 : 0);
+            const suggestionScore = Math.min(1, aff.score + social + activityBonus);
             const karmaScore = await getLastKarmaScore(u.id);
-            const theirSkills = extractSkills(cvByAuthor.get(u.id));
-            const commonSkills = mySkills.length && theirSkills.length
-              ? Array.from(new Set(mySkills.filter(s => theirSkills.includes(s))))
-              : [];
-            const followsMeBonus = n.followsMe ? 20 : 0;
-            const karmaBonus = Math.min(20, Math.log10(1 + Math.max(0, karmaScore)) * 5);
-            const skillBonus = commonSkills.length * 4;
-            const activityBonus = u.lastActivityBucket === 'green' ? 5 : (u.lastActivityBucket === 'orange' ? 2 : 0);
-            const suggestionScore = followsMeBonus + karmaBonus + skillBonus + activityBonus;
-            return { user: u, rel: n, karmaScore, commonSkills, suggestionScore };
+            return { user: u, rel: n, karmaScore, commonSkills: aff.common, reasons: aff.reasons, suggestionScore };
           })
         );
-        const candidates = rels.filter(Boolean).filter(x => x.suggestionScore > 0);
+        const candidates = rels.filter(Boolean);
         const enriched = candidates.map(x => ({
           ...x.user,
           karmaScore: x.karmaScore,
           followsYou: x.rel.followsMe,
           commonSkills: x.commonSkills,
+          reasons: x.reasons,
           mutualCount: x.rel.followsMe ? 1 : 0,
-          suggestionScore: x.suggestionScore
+          suggestionScore: x.suggestionScore,
+          affinity: x.suggestionScore
         }));
         const unique = Array.from(new Map(enriched.map(u => [u.id, u])).values());
         return unique.sort((a, b) =>
           (b.suggestionScore || 0) - (a.suggestionScore || 0) ||
           (b.karmaScore || 0) - (a.karmaScore || 0) ||
           (b.lastActivityTs || 0) - (a.lastActivityTs || 0)
-        );
+        ).slice(0, MAX_SUGGESTED);
       }
 
       if (filter === 'CVs') {
-        const records = await new Promise((res, rej) => {
-          pull(
-            ssbClient.createLogStream({ limit: logLimit, reverse: true}),
-            pull.filter(msg =>
-              msg.value.content?.type === 'curriculum' &&
-              msg.value.content?.type !== 'tombstone'
-            ),
-            pull.collect((err, msgs) => err ? rej(err) : res(msgs))
-          );
-        });
+        const records = (await readTyped(ssbClient, ['curriculum'], { limit: logLimit })).filter(msg => msg.value.content?.type === 'curriculum').reverse();
 
         let cvs = records.map(r => r.value.content);
         cvs = Array.from(new Map(cvs.map(u => [u.author, u])).values());
@@ -308,6 +273,7 @@ module.exports = ({ cooler }) => {
         name: c.name,
         description: c.description,
         photo,
+        pdf: c.pdf || null,
         skills: [
           ...(c.personalSkills || []),
           ...(c.oasisSkills || []),
@@ -369,21 +335,8 @@ module.exports = ({ cooler }) => {
       const isOwner = viewer === target;
       const arr = (v) => Array.isArray(v) ? v : [];
       const up = (v) => String(v || '').toUpperCase();
-      const COUNTED = new Set(['post','event','task','forum','tribe','market','job','housing','project','industry','shop','image','video','audio','document','bookmark','transfer','map']);
-      const accessible = (type, c) => {
-        if (c.encryptedPayload) return false;
-        switch (type) {
-          case 'task':   return up(c.isPublic) !== 'PRIVATE' || isOwner || arr(c.assignees).includes(viewer);
-          case 'event':  return String(c.isPublic || '').toLowerCase() !== 'private' || isOwner || arr(c.attendees).includes(viewer);
-          case 'forum':  return c.isPrivate !== true || isOwner;
-          case 'job':    return up(c.visibility) !== 'HIDDEN' || isOwner || arr(c.subscribers).includes(viewer);
-          case 'housing': return up(c.visibility) !== 'HIDDEN' || isOwner;
-          case 'market': return up(c.visibility) !== 'HIDDEN' || isOwner;
-          case 'shop':   return up(c.visibility) !== 'CLOSED' || isOwner;
-          case 'tribe':  { const st = up(c.status); return !(st === 'PRIVATE' || st === 'INVITE-ONLY') || isOwner || arr(c.members).includes(viewer); }
-          default: return true;
-        }
-      };
+      const COUNTED = new Set(['post','event','task','forum','market','job','housing','project','industry','shop','image','video','audio','document','bookmark','transfer','map']);
+      const accessible = (type, c) => isOwner || isContentVisibleTo(type, c, viewer, target);
       const counts = {};
       await new Promise((resolve) => {
         pull(
@@ -399,6 +352,13 @@ module.exports = ({ cooler }) => {
           }, () => resolve())
         );
       });
+      if (tribesModel) {
+        try {
+          const visible = await tribesModel.listTribesForViewer(viewer);
+          const n = visible.filter(t => String(t.author) === String(target)).length;
+          if (n > 0) counts.tribe = n;
+        } catch (_) {}
+      }
       return counts;
     },
 
@@ -435,16 +395,7 @@ module.exports = ({ cooler }) => {
       addAll(tokenize(job.requirements));
       if (keywords.size === 0) return [];
 
-      const records = await new Promise((res, rej) => {
-        pull(
-          ssbClient.createLogStream({ limit: logLimit, reverse: true }),
-          pull.filter(msg =>
-            msg.value?.content?.type === 'curriculum' &&
-            msg.value?.content?.type !== 'tombstone'
-          ),
-          pull.collect((err, msgs) => err ? rej(err) : res(msgs))
-        );
-      });
+      const records = (await readTyped(ssbClient, ['curriculum'], { limit: logLimit })).filter(msg => msg.value?.content?.type === 'curriculum').reverse();
       let cvs = records.map(r => r.value.content);
       cvs = Array.from(new Map(cvs.map(u => [u.author, u])).values());
       cvs = cvs.filter(c => String(c.visibility || 'PUBLIC').toUpperCase() !== 'HIDDEN');

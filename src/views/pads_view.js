@@ -1,5 +1,5 @@
 const { div, h2, h3, h4, p, section, button, form, a, span, br, textarea, input, label, select, option, table, tr, td } = require("../server/node_modules/hyperaxe")
-const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton , renderContentActions } = require("./main_views")
+const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton , renderContentActions, renderInviteQrCard, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty } = require("./main_views")
 const { renderEncryptedChip } = require("./clearnet_view")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
@@ -82,15 +82,17 @@ const renderPadStatusChip = (status, isClosed) => {
   return renderStateChip(variant, icon, label)
 }
 
-const renderModeButtons = (currentFilter) =>
+const renderModeButtons = (currentFilter, emptyMod = false, modesAvail = null) =>
   div({ class: "tribe-mode-buttons" },
-    ["all", "mine", "recent", "open", "closed"].map(f =>
+    ...(emptyMod ? [] : [
+    ["all", "mine", "recent", "open", "closed"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
       form({ method: "GET", action: "/pads" },
         input({ type: "hidden", name: "filter", value: f }),
         button({ type: "submit", class: currentFilter === f ? "filter-btn active" : "filter-btn" },
           i18n[`padFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase())
       )
     ),
+    ]),
     form({ method: "GET", action: "/pads" },
       input({ type: "hidden", name: "filter", value: "create" }),
       button({ type: "submit", class: "create-button" }, i18n.padCreate || "Create Pad")
@@ -102,7 +104,10 @@ const renderPadCard = (pad, filter, spreadInfo) => {
   const chips = [
     renderPadStatusChip(pad.status, pad.isClosed),
     renderEncryptedChip(i18n),
-    renderLifespanChip(pad.lifetime, i18n)
+    renderLifespanChip(pad.lifetime, i18n),
+    pad.subscriptionIn === true
+      ? renderStateChip("mutuals", "✉", i18n.subscriptionOn)
+      : (pad.subscriptionIn === false ? renderStateChip("closed", "✉", i18n.subscriptionOff) : null)
   ].filter(Boolean)
   return div({ class: "tribe-card" },
     div({ class: "card-header activity-card-header" },
@@ -138,7 +143,7 @@ const renderCreateForm = (padToEdit, params) => {
       span(i18n.padTitleLabel || "Title"), require("../server/node_modules/hyperaxe").br(),
       input({ type: "text", name: "title", maxlength: "100", value: padToEdit ? padToEdit.title : "", placeholder: i18n.padTitlePlaceholder || "Enter pad title...", required: true }),
       require("../server/node_modules/hyperaxe").br(), require("../server/node_modules/hyperaxe").br(),
-      span(i18n.padStatusLabel || "Status"), require("../server/node_modules/hyperaxe").br(),
+      span(i18n.padTypeLabel), require("../server/node_modules/hyperaxe").br(),
       select({ name: "status" },
         ["OPEN", "INVITE-ONLY"].map(s =>
           option({ value: s, ...(padToEdit && padToEdit.status === s ? { selected: true } : {}) }, s)
@@ -154,7 +159,7 @@ const renderCreateForm = (padToEdit, params) => {
       }),
       require("../server/node_modules/hyperaxe").br(), require("../server/node_modules/hyperaxe").br(),
       span(i18n.padTagsLabel || "Tags"), require("../server/node_modules/hyperaxe").br(),
-      input({ type: "text", name: "tags", value: padToEdit ? padToEdit.tags.join(", ") : "", placeholder: i18n.padTagsPlaceholder || "tag1, tag2, ..." }),
+      input({ type: "text", name: "tags", value: padToEdit ? padToEdit.tags.join(", ") : "", placeholder: i18n.padTagsPlaceholder || "Enter tags separated by commas" }),
       require("../server/node_modules/hyperaxe").br(), require("../server/node_modules/hyperaxe").br(),
       button({ type: "submit", class: "create-button" }, padToEdit ? (i18n.padUpdate || "Update Pad") : (i18n.padCreate || "Create Pad"))
     )
@@ -176,19 +181,21 @@ exports.padsView = async (pads, filter, padToEdit, params) => {
   const q = String((params && params.q) || "").trim()
   const isForm = filter === "create" || filter === "edit"
   const headerText = i18n.padsTitle
+  const emptyMod = moduleIsEmpty(Array.isArray(pads) ? pads : [], filter || "all", "all", q)
 
   const filteredPads = q
     ? pads.filter(pd => String(pd.title || "").toLowerCase().includes(q.toLowerCase()))
     : pads
 
-  const body = div({ class: "main-column" },
-    div({ class: "tags-header" },
+  const body = section(
+    div({ class: "tags-header module-header-line" },
       h2(headerText),
       p(i18n.padsDescription || "Manage collaborative encrypted text editors in your network.")
     ),
-    renderModeButtons(filter),
-    !isForm
-      ? div({ class: "filters" },
+    renderModeButtons(filter, emptyMod, (params && params.modesAvail) || null),
+    !isForm && !emptyMod
+      ? div({ class: "filters activity-filter-chips activity-toolbar-row" },
+        renderModuleStatsBy(filteredPads, pd => pd.isClosed ? 'CLOSED' : String(pd.status || 'OPEN').toUpperCase(), [{ value: 'OPEN', label: i18n.padStatusOpen }, { value: 'INVITE-ONLY', label: i18n.padStatusInviteOnly }, { value: 'CLOSED', label: i18n.padStatusClosed }]),
           form({ method: "GET", action: "/pads", class: "filter-box" },
             input({ type: "hidden", name: "filter", value: filter }),
             input({ type: "text", name: "q", placeholder: i18n.padSearchPlaceholder || "Search pads...", value: q, class: "filter-box__input" }),
@@ -218,13 +225,18 @@ exports.singlePadView = async (pad, entries, params) => {
   const isRestrictedInviteOnly = !isMember && !isAuthor && pad.status === "INVITE-ONLY"
 
   const tags = !isRestrictedInviteOnly && Array.isArray(pad.tags) && pad.tags.length > 0
-    ? div({ class: "tribe-side-tags" }, ...pad.tags.map(t => a({ href: `/search?query=%23${encodeURIComponent(t)}` }, `#${t}`)))
+    ? div({ class: "tribe-side-tags" }, ...pad.tags.map(t => a({ href: `/search?query=%23${encodeURIComponent(t)}`, class: "tag-link" }, `#${t}`)))
     : null
 
+  const sharesPad = isAuthor || (pad.members || []).includes(userId)
+  const subscriptionIn = isAuthor || (pad.subscription && pad.subscription.subscribed === true)
   const detailChips = [
     renderPadStatusChip(pad.status, padClosed),
     renderEncryptedChip(i18n),
-    renderLifespanChip(pad.lifetime, i18n)
+    renderLifespanChip(pad.lifetime, i18n),
+    sharesPad
+      ? renderStateChip(subscriptionIn ? "mutuals" : "closed", "✉", subscriptionIn ? i18n.subscriptionOn : i18n.subscriptionOff)
+      : null
   ].filter(Boolean)
   const inviteActions = [
     isAuthor && pad.status === "INVITE-ONLY"
@@ -239,7 +251,8 @@ exports.singlePadView = async (pad, entries, params) => {
       if (openInvite) return [
         div({ class: "tribe-open-invite" },
           span({ class: "card-label" }, i18n.tribeInviteCodeText),
-          span({ class: "tribe-open-invite-code" }, openInvite.code)
+          span({ class: "tribe-open-invite-code" }, openInvite.code),
+          renderInviteQrCard({ qrDataUrl: `/qr-invite-code/pads/${encodeURIComponent(openInvite.code)}` })
         ),
         form({ method: "POST", action: `/pads/open-invite/remove/${encodeURIComponent(pad.rootId)}` },
           button({ type: "submit", class: "tribe-action-btn danger-btn" }, i18n.tribeRemoveInvitation)
@@ -285,6 +298,16 @@ exports.singlePadView = async (pad, entries, params) => {
         : null
     ),
     (isRestrictedInviteOnly || !inviteActions.length) ? null : div({ class: "tribe-side-actions" }, ...inviteActions),
+    (pad.subscription && sharesPad)
+      ? renderSubscriptionBox({
+          target: pad.rootId || pad.key,
+          scope: "pads",
+          subscribed: pad.subscription.subscribed === true,
+          count: pad.subscription.count,
+          isOwner: isAuthor,
+          returnTo
+        })
+      : null,
     !isAuthor && pad.status === "INVITE-ONLY" && !isMember
       ? div({ class: "pad-invite-section" },
           a({ class: "tribe-action-btn", href: "/invites#invites-pads" }, i18n.tribeEnterInvite)
@@ -345,7 +368,7 @@ exports.singlePadView = async (pad, entries, params) => {
     ? div({ class: "pad-editor-area" },
         coloredView,
         form({ method: "POST", action: `/pads/entry/${encodeURIComponent(pad.rootId)}` },
-          textarea({ name: "text", rows: "12", class: "pad-editor-white", placeholder: i18n.padEditorPlaceholder || "Start writing..." }, currentText),
+          textarea({ maxlength: "3000", name: "text", rows: "12", class: "pad-editor-white", placeholder: i18n.padEditorPlaceholder || "Start writing..." }, currentText),
           button({ type: "submit", class: "create-button" }, i18n.padSubmitEntry || "Submit")
         ),
         versionList ? div({ class: "pad-version-section" }, versionList) : null
@@ -368,11 +391,11 @@ exports.singlePadView = async (pad, entries, params) => {
   return template(
     pad.title || i18n.padsTitle || "Pad",
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(i18n.padsTitle || "Pads"),
         p(i18n.padsDescription || "Manage collaborative encrypted text editors in your network.")
       ),
-      renderModeButtons("all")
+      renderModeButtons("all", false, (params && params.modesAvail) || null)
     ),
     section(div({ class: "tribe-details" }, padSide, padMain))
   )

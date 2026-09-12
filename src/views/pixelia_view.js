@@ -18,7 +18,7 @@ exports.pixeliaView = (pixelArt, errorMessage) => {
           return td(
             {
               id: cellId,
-              title: pixel ? `By: ${pixel.author}` : "",
+              title: pixel ? `${pixel.author}` : "",
               class: `pixel-cell ${colorClass}`
             },
             ""
@@ -33,7 +33,7 @@ exports.pixeliaView = (pixelArt, errorMessage) => {
   return template(
     title,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(title),
         p(description)
       )
@@ -64,7 +64,7 @@ exports.pixeliaView = (pixelArt, errorMessage) => {
             option({ value: "#d3d3d3", class: "pixelia-swatch pixelia-swatch-d3d3d3" }, "Light Grey"),
             option({ value: "#ff6347", class: "pixelia-swatch pixelia-swatch-ff6347" }, "Tomato")
           ),
-          button({ type: "submit" }, i18n.paintButton)
+          button({ type: "submit", class: "filter-btn" }, String(i18n.paintButton).toUpperCase())
         )
       ),
       errorMessage ? div({ class: "error-message" }, errorMessage) : null,

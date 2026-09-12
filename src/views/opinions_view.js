@@ -1,5 +1,6 @@
 const { div, h2, p, section, button, form, a, img, video: videoHyperaxe, audio: audioHyperaxe, input, table, tr, th, td, br, span, details, summary } = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink, renderSpreadButton, renderContentActions } = require('./main_views');
+const { template, i18n, userLink, renderSpreadButton, renderContentActions, renderVotesSummary, renderModuleStats, renderCardMetaRow } = require('./main_views');
+const { renderZoomableImage } = require('./gallery_view');
 const { config } = require('../server/SSB_server.js');
 const { renderTextWithStyles } = require('../backend/renderTextWithStyles');
 const { renderUrl } = require('../backend/renderUrl');
@@ -27,6 +28,10 @@ const detailHref = (type, key) => {
     case 'shopProduct': return `/shops/product/${encodeURIComponent(key)}`;
     case 'housing': return `/housing/${encodeURIComponent(key)}`;
     case 'market': return `/market/${encodeURIComponent(key)}`;
+    case 'podcast': return `/podcasts/${encodeURIComponent(key)}`;
+    case 'podcastEpisode': return `/podcasts/episode/${encodeURIComponent(key)}`;
+    case 'campaign': return `/campaigns/${encodeURIComponent(key)}`;
+    case 'logisticsRoute': return `/logistics/${encodeURIComponent(key)}`;
     default: return null;
   }
 };
@@ -175,8 +180,8 @@ const renderContentHtml = (content, key) => {
               ]
             : null,
           br(),
-          div({ class: 'card-field' },
-            img({ src: `/blob/${encodeURIComponent(content.url)}`, class: 'feed-image' })
+          div({ class: 'card-field image-container' },
+            renderZoomableImage(`/blob/${encodeURIComponent(content.url)}`, { imgClass: 'post-image' })
           )
         )
       );
@@ -196,10 +201,10 @@ const renderContentHtml = (content, key) => {
           div({ class: 'card-field' },
             videoHyperaxe({
               controls: true,
+              class: 'post-video',
               src: `/blob/${encodeURIComponent(content.url)}`,
               type: content.mimeType || 'video/mp4',
-              width: '640',
-              height: '360'
+              preload: 'metadata'
             })
           )
         )
@@ -217,9 +222,10 @@ const renderContentHtml = (content, key) => {
                 p(...renderUrl(content.description))
               ]
             : null,
-          div({ class: 'card-field' },
+          div({ class: 'card-field audio-container' },
             audioHyperaxe({
               controls: true,
+              class: 'post-audio',
               src: `/blob/${encodeURIComponent(content.url)}`,
               type: content.mimeType,
               preload: 'metadata'
@@ -333,7 +339,12 @@ const renderContentHtml = (content, key) => {
   }
 };
 
-exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
+exports.opinionsView = (items, filter, spreadMap = new Map(), q = '', allItems = null) => {
+  const presentCats = new Set();
+  for (const it of (Array.isArray(allItems) ? allItems : items)) {
+    const ops = (it.value?.content || {}).opinions || {};
+    for (const [cat, n] of Object.entries(ops)) if (Number(n) > 0) presentCats.add(cat);
+  }
   seenDocumentTitles.clear();
   items = items
     .filter(item => {
@@ -351,6 +362,7 @@ exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
 
   const title = i18n.opinionsTitle;
   const baseFilters = ['ALL', 'MINE', 'RECENT', 'TOP'];
+  const emptyOps = (Array.isArray(allItems) ? allItems : items).length === 0 && !String(q || '').trim();
 
   const cards = items
     .map(item => {
@@ -371,32 +383,14 @@ exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
           span({ class: 'pm-exposition-chip pm-exposition-whole' },
             span({ class: 'pm-exposition-text' }, String(c.type || '').toUpperCase())
           ),
-          renderContentActions(key, detailHref(c.type, key), { spread: spreadMap.get(key) || null })
+          renderContentActions(key, detailHref(c.type, key), { spread: spreadMap.get(key) || null, author: item.value.author })
         ),
         div(
           { class: 'card-section opinions-card-body' },
-          contentHtml,
-          p({ class: 'card-footer' },
-            span({ class: 'date-link' }, `${created} ${i18n.performed} `),
-            userLink(item.value.author)
-          ),
-          (() => {
-            const entries = voteEntries.filter(([, v]) => v > 0);
-            const dominantPart = (() => {
-              if (!entries.length) return null;
-              const maxVal = Math.max(...entries.map(([, v]) => v));
-              const dominant = entries.filter(([, v]) => v === maxVal).map(([k]) => i18n['vote' + k.charAt(0).toUpperCase() + k.slice(1)] || k);
-              return [
-                span({ class: 'trending-dominant-sep' }, '|'),
-                span({ class: 'trending-dominant-text' }, `${i18n.moreVoted || 'More Voted'}: ${dominant.join(' + ')}`)
-              ];
-            })();
-            return h2(
-              `${i18n.totalOpinions || i18n.opinionsTotalCount}: `,
-              span({ class: 'trending-total-count' }, String(total)),
-              ...(dominantPart || [])
-            );
-          })(),
+          contentHtml
+        ),
+        renderVotesSummary(c.opinions),
+        renderCardMetaRow(
           details({ class: 'opinions-voting-collapse' },
             summary({ class: 'opinions-summary' },
             span({ class: 'opinions-summary-icon' }, 'ꔍ'),
@@ -412,6 +406,10 @@ exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
                 );
               })
             )
+          ),
+          p({ class: 'card-footer' },
+            span({ class: 'date-link' }, `${created} ${i18n.performed} `),
+            userLink(item.value.author)
           )
         )
       );
@@ -419,7 +417,7 @@ exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
     .filter(Boolean);
 
   const hasDocuments = items.some(item => item.value.content?.type === 'document');
-  const header = div({ class: 'tags-header' },
+  const header = div({ class: 'tags-header module-header-line' },
     h2(title),
     p(i18n.shareYourOpinions)
   );
@@ -428,7 +426,7 @@ exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
     title,
     section(
       header,
-      div({ class: 'mode-buttons' },
+      emptyOps ? null : div({ class: 'mode-buttons' },
         div({ class: 'column' },
           baseFilters.map(mode =>
             form({ method: 'GET', action: '/opinions' },
@@ -438,7 +436,7 @@ exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
           )
         ),
         div({ class: 'column' },
-          opinionCategories.positive.slice(0, 5).map(mode =>
+          opinionCategories.positive.slice(0, 5).filter(mode => presentCats.has(mode)).map(mode =>
             form({ method: 'GET', action: '/opinions' },
               input({ type: 'hidden', name: 'filter', value: mode }),
               button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
@@ -446,7 +444,7 @@ exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
           )
         ),
         div({ class: 'column' },
-          opinionCategories.positive.slice(5, 10).map(mode =>
+          opinionCategories.positive.slice(5, 10).filter(mode => presentCats.has(mode)).map(mode =>
             form({ method: 'GET', action: '/opinions' },
               input({ type: 'hidden', name: 'filter', value: mode }),
               button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
@@ -454,7 +452,40 @@ exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
           )
         ),
         div({ class: 'column' },
-          opinionCategories.positive.slice(10, 15).map(mode =>
+          opinionCategories.positive.slice(10, 15).filter(mode => presentCats.has(mode)).map(mode =>
+            form({ method: 'GET', action: '/opinions' },
+              input({ type: 'hidden', name: 'filter', value: mode }),
+              button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
+            )
+          )
+        )
+      ,
+        div({ class: 'column' },
+          opinionCategories.constructive.slice(0, 5).filter(mode => presentCats.has(mode)).map(mode =>
+            form({ method: 'GET', action: '/opinions' },
+              input({ type: 'hidden', name: 'filter', value: mode }),
+              button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
+            )
+          )
+        ),
+        div({ class: 'column' },
+          opinionCategories.constructive.slice(5, 11).filter(mode => presentCats.has(mode)).map(mode =>
+            form({ method: 'GET', action: '/opinions' },
+              input({ type: 'hidden', name: 'filter', value: mode }),
+              button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
+            )
+          )
+        ),
+        div({ class: 'column' },
+          opinionCategories.moderation.slice(0, 5).filter(mode => presentCats.has(mode)).map(mode =>
+            form({ method: 'GET', action: '/opinions' },
+              input({ type: 'hidden', name: 'filter', value: mode }),
+              button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
+            )
+          )
+        ),
+        div({ class: 'column' },
+          opinionCategories.moderation.slice(5, 10).filter(mode => presentCats.has(mode)).map(mode =>
             form({ method: 'GET', action: '/opinions' },
               input({ type: 'hidden', name: 'filter', value: mode }),
               button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
@@ -462,41 +493,8 @@ exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
           )
         )
       ),
-      div({ class: 'mode-buttons' },
-        div({ class: 'column' },
-          opinionCategories.constructive.slice(0, 5).map(mode =>
-            form({ method: 'GET', action: '/opinions' },
-              input({ type: 'hidden', name: 'filter', value: mode }),
-              button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
-            )
-          )
-        ),
-        div({ class: 'column' },
-          opinionCategories.constructive.slice(5, 11).map(mode =>
-            form({ method: 'GET', action: '/opinions' },
-              input({ type: 'hidden', name: 'filter', value: mode }),
-              button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
-            )
-          )
-        ),
-        div({ class: 'column' },
-          opinionCategories.moderation.slice(0, 5).map(mode =>
-            form({ method: 'GET', action: '/opinions' },
-              input({ type: 'hidden', name: 'filter', value: mode }),
-              button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
-            )
-          )
-        ),
-        div({ class: 'column' },
-          opinionCategories.moderation.slice(5, 10).map(mode =>
-            form({ method: 'GET', action: '/opinions' },
-              input({ type: 'hidden', name: 'filter', value: mode }),
-              button({ type: 'submit', class: filter === mode ? 'filter-btn active' : 'filter-btn' }, String(i18n[mode + 'Button'] || mode).toUpperCase())
-            )
-          )
-        )
-      ),
-      div({ class: 'filters' },
+      emptyOps ? null : div({ class: 'filters activity-filter-chips activity-toolbar-row' },
+        renderModuleStats(cards.length),
         form({ method: 'GET', action: '/opinions', class: 'filter-box' },
           input({ type: 'hidden', name: 'filter', value: filter }),
           input({ type: 'text', name: 'q', value: q, placeholder: i18n.opinionsSearchPlaceholder, class: 'filter-box__input' }),
@@ -514,8 +512,7 @@ exports.opinionsView = (items, filter, spreadMap = new Map(), q = '') => {
   );
 
   return `${html}${hasDocuments
-    ? `<script type="module" src="/js/pdf.min.mjs"></script>
-       <script src="/js/pdf-viewer.js"></script>`
+    ? `<script type="module" src="/js/pdf-viewer.js?v=102"></script>`
     : ''}`;
 };
 

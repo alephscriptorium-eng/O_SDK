@@ -17,7 +17,7 @@ const {
 } = require("../server/node_modules/hyperaxe");
 const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink } = require("./comments_view");
 
-const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl")
@@ -165,7 +165,7 @@ const renderAudioForm = (filter, audioId, audioToEdit, params = {}) => {
       input({ type: "hidden", name: "returnTo", value: returnTo }),
       span(i18n.audioFileLabel),
       br(),
-      input({ type: "file", name: "audio", required: filter !== "edit" }),
+      input({ type: "file", name: "audio", accept: "audio/*", required: filter !== "edit" }),
       br(),
       br(),
       span(i18n.audioTitleLabel),
@@ -174,7 +174,7 @@ const renderAudioForm = (filter, audioId, audioToEdit, params = {}) => {
       br(),
       span(i18n.audioDescriptionLabel),
       br(),
-      textarea({ name: "description", placeholder: i18n.audioDescriptionPlaceholder, rows: "4" }, audioToEdit?.description || ""),
+      textarea({ maxlength: "5000", name: "description", placeholder: i18n.audioDescriptionPlaceholder, rows: "4" }, audioToEdit?.description || ""),
       br(),
       span(i18n.mapLocationTitle || "Map Location"),
       br(),
@@ -195,6 +195,17 @@ const renderAudioForm = (filter, audioId, audioToEdit, params = {}) => {
   );
 };
 
+const mediaChipFor = (filter, censusM) => (mode) => {
+  if (mode === filter) return true;
+  if (!Array.isArray(censusM)) return true;
+  if (mode === "top") return censusM.length > 0;
+  if (mode === "mine") return censusM.some((x) => String(x.author) === String(userId));
+  if (mode === "recent") return censusM.some((x) => (Date.parse(x.createdAt || "") || Number(x.ts || 0)) >= Date.now() - 86400000);
+  if (mode === "favorites") return censusM.some((x) => x.isFavorite);
+  if (mode === "bcs") return censusM.some((x) => String(x.title || "").toUpperCase().startsWith("BCS-"));
+  return true;
+};
+
 exports.audioView = async (audios, filter = "all", audioId = null, params = {}) => {
   if (filter === "edit") params = { ...params, spreadWarning: await renderSpreadEditWarning(audioId) };
   const title = i18n.audioTitle;
@@ -203,36 +214,40 @@ exports.audioView = async (audios, filter = "all", audioId = null, params = {}) 
   const sort = safeText(params.sort || "recent");
 
   const list = safeArr(audios);
+  const emptyMod = moduleIsEmpty(list, filter, "all", q);
+  const mediaChip = mediaChipFor(filter, Array.isArray(params.censusList) ? params.censusList : list);
   const audioToEdit = audioId ? list.find((a) => a.key === audioId) : null;
 
   return template(
     title,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(title),
         p(i18n.audioDescription)
+      ,
+        (() => {
+          const { renderReachChip } = require('./clearnet_view');
+          const isClearnet = !!(params.viewerPrefs && params.viewerPrefs.clearnetAudios);
+          return renderReachChip(isClearnet, i18n, `/c/inhabitant/${encodeURIComponent(userId)}`);
+        })()
       ),
-      (() => {
-        const { renderReachChip } = require('./clearnet_view');
-        const isClearnet = !!(params.viewerPrefs && params.viewerPrefs.clearnetAudios);
-        return div({ class: "shop-title-row" }, renderReachChip(isClearnet, i18n));
-      })(),
-      br(),
       div(
         { class: "filters" },
         form(
           { method: "GET", action: "/audios", class: "ui-toolbar ui-toolbar--filters" },
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
+          ...(emptyMod ? [] : [
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterAll).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterMine).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterRecent).toUpperCase()),
-          button(
+          ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterMine).toUpperCase())] : []),
+          ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterRecent).toUpperCase())] : []),
+          ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.audioFilterFavorites).toUpperCase()
-          ),
-          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterTop).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "bcs", class: filter === "bcs" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterBcs || "BCS"),
+          )] : []),
+          ...(mediaChip("top") ? [button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterTop).toUpperCase())] : []),
+          ...(mediaChip("bcs") ? [button({ type: "submit", name: "filter", value: "bcs", class: filter === "bcs" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterBcs || "BCS")] : []),
+          ]),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.audioCreateButton)
         )
       )
@@ -241,8 +256,9 @@ exports.audioView = async (audios, filter = "all", audioId = null, params = {}) 
       filter === "create" || filter === "edit"
         ? renderAudioForm(filter, audioId, audioToEdit, { ...params, filter })
         : section(
-            div(
-              { class: "audios-search" },
+            emptyMod ? null : div(
+              { class: "audios-search activity-filter-chips activity-toolbar-row" },
+                renderModuleStats(list.length),
               form(
                 { method: "GET", action: "/audios", class: "filter-box" },
                 input({ type: "hidden", name: "filter", value: filter }),
@@ -272,6 +288,7 @@ exports.audioView = async (audios, filter = "all", audioId = null, params = {}) 
 };
 
 exports.singleAudioView = async (audioObj, filter = "all", comments = [], params = {}) => {
+  const mediaChip = mediaChipFor(filter, Array.isArray(params.censusList) ? params.censusList : null);
   const q = safeText(params.q || "");
   const sort = safeText(params.sort || "recent");
   const returnTo = safeText(params.returnTo) || buildReturnTo(filter, { q, sort });
@@ -288,16 +305,9 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
 
   const ownerActions = renderAudioOwnerActions(filter, audioObj, { q, sort });
   const sideActions = [];
-  if (audioObj.author && String(audioObj.author) !== String(userId)) {
-    sideActions.push(form(
-      { method: "GET", action: "/pm" },
-      input({ type: "hidden", name: "recipients", value: audioObj.author }),
-      button({ type: "submit", class: "filter-btn" }, i18n.audioMessageAuthorButton)
-    ));
-  }
   if (audioObj.isBcs) {
     sideActions.push(form(
-      { method: "GET", action: `/melody/transcode/${encodeURIComponent(audioObj.key)}` },
+      { method: "GET", action: `/melody/transcode/${encodeURIComponent(audioObj.key)}`, class: "audio-transcode-form" },
       button({ type: "submit", class: "filter-btn" }, i18n.audioTranscodeButton || "TRANSCODE")
     ));
   }
@@ -319,7 +329,7 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
   const audioSide = div({ class: "tribe-side" },
     div({ class: "shop-title-row" },
       title ? h2({ class: "tribe-card-title" }, title) : null,
-      renderReachChip(isClearnet, i18n)
+      renderReachChip(isClearnet, i18n, `/c/audios/${encodeURIComponent(audioObj.key)}`)
     ),
     chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
     safeText(audioObj.description)
@@ -359,7 +369,7 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
   return template(
     i18n.audioTitle,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(i18n.audioAllSectionTitle || i18n.audioTitle),
         p(i18n.audioDescription)
       ),
@@ -370,14 +380,14 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterAll).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterMine).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterRecent).toUpperCase()),
-          button(
+          ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterMine).toUpperCase())] : []),
+          ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterRecent).toUpperCase())] : []),
+          ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.audioFilterFavorites).toUpperCase()
-          ),
+          )] : []),
           button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterTop).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "bcs", class: filter === "bcs" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterBcs || "BCS"),
+          ...(mediaChip("bcs") ? [button({ type: "submit", name: "filter", value: "bcs", class: filter === "bcs" ? "filter-btn active" : "filter-btn" }, i18n.audioFilterBcs || "BCS")] : []),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.audioCreateButton)
         )
       ),
@@ -397,7 +407,7 @@ exports.audioTranscodeDetailView = async ({ audio, decoded = false, stegoPayload
   return template(
     title,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(title),
         p(i18n.audioTranscodeDetailDescription || "Decode the embedded payload and the original blockchain composition map.")
       ),
@@ -419,9 +429,8 @@ exports.audioTranscodeDetailView = async ({ audio, decoded = false, stegoPayload
         ),
         safeText(audio.description) ? p({ class: "melody-bcs-desc" }, audio.description) : null,
         renderTags(audio.tags),
-        br(),
-        form({ method: "POST", action: `/melody/transcode/${encodeURIComponent(audio.key)}`, class: "audio-transcode-run-form" },
-          button({ type: "submit", class: "filter-btn" }, i18n.audioTranscodeButton || "TRANSCODE")
+        form({ method: "POST", action: `/melody/transcode/${encodeURIComponent(audio.key)}`, class: "audio-transcode-run-form audio-transcode-form" },
+          button({ type: "submit", class: "create-button" }, i18n.audioTranscodeButton || "TRANSCODE")
         ),
         br(),
         decoded
@@ -433,7 +442,6 @@ exports.audioTranscodeDetailView = async ({ audio, decoded = false, stegoPayload
                       span({ class: "card-value" }, stegoDate || (i18n.audioTranscodeStegoUnknown || "—"))
                     ),
                     div({ class: "transcode-stego-field" },
-                      span({ class: "card-label" }, (i18n.audioTranscodeStegoOasisId || "By") + ": "),
                       stegoPayload.id ? userLink(stegoPayload.id) : span({ class: "card-value" }, i18n.audioTranscodeStegoUnknown || "—")
                     ),
                     div({ class: "transcode-stego-field transcode-stego-msg" },

@@ -3,7 +3,7 @@ const { form, button, div, h2, p, section, input, label, br, a, span, textarea, 
 const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink } = require("./comments_view");
 
 const moment = require("../server/node_modules/moment");
-const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl");
 
@@ -28,7 +28,7 @@ const renderTags = (tags) => {
   const list = safeArr(tags).map((t) => String(t || "").trim()).filter(Boolean);
   return list.length
     ? div(
-        { class: "card-tags" },
+        { class: "tribe-side-tags" },
         list.map((tag) => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: "tag-link" }, `#${tag}`))
       )
     : null;
@@ -74,15 +74,6 @@ const renderDocumentList = exports.renderDocumentList = (documents, filter, para
         const commentCount = typeof doc.commentCount === "number" ? doc.commentCount : 0;
         const title = safeText(doc.title);
         const pdfId = safeDomId("pdf-container-", doc.key);
-
-        const topbarLeft =
-          doc.author && String(doc.author) !== String(userId)
-            ? form(
-                { method: "GET", action: "/pm" },
-                input({ type: "hidden", name: "recipients", value: doc.author }),
-                button({ type: "submit", class: "filter-btn" }, i18n.documentMessageAuthorButton)
-              )
-            : null;
 
         const isOwn = doc.author && String(doc.author) === String(userId);
         return div(
@@ -153,7 +144,7 @@ const renderDocumentForm = (filter, documentId, docToEdit, params = {}) => {
       br(),
       label(i18n.documentDescriptionLabel),
       br(),
-      textarea({ name: "description", placeholder: i18n.documentDescriptionPlaceholder, rows: "4" }, docToEdit?.description || ""),
+      textarea({ maxlength: "5000", name: "description", placeholder: i18n.documentDescriptionPlaceholder, rows: "4" }, docToEdit?.description || ""),
       br(),
       label(i18n.documentTagsLabel),
       br(),
@@ -165,6 +156,17 @@ const renderDocumentForm = (filter, documentId, docToEdit, params = {}) => {
   );
 };
 
+const mediaChipFor = (filter, censusM) => (mode) => {
+  if (mode === filter) return true;
+  if (!Array.isArray(censusM)) return true;
+  if (mode === "top") return censusM.length > 0;
+  if (mode === "mine") return censusM.some((x) => String(x.author) === String(userId));
+  if (mode === "recent") return censusM.some((x) => (Date.parse(x.createdAt || "") || Number(x.ts || 0)) >= Date.now() - 86400000);
+  if (mode === "favorites") return censusM.some((x) => x.isFavorite);
+  if (mode === "bcs") return censusM.some((x) => String(x.title || "").toUpperCase().startsWith("BCS-"));
+  return true;
+};
+
 exports.documentView = async (documents, filter = "all", documentId = null, params = {}) => {
   if (filter === "edit") params = { ...params, spreadWarning: await renderSpreadEditWarning(documentId) };
   const title = i18n.documentTitle;
@@ -173,35 +175,39 @@ exports.documentView = async (documents, filter = "all", documentId = null, para
   const sort = safeText(params.sort || "recent");
 
   const list = safeArr(documents);
+  const emptyMod = moduleIsEmpty(list, filter, "all", q);
+  const mediaChip = mediaChipFor(filter, Array.isArray(params.censusList) ? params.censusList : list);
   const docToEdit = documentId ? list.find((d) => d.key === documentId) : null;
 
   const tpl = template(
     title,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(title),
         p(i18n.documentDescription)
+      ,
+        (() => {
+          const { renderReachChip } = require('./clearnet_view');
+          const isClearnet = !!(params.viewerPrefs && params.viewerPrefs.clearnetDocuments);
+          return renderReachChip(isClearnet, i18n, `/c/inhabitant/${encodeURIComponent(userId)}`);
+        })()
       ),
-      (() => {
-        const { renderReachChip } = require('./clearnet_view');
-        const isClearnet = !!(params.viewerPrefs && params.viewerPrefs.clearnetDocuments);
-        return div({ class: "shop-title-row" }, renderReachChip(isClearnet, i18n));
-      })(),
-      br(),
       div(
         { class: "filters" },
         form(
           { method: "GET", action: "/documents", class: "ui-toolbar ui-toolbar--filters" },
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
+          ...(emptyMod ? [] : [
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterAll).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterMine).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterRecent).toUpperCase()),
-          button(
+          ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterMine).toUpperCase())] : []),
+          ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterRecent).toUpperCase())] : []),
+          ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.documentFilterFavorites).toUpperCase()
-          ),
-          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterTop).toUpperCase()),
+          )] : []),
+          ...(mediaChip("top") ? [button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterTop).toUpperCase())] : []),
+          ]),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.documentCreateButton)
         )
       )
@@ -210,8 +216,9 @@ exports.documentView = async (documents, filter = "all", documentId = null, para
       filter === "create" || filter === "edit"
         ? renderDocumentForm(filter, documentId, docToEdit || {}, { ...params, filter })
         : section(
-            div(
-              { class: "documents-search" },
+            emptyMod ? null : div(
+              { class: "documents-search activity-filter-chips activity-toolbar-row" },
+                renderModuleStats(list.length),
               form(
                 { method: "GET", action: "/documents", class: "filter-box" },
                 input({ type: "hidden", name: "filter", value: filter }),
@@ -233,10 +240,11 @@ exports.documentView = async (documents, filter = "all", documentId = null, para
     )
   );
 
-  return `${tpl}<script type="module" src="/js/pdf.min.mjs"></script><script src="/js/pdf-viewer.js"></script>`;
+  return `${tpl}<script type="module" src="/js/pdf-viewer.js?v=102"></script>`;
 };
 
 exports.singleDocumentView = async (doc, filter = "all", comments = [], params = {}) => {
+  const mediaChip = mediaChipFor(filter, Array.isArray(params.censusList) ? params.censusList : null);
   const q = safeText(params.q || "");
   const sort = safeText(params.sort || "recent");
   const returnTo = safeText(params.returnTo) || buildReturnTo(filter, { q, sort });
@@ -254,13 +262,6 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
   ].filter(Boolean);
 
   const sideActions = [];
-  if (doc.author && String(doc.author) !== String(userId)) {
-    sideActions.push(form(
-      { method: "GET", action: "/pm" },
-      input({ type: "hidden", name: "recipients", value: doc.author }),
-      button({ type: "submit", class: "filter-btn" }, i18n.documentMessageAuthorButton)
-    ));
-  }
   if (isAuthor && !hasOpinions) {
     sideActions.push(form(
       { method: "GET", action: `/documents/edit/${encodeURIComponent(doc.key)}` },
@@ -290,11 +291,8 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
   );
 
   const docSide = div({ class: "tribe-side" },
-    div({ class: "shop-title-row" },
-      title ? h2({ class: "tribe-card-title" }, title) : null,
-      renderReachChip(isClearnet, i18n)
-    ),
-    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
+    title ? h2({ class: "tribe-card-title" }, title) : null,
+    div({ class: "card-chips-row" }, renderReachChip(isClearnet, i18n, `/c/documents/${encodeURIComponent(doc.key)}`), ...chips),
     safeText(doc.description)
       ? p({ class: "tribe-side-description" }, ...renderUrl(doc.description))
       : null,
@@ -333,7 +331,7 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
   const tpl = template(
     i18n.documentTitle,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(i18n.documentAllSectionTitle || i18n.documentTitle),
         p(i18n.documentDescription)
       ),
@@ -344,12 +342,12 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterAll).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterMine).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterRecent).toUpperCase()),
-          button(
+          ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterMine).toUpperCase())] : []),
+          ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterRecent).toUpperCase())] : []),
+          ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.documentFilterFavorites).toUpperCase()
-          ),
+          )] : []),
           button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterTop).toUpperCase()),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.documentCreateButton)
         )
@@ -358,6 +356,6 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
     )
   );
 
-  return `${tpl}<script type="module" src="/js/pdf.min.mjs"></script><script src="/js/pdf-viewer.js"></script>`;
+  return `${tpl}<script type="module" src="/js/pdf-viewer.js?v=102"></script>`;
 };
 

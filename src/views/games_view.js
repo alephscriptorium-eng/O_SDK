@@ -1,5 +1,5 @@
 const { div, h2, h3, p, section, form, input, button, a, img, table, tr, td, th, span, iframe } = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink} = require('./main_views');
+const { template, i18n, userLink, renderModuleStats } = require('./main_views');
 const moment = require("../server/node_modules/moment");
 
 const getGames = () => [
@@ -27,7 +27,7 @@ const shortId = (feedId) => feedId ? '@' + feedId.slice(1, 9) + '...' : '?';
 const renderHallOfFame = (hall, games) => {
   const gamesWithScores = games.filter(g => hall[g.id] && hall[g.id].length > 0);
   if (gamesWithScores.length === 0) {
-    return p({ class: 'no-content' }, i18n.gamesNoScores || 'No scores yet.');
+    return div({ class: 'no-content-box' }, p({ class: 'no-content' }, i18n.gamesNoScores || 'No scores yet.'));
   }
   return div({ class: 'games-scoring-list' },
     gamesWithScores.map(game =>
@@ -75,7 +75,7 @@ exports.gameShellView = (name) => {
   return template(
     game ? game.title() : name,
     section(
-      div({ class: 'tags-header' },
+      div({ class: 'tags-header module-header-line' },
         h2(i18n.gamesTitle),
         p(i18n.gamesDescription || 'Discover and play some mini-games in your network.')
       ),
@@ -111,7 +111,8 @@ exports.gamesView = (filter = 'all', hall = null, q = '') => {
     )
   );
 
-  const searchBox = div({ class: 'filters' },
+  const searchBox = div({ class: 'filters activity-filter-chips activity-toolbar-row' },
+    renderModuleStats(games.length),
     form({ method: 'GET', action: '/games', class: 'filter-box' },
       input({ type: 'hidden', name: 'filter', value: filter }),
       input({ type: 'text', name: 'q', value: q, placeholder: i18n.gamesSearchPlaceholder, class: 'filter-box__input' }),
@@ -151,7 +152,7 @@ exports.gamesView = (filter = 'all', hall = null, q = '') => {
   return template(
     i18n.gamesTitle,
     section(
-      div({ class: 'tags-header' },
+      div({ class: 'tags-header module-header-line' },
         h2(i18n.gamesTitle),
         p(filter === 'scoring' ? i18n.gamesHallOfFame : (i18n.gamesDescription || 'Discover and play some mini-games in your network.'))
       ),

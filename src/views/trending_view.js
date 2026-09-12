@@ -1,6 +1,7 @@
 const { div, h2, p, section, button, form, a, textarea, br, input, table, tr, th, td, img, video: videoHyperaxe, audio: audioHyperaxe, span, details, summary} = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink, renderSpreadButton, renderContentActions} = require('./main_views');
+const { template, i18n, userLink, renderSpreadButton, renderContentActions, renderVotesSummary, renderModuleStats, renderCardMetaRow } = require('./main_views');
 const { renderTextWithStyles } = require('../backend/renderTextWithStyles');
+const { renderZoomableImage } = require('./gallery_view');
 const { config } = require('../server/SSB_server.js');
 const { renderUrl } = require('../backend/renderUrl');
 const opinionCategories = require('../backend/opinion_categories');
@@ -47,7 +48,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
       div({ class: 'card-section image' },
         title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.imageTitleLabel + ':'), span({ class: 'card-value' }, title)) : "",
         description ? [span({ class: 'card-label' }, i18n.imageDescriptionLabel + ":"), p(...renderUrl(description))] : null,
-        div({ class: 'card-field' }, img({ src: `/blob/${encodeURIComponent(url)}`, class: 'feed-image' }))
+        div({ class: 'card-field image-container' }, renderZoomableImage(`/blob/${encodeURIComponent(url)}`, { imgClass: 'post-image' }))
       )
     );
   } else if (c.type === 'audio') {
@@ -57,7 +58,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
         title?.trim() ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.audioTitleLabel + ':'), span({ class: 'card-value' }, title)) : "",
         description ? [span({ class: 'card-label' }, i18n.audioDescriptionLabel + ":"), p(...renderUrl(description))] : null,
         url
-          ? div({ class: 'card-field audio-container' }, audioHyperaxe({ controls: true, src: `/blob/${encodeURIComponent(url)}`, type: mimeType }))
+          ? div({ class: 'card-field audio-container' }, audioHyperaxe({ controls: true, class: 'post-audio', src: `/blob/${encodeURIComponent(url)}`, type: mimeType }))
           : div({ class: 'card-field' }, p(i18n.audioNoFile))
       )
     );
@@ -69,7 +70,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
         description ? [span({ class: 'card-label' }, i18n.videoDescriptionLabel + ":"), p(...renderUrl(description))] : null,
         br(),
         url
-          ? div({ class: 'card-field video-container' }, videoHyperaxe({ controls: true, src: `/blob/${encodeURIComponent(url)}`, type: mimeType, preload: 'metadata', width: '640', height: '360' }))
+          ? div({ class: 'card-field video-container' }, videoHyperaxe({ controls: true, class: 'post-video', src: `/blob/${encodeURIComponent(url)}`, type: mimeType, preload: 'metadata' }))
           : div({ class: 'card-field' }, p(i18n.videoNoFile))
       )
     );
@@ -215,7 +216,11 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
     event: 'events',
     shopProduct: 'shops/product',
     housing: 'housing',
-    market: 'market'
+    market: 'market',
+    podcast: 'podcasts',
+    podcastEpisode: 'podcasts/episode',
+    campaign: 'campaigns',
+    logisticsRoute: 'logistics'
   };
   const detailHref = detailPaths[c.type]
     ? `/${detailPaths[c.type]}/${encodeURIComponent(item.key)}`
@@ -227,36 +232,16 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
     div(
       { class: 'card-header activity-card-header' },
       span({ class: 'pm-exposition-chip pm-exposition-whole' },
-        span({ class: 'pm-exposition-text' }, String(c.type || '').toUpperCase())
+        span({ class: 'pm-exposition-text' }, String(i18n['type' + String(c.type || '').charAt(0).toUpperCase() + String(c.type || '').slice(1)] || c.type || '').toUpperCase())
       ),
-      renderContentActions(item.key, detailHref, { spread: spreadMap.get(item.key) || null })
+      renderContentActions(item.key, detailHref, { spread: spreadMap.get(item.key) || null, author: item.value.author })
     ),
     div(
       { class: 'card-section trending-card-body' },
-      contentHtml,
-      p(
-        { class: 'card-footer' },
-        span({ class: 'date-link' }, `${created} ${i18n.performed} `),
-        userLink(item.value.author)
-      ),
-      (() => {
-        const ops = c.opinions || {};
-        const entries = Object.entries(ops).filter(([, v]) => v > 0);
-        const dominantPart = (() => {
-          if (!entries.length) return null;
-          const maxVal = Math.max(...entries.map(([, v]) => v));
-          const dominant = entries.filter(([, v]) => v === maxVal).map(([k]) => voteLabelFor(k));
-          return [
-            span({ class: 'trending-dominant-sep' }, '|'),
-            span({ class: 'trending-dominant-text' }, `${i18n.moreVoted || 'More Voted'}: ${dominant.join(' + ')}`)
-          ];
-        })();
-        return h2(
-          `${i18n.trendingTotalOpinions || i18n.trendingTotalCount}: `,
-          span({ class: 'trending-total-count' }, String(votes)),
-          ...(dominantPart || [])
-        );
-      })(),
+      contentHtml
+    ),
+    renderVotesSummary(c.opinions),
+    renderCardMetaRow(
       details({ class: 'opinions-voting-collapse' },
         summary({ class: 'opinions-summary' },
           span({ class: 'opinions-summary-icon' }, 'ꔍ'),
@@ -272,12 +257,17 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
             )
           )
         )
+      ),
+      p(
+        { class: 'card-footer' },
+        span({ class: 'date-link' }, `${created} ${i18n.performed} `),
+        userLink(item.value.author)
       )
     )
   );
 };
 
-exports.trendingView = (items, filter, categories = opinionCategories, spreadMap = new Map(), q = '') => {
+exports.trendingView = (items, filter, categories = opinionCategories, spreadMap = new Map(), q = '', allItems = null) => {
   const seenDocumentTitles = new Set();
   const title = i18n.trendingTitle;
 
@@ -285,13 +275,17 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
   const contentFilters = [
     ['votes', 'event', 'task', 'report'],
     ['feed', 'project', 'industry', 'shopProduct', 'transfer'],
-    ['audio', 'bookmark', 'document', 'image', 'torrent', 'video']
+    ['audio', 'bookmark', 'document', 'image', 'torrent', 'video'],
+    ['podcast', 'podcastEpisode', 'campaign', 'logisticsRoute']
   ];
 
   let filteredItems = items.filter(item => {
     const c = item.value?.content || item.content;
     return c && typeof c === 'object' && c.type !== 'tombstone';
   });
+  const censusItems = Array.isArray(allItems) ? allItems : filteredItems;
+  const presentTypes = new Set(censusItems.map(item => (item.value?.content || item.content || {}).type).filter(Boolean));
+  const emptyTrend = censusItems.length === 0 && !String(q || '').trim();
 
   if (filter === 'MINE') {
     filteredItems = filteredItems.filter(item => item.value.author === userId);
@@ -316,7 +310,7 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
     filteredItems.sort((a, b) => b.value.timestamp - a.value.timestamp);
   }
 
-  const header = div({ class: 'tags-header' }, h2(title), p(i18n.exploreTrending));
+  const header = div({ class: 'tags-header module-header-line' }, h2(title), p(i18n.exploreTrending));
   const cards = filteredItems
     .map(item =>
       renderTrendingCard(
@@ -335,14 +329,16 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
     title,
     section(
       header,
-      div(
+      emptyTrend ? null : div(
         { class: 'mode-buttons' },
         div({ class: 'column' }, baseFilters.map(mode => filterButton(mode, filter))),
-        ...contentFilters.map(row =>
-          div({ class: 'column' }, row.map(mode => filterButton(mode, filter)))
-        )
+        ...contentFilters.map(row => {
+          const visible = row.filter(mode => presentTypes.has(mode) || (mode === 'votes' && presentTypes.has('poll')));
+          return visible.length ? div({ class: 'column' }, visible.map(mode => filterButton(mode, filter))) : null;
+        })
       ),
-      div({ class: 'filters' },
+      emptyTrend ? null : div({ class: 'filters activity-filter-chips activity-toolbar-row' },
+        renderModuleStats(cards.length),
         form({ method: 'GET', action: '/trending', class: 'filter-box' },
           input({ type: 'hidden', name: 'filter', value: filter }),
           input({ type: 'text', name: 'q', value: q, placeholder: i18n.trendingSearchPlaceholder, class: 'filter-box__input' }),
@@ -361,8 +357,7 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
 
   if (hasDocument) {
     html += `
-      <script type="module" src="/js/pdf.min.mjs"></script>
-      <script src="/js/pdf-viewer.js"></script>
+      <script type="module" src="/js/pdf-viewer.js?v=102"></script>
     `;
   }
 

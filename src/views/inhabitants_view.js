@@ -1,5 +1,5 @@
 const { div, h2, p, section, button, form, img, a, textarea, input, span, strong } = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink, renderUserSensors, renderContentActions, renderRelationshipBlock } = require('./main_views');
+const { template, i18n, userLink, renderUserSensors, renderContentActions, renderRelationshipBlock, renderModuleStats } = require('./main_views');
 const { renderZoomableImage } = require('./gallery_view');
 const { renderContentStats } = require('./clearnet_view');
 const { renderUrl } = require('../backend/renderUrl');
@@ -71,9 +71,13 @@ const generateFilterButtons = (filters, currentFilter, labelOf = filterLabel) =>
 
 const MAIN_FILTERS = ['all', 'TOP', 'contacts', 'blocked', 'CVs', 'SUGGESTED', 'GALLERY'];
 
-const renderMainFilters = (filter, isTop) =>
+const renderMainFilters = (filter, isTop, census = {}) =>
   div({ class: 'inhabitant-action' },
-    ...MAIN_FILTERS.map(mode =>
+    ...MAIN_FILTERS.filter(mode => {
+      if (mode === 'all' || mode === 'TOP') return true;
+      if (mode === 'TOP' ? isTop : filter === mode) return true;
+      return census[mode] !== false;
+    }).map(mode =>
       form({ method: 'GET', action: '/inhabitants' },
         input({ type: 'hidden', name: 'filter', value: mode === 'TOP' ? 'TOP ACTIVITY' : mode }),
         button({
@@ -126,7 +130,10 @@ const renderCvFields = (user) => {
     cvField(i18n.skillsLabel, skills.length ? skills.join(', ') : ''),
     cvField(i18n.statusLabel || 'Status', user.status),
     cvField(i18n.preferencesLabel || 'Preferences', user.preferences),
-    cvField(i18n.createdAtLabel || 'Created at', user.createdAt ? new Date(user.createdAt).toLocaleString() : '')
+    cvField(i18n.createdAtLabel || 'Created at', user.createdAt ? new Date(user.createdAt).toLocaleString() : ''),
+    user.pdf
+      ? div({ class: 'card-field' }, a({ href: `/blob/${encodeURIComponent(user.pdf)}`, target: '_blank', rel: 'noopener', class: 'filter-btn' }, '📄 ' + i18n.cvPdfLabel))
+      : null
   ].filter(Boolean);
   return fields.length ? div({ class: 'cv-card-fields' }, ...fields) : null;
 };
@@ -134,7 +141,7 @@ const renderCvFields = (user) => {
 const renderInhabitantCard = (user, filter, currentUserId, fediverseConfigured) => {
   const isMe = user.id === currentUserId;
   const raw = user.visibilityPrefs || {};
-  const clearnetSubKeys = ['clearnetShops','clearnetJobs','clearnetEvents','clearnetProjects','clearnetPosts','clearnetAudios','clearnetVideos','clearnetImages','clearnetDocuments','clearnetTorrents','clearnetBookmarks'];
+  const clearnetSubKeys = ['clearnetShops','clearnetJobs','clearnetEvents','clearnetProjects','clearnetPosts','clearnetAudios','clearnetVideos','clearnetImages','clearnetDocuments','clearnetTorrents','clearnetBookmarks','clearnetPodcasts'];
   const hasClearnet = raw.clearnet === true || clearnetSubKeys.some(k => raw[k] === true);
   const prefs = {
     activity: raw.activity === true,
@@ -158,10 +165,12 @@ const renderInhabitantCard = (user, filter, currentUserId, fediverseConfigured) 
     div({ class: 'card-section inhabitants-card-body' },
       div({ class: 'inhabitant-card' },
     div({ class: 'inhabitant-left' },
+      isMe ? p({ class: 'inhabitant-left-name' }, span({ class: 'status you' }, i18n.relationshipYou)) : null,
       a(
          { href: `/author/${encodeURIComponent(user.id)}` },
          img({ class: 'inhabitant-photo-details', src: resolvePhoto(user.photo, 256), alt: user.name || 'Anonymous' })
       ),
+      user.name ? p({ class: 'inhabitant-left-name' }, userLink(user.id, user.name)) : null,
       ...renderUserSensors({
         isMe, fediverseConfigured, prefs, id: user.id,
         karmaScore: user.karmaScore, carbonGrams: user.carbonGrams,
@@ -169,7 +178,7 @@ const renderInhabitantCard = (user, filter, currentUserId, fediverseConfigured) 
         gpgFingerprint: user.gpgFingerprint, ecoAddress: user.ecoAddress,
         estimatedUBI: user.estimatedUBI, lastClaimedDate: user.lastClaimedDate, totalClaimed: user.totalClaimed,
         larpHouse: user.larpHouse, stats: user.stats
-      }, { relationshipNode: isMe ? span({ class: 'status you' }, i18n.relationshipYou) : null, excludeContent: true }),
+      }, { excludeContent: true }),
       filter === 'CVs'
         ? div(
             { class: 'cv-actions doc-export-actions' },
@@ -190,24 +199,21 @@ const renderInhabitantCard = (user, filter, currentUserId, fediverseConfigured) 
           )
         : null
     ),
-    div({ class: 'inhabitant-details' },
-      h2(user.name || 'Anonymous'),
-      user.description ? p(...renderUrl(user.description)) : null,
-      filter === 'CVs' ? renderCvFields(user) : null,
-      filter === 'SUGGESTED' && (user.followsYou || user.commonSkills?.length || user.mutualCount)
-        ? div({ class: 'suggested-meta' },
-            user.followsYou ? span({ class: 'suggested-badge' }, i18n.suggestedFollowsYou || 'Follows you') : null,
-            user.commonSkills?.length
-              ? p(`${i18n.commonSkills || 'Common skills'}: ${user.commonSkills.join(', ')}`)
-              : null,
-            user.mutualCount ? p(`${i18n.mutualFollowers}: ${user.mutualCount}`) : null
-          )
-        : null,
-      filter === 'blocked' && user.isBlocked
-        ? p(i18n.blockedLabel) : null,
-      p(userLink(user.id)),
-      renderContentStats(user.stats, i18n)
-    )
+    (() => {
+      const detailNodes = [
+        user.description ? p(...renderUrl(user.description)) : null,
+        filter === 'CVs' ? renderCvFields(user) : null,
+        filter === 'SUGGESTED' && user.commonSkills?.length
+          ? div({ class: 'suggested-meta' },
+              p(`${i18n.commonSkills || 'Common skills'}: ${user.commonSkills.slice(0, 8).join(', ')}`)
+            )
+          : null,
+        filter === 'blocked' && user.isBlocked
+          ? p(i18n.blockedLabel) : null,
+        renderContentStats(user.stats, i18n)
+      ].filter(Boolean);
+      return detailNodes.length ? div({ class: 'inhabitant-details' }, ...detailNodes) : null;
+    })()
       )
     )
   );
@@ -218,7 +224,7 @@ const renderGalleryInhabitants = inhabitants =>
     { class: "gallery" },
     inhabitants.length
       ? inhabitants.map(u =>
-          a({ href: `#${lightboxId(u.id)}`, class: "gallery-item" },
+          a({ href: `#${lightboxId(u.id)}`, id: `${lightboxId(u.id)}-src`, class: "gallery-item" },
             img({ src: resolvePhoto(u.photo, 256), alt: u.name || "Anonymous", class: "gallery-image" })
           )
         )
@@ -229,7 +235,7 @@ const renderLightbox = inhabitants =>
   inhabitants.map(u =>
     div(
       { id: lightboxId(u.id), class: "lightbox" },
-      a({ href: "#", class: "lightbox-close" }, "×"),
+      a({ href: `#${lightboxId(u.id)}-src`, class: "lightbox-close" }, "×"),
       img({ src: resolvePhoto(u.photo, 256), class: "lightbox-image", alt: u.name || "Anonymous" })
     )
   );
@@ -249,21 +255,37 @@ function msgIdOf(m) {
   return m && (m.key || m.value?.key || m.value?.content?.root || m.value?.content?.branch || null);
 }
 
-exports.inhabitantsView = (inhabitants, filter, query, currentUserId, fediverseConfigured) => {
+exports.inhabitantsView = (inhabitants, filter, query, currentUserId, fediverseConfigured, filterCensus = {}) => {
   const title = i18n.allInhabitants;
 
   const showCVFilters = filter === 'CVs';
+  const bucketCounts = inhabitants.reduce((acc, u) => {
+    const b = u && u.lastActivityBucket;
+    if (b === 'green' || b === 'orange' || b === 'red') acc[b]++;
+    return acc;
+  }, { green: 0, orange: 0, red: 0 });
   const TOP_FILTERS = ['TOP ACTIVITY', 'TOP INACTIVITY', 'TOP KARMA', 'TOP ECO'];
   const isTop = TOP_FILTERS.includes(filter);
 
   return template(
     title,
     section(
-      div({ class: 'tags-header' },
+      div({ class: 'tags-header module-header-line' },
         h2(title),
         p(i18n.discoverPeople)
       ),
-      div({ class: 'filters' },
+      renderMainFilters(filter, isTop, filterCensus),
+      isTop
+        ? div({ class: 'inhabitant-action inhabitant-subfilters' },
+            ...generateFilterButtons(TOP_FILTERS, filter, (mode) => filterLabel(mode).replace(/^TOP\s+/, ''))
+          )
+        : null,
+      div({ class: 'filters activity-filter-chips activity-toolbar-row' },
+        renderModuleStats(inhabitants.length, [
+          { label: '<2w', count: bucketCounts.green },
+          { label: '2w–6m', count: bucketCounts.orange },
+          { label: '>6m', count: bucketCounts.red }
+        ]),
         form({ method: 'GET', action: '/inhabitants', class: 'filter-box' },
           input({ type: 'hidden', name: 'filter', value: filter }),
           input({
@@ -285,12 +307,6 @@ exports.inhabitantsView = (inhabitants, filter, query, currentUserId, fediverseC
           )
         )
       ),
-      renderMainFilters(filter, isTop),
-      isTop
-        ? div({ class: 'inhabitant-action inhabitant-subfilters' },
-            ...generateFilterButtons(TOP_FILTERS, filter, (mode) => filterLabel(mode).replace(/^TOP\s+/, ''))
-          )
-        : null,
       filter === 'GALLERY'
         ? renderGalleryInhabitants(inhabitants)
         : div({ class: 'inhabitants-list' },
@@ -347,7 +363,7 @@ exports.inhabitantsProfileView = (payload, currentUserId, fediverseConfigured) =
   const totalClaimed = typeof safe.totalClaimed === 'number' ? safe.totalClaimed : 0;
   const ecoAddress = typeof safe.ecoAddress === 'string' ? safe.ecoAddress : null;
   const rawPrefs = safe.visibilityPrefs || {};
-  const clearnetSubKeys = ['clearnetShops','clearnetJobs','clearnetEvents','clearnetProjects','clearnetPosts','clearnetAudios','clearnetVideos','clearnetImages','clearnetDocuments','clearnetTorrents','clearnetBookmarks'];
+  const clearnetSubKeys = ['clearnetShops','clearnetJobs','clearnetEvents','clearnetProjects','clearnetPosts','clearnetAudios','clearnetVideos','clearnetImages','clearnetDocuments','clearnetTorrents','clearnetBookmarks','clearnetPodcasts'];
   const prefs = {
     activity: rawPrefs.activity === true,
     device:   rawPrefs.device   === true,
@@ -385,7 +401,7 @@ exports.inhabitantsProfileView = (payload, currentUserId, fediverseConfigured) =
   return template(
     name,
     section(
-      div({ class: 'tags-header' },
+      div({ class: 'tags-header module-header-line' },
         h2(title),
         p(i18n.discoverPeople)
       ),

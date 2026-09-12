@@ -2,6 +2,7 @@ const pull = require('../server/node_modules/pull-stream');
 const moment = require('../server/node_modules/moment');
 const { getConfig } = require('../configs/config-manager.js');
 const { buildValidatedTombstoneSet } = require('./tombstone_validator');
+const { readTyped } = require('./typed_log');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 
 module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
@@ -40,7 +41,7 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
     'post', 'about', 'curriculum', 'tribe', 'transfer', 'feed',
     'votes', 'report', 'task', 'event', 'bookmark', 'document',
     'image', 'audio', 'video', 'torrent', 'market', 'bankWallet', 'bankClaim',
-    'project', 'job', 'housing', 'industry', 'industryBlueprint', 'forum', 'vote', 'contact', 'pub', 'map', 'shop', 'shopProduct', 'chat', 'pad', 'poll', 'schoolCourse'
+    'project', 'job', 'housing', 'industry', 'industryBlueprint', 'forum', 'vote', 'contact', 'pub', 'map', 'shop', 'shopProduct', 'chat', 'pad', 'poll', 'schoolCourse', 'wikiPage', 'emergency', 'mailingList', 'logisticsRoute', 'podcast', 'podcastEpisode', 'campaign'
   ];
 
   const getRelevantFields = (type, content) => {
@@ -117,6 +118,20 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
         return [content?.title, content?.description, content?.category, ...(content?.tags || []), content?.status, content?.author];
       case 'pad':
         return [content?.title, content?.status, content?.deadline, ...(content?.tags || []), content?.author];
+      case 'wikiPage':
+        return [content?.title, content?.body, content?.slug, ...(content?.tags || []), ...(content?.aliases || []), content?.author];
+      case 'emergency':
+        return [content?.title, content?.text, content?.category, content?.status, ...(content?.tags || []), content?.author];
+      case 'mailingList':
+        return [content?.title, content?.description, content?.listType, content?.status, ...(content?.tags || []), content?.author];
+      case 'logisticsRoute':
+        return [content?.title, content?.description, content?.origin, content?.destination, content?.kind, content?.mode, ...(content?.tags || []), content?.author];
+      case 'podcast':
+        return [content?.title, content?.description, content?.category, ...(content?.tags || []), content?.author];
+      case 'podcastEpisode':
+        return [content?.title, content?.description, ...(content?.tags || []), content?.author];
+      case 'campaign':
+        return [content?.title, content?.text, content?.category, content?.status, ...(content?.tags || []), content?.author];
       case 'gameScore':
         return [content?.game, content?.player];
       default:
@@ -293,6 +308,26 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
       return ['pad', author, norm(c.title), norm(c.deadline)].join('|');
     }
 
+    if (t === 'wikiPage') {
+      return ['wikiPage', norm(c.tribeId), norm(c.slug)].join('|');
+    }
+
+    if (t === 'emergency') {
+      return ['emergency', author, norm(c.title), norm(c.createdAt)].join('|');
+    }
+
+    if (t === 'mailingList') {
+      return ['mailingList', author, norm(c.createdAt)].join('|');
+    }
+
+    if (t === 'logisticsRoute') {
+      return ['logisticsRoute', author, norm(c.createdAt)].join('|');
+    }
+
+    if (t === 'podcast' || t === 'podcastEpisode' || t === 'campaign') {
+      return [t, author, norm(c.createdAt)].join('|');
+    }
+
     return `${t}:${msg.key}`;
   };
 
@@ -313,12 +348,7 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
     const viewerId = ssbClient.id;
     const queryLower = String(query || '').toLowerCase();
 
-    const messages = await new Promise((res, rej) => {
-      pull(
-        ssbClient.createLogStream({ limit: logLimit }),
-        pull.collect((err, msgs) => err ? rej(err) : res(msgs))
-      );
-    });
+    const messages = await readTyped(ssbClient, [], { limit: logLimit, withWindow: true });
 
     const tombstoned = buildValidatedTombstoneSet(messages);
     const replacesMap = new Map();

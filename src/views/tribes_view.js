@@ -1,6 +1,7 @@
 const { div, h2, h3, p, section, button, form, a, input, img, label, select, option, br, textarea, h1, span, nav, ul, li, video, audio, table, tr, td, thead, tbody, th } = require("../server/node_modules/hyperaxe");
 const moment = require("../server/node_modules/moment");
-const { template, i18n, userLink, renderStateChip, renderPrivacyChip, renderLifespanChip, renderModeChip, renderInviteQrCard, renderContentActions } = require('./main_views');
+const { template, i18n, userLink, renderStateChip, renderPrivacyChip, renderLifespanChip, renderModeChip, renderInviteQrCard, renderContentActions, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty } = require('./main_views');
+const { renderTribeWikiSection } = require('./wiki_view');
 const { renderEncryptedChip: renderTribeEncryptedChip } = require('./clearnet_view');
 const { renderResults: renderPollResults, renderBallot: renderPollBallot } = require('./polls_view');
 const { config } = require('../server/SSB_server.js');
@@ -86,7 +87,7 @@ const renderGallery = (sortedTribes) => {
   return div({ class: "gallery" },
     sortedTribes.length
       ? sortedTribes.map(t =>
-          a({ href: `#tribe-${encodeURIComponent(t.id)}`, class: "gallery-item" },
+          a({ href: `#tribe-${encodeURIComponent(t.id)}`, id: `tribe-${encodeURIComponent(t.id)}-src`, class: "gallery-item" },
            img({ src: toImageUrl(t.image, '/assets/images/default-tribe.png'), alt: t.title || "", class: "gallery-image" })
           )
         )
@@ -98,7 +99,7 @@ const renderLightbox = (sortedTribes) => {
   return sortedTribes.map(t =>
     div(
       { id: `tribe-${encodeURIComponent(t.id)}`, class: "lightbox" },
-      a({ href: "#", class: "lightbox-close" }, "×"),
+      a({ href: `#tribe-${encodeURIComponent(t.id)}-src`, class: "lightbox-close" }, "×"),
       img({ src: toImageUrl(t.image, '/assets/images/default-tribe.png'), class: "lightbox-image", alt: t.title || "" })
     )
   );
@@ -169,9 +170,21 @@ exports.tribesView = async (tribes, filter, tribeId, query = {}, allTribes = nul
 
   const title = i18n.tribesTitle;
 
-  const header = div({ class: 'tags-header' }, h2(title), p(i18n.tribeDescription));
+  const header = div({ class: 'tags-header module-header-line' }, h2(title), p(i18n.tribeDescription));
 
-  const filters = div({ class: 'filters' },
+  const emptyMod = moduleIsEmpty(Array.isArray(tribes) ? tribes : [], filter || 'all', 'all', query.search);
+  const nowChip = Date.now();
+  const tribeChip = (m) => {
+    if (m === filter || m === 'all') return true;
+    if (m === 'top' || m === 'gallery') return tribes.length > 0;
+    if (m === 'mine') return tribes.some(t => t.author === userId);
+    if (m === 'membership') return tribes.some(t => Array.isArray(t.members) && t.members.includes(userId));
+    if (m === 'subtribes') return tribes.some(t => !!t.parentTribeId);
+    if (m === 'recent') return tribes.some(t => ((typeof t.createdAt === 'string' ? Date.parse(t.createdAt) : t.createdAt) || 0) >= nowChip - 86400000);
+    return true;
+  };
+  const filters = emptyMod ? null : div({ class: 'filters activity-filter-chips activity-toolbar-row' },
+    renderModuleStatsBy(sorted, t => t.isAnonymous ? 'PRIVATE' : 'PUBLIC', [{ value: 'PUBLIC', label: i18n.tribePublic }, { value: 'PRIVATE', label: i18n.tribePrivate }]),
     form({ method: 'GET', action: '/tribes', class: 'filter-box' },
       input({ type: 'hidden', name: 'filter', value: filter }),
       input({ type: 'text', name: 'search', placeholder: i18n.searchTribesPlaceholder, value: query.search || '', class: 'filter-box__input' }),
@@ -182,7 +195,8 @@ exports.tribesView = async (tribes, filter, tribeId, query = {}, allTribes = nul
   );
 
   const modeButtons = div({ class: 'tribe-mode-buttons' },
-    ['all','recent','mine','membership','subtribes','top','gallery'].map(f =>
+    ...(emptyMod ? [] : [
+    ['all','recent','mine','membership','subtribes','top','gallery'].filter(tribeChip).map(f =>
     form({ method: 'GET', action: '/tribes' },
       input({ type: 'hidden', name: 'filter', value: f }),
       button({ type: 'submit', class: filter === f ? 'filter-btn active' : 'filter-btn' },
@@ -190,6 +204,7 @@ exports.tribesView = async (tribes, filter, tribeId, query = {}, allTribes = nul
         )
       )
     ),
+    ]),
     form({ method: 'GET', action: '/tribes/create' },
       button({ type: 'submit', class: 'create-button' }, i18n.tribeCreateButton)
     )
@@ -211,7 +226,7 @@ exports.tribesView = async (tribes, filter, tribeId, query = {}, allTribes = nul
     br(),
     label({ for: 'description' }, i18n.tribeDescriptionLabel),
     br,
-    textarea({ name: 'description', id: 'description', required: true, rows: 4, cols: 50, placeholder: i18n.tribeDescriptionPlaceholder }, tribeToEdit.description || ''),
+    textarea({ maxlength: "3000", name: 'description', id: 'description', required: true, rows: 4, cols: 50, placeholder: i18n.tribeDescriptionPlaceholder }, tribeToEdit.description || ''),
     br,
     label({ for: 'location' }, i18n.tribeLocationLabel),
     br,
@@ -279,7 +294,10 @@ exports.tribesView = async (tribes, filter, tribeId, query = {}, allTribes = nul
             t.isAnonymous ? renderPrivacyChip(true, i18n) : renderPrivacyChip(false, i18n),
             t.isAnonymous ? renderTribeEncryptedChip(i18n) : null,
             renderModeChip(t.inviteMode, i18n),
-            renderLifespanChip(t.lifetime, i18n)
+            renderLifespanChip(t.lifetime, i18n),
+            t.subscriptionIn === true
+              ? renderStateChip('mutuals', '\u2709', i18n.subscriptionOn)
+              : (t.subscriptionIn === false ? renderStateChip('closed', '\u2709', i18n.subscriptionOff) : null)
           ),
           t.description ? p({ class: 'tribe-card-description' }, ...renderUrl(t.description)) : null,
           renderMapLocationVisitLabel(t.mapUrl),
@@ -326,16 +344,16 @@ exports.tribesView = async (tribes, filter, tribeId, query = {}, allTribes = nul
   return template(
     title,
     section(header),
-    section(filters),
     section(modeButtons),
+    filters ? section(filters) : null,
     section(
       (filter === 'create' || filter === 'edit')
         ? createForm
         : filter === 'gallery'
           ? renderGallery(sorted)
-          : div({ class: 'tribe-grid' },
-              tribeCards.length > 0 ? tribeCards : p(i18n.noTribes)
-            )
+          : tribeCards.length > 0
+            ? div({ class: 'tribe-grid' }, tribeCards)
+            : div({ class: "no-content-box" }, p(i18n.noTribes))
      ),
     ...renderLightbox(sorted)
   );
@@ -393,7 +411,7 @@ const renderSectionNav = (tribe, section) => {
   const sections = [
     { items: firstGroup },
     { items: [{ key: 'votations', label: i18n.tribeSectionVotations }, { key: 'polls', label: i18n.pollsTitle }, { key: 'events', label: i18n.tribeSectionEvents }, { key: 'tasks', label: i18n.tribeSectionTasks }] },
-    { items: [{ key: 'feed', label: i18n.tribeSectionFeed }, { key: 'forum', label: i18n.tribeSectionForum }, { key: 'maps', label: i18n.tribeSectionMaps || 'MAPS' }, { key: 'torrents', label: i18n.tribeSectionTorrents || 'TORRENTS' }, { key: 'pads', label: i18n.tribeSectionPads || 'PADS' }, { key: 'chats', label: i18n.tribeSectionChats || 'CHATS' }, { key: 'calendars', label: i18n.tribeSectionCalendars || 'CALENDARS' }] },
+    { items: [{ key: 'feed', label: i18n.tribeSectionFeed }, { key: 'forum', label: i18n.tribeSectionForum }, { key: 'maps', label: i18n.tribeSectionMaps || 'MAPS' }, { key: 'torrents', label: i18n.tribeSectionTorrents || 'TORRENTS' }, { key: 'pads', label: i18n.tribeSectionPads || 'PADS' }, { key: 'wiki', label: i18n.tribeSectionWiki || 'WIKI' }, { key: 'chats', label: i18n.tribeSectionChats || 'CHATS' }, { key: 'calendars', label: i18n.tribeSectionCalendars || 'CALENDARS' }] },
     { items: [{ key: 'images', label: i18n.tribeSectionImages || 'IMAGES' }, { key: 'audios', label: i18n.tribeSectionAudios || 'AUDIOS' }, { key: 'videos', label: i18n.tribeSectionVideos || 'VIDEOS' }, { key: 'documents', label: i18n.tribeSectionDocuments || 'DOCUMENTS' }, { key: 'bookmarks', label: i18n.tribeSectionBookmarks || 'BOOKMARKS' }] },
     { items: [{ key: 'tags', label: i18n.tribeSectionTags || 'TAGS' }, { key: 'search', label: i18n.tribeSectionSearch }] },
   ];
@@ -611,7 +629,7 @@ const renderTribeTagsSection = (tribe, sectionData, query) => {
   const tribeUrl = `/tribe/${encodeURIComponent(tribe.id)}`;
   const sortedTags = tagsList.slice().sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
   return section(
-    div({ class: 'tags-header' },
+    div({ class: 'tags-header module-header-line' },
       h2(i18n.tribeSectionTags || i18n.tagsTitle || 'TAGS'),
       p(i18n.tagsDescription || '')
     ),
@@ -770,10 +788,11 @@ const renderCreateForm = (tribe, contentType, fields) => {
     form(formAttrs,
       ...fields.map(f => {
         const prefix = f.spaceBefore ? [br()] : [];
-        if (f.type === 'textarea') return [...prefix, label({ for: f.name }, f.label), br, textarea({ name: f.name, id: f.name, rows: f.rows || 4, required: f.required, placeholder: f.placeholder }, ''), br()];
+        if (f.type === 'textarea') return [...prefix, label({ for: f.name }, f.label), br, textarea({ maxlength: "3000", name: f.name, id: f.name, rows: f.rows || 4, required: f.required, placeholder: f.placeholder }, ''), br()];
         if (f.type === 'select') return [...prefix, label({ for: f.name }, f.label), br, select({ name: f.name, id: f.name }, ...f.options.map(o => option({ value: o.value }, o.label))), br()];
         if (f.type === 'file') return [...prefix, label({ for: f.name }, f.label), br, input({ type: 'file', name: f.name, id: f.name, accept: f.accept || '*/*' }), br()];
         const attrs = { type: f.type || 'text', name: f.name, id: f.name, required: f.required, placeholder: f.placeholder };
+        if (f.maxlength) attrs.maxlength = f.maxlength;
         if (f.min) attrs.min = f.min;
         return [...prefix, br, label({ for: f.name }, f.label), br, input(attrs), br()];
       }).flat(),br(),
@@ -788,7 +807,7 @@ const renderEventsSection = (tribe, items, query) => {
   const today = new Date().toISOString().split('T')[0];
   if (action === 'create') {
     return renderCreateForm(tribe, 'events', [
-      { name: 'title', label: i18n.tribeEventTitle, required: true, placeholder: i18n.tribeEventTitle },
+      { name: 'title', label: i18n.tribeEventTitle, maxlength: '100', required: true, placeholder: i18n.tribeEventTitle },
       { name: 'description', type: 'textarea', label: i18n.tribeEventDescription, required: true, placeholder: i18n.tribeEventDescription },
       { name: 'date', type: 'date', label: i18n.tribeEventDate, required: true, min: today },
       { name: 'location', label: i18n.tribeEventLocation, placeholder: i18n.tribeEventLocation },
@@ -841,7 +860,7 @@ const renderTasksSection = (tribe, items, query) => {
   const today = new Date().toISOString().split('T')[0];
   if (action === 'create') {
     return renderCreateForm(tribe, 'tasks', [
-      { name: 'title', label: i18n.tribeTaskTitle, required: true, placeholder: i18n.tribeTaskTitle },
+      { name: 'title', label: i18n.tribeTaskTitle, maxlength: '100', required: true, placeholder: i18n.tribeTaskTitle },
       { name: 'description', type: 'textarea', label: i18n.tribeTaskDescription, required: true, placeholder: i18n.tribeTaskDescription },
       { name: 'priority', type: 'select', label: i18n.tribeTaskPriority, options: [
         { value: 'LOW', label: i18n.tribePriorityLow }, { value: 'MEDIUM', label: i18n.tribePriorityMedium },
@@ -912,7 +931,7 @@ const renderTribePollsSection = (tribe, items, query) => {
         label(i18n.pollQuestion), br,
         input({ type: 'text', name: 'question', required: true, maxlength: '300', placeholder: i18n.pollQuestionPlaceholder }), br(),
         label(i18n.pollOptions), br,
-        textarea({ name: 'options', rows: 5, required: true, placeholder: i18n.pollOptionsPlaceholder }, ''), br(),
+        textarea({ maxlength: "3000", name: 'options', rows: 5, required: true, placeholder: i18n.pollOptionsPlaceholder }, ''), br(),
         div({ class: 'poll-switch' },
           input({ type: 'hidden', name: 'anonymous', value: '0' }),
           label(input({ type: 'checkbox', name: 'anonymous', value: '1' }), ' ', i18n.pollAnonymousLabel)
@@ -950,7 +969,6 @@ const renderTribePollsSection = (tribe, items, query) => {
           span({ class: 'card-value' }, String(poll.totalVoters))
         ),
         div({ class: 'card-field' },
-          span({ class: 'card-label' }, i18n.createdBy + ': '),
           userLink(poll.author)
         ),
         poll.author === userId && poll.status === 'OPEN'
@@ -979,7 +997,7 @@ const renderVotationsSection = (tribe, items, query) => {
         label({ for: 'title' }, i18n.tribeVotationTitle), br,
         input({ type: 'text', name: 'title', maxlength: '100', id: 'title', required: true, placeholder: i18n.tribeVotationTitle }), br(),
         label({ for: 'description' }, i18n.tribeVotationDescription), br,
-        textarea({ name: 'description', id: 'description', rows: 3, placeholder: i18n.tribeVotationDescription }, ''), br(),
+        textarea({ maxlength: "3000", name: 'description', id: 'description', rows: 3, placeholder: i18n.tribeVotationDescription }, ''), br(),
         label({ for: 'deadline' }, i18n.tribeVotationDeadline), br,
         input({ type: 'date', name: 'deadline', id: 'deadline', min: today }), br(),
         br(),
@@ -1063,7 +1081,7 @@ const renderForumSection = (tribe, items, query) => {
 
   if (action === 'create') {
     return renderCreateForm(tribe, 'forum', [
-      { name: 'title', label: i18n.tribeForumTitle, required: true, placeholder: i18n.tribeForumTitle },
+      { name: 'title', label: i18n.tribeForumTitle, maxlength: '100', required: true, placeholder: i18n.tribeForumTitle },
       { name: 'description', type: 'textarea', label: i18n.tribeForumText, required: true, placeholder: i18n.tribeForumText, rows: 6 },
       { name: 'category', type: 'select', label: i18n.tribeForumCategory, options: [
         { value: 'GENERAL', label: i18n.tribeForumCatGeneral }, { value: 'PROPOSAL', label: i18n.tribeForumCatProposal },
@@ -1110,7 +1128,7 @@ const renderForumSection = (tribe, items, query) => {
       ),
       div({ class: 'tribe-forum-reply-form' },
         form({ method: 'POST', action: `${tribeUrl}/forum/${encodeURIComponent(threadId)}/reply` },
-          textarea({ name: 'description', rows: 3, required: true, placeholder: i18n.tribeForumReply }),
+          textarea({ maxlength: "3000", name: 'description', rows: 3, required: true, placeholder: i18n.tribeForumReply }),
           br(),
           button({ type: 'submit', class: 'forum-send-btn' }, i18n.tribeForumReply)
         )
@@ -1240,7 +1258,7 @@ const renderTribeMediaTypeSection = (tribe, items, query, mediaType) => {
           label({ for: 'url' }, i18n.bookmarkUrlLabel || 'URL'), br,
           input({ type: 'url', name: 'url', id: 'url', required: true, placeholder: 'https://' }), br(),br(),
           label({ for: 'description' }, i18n.tribeMediaDescription), br,
-          textarea({ name: 'description', id: 'description', rows: 3, placeholder: i18n.tribeMediaDescription }, ''), br(),
+          textarea({ maxlength: "3000", name: 'description', id: 'description', rows: 3, placeholder: i18n.tribeMediaDescription }, ''), br(),
           button({ type: 'submit', class: 'create-button' }, mediaBtnLabel)
         )
       );
@@ -1252,7 +1270,7 @@ const renderTribeMediaTypeSection = (tribe, items, query, mediaType) => {
         label({ for: 'title' }, i18n.tribeMediaTitle), br,
         input({ type: 'text', name: 'title', maxlength: '100', id: 'title', required: true, placeholder: i18n.tribeMediaTitle }), br(),
         label({ for: 'description' }, i18n.tribeMediaDescription), br,
-        textarea({ name: 'description', id: 'description', rows: 3, placeholder: i18n.tribeMediaDescription }, ''), br(),
+        textarea({ maxlength: "3000", name: 'description', id: 'description', rows: 3, placeholder: i18n.tribeMediaDescription }, ''), br(),
         label({ for: 'media' }, i18n.tribeMediaUpload), br,
         input({ type: 'file', name: 'media', id: 'media', accept: acceptForMediaType[mediaType] || '*/*', required: true }), br(), br(),
         button({ type: 'submit', class: 'create-button' }, mediaBtnLabel)
@@ -1359,7 +1377,7 @@ const renderSubTribesSection = (tribe, items, query) => {
 
   if (action === 'create' && canCreate) {
     return renderCreateForm(tribe, 'subtribes', [
-      { name: 'title', label: i18n.tribeTitleLabel, required: true, placeholder: 'Name of the sub-tribe' },
+      { name: 'title', label: i18n.tribeTitleLabel, maxlength: '100', required: true, placeholder: 'Name of the sub-tribe' },
       { name: 'description', type: 'textarea', label: i18n.tribeDescriptionLabel, required: true, placeholder: 'Description of the sub-tribe' },
       { name: 'location', label: i18n.tribeLocationLabel, placeholder: 'Where is this sub-tribe located?' },
       { name: 'mapUrl', label: i18n.mapLocationTitle || 'Map Location', placeholder: i18n.mapUrlPlaceholder || '/maps/MAP_ID', spaceBefore: true },
@@ -1400,7 +1418,7 @@ const renderTribeMapsSection = (tribe, maps) => {
   const createBtn = form({ method: 'GET', action: '/maps' },
     input({ type: 'hidden', name: 'filter', value: 'create' }),
     input({ type: 'hidden', name: 'tribeId', value: tribe.id }),
-    button({ type: 'submit', class: 'create-button' }, i18n.mapUploadButton || 'Create Map'));
+    button({ type: 'submit', class: 'create-button' }, i18n.mapCreateButton || 'Create Map'));
   if (items.length === 0) return div({ class: 'tribe-content-list' }, div({ class: 'tribe-content-header' }, h2(i18n.tribeSectionMaps || 'MAPS'), createBtn), p(i18n.noMaps || 'No maps yet'));
   return div({ class: 'tribe-content-list' },
     div({ class: 'tribe-content-header' }, h2(i18n.tribeSectionMaps || 'MAPS'), createBtn),
@@ -1608,6 +1626,7 @@ exports.tribeView = async (tribe, userIdParam, query, section, sectionData) => {
     case 'torrents': sectionContent = renderTribeTorrentsSection(tribe, sectionData); break;
     case 'maps': sectionContent = renderTribeMapsSection(tribe, sectionData); break;
     case 'pads': sectionContent = renderTribePadsSection(tribe, sectionData); break;
+    case 'wiki': sectionContent = renderTribeWikiSection(tribe, sectionData); break;
     case 'chats': sectionContent = renderTribeChatsSection(tribe, sectionData); break;
     case 'calendars': sectionContent = renderTribeCalendarsSection(tribe, sectionData); break;
     case 'governance': sectionContent = renderGovernance(tribe, sectionData); break;
@@ -1691,7 +1710,17 @@ exports.tribeView = async (tribe, userIdParam, query, section, sectionData) => {
           ? a({ class: 'tribe-action-btn', href: inviteHref }, i18n.tribeEnterInvite)
           : null
       ) : null,
-      (isLarpHouse && larpHouseKey === 'academia' && isOutsider)
+      (tribe.subscription && !isOutsider)
+        ? renderSubscriptionBox({
+            target: tribe.id,
+            scope: 'tribes',
+            subscribed: tribe.subscription.subscribed === true,
+            count: tribe.subscription.count,
+            isOwner: String(tribe.author) === String(userIdParam),
+            returnTo: `/tribe/${encodeURIComponent(tribe.id)}`
+          })
+        : null,
+      (isLarpHouse && larpHouseKey === 'academia' && isOutsider && String(tribe.viewerHouse || '') !== 'academia')
         ? div({ class: 'tribe-side-actions' },
             form({ method: 'POST', action: '/larp/join' },
               input({ type: 'hidden', name: 'house', value: 'academia' }),
@@ -1934,7 +1963,7 @@ const rulesBlock = (tribe, rules, isCreator) => div({},
           label({}, i18n.tribeGovRuleTitle || 'Title'), br(),
           input({ type: 'text', name: 'title', maxlength: '100', required: true }), br(), br(),
           label({}, i18n.tribeGovRuleBody || 'Body'), br(),
-          textarea({ name: 'body', rows: 4 }), br(), br(),
+          textarea({ maxlength: "3000", name: 'body', rows: 4 }), br(), br(),
           button({ type: 'submit', class: 'create-button' }, i18n.save || 'Save')
         )
       )
@@ -1959,7 +1988,7 @@ const rulesBlock = (tribe, rules, isCreator) => div({},
 const renderGovernance = (tribe, data) => {
   const { filter, term, candidatures, rules, leaders, isCreator, canPublishToGlobal, alreadyPublishedThisGlobalCycle, hasElectedCandidate } = data || {};
   const f = filter || 'government';
-  const header = div({ class: 'tags-header' },
+  const header = div({ class: 'tags-header module-header-line' },
     h2(i18n.tribeSectionGovernance || 'GOVERNANCE'),
     p(i18n.tribeGovernanceDesc || 'Internal governance for this tribe. Propose candidatures, debate rules, elect leaders — mirrors the global Parliament.')
   );

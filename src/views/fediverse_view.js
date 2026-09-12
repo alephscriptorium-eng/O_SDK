@@ -26,7 +26,7 @@ const renderComposeForm = (opts = {}) => {
     form(
       { method: "POST", action, enctype: "multipart/form-data" },
       replyToId ? input({ type: "hidden", name: "inReplyToId", value: replyToId }) : "",
-      textarea({ name: "text", id: "text", rows: "6", class: "publish-textarea", placeholder: placeholder || i18n.fediverseComposePlaceholder }),
+      textarea({ maxlength: "5000", name: "text", id: "text", rows: "6", class: "publish-textarea", placeholder: placeholder || i18n.fediverseComposePlaceholder }),
       br(),
       label({ for: "fediverse_media" }, i18n.fediverseAttach),
       br(),
@@ -119,16 +119,139 @@ const disconnectedBlock = () => {
   return div({ class: "fediverse-disconnected" }, h2(i18n.fediverseStatus), para);
 };
 
-exports.fediverseOverviewView = ({ account, stats } = {}) => {
-  const box = account
-    ? mastodonBox(account, stats, [
-        form({ method: "GET", action: "/fediverse/mastodon" }, button({ type: "submit", class: "filter-btn" }, i18n.fediverseManage))
-      ], true)
-    : null;
+
+const telegramBox = (account, stats, actions, showLabel) => {
+  const stat = (lbl, val) => div({ class: "fediverse-stat" }, span({ class: "fediverse-stat-label" }, lbl), strong(String(val)));
+  const handle = account.username ? `@${account.username}` : (account.phone || "");
+  return div({ class: "fediverse-network" },
+    showLabel ? h3("Telegram") : "",
+    div({ class: "fediverse-profile" },
+      div({ class: "fediverse-namerow" },
+        account.avatar ? img({ class: "fediverse-avatar", src: account.avatar, alt: account.displayName }) : "",
+        div({ class: "fediverse-profile-id" },
+          div({ class: "fediverse-name" }, account.displayName || handle),
+          span({ class: "fediverse-acct" }, handle)
+        ),
+        actions && actions.length ? div({ class: "fediverse-compact-actions" }, actions) : ""
+      ),
+      stats
+        ? div({ class: "fediverse-stats" },
+            stat(i18n.telegramChats, stats.chats),
+            stat(i18n.telegramUnread, stats.unread)
+          )
+        : ""
+    )
+  );
+};
+
+const telegramKindLabel = (kind) => kind === 'channel' ? i18n.telegramChannel : kind === 'group' ? i18n.telegramGroup : i18n.telegramPrivate;
+
+const renderTelegramMedia = (m) => {
+  if (!m || !m.url) return "";
+  if (m.kind === 'photo') return img({ class: "post-image", src: m.url, alt: m.name || "" });
+  if (m.kind === 'video') return videoHyperaxe({ class: "post-video", src: m.url, controls: true, preload: "metadata" });
+  if (m.kind === 'audio') return audioHyperaxe({ class: "post-audio", src: m.url, controls: true });
+  return a({ href: m.url, class: "filter-btn" }, `📎 ${m.name || m.mime || "file"}`);
+};
+
+const renderTelegramDialog = (d) => {
+  const href = `/fediverse/telegram/chat/${encodeURIComponent(d.id)}#telegram-latest`;
+  const preview = d.last ? ((d.last.out ? "→ " : "") + (d.last.text || (d.last.hasMedia ? "📎" : ""))) : "";
+  return div({ class: "feed-card fediverse-card telegram-dialog" + (d.unread > 0 ? " telegram-unread" : "") },
+    div({ class: "fediverse-head" },
+      img({ class: "fediverse-avatar", src: d.avatar, alt: "" }),
+      div({ class: "fediverse-author" },
+        a({ class: "fediverse-name", href }, d.title),
+        span({ class: "fediverse-acct" }, telegramKindLabel(d.kind))
+      ),
+      d.unread > 0 ? span({ class: "telegram-unread-badge" }, String(d.unread)) : "",
+      span({ class: "fediverse-date" }, fmtDate(d.date))
+    ),
+    preview ? p({ class: "telegram-preview" }, preview.length > 160 ? `${preview.slice(0, 160)}…` : preview) : "",
+    div({ class: "fediverse-actions" },
+      form({ method: "GET", action: href }, button({ type: "submit", class: "filter-btn" }, i18n.telegramOpen))
+    )
+  );
+};
+
+const renderTelegramMessage = (m) => div({ class: "feed-card fediverse-card telegram-message" + (m.out ? " telegram-out" : "") },
+  div({ class: "fediverse-head" },
+    span({ class: "fediverse-name" }, m.out ? i18n.telegramYou : (m.senderName || "")),
+    span({ class: "fediverse-date" }, fmtDate(m.date))
+  ),
+  m.text ? div({ class: "feed-text telegram-text" }, m.text) : "",
+  m.media ? div({ class: "fediverse-media" }, renderTelegramMedia(m.media)) : ""
+);
+
+exports.telegramDialogsView = ({ account, stats, dialogs, error } = {}) => {
+  if (!account) return exports.fediverseOverviewView({ account: null });
+  const body = [];
+  body.push(div({ class: "tags-header module-header-line" }, h2(i18n.fediverse), p(i18n.fediverseDescription)));
+  body.push(telegramBox(account, stats, [
+    a({ href: "/fediverse", class: "filter-btn" }, `← ${i18n.fediverse}`),
+    a({ href: "/fediverse/telegram?refresh=1", class: "filter-btn" }, i18n.fediverseRefresh)
+  ], false));
+  if (error) body.push(div({ class: "fediverse-error" }, i18n[error] || i18n.telegramErrConnect));
+  const list = Array.isArray(dialogs) ? dialogs : [];
+  if (!list.length && !error) body.push(p({ class: "muted" }, i18n.telegramNoChats));
+  else body.push(section({ class: "feed-container" }, list.map(renderTelegramDialog)));
+  return template(i18n.fediverse, section(...body));
+};
+
+exports.telegramChatView = ({ account, stats, chat, error } = {}) => {
+  if (!account) return exports.fediverseOverviewView({ account: null });
+  const header = section(
+    div({ class: "tags-header module-header-line" }, h2(i18n.fediverse), p(i18n.fediverseDescription)),
+    telegramBox(account, stats, [
+      a({ href: "/fediverse/telegram", class: "filter-btn" }, `← ${i18n.telegramChats}`)
+    ], false)
+  );
+  if (!chat) return template(i18n.fediverse, header, section(div({ class: "fediverse-error" }, i18n[error] || i18n.telegramErrFetch)));
+  const body = [];
+  body.push(div({ class: "telegram-chat-title" },
+    h3(chat.title),
+    span({ class: "fediverse-acct" }, telegramKindLabel(chat.kind)),
+    a({ href: "#telegram-latest", class: "filter-btn chat-jump-latest" }, i18n.chatJumpLatest)
+  ));
+  if (error) body.push(div({ class: "fediverse-error" }, i18n[error] || i18n.telegramErrConnect));
+  const list = Array.isArray(chat.messages) ? chat.messages : [];
+  if (!list.length) body.push(p({ class: "muted" }, i18n.telegramNoMessages));
+  else body.push(section({ class: "feed-container" },
+    list.map((m, idx) => {
+      const node = renderTelegramMessage(m);
+      return idx === list.length - 1 ? div({ id: "telegram-latest", class: "chat-latest-anchor" }, node) : node;
+    })
+  ));
+  body.push(br(), hr(), br());
+  body.push(div({ class: "publish-form" },
+    form({ method: "POST", action: `/fediverse/telegram/chat/${encodeURIComponent(chat.id)}/send`, enctype: "multipart/form-data" },
+      textarea({ maxlength: "4096", name: "text", rows: "4", class: "publish-textarea", placeholder: i18n.telegramComposePlaceholder }),
+      br(),
+      label({ for: "telegram_media" }, i18n.fediverseAttach), br(),
+      input({ type: "file", id: "telegram_media", name: "media", accept: "image/*,video/*,audio/*,application/pdf" }),
+      br(), br(),
+      button({ type: "submit", class: "filter-btn" }, i18n.telegramSend)
+    )
+  ));
+  return template(i18n.fediverse, header, section(...body));
+};
+
+exports.fediverseOverviewView = ({ account, stats, telegram, telegramStats } = {}) => {
+  const boxes = [];
+  if (account) {
+    boxes.push(mastodonBox(account, stats, [
+      form({ method: "GET", action: "/fediverse/mastodon" }, button({ type: "submit", class: "filter-btn" }, i18n.fediverseManage))
+    ], true));
+  }
+  if (telegram) {
+    boxes.push(telegramBox(telegram, telegramStats, [
+      form({ method: "GET", action: "/fediverse/telegram" }, button({ type: "submit", class: "filter-btn" }, i18n.fediverseManage))
+    ], true));
+  }
 
   return template(i18n.fediverse, section(
-    div({ class: "tags-header" }, h2(i18n.fediverse), p(i18n.fediverseDescription)),
-    account ? box : disconnectedBlock()
+    div({ class: "tags-header module-header-line" }, h2(i18n.fediverse), p(i18n.fediverseDescription)),
+    boxes.length ? boxes : disconnectedBlock()
   ));
 };
 
@@ -136,7 +259,7 @@ exports.fediverseView = ({ account, posts, error, stats } = {}) => {
   if (!account) return exports.fediverseOverviewView({ account: null });
 
   const body = [];
-  body.push(div({ class: "tags-header" }, h2(i18n.fediverse), p(i18n.fediverseDescription)));
+  body.push(div({ class: "tags-header module-header-line" }, h2(i18n.fediverse), p(i18n.fediverseDescription)));
   body.push(mastodonBox(account, stats, [
     a({ href: "/fediverse", class: "filter-btn" }, `← ${i18n.fediverse}`),
     a({ href: "/fediverse/mastodon?refresh=1", class: "filter-btn" }, i18n.fediverseRefresh),
@@ -156,7 +279,7 @@ exports.fediverseView = ({ account, posts, error, stats } = {}) => {
 
 exports.fediverseThreadView = ({ account, stats, thread, error } = {}) => {
   const header = section(
-    div({ class: "tags-header" }, h2(i18n.fediverse), p(i18n.fediverseDescription)),
+    div({ class: "tags-header module-header-line" }, h2(i18n.fediverse), p(i18n.fediverseDescription)),
     account ? mastodonBox(account, stats, [
       a({ href: "/fediverse/mastodon", class: "filter-btn" }, `← ${i18n.fediverse}`)
     ], true) : ""
@@ -198,7 +321,7 @@ exports.fediversePreviewView = ({ account, stats, text, media, error, replyToId,
 
   return template(i18n.fediverse,
     section(
-      div({ class: "tags-header" }, h2(i18n.fediverse), p(i18n.fediverseDescription)),
+      div({ class: "tags-header module-header-line" }, h2(i18n.fediverse), p(i18n.fediverseDescription)),
       account ? mastodonBox(account, stats, [
         a({ href: backHref, class: "filter-btn" }, `← ${i18n.fediverse}`)
       ], true) : ""
@@ -209,7 +332,7 @@ exports.fediversePreviewView = ({ account, stats, text, media, error, replyToId,
       div({ class: "publish-form" },
         form(
           { action: postAction, method: "POST", enctype: "multipart/form-data" },
-          textarea({ name: "text", id: "text", rows: "6", class: "publish-textarea", placeholder: isReply ? i18n.fediverseReplyPlaceholder : i18n.fediverseComposePlaceholder }, text || ""),
+          textarea({ maxlength: "5000", name: "text", id: "text", rows: "6", class: "publish-textarea", placeholder: isReply ? i18n.fediverseReplyPlaceholder : i18n.fediverseComposePlaceholder }, text || ""),
           ...mediaList.map(m => input({ type: "hidden", name: "tmp", value: m.name })),
           br(),
           label({ for: "fediverse_media" }, i18n.fediverseAttach),

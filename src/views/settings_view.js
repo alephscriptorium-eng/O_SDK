@@ -1,10 +1,11 @@
-const { form, button, div, h2, h3, p, section, select, option, input, br, a, label, span, img } = require("../server/node_modules/hyperaxe");
+const { form, button, div, h2, h3, p, section, select, option, input, br, a, label, span, img, strong } = require("../server/node_modules/hyperaxe");
 const fs = require('fs');
 const path = require('path');
 const { getConfig } = require('../configs/config-manager.js');
 const { template, selectedLanguage, i18n, setLanguage } = require('./main_views');
 const i18nBase = require("../client/assets/translations/i18n");
 const { WORKFLOWS, currentWorkflow } = require('../models/workflows_model');
+const { renderVerificationReport } = require('./backup_view');
 
 const snhUrl = "https://wiki.solarnethub.com/socialnet/overview";
 
@@ -19,7 +20,7 @@ const getThemeConfig = () => {
   }
 };
 
-const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError }) => {
+const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError, telegramAccount = null, telegramLogin = null, telegramError = "", verification = null }) => {
   const currentThemeConfig = getThemeConfig();
   const theme = currentThemeConfig.themes?.current || "Dark-SNH";
   const currentConfig = getConfig();
@@ -82,9 +83,9 @@ const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError }) =
   return template(
     i18n.settings,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(i18n.settings),
-        p(a({ href: snhUrl, target: "_blank" }, i18n.settingsIntro({ version }))),
+        p(i18n.settingsDescription),
         updateButton
       )
     ),
@@ -122,7 +123,7 @@ const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError }) =
           (() => {
             const aiNavEnabled = currentConfig.modules && currentConfig.modules.aiNavMod === 'on';
             const chatsEnabled = currentConfig.modules && currentConfig.modules.chatsMod === 'on';
-            const cur = currentConfig.ux?.current === "ainav" ? "ainav" : currentConfig.ux?.current === "chats" ? "chats" : "blocks";
+            const cur = currentConfig.ux?.current === "ainav" ? "ainav" : currentConfig.ux?.current === "chats" ? "chats" : currentConfig.ux?.current === "feed" ? "feed" : "blocks";
             const uxCard = (value, title, image) => label({ class: "welcome-ux-option" },
               input({ type: "radio", name: "ux", value, ...(cur === value ? { checked: true } : {}) }),
               img({ src: image, class: "welcome-ux-shot", alt: title }),
@@ -130,8 +131,9 @@ const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError }) =
             );
             return div({ class: "welcome-ux-grid" },
               uxCard("blocks", i18n.uxModeMenus || "Blocks", "/assets/images/ux-blocks.png"),
-              chatsEnabled ? uxCard("chats", i18n.chatsTitle || "Chats", "/assets/images/ux-chats.png") : null,
-              aiNavEnabled ? uxCard("ainav", i18n.uxModeAINav || "AI", "/assets/images/ux-ainav.png") : null
+              aiNavEnabled ? uxCard("ainav", i18n.uxModeAINav || "AI", "/assets/images/ux-ainav.png") : null,
+              chatsEnabled ? uxCard("chats", i18n.uxModeChats || "Conversations", "/assets/images/ux-chats.png") : null,
+              uxCard("feed", i18n.uxModeFeed || "Microblogging", "/assets/images/ux-feed.png")
             );
           })(),
           button({ type: "submit" }, i18n.saveSettings)
@@ -329,7 +331,6 @@ const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError }) =
         h2(i18n.fediverseSettingsTitle),
         div({ class: "fediverse-network" },
           h3("Mastodon"),
-          p(i18n.fediverseTokenHelp),
           fediverseError ? p({ class: "fediverse-error" }, i18n[fediverseError] || i18n.fediverseError) : "",
           fediverseAccount
             ? (() => {
@@ -353,9 +354,58 @@ const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError }) =
                 input({ type: "password", id: "fediverse_token", name: "token", autocomplete: "off", required: true }), br(),
                 button({ type: "submit" }, i18n.fediverseConnect)
               )
+        ),
+        div({ class: "fediverse-network" },
+          h3("Telegram"),
+          telegramError ? p({ class: "fediverse-error" }, i18n[telegramError] || i18n.telegramErrConnect) : "",
+          telegramAccount
+            ? form(
+                { action: "/settings/telegram/disconnect", method: "POST" },
+                p(`${i18n.fediverseConnectedAs}: `, strong(telegramAccount.displayName || ""), telegramAccount.username ? span(` (@${telegramAccount.username})`) : ""),
+                br(),
+                button({ type: "submit" }, i18n.fediverseDisconnect)
+              )
+            : telegramLogin && telegramLogin.step === "code"
+              ? form(
+                  { action: "/settings/telegram/code", method: "POST" },
+                  br(),
+                  p(i18n.telegramCodeHelp),
+                  input({ type: "text", id: "telegram_code", name: "code", autocomplete: "off", inputmode: "numeric", placeholder: "12345", required: true }), br(), br(),
+                  button({ type: "submit" }, i18n.telegramVerify),
+                  " ",
+                  button({ type: "submit", formaction: "/settings/telegram/cancel", class: "delete-btn" }, i18n.telegramCancel)
+                )
+              : telegramLogin && telegramLogin.step === "password"
+                ? form(
+                    { action: "/settings/telegram/password", method: "POST" },
+                    br(),
+                    p(i18n.telegramPasswordHelp),
+                    input({ type: "password", id: "telegram_password", name: "password", autocomplete: "off", required: true }), br(), br(),
+                    button({ type: "submit" }, i18n.telegramVerify),
+                    " ",
+                    button({ type: "submit", formaction: "/settings/telegram/cancel", class: "delete-btn" }, i18n.telegramCancel)
+                  )
+                : form(
+                    { action: "/settings/telegram/start", method: "POST" },
+                    label({ for: "telegram_api_id" }, i18n.telegramApiIdLabel), br(),
+                    input({ type: "text", id: "telegram_api_id", name: "apiId", inputmode: "numeric", placeholder: "12345678", required: true }), br(),
+                    label({ for: "telegram_api_hash" }, i18n.fediverseTokenLabel), br(),
+                    input({ type: "password", id: "telegram_api_hash", name: "apiHash", autocomplete: "off", placeholder: "0123456789abcdef0123456789abcdef", required: true }), br(),
+                    label({ for: "telegram_phone" }, i18n.telegramPhoneLabel), br(),
+                    input({ type: "tel", id: "telegram_phone", name: "phone", placeholder: "+34 60000000", required: true }), br(), br(),
+                    button({ type: "submit" }, i18n.fediverseConnect)
+                  )
         )
       )
     ) : null,
+    section(
+      div({ class: "tags-header" },
+        h2(i18n.verificationTitle),
+        p(i18n.verificationDescription),
+        form({ action: "/settings/verify", method: "post" }, button({ type: "submit" }, i18n.verificationRun)),
+        verification && verification.error ? p({ class: "backup-check-bad" }, verification.error) : renderVerificationReport(verification)
+      )
+    ),
     section(
       div({ class: "tags-header" },
         h2(i18n.indexes),

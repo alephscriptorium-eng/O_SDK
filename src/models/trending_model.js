@@ -3,6 +3,7 @@ const { getConfig } = require('../configs/config-manager.js');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 const opinionCategories = require('../backend/opinion_categories');
 const { buildValidatedTombstoneSet } = require('./tombstone_validator');
+const { readTyped } = require('./typed_log');
 const { buildVoteTally } = require('../backend/vote_tally');
 
 module.exports = ({ cooler }) => {
@@ -21,7 +22,8 @@ module.exports = ({ cooler }) => {
   const types = [
     'bookmark', 'votes', 'poll', 'feed',
     'image', 'audio', 'video', 'document', 'torrent', 'transfer',
-    'industry', 'project', 'report', 'task', 'event', 'shopProduct', 'housing', 'market', 'schoolCourse'
+    'industry', 'project', 'report', 'task', 'event', 'shopProduct', 'housing', 'market', 'schoolCourse',
+    'podcast', 'podcastEpisode', 'campaign', 'logisticsRoute'
   ];
 
   const categories = opinionCategories;
@@ -30,12 +32,7 @@ module.exports = ({ cooler }) => {
     const ssbClient = await openSsb();
     const userId = ssbClient.id;
 
-    const messages = await new Promise((res, rej) => {
-      pull(
-        ssbClient.createLogStream({ limit: logLimit }),
-        pull.collect((err, xs) => err ? rej(err) : res(xs))
-      );
-    });
+    const messages = await readTyped(ssbClient, [], { limit: logLimit, withWindow: true });
 
     const tombstoned = buildValidatedTombstoneSet(messages);
     const replaces = new Map();

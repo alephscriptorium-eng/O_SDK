@@ -261,7 +261,7 @@ h3 { font-size: 1em !important; }
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: wrap !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
   align-items: center !important;
   width: 100% !important;
   max-width: 100% !important;
@@ -288,8 +288,8 @@ h3 { font-size: 1em !important; }
 }
 .inhabitant-action .filter-btn {
   min-height: 0 !important;
-  padding: 7px 12px !important;
-  font-size: 13px !important;
+  padding: 2px 9px !important;
+  font-size: .75em !important;
   white-space: nowrap !important;
 }
 .profile-sensors-box {
@@ -315,8 +315,8 @@ h3 { font-size: 1em !important; }
 .activity-filter-col .filter-btn,
 .activity-sub-filter .filter-btn {
   min-height: 0 !important;
-  padding: 7px 12px !important;
-  font-size: 13px !important;
+  padding: 2px 9px !important;
+  font-size: .75em !important;
   white-space: nowrap !important;
 }
 
@@ -626,6 +626,7 @@ a.filter-btn,
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
+  flex: 0 0 auto !important;
   height: 42px !important;
   font-size: 16px !important;
   box-sizing: border-box !important;
@@ -727,6 +728,15 @@ a.filter-btn,
   white-space: normal !important;
   max-width: 100% !important;
   overflow-wrap: anywhere !important;
+}
+.card-field .card-value.user-link,
+.card-field .card-value .user-link {
+  display: inline-block !important;
+  vertical-align: bottom !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 .market-grid,
@@ -914,12 +924,50 @@ a.create-button {
 .peers-list .block-info-table td .peer-key,
 .peers-technical-block .block-info-table td .peer-key { text-align: right !important; }
 
+.conn-actions,
+.peers-conn-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+.conn-actions form,
+.peers-conn-actions form {
+  flex: 1 1 45% !important;
+  min-width: 130px !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  display: block !important;
+}
+.conn-actions form button,
+.peers-conn-actions form button {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
 .relationship-status .relationship-actions { flex-direction: column !important; align-items: stretch !important; gap: 8px !important; }
 .relationship-status .relationship-actions form,
 .relationship-status .relationship-actions button { width: 100% !important; }
 
 .profile-sensors-box { align-items: center !important; text-align: center !important; }
 .profile-sensors-box > * { margin-left: auto !important; margin-right: auto !important; justify-content: center !important; }
+
+.profile-layout,
+.profile-layout .tribe-side,
+.profile-layout .tribe-main {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+.profile-side-description,
+.profile-side-description p,
+.trending-card .card-section,
+.feed-text {
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+}
 
 .tribe-feed .refeed-column,
 .tribe-feed-full .refeed-column { align-self: center !important; align-items: center !important; justify-content: center !important; }
@@ -942,3 +990,93 @@ a.create-button {
 .chat-messages-list { padding: 0 !important; }
 .chat-message { max-width: 92% !important; }
 .chat-message.chat-poll { max-width: 97% !important; }
+.feed-workspace {
+  display: block !important;
+}
+.feed-side {
+  display: none !important;
+}
+.tribe-info-table,
+.tribe-info-table tbody,
+.tribe-info-table tr,
+.tribe-info-table td {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  text-align: left !important;
+  overflow: visible !important;
+}
+.tribe-info-table td .user-link {
+  display: inline-block !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.school-lesson-summary {
+  flex-wrap: wrap !important;
+}
+.school-lesson-summary-title {
+  flex: 1 1 100% !important;
+  min-width: 0 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+.school-lesson-summary-meta {
+  flex: 1 1 100% !important;
+  white-space: normal !important;
+}
+.feed-votes-summary {
+  flex-wrap: wrap !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+.feed-votes-summary .vote-category {
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+}
+.tribe-open-invite-code {
+  font-size: .85em !important;
+}
+
+.school-progress-row {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 6px !important;
+}
+.school-progress-issue {
+  width: 100% !important;
+}
+.school-progress-issue input[type="text"] {
+  max-width: 100% !important;
+  flex: 1 1 100% !important;
+}
+
+.subscription-box-block {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+.subscription-box-block .subscription-form { margin: 0 !important; }
+
+.profile-module-section,
+.profile-module-section .trending-card,
+.profile-module-section .card-body,
+.profile-module-section .card-section {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+.card-section-action {
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+}
+.card-section-action .keep-reading-link {
+  text-align: center !important;
+}
+.card-field.image-container,.card-field.video-container,.card-field.audio-container { justify-content: center !important; }
+.card-field.media-left { justify-content: flex-start !important; }

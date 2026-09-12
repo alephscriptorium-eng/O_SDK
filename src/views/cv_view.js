@@ -15,7 +15,7 @@ exports.createCVView = async (cv = {}, editMode = false) => {
   return template(
     title,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(title),
         p(i18n.cvDescription)
       ),
@@ -44,34 +44,36 @@ exports.createCVView = async (cv = {}, editMode = false) => {
             label(i18n.cvNameLabel), br(),
             input({ type: "text", name: "name", required: true, value: cv.name || "" }), br(),
             label(i18n.cvDescriptionLabel), br(),
-            textarea({ name: "description", required: true, rows: 4  }, cv.description || ""), br(),
+            textarea({ maxlength: "5000", name: "description", required: true, rows: 4  }, cv.description || ""), br(),
             label(i18n.cvLanguagesLabel), br(),
             input({ type: "text", name: "languages", value: cv.languages || "" }), br(),
             label(i18n.cvPhotoLabel), br(),
             input({ type: "file", name: "image" }), br(), br(),
+            label(i18n.cvPdfLabel), br(),
+            input({ type: "file", name: "cvPdf", accept: "application/pdf" }), br(), br(),
             label(i18n.cvPersonalExperiencesLabel), br(),
-            textarea({ name: "personalExperiences", rows: 4 }, cv.personalExperiences || ""), br(),
+            textarea({ maxlength: "5000", name: "personalExperiences", rows: 4 }, cv.personalExperiences || ""), br(),
             label(i18n.cvPersonalSkillsLabel), br(),
             input({ type: "text", name: "personalSkills", required: true, value: (cv.personalSkills || []).join(", ") }), br()
           ], "personal"),
 
           generateCVBox(i18n.cvOasis, [
             label(i18n.cvOasisExperiencesLabel), br(),
-            textarea({ name: "oasisExperiences", rows: 4 }, cv.oasisExperiences || ""), br(),
+            textarea({ maxlength: "5000", name: "oasisExperiences", rows: 4 }, cv.oasisExperiences || ""), br(),
             label(i18n.cvOasisSkillsLabel), br(),
             input({ type: "text", name: "oasisSkills", value: (cv.oasisSkills || []).join(", ") }), br()
           ], "oasis"),
 
           generateCVBox(i18n.cvEducational, [
             label(i18n.cvEducationExperiencesLabel), br(),
-            textarea({ name: "educationExperiences", rows: 4 }, cv.educationExperiences || ""), br(),
+            textarea({ maxlength: "5000", name: "educationExperiences", rows: 4 }, cv.educationExperiences || ""), br(),
             label(i18n.cvEducationalSkillsLabel), br(),
             input({ type: "text", name: "educationalSkills", value: (cv.educationalSkills || []).join(", ") }), br()
           ], "education"),
 
           generateCVBox(i18n.cvProfessional, [
             label(i18n.cvProfessionalExperiencesLabel), br(),
-            textarea({ name: "professionalExperiences", rows: 4 }, cv.professionalExperiences || ""), br(),
+            textarea({ maxlength: "5000", name: "professionalExperiences", rows: 4 }, cv.professionalExperiences || ""), br(),
             label(i18n.cvProfessionalSkillsLabel), br(),
             input({ type: "text", name: "professionalSkills", value: (cv.professionalSkills || []).join(", ") }), br()
           ], "professional"),
@@ -111,16 +113,16 @@ exports.cvView = async (cv, certificates = []) => {
     return template(
       title,
       section(
-        div({ class: "tags-header" },
+        div({ class: "tags-header module-header-line" },
           h2(title),
           p(i18n.cvDescription)
         ),
-        div({ class: "no-cv" },
-          p(i18n.cvNoCV),
+        div({ class: "filters" },
           form({ method: "GET", action: "/cv/create" },
-            button({ type: "submit" }, i18n.cvCreateButton)
+            button({ type: "submit", class: "create-button" }, i18n.cvCreateButton)
           )
         ),
+        div({ class: "no-content-box" }, p(i18n.cvNoCV)),
         Array.isArray(certificates) && certificates.length
           ? div({ class: "cv-section-block school-certificates" },
               h2(i18n.schoolCertificates),
@@ -130,7 +132,8 @@ exports.cvView = async (cv, certificates = []) => {
                   a({ href: `/school/course/${encodeURIComponent(cert.courseId)}` }, cert.courseTitle || cert.courseId),
                   span(" — "),
                   userLink(cert.author),
-                  span({ class: "school-certificate-date" }, ` (${new Date(cert.createdAt).toLocaleDateString()})`)
+                  span({ class: "school-certificate-date" }, ` (${new Date(cert.createdAt).toLocaleDateString()})`),
+                  a({ href: `/school/certificate/pdf/${encodeURIComponent(cert.courseId)}/${encodeURIComponent(cert.id)}`, class: "filter-btn school-cert-pdf" }, `⬇ ${i18n.schoolCertificatePdf || "PDF"}`)
                 )
               )
             )
@@ -193,6 +196,9 @@ exports.cvView = async (cv, certificates = []) => {
             img({ class: 'profile-qr-img', src: `/qr/${encodeURIComponent(cv.contact || cv.author)}?size=240`, alt: 'QR' })))
       : null,
     cv.contact ? p(userLink(cv.contact)) : null,
+    cv.pdf
+      ? p(a({ href: `/blob/${encodeURIComponent(cv.pdf)}`, target: "_blank", rel: "noopener", class: "filter-btn" }, "📄 " + i18n.cvPdfLabel))
+      : null,
     table({ class: "tribe-info-table jobs-info-table" }, ...infoRows),
     uniqueSkills.length
       ? div({ class: "tribe-card-members" },
@@ -240,7 +246,8 @@ exports.cvView = async (cv, certificates = []) => {
               a({ href: `/school/course/${encodeURIComponent(cert.courseId)}` }, cert.courseTitle || cert.courseId),
               span(" — "),
               userLink(cert.author),
-              span({ class: "school-certificate-date" }, ` (${new Date(cert.createdAt).toLocaleDateString()})`)
+              span({ class: "school-certificate-date" }, ` (${new Date(cert.createdAt).toLocaleDateString()})`),
+              a({ href: `/school/certificate/pdf/${encodeURIComponent(cert.courseId)}/${encodeURIComponent(cert.id)}`, class: "filter-btn school-cert-pdf" }, `⬇ ${i18n.schoolCertificatePdf || "PDF"}`)
             )
           )
         )
@@ -250,7 +257,7 @@ exports.cvView = async (cv, certificates = []) => {
   return template(
     title,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(title),
         p(i18n.cvDescription)
       ),

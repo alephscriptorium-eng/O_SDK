@@ -3,10 +3,11 @@ const { form, button, div, h2, p, section, input, label, br, a, img, span, texta
 const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink } = require("./comments_view");
 
 const moment = require("../server/node_modules/moment");
-const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderStateChip, renderContentActions , renderSpreadEditWarning } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderStateChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl")
 const { renderMapLocationVisitLabel } = require("./maps_view");
+const { renderZoomableImage } = require("./gallery_view");
 
 const userId = config.keys.id;
 
@@ -39,14 +40,7 @@ const renderImageMedia = (imgObj, filter, params = {}) => {
   return imgObj?.url
     ? div(
         { class: "image-container image-container-row" },
-        a(
-          {
-            href: `/images/${encodeURIComponent(imgObj.key)}?filter=${encodeURIComponent(filter || "all")}${
-              params.q ? `&q=${encodeURIComponent(params.q)}` : ""
-            }${params.sort ? `&sort=${encodeURIComponent(params.sort)}` : ""}`
-          },
-          img({ src, alt: imgObj.title || "", class: "media-preview", loading: "lazy" })
-        )
+        renderZoomableImage(src, { alt: imgObj.title || "", imgClass: "post-image" })
       )
     : p(i18n.imageNoFile);
 };
@@ -159,7 +153,7 @@ const renderImageForm = (filter, imageId, imageToEdit, params = {}) => {
       br(),
       label(i18n.imageDescriptionLabel),
       br(),
-      textarea({ name: "description", placeholder: i18n.imageDescriptionPlaceholder, rows: "4" }, imageToEdit?.description || ""),
+      textarea({ maxlength: "5000", name: "description", placeholder: i18n.imageDescriptionPlaceholder, rows: "4" }, imageToEdit?.description || ""),
       br(),
       label(i18n.mapLocationTitle || "Map Location"),
       br(),
@@ -183,7 +177,7 @@ const renderGallery = (images) => {
     images.map((imgObj) => {
       const src = imgObj.url ? `/image/256/${encodeURIComponent(imgObj.url)}` : "";
       return a(
-        { href: `#img-${encodeURIComponent(imgObj.key)}`, class: "gallery-item" },
+        { href: `#img-${encodeURIComponent(imgObj.key)}`, id: `img-${encodeURIComponent(imgObj.key)}-src`, class: "gallery-item" },
         img({ src, alt: imgObj.title || "", class: "gallery-image", loading: "lazy" })
       );
     })
@@ -195,7 +189,7 @@ const renderLightbox = (images) =>
     const src = imgObj.url ? `/blob/${encodeURIComponent(imgObj.url)}` : "";
     return div(
       { id: `img-${encodeURIComponent(imgObj.key)}`, class: "lightbox" },
-      a({ href: "#", class: "lightbox-close" }, "×"),
+      a({ href: `#img-${encodeURIComponent(imgObj.key)}-src`, class: "lightbox-close" }, "×"),
       img({ src, class: "lightbox-image", alt: imgObj.title || "" })
     );
   });
@@ -208,6 +202,18 @@ const renderImageCommentsSection = (imageKey, comments = [], returnTo = null) =>
   });
 };
 
+const mediaChipFor = (filter, censusM) => (mode) => {
+  if (mode === filter) return true;
+  if (!Array.isArray(censusM)) return true;
+  if (mode === "top") return censusM.length > 0;
+  if (mode === "gallery") return censusM.length > 0;
+  if (mode === "mine") return censusM.some((x) => String(x.author) === String(userId));
+  if (mode === "recent") return censusM.some((x) => (Date.parse(x.createdAt || "") || Number(x.ts || 0)) >= Date.now() - 86400000);
+  if (mode === "favorites") return censusM.some((x) => x.isFavorite);
+  if (mode === "bcs") return censusM.some((x) => String(x.title || "").toUpperCase().startsWith("BCS-"));
+  return true;
+};
+
 exports.imageView = async (images, filter = "all", imageId = null, params = {}) => {
   if (filter === "edit") params = { ...params, spreadWarning: await renderSpreadEditWarning(imageId) };
   const title = i18n.imageTitle;
@@ -216,39 +222,44 @@ exports.imageView = async (images, filter = "all", imageId = null, params = {}) 
   const sort = safeText(params.sort || "recent");
 
   const list = safeArr(images);
+  const emptyMod = moduleIsEmpty(list, filter, "all", q);
+  const mediaChip = mediaChipFor(filter, Array.isArray(params.censusList) ? params.censusList : list);
   const imageToEdit = imageId ? list.find((im) => im.key === imageId) : null;
 
   return template(
     title,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(title),
         p(i18n.imageDescription)
+      ,
+        (() => {
+          const { renderReachChip } = require('./clearnet_view');
+          const isClearnet = !!(params.viewerPrefs && params.viewerPrefs.clearnetImages);
+          return renderReachChip(isClearnet, i18n, `/c/inhabitant/${encodeURIComponent(userId)}`);
+        })()
       ),
-      (() => {
-        const { renderReachChip } = require('./clearnet_view');
-        const isClearnet = !!(params.viewerPrefs && params.viewerPrefs.clearnetImages);
-        return div({ class: "shop-title-row" }, renderReachChip(isClearnet, i18n));
-      })(),
-      br(),
       div(
         { class: "filters" },
         form(
           { method: "GET", action: "/images", class: "ui-toolbar ui-toolbar--filters" },
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
+          ...(emptyMod ? [] : [
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterAll).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterMine).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterRecent).toUpperCase()),          button(
+          ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterMine).toUpperCase())] : []),
+          ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterRecent).toUpperCase())] : []),
+          ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.imageFilterFavorites).toUpperCase()
-          ),
+          )] : []),
 
-          button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterTop).toUpperCase()),
-          button(
+          ...(mediaChip("top") ? [button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterTop).toUpperCase())] : []),
+          ...(mediaChip("gallery") ? [button(
             { type: "submit", name: "filter", value: "gallery", class: filter === "gallery" ? "filter-btn active" : "filter-btn" },
             String(i18n.imageFilterGallery).toUpperCase()
-          ),
+          )] : []),
+          ]),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.imageCreateButton)
         )
       )
@@ -257,8 +268,9 @@ exports.imageView = async (images, filter = "all", imageId = null, params = {}) 
       filter === "create" || filter === "edit"
         ? renderImageForm(filter, imageId, imageToEdit, { ...params, filter })
         : section(
-            div(
-              { class: "images-search" },
+            emptyMod ? null : div(
+              { class: "images-search activity-filter-chips activity-toolbar-row" },
+                renderModuleStats(list.length),
               form(
                 { method: "GET", action: "/images", class: "filter-box" },
                 input({ type: "hidden", name: "filter", value: filter }),
@@ -289,6 +301,7 @@ exports.imageView = async (images, filter = "all", imageId = null, params = {}) 
 };
 
 exports.singleImageView = async (imageObj, filter = "all", comments = [], params = {}) => {
+  const mediaChip = mediaChipFor(filter, Array.isArray(params.censusList) ? params.censusList : null);
   const q = safeText(params.q || "");
   const sort = safeText(params.sort || "recent");
   const returnTo = safeText(params.returnTo) || buildReturnTo(filter, { q, sort });
@@ -322,7 +335,7 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
   const imageSide = div({ class: "tribe-side" },
     div({ class: "shop-title-row" },
       title ? h2({ class: "tribe-card-title" }, title) : null,
-      renderReachChip(isClearnet, i18n)
+      renderReachChip(isClearnet, i18n, `/c/images/${encodeURIComponent(imageObj.key)}`)
     ),
     chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
     safeText(imageObj.description)
@@ -372,7 +385,7 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
   return template(
     i18n.imageTitle,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(i18n.imageAllSectionTitle || i18n.imageTitle),
         p(i18n.imageDescription)
       ),
@@ -383,17 +396,17 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterAll).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterMine).toUpperCase()),
-          button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterRecent).toUpperCase()),          button(
+          ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterMine).toUpperCase())] : []),
+          ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterRecent).toUpperCase())] : []),          ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.imageFilterFavorites).toUpperCase()
-          ),
+          )] : []),
 
           button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterTop).toUpperCase()),
-          button(
+          ...(mediaChip("gallery") ? [button(
             { type: "submit", name: "filter", value: "gallery", class: filter === "gallery" ? "filter-btn active" : "filter-btn" },
             String(i18n.imageFilterGallery).toUpperCase()
-          ),
+          )] : []),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.imageCreateButton)
         )
       ),

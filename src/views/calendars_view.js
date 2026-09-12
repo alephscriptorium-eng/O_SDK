@@ -1,5 +1,5 @@
 const { div, h2, h3, h4, p, section, button, form, a, span, br, textarea, input, label, select, option, table, tr, td, ul, li } = require("../server/node_modules/hyperaxe")
-const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton , renderSpreadEditWarning, renderContentActions, renderDocumentActions } = require("./main_views")
+const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton , renderSpreadEditWarning, renderContentActions, renderDocumentActions, renderInviteQrCard, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty } = require("./main_views")
 const { renderMapLocationVisitLabel } = require("./maps_view")
 const { renderEncryptedChip } = require("./clearnet_view")
 const moment = require("../server/node_modules/moment")
@@ -21,15 +21,17 @@ const renderNoteText = (text) => {
   return result
 }
 
-const renderModeButtons = (currentFilter) =>
+const renderModeButtons = (currentFilter, emptyMod = false, modesAvail = null) =>
   div({ class: "tribe-mode-buttons" },
-    ["all", "mine", "recent", "favorites", "open", "closed"].map(f =>
+    ...(emptyMod ? [] : [
+    ["all", "mine", "recent", "favorites", "open", "closed"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
       form({ method: "GET", action: "/calendars" },
         input({ type: "hidden", name: "filter", value: f }),
         button({ type: "submit", class: currentFilter === f ? "filter-btn active" : "filter-btn" },
           i18n[`calendarFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase())
       )
     ),
+    ]),
     form({ method: "GET", action: "/calendars" },
       input({ type: "hidden", name: "filter", value: "create" }),
       button({ type: "submit", class: "create-button" }, i18n.calendarCreate || "Create Calendar")
@@ -54,7 +56,10 @@ const renderCalendarCard = (cal, spreadInfo) => {
   const chips = [
     renderCalendarStatusChip(cal),
     renderEncryptedChip(i18n),
-    renderLifespanChip(cal.lifetime, i18n)
+    renderLifespanChip(cal.lifetime, i18n),
+    cal.subscriptionIn === true
+      ? renderStateChip("mutuals", "✉", i18n.subscriptionOn)
+      : (cal.subscriptionIn === false ? renderStateChip("closed", "✉", i18n.subscriptionOff) : null)
   ].filter(Boolean)
   return div({ class: "tribe-card" },
     div({ class: "card-header activity-card-header" },
@@ -114,7 +119,7 @@ const renderCreateForm = (calendarToEdit, params) => {
       span(i18n.calendarTitleLabel || "Title"), br(),
       input({ type: "text", name: "title", maxlength: "100", required: true, placeholder: i18n.calendarTitlePlaceholder || "Calendar title...", value: calendarToEdit ? calendarToEdit.title : "" }),
       br(), br(),
-      span(i18n.calendarStatusLabel || "Status"), br(),
+      span(i18n.calendarTypeLabel), br(),
       select({ name: "status", required: true },
         option({ value: "OPEN", ...((!calendarToEdit || calendarToEdit.status === "OPEN") ? { selected: true } : {}) }, i18n.calendarStatusOpen || "OPEN"),
         option({ value: "CLOSED", ...((calendarToEdit && calendarToEdit.status === "CLOSED") ? { selected: true } : {}) }, i18n.calendarStatusClosed || "CLOSED")
@@ -124,7 +129,7 @@ const renderCreateForm = (calendarToEdit, params) => {
       input({ type: "datetime-local", name: "deadline", required: true, min: now, value: calendarToEdit && calendarToEdit.deadline ? moment(calendarToEdit.deadline).format("YYYY-MM-DDTHH:mm") : "" }),
       br(), br(),
       span(i18n.calendarTagsLabel || "Tags"), br(),
-      input({ type: "text", name: "tags", placeholder: i18n.calendarTagsPlaceholder || "tag1, tag2...", value: calendarToEdit && Array.isArray(calendarToEdit.tags) ? calendarToEdit.tags.join(", ") : "" }),
+      input({ type: "text", name: "tags", placeholder: i18n.calendarTagsPlaceholder || "Enter tags separated by commas", value: calendarToEdit && Array.isArray(calendarToEdit.tags) ? calendarToEdit.tags.join(", ") : "" }),
       br(), br(),
       span(i18n.mapLocationTitle || "Map Location"), br(),
       input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: (calendarToEdit && calendarToEdit.mapUrl) || "" }),
@@ -138,7 +143,7 @@ const renderCreateForm = (calendarToEdit, params) => {
             input({ type: "text", name: "firstDateLabel", placeholder: i18n.calendarDatePlaceholder || "Describe this date..." }),
             br(), br(),
             span(i18n.calendarFirstNoteLabel || "Notes"), br(),
-            textarea({ name: "firstNote", rows: "3", placeholder: i18n.calendarNotePlaceholder || "Add a note..." }),
+            textarea({ maxlength: "5000", name: "firstNote", rows: "3", placeholder: i18n.calendarNotePlaceholder || "Add a note..." }),
             br(), br(),
             renderIntervalBlock({ min: now, max: deadlineMax || undefined }),
             br(), br()
@@ -193,19 +198,21 @@ exports.calendarsView = async (calendars, filter, calendarToEdit, params) => {
   if (calendarToEdit) params = { ...(params || {}), spreadWarning: await renderSpreadEditWarning(calendarToEdit.id || calendarToEdit.key || calendarToEdit.rootId) };
   const q = (params && params.q) || ""
   const showForm = filter === "create" || filter === "edit" || !!calendarToEdit
+  const emptyMod = moduleIsEmpty(Array.isArray(calendars) ? calendars : [], filter || "all", "all", q)
   const headerText = i18n.calendarsTitle || "Calendars"
 
   return template(
     i18n.calendarsTitle || "Calendars",
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(headerText),
         p(i18n.calendarsDescription || "Discover and manage calendars.")
       ),
-      renderModeButtons(filter),
-      showForm
+      renderModeButtons(filter, emptyMod, (params && params.modesAvail) || null),
+      showForm || emptyMod
         ? null
-        : div({ class: "filters" },
+        : div({ class: "filters activity-filter-chips activity-toolbar-row" },
+          renderModuleStatsBy(calendars, c => c.isClosed ? 'CLOSED' : String(c.status || 'OPEN').toUpperCase(), [{ value: 'OPEN', label: i18n.calendarStatusOpen }, { value: 'CLOSED', label: i18n.calendarStatusClosed }]),
             form({ method: "GET", action: "/calendars", class: "filter-box" },
               input({ type: "hidden", name: "filter", value: filter }),
               input({ type: "text", name: "q", value: q, placeholder: i18n.calendarSearchPlaceholder || "Search calendars...", class: "filter-box__input" }),
@@ -220,7 +227,7 @@ exports.calendarsView = async (calendars, filter, calendarToEdit, params) => {
         ? renderCreateForm(calendarToEdit, params)
         : (calendars.length > 0
             ? div({ class: "tribe-grid" }, ...calendars.map(c => renderCalendarCard(c, params && params.spreadMap && params.spreadMap.get(c.rootId))))
-            : p({ class: "no-content" }, i18n.calendarsNoItems || "No calendars found."))
+            : div({ class: "no-content-box" }, p({ class: "no-content" }, i18n.calendarsNoItems || "No calendars found.")))
     )
   )
 }
@@ -247,13 +254,17 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
   }
 
   const tags = Array.isArray(calendar.tags) && calendar.tags.length > 0
-    ? div({ class: "tribe-side-tags" }, ...calendar.tags.map(t => a({ href: `/search?query=%23${encodeURIComponent(t)}` }, `#${t} `)))
+    ? div({ class: "tribe-side-tags" }, ...calendar.tags.map(t => a({ href: `/search?query=%23${encodeURIComponent(t)}`, class: "tag-link" }, `#${t}`)))
     : null
 
+  const subscriptionIn = isAuthor || (calendar.subscription && calendar.subscription.subscribed === true)
   const detailChips = [
     renderCalendarStatusChip(calendar),
     renderEncryptedChip(i18n),
-    renderLifespanChip(calendar.lifetime, i18n)
+    renderLifespanChip(calendar.lifetime, i18n),
+    (isAuthor || isParticipant)
+      ? renderStateChip(subscriptionIn ? "mutuals" : "closed", "✉", subscriptionIn ? i18n.subscriptionOn : i18n.subscriptionOff)
+      : null
   ].filter(Boolean)
   const calSide = div({ class: "tribe-side" },
     div({ class: "shop-title-row" },
@@ -282,7 +293,9 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
         const openInvite = invs.find(inv => typeof inv === "object" && inv && inv.public === true && inv.code)
         if (openInvite) return div({ class: "calendar-open-invite-block" },
           div({ class: "tribe-open-invite" },
-            span({ class: "tribe-open-invite-code" }, openInvite.code)
+            span({ class: "card-label" }, i18n.tribeInviteCodeText),
+            span({ class: "tribe-open-invite-code" }, openInvite.code),
+            renderInviteQrCard({ qrDataUrl: `/qr-invite-code/calendars/${encodeURIComponent(openInvite.code)}` })
           ),
           form({ method: "POST", action: `/calendars/open-invite/remove/${encodeURIComponent(calendar.rootId)}` },
             button({ type: "submit", class: "tribe-action-btn danger-btn" }, i18n.tribeRemoveInvitation)
@@ -306,6 +319,16 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
           )
         : null
     ),
+    (calendar.subscription && (isAuthor || isParticipant))
+      ? renderSubscriptionBox({
+          target: calendar.rootId || calendar.key,
+          scope: "calendars",
+          subscribed: calendar.subscription.subscribed === true,
+          count: calendar.subscription.count,
+          isOwner: isAuthor,
+          returnTo: shareUrl
+        })
+      : null,
     isAuthor
       ? div({ class: "tribe-side-actions calendar-owner-actions" },
           form({ method: "GET", action: "/calendars" },
@@ -337,7 +360,7 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
           isParticipant
             ? [
                 span(i18n.calendarNoteLabel), br(),
-                textarea({ name: "text", rows: "3", placeholder: i18n.calendarNotePlaceholder || "Add a note..." }),
+                textarea({ maxlength: "5000", name: "text", rows: "3", placeholder: i18n.calendarNotePlaceholder || "Add a note..." }),
                 br(), br()
               ]
             : null,
@@ -429,11 +452,11 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
   return template(
     calendar.title || i18n.calendarsTitle || "Calendar",
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(i18n.calendarsTitle || "Calendars"),
         p(i18n.calendarsDescription || "Discover and manage calendars.")
       ),
-      renderModeButtons("all")
+      renderModeButtons("all", false, (params && params.modesAvail) || null)
     ),
     section(div({ class: "tribe-details" }, calSide, calMain))
   )

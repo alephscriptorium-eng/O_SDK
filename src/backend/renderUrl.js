@@ -1,5 +1,6 @@
 const { a, img, video, audio } = require("../server/node_modules/hyperaxe");
 const i18nBase = require("../client/assets/translations/i18n");
+const { WIKILINK_RE, slugify, linkTarget } = require("../models/wiki_model");
 
 function getI18n() {
   try {
@@ -20,7 +21,11 @@ function renderUrl(text) {
   const rawMentionRegex = /@([A-Za-z0-9+/=.\-]+\.ed25519)/g;
   const urlRegex = /\b(?:https?:\/\/|www\.)[^\s]+/g;
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z]{2,}\b/gi;
+  const hashtagRegex = /#[A-Za-z0-9_]{1,32}\b/g;
   const allMatches = [];
+  for (const m of text.matchAll(WIKILINK_RE)) {
+    allMatches.push({ index: m.index, length: m[0].length, type: 'wikilink', target: linkTarget(m[1]), label: (m[2] || linkTarget(m[1])).trim() });
+  }
   for (const m of text.matchAll(blobImageRegex)) {
     allMatches.push({ index: m.index, length: m[0].length, type: 'blob-image', name: m[1], blob: m[2] });
   }
@@ -45,6 +50,9 @@ function renderUrl(text) {
   for (const m of text.matchAll(emailRegex)) {
     allMatches.push({ index: m.index, length: m[0].length, type: 'email', text: m[0] });
   }
+  for (const m of text.matchAll(hashtagRegex)) {
+    allMatches.push({ index: m.index, length: m[0].length, type: 'hashtag', tag: m[0].slice(1) });
+  }
   allMatches.sort((a, b) => a.index - b.index);
   const filtered = [];
   let lastEnd = 0;
@@ -59,7 +67,9 @@ function renderUrl(text) {
     if (cursor < m.index) {
       result.push(text.slice(cursor, m.index));
     }
-    if (m.type === 'blob-image') {
+    if (m.type === 'wikilink') {
+      result.push(a({ href: `/wiki/${encodeURIComponent(slugify(m.target))}`, class: 'wiki-link' }, m.label));
+    } else if (m.type === 'blob-image') {
       result.push(img({ src: `/blob/${encodeURIComponent(m.blob)}`, alt: m.name || '', class: 'post-image' }));
     } else if (m.type === 'blob-video') {
       result.push(video({ controls: true, class: 'post-video', src: `/blob/${encodeURIComponent(m.blob)}` }));
@@ -80,6 +90,8 @@ function renderUrl(text) {
       result.push(a({ href, target: '_blank', rel: 'noopener noreferrer' }, m.text));
     } else if (m.type === 'email') {
       result.push(a({ href: `mailto:${m.text}` }, m.text));
+    } else if (m.type === 'hashtag') {
+      result.push(a({ href: `/search?query=%23${encodeURIComponent(m.tag)}`, class: 'tag-link' }, `#${m.tag}`));
     }
     cursor = m.index + m.length;
   }

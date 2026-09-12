@@ -2,8 +2,18 @@ const pull = require('../server/node_modules/pull-stream');
 const moment = require('../server/node_modules/moment');
 const { getConfig } = require('../configs/config-manager.js');
 const { buildValidatedTombstoneSet } = require('./tombstone_validator');
+const { readTyped } = require('./typed_log');
 
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
+const PARLIAMENT_TYPES = [
+  'parliamentCandidature', 'parliamentCandidatureVote', 'parliamentTerm',
+  'parliamentProposal', 'parliamentRevocation', 'parliamentLaw',
+  'tribe', 'about', 'tombstone'
+];
+const TRIBE_PARLIAMENT_TYPES = [
+  'tribeParliamentTerm', 'tribeParliamentCandidature', 'tribeParliamentRule',
+  'parliamentCandidature', 'tombstone'
+];
 const TERM_DAYS = 60;
 const PROPOSAL_DAYS = 7;
 const REVOCATION_DAYS = 15;
@@ -74,12 +84,7 @@ module.exports = ({ cooler, services = {} }) => {
     const now = Date.now();
     if (logCache.arr && now - logCache.at < CACHE_MS) return logCache.arr;
     const ssbClient = await openSsb();
-    const arr = await new Promise((res, rej) => {
-      pull(
-        ssbClient.createLogStream({ limit: logLimit }),
-        pull.collect((err, out) => (err ? rej(err) : res(out || [])))
-      );
-    });
+    const arr = await readTyped(ssbClient, PARLIAMENT_TYPES, { limit: logLimit });
     logCache = { at: now, arr };
     return arr;
   }
@@ -116,7 +121,15 @@ if (c.type === type) {
       }
     }
     for (const tId of tomb) map.delete(tId);
-    return [...map.values()];
+    const items = [...map.values()];
+    return type === 'parliamentProposal' ? items.map(withCampaignRef) : items;
+  }
+
+  function withCampaignRef(p) {
+    if (!p || p.campaignId) return p;
+    const m = String(p.description || '').match(/\n*\s*(\d+) signatures: \/campaigns\/(%[^\s]+\.sha256)\s*$/);
+    if (!m) return p;
+    return { ...p, campaignId: m[2], signatures: Number(m[1]) || 0, description: String(p.description || '').slice(0, m.index).trim() };
   }
 
   async function listByType(type) {
@@ -754,7 +767,13 @@ if (c.type === type) {
     return await publishMsg(content);
   }
 
-  async function createProposal({ title, description }) {
+  async function createProposal({ title, description, campaignId = '', signatures = 0, goal = 0 }) {
+    const campaignRef = String(campaignId || '').trim();
+    if (campaignRef) {
+      const existing = await listByType('parliamentProposal');
+      if (existing.some(p => String(p.campaignId || '') === campaignRef)) throw new Error('This campaign was already raised to Parliament');
+    }
+    const extra = campaignRef ? { campaignId: campaignRef, signatures: Math.max(0, Math.floor(Number(signatures) || 0)), goal: Math.max(0, Math.floor(Number(goal) || 0)) } : {};
     let term = await getCurrentTermBase();
     if (!term) term = await resolveElection();
     if (!term) throw new Error('No active government');
@@ -767,11 +786,11 @@ if (c.type === type) {
     const method = String(term.method || 'DEMOCRACY').toUpperCase();
     const deadline = moment().add(PROPOSAL_DAYS, 'days').toISOString();
     if (method === 'DICTATORSHIP' || method === 'KARMATOCRACY') {
-      const proposal = { type: 'parliamentProposal', title, description: description || '', method, termId: term.id || term.startAt, proposer: userId, status: 'OPEN', deadline, createdAt: nowISO() };
+      const proposal = { type: 'parliamentProposal', title, description: description || '', method, termId: term.id || term.startAt, proposer: userId, status: 'OPEN', deadline, createdAt: nowISO(), ...extra };
       return await publishMsg(proposal);
     }
     const voteMsg = await services.votes.createVote(title, deadline, ['YES', 'NO', 'ABSTENTION'], [`gov:${term.id || term.startAt}`, `govMethod:${method}`, 'proposal']);
-    const proposal = { type: 'parliamentProposal', title, description: description || '', method, voteId: voteMsg.key || voteMsg.id, termId: term.id || term.startAt, proposer: userId, status: 'OPEN', createdAt: nowISO() };
+    const proposal = { type: 'parliamentProposal', title, description: description || '', method, voteId: voteMsg.key || voteMsg.id, termId: term.id || term.startAt, proposer: userId, status: 'OPEN', createdAt: nowISO(), ...extra };
     return await publishMsg(proposal);
   }
 
@@ -1231,7 +1250,7 @@ if (c.type === type) {
   }
 
   async function getGovernmentCard() {
-    const term = await getCurrentTermBase();
+    const term = (await getCurrentTermBase()) || virtualAnarchyTerm();
     if (!term) return null;
     return await computeGovernmentCard({ ...term, id: term.id || term.startAt });
   }
@@ -1308,12 +1327,7 @@ if (c.type === type) {
 
   const tribeReadLog = async () => {
     const client = await openSsb();
-    return new Promise((resolve, reject) => {
-      pull(
-        client.createLogStream({ limit: logLimit }),
-        pull.collect((err, msgs) => err ? reject(err) : resolve(msgs || []))
-      );
-    });
+    return readTyped(client, TRIBE_PARLIAMENT_TYPES, { limit: logLimit });
   };
 
   const tribeListByType = async (type, tribeId) => {

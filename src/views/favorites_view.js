@@ -1,6 +1,6 @@
 const { form, button, div, h2, p, section, input, a, span, img } = require("../server/node_modules/hyperaxe");
 
-const { template, i18n, userLink, renderContentActions } = require("./main_views");
+const { template, i18n, userLink, renderContentActions, renderModuleStats } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl");
@@ -174,12 +174,13 @@ const renderFavoriteCard = (item, filter) => {
 exports.favoritesView = async (items, filter = "all", counts = {}, q = "") => {
   const c = counts || {};
   const total = typeof c.all === "number" ? c.all : safeArr(items).length;
+  const emptyFav = total === 0 && !String(q || "").trim();
 
   return template(
     i18n.favoritesTitle,
     section(
-      div({ class: "tags-header" }, h2(i18n.favoritesTitle), p(i18n.favoritesDescription)),
-      div(
+      div({ class: "tags-header module-header-line" }, h2(i18n.favoritesTitle), p(i18n.favoritesDescription)),
+      emptyFav ? null : div(
         { class: "filters" },
         form(
           { method: "GET", action: "/favorites", class: "ui-toolbar ui-toolbar--filters" },
@@ -191,7 +192,7 @@ exports.favoritesView = async (items, filter = "all", counts = {}, q = "") => {
             { type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" },
             `${i18n.favoritesFilterRecent} (${total})`
           ),
-          ...FILTER_KINDS.map((k) =>
+          ...FILTER_KINDS.filter((k) => (c[k.value] || 0) > 0).map((k) =>
             button(
               { type: "submit", name: "filter", value: k.value, class: filter === k.value ? "filter-btn active" : "filter-btn" },
               `${k.label()} (${c[k.value] || 0})`
@@ -199,8 +200,9 @@ exports.favoritesView = async (items, filter = "all", counts = {}, q = "") => {
           )
         )
       ),
-      div(
-        { class: "filters" },
+      emptyFav ? null : div(
+        { class: "filters activity-filter-chips activity-toolbar-row" },
+          renderModuleStats(items.length),
         form(
           { method: "GET", action: "/favorites", class: "filter-box" },
           input({ type: "hidden", name: "filter", value: filter }),

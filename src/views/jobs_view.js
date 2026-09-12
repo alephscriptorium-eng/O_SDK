@@ -1,6 +1,6 @@
 const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, progress, video, audio, table, tr, td } = require("../server/node_modules/hyperaxe")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { template, i18n, userLink, renderStateChip, renderOpenClosedChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning } = require("./main_views")
+const { template, i18n, userLink, renderStateChip, renderOpenClosedChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderModuleStatsBy, moduleIsEmpty } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderUrl } = require("../backend/renderUrl")
@@ -210,7 +210,7 @@ const renderJobExtraDetails = (job) => {
 const renderJobList = exports.renderJobList = (jobs, filter, params = {}) => {
   const list = safeArr(jobs)
 
-  if (!list.length) return p(i18n.noJobsMatch || i18n.noJobsFound)
+  if (!list.length) return p((params.search || params.q || params.minSalary || params.maxSalary) ? (i18n.noJobsMatch || i18n.noJobsFound) : (i18n.noJobsFound || i18n.noJobsMatch))
 
   return div({ class: "jobs-grid" },
     list.map((job) => {
@@ -299,17 +299,17 @@ const renderJobForm = (job = {}, mode = "create", spreadWarning = null) => {
       br(),
       label(i18n.jobDescription),
       br(),
-      textarea({ name: "description", rows: "6", required: true, placeholder: i18n.jobDescriptionPlaceholder }, job.description || ""),
+      textarea({ maxlength: "5000", name: "description", rows: "6", required: true, placeholder: i18n.jobDescriptionPlaceholder }, job.description || ""),
       br(),
       br(),
       label(i18n.jobRequirements),
       br(),
-      textarea({ name: "requirements", rows: "6", placeholder: i18n.jobRequirementsPlaceholder }, job.requirements || ""),
+      textarea({ maxlength: "5000", name: "requirements", rows: "6", placeholder: i18n.jobRequirementsPlaceholder }, job.requirements || ""),
       br(),
       br(),
       label(i18n.jobsTagsLabel),
       br(),
-      input({ type: "text", name: "tags", value: Array.isArray(job.tags) ? job.tags.join(", ") : (job.tags || "") }),
+      input({ type: "text", name: "tags", placeholder: i18n.tagsPlaceholder, value: Array.isArray(job.tags) ? job.tags.join(", ") : (job.tags || "") }),
       br(),
       br(),
       label(i18n.jobLanguages),
@@ -328,7 +328,7 @@ const renderJobForm = (job = {}, mode = "create", spreadWarning = null) => {
       br(),
       label(i18n.jobTasks),
       br(),
-      textarea({ name: "tasks", rows: "6", placeholder: i18n.jobTasksPlaceholder }, job.tasks || ""),
+      textarea({ maxlength: "5000", name: "tasks", rows: "6", placeholder: i18n.jobTasksPlaceholder }, job.tasks || ""),
       br(),
       br(),
       label(i18n.jobLocation),
@@ -430,6 +430,7 @@ const renderCVList = (inhabitants) =>
               div(
                 { class: "cv-actions" },
                 form({ method: "GET", action: `/inhabitant/${encodeURIComponent(user.id)}` }, button({ type: "submit", class: "filter-btn" }, i18n.cvVisitButton)),
+                user.pdf ? a({ href: `/blob/${encodeURIComponent(user.pdf)}`, target: "_blank", rel: "noopener", class: "filter-btn" }, "📄 " + i18n.cvPdfLabel) : null,
                 form({ method: "GET", action: `/cv/pdf/${encodeURIComponent(user.id)}` }, button({ type: "submit", class: "filter-btn" }, i18n.generatePdf)),
                 form({ method: "POST", action: `/cv/share/${encodeURIComponent(user.id)}` }, button({ type: "submit", class: "filter-btn" }, i18n.sharePm)),
                 !isMe ? renderPmButton(user.id) : null
@@ -450,6 +451,22 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
   const maxSalary = params.maxSalary ?? ""
   const sort = safeText(params.sort || "recent")
 
+  const emptyMod = moduleIsEmpty(Array.isArray(jobsOrCVs) ? jobsOrCVs : [], filter, "ALL", search || String(minSalary || "") || String(maxSalary || ""));
+  const censusJ = Array.isArray(params.censusList) ? params.censusList : (Array.isArray(jobsOrCVs) ? jobsOrCVs : []);
+  const jobChip = (x) => {
+    const m = x.key;
+    if (m === filter) return true;
+    if (m === "TOP") return censusJ.length > 0;
+    if (m === "MINE") return censusJ.some(j => String(j.author) === String(userId));
+    if (m === "RECENT") return censusJ.some(j => (Date.parse(j.createdAt || "") || 0) >= Date.now() - 86400000);
+    if (m === "APPLIED") return censusJ.some(j => safeArr(j.subscribers).includes(userId));
+    if (m === "REMOTE") return censusJ.some(j => String(j.location || "").toLowerCase() === "remote");
+    if (m === "PRESENCIAL") return censusJ.some(j => String(j.location || "").toLowerCase() === "presencial");
+    if (m === "FREELANCER" || m === "EMPLOYEE" || m === "EXCHANGE") return censusJ.some(j => String(j.job_type || "").toUpperCase() === m);
+    if (m === "OPEN" || m === "CLOSED") return censusJ.some(j => String(j.status || "OPEN").toUpperCase() === m);
+    if (m === "CV") return params.anyCVs === true;
+    return true;
+  };
   const filterObj = FILTERS.find((f) => f.key === filter) || FILTERS[0]
   const sectionTitle = i18n[filterObj.title] || i18n.jobsTitle
   const { renderReachChip: renderReachChipJobs } = require('./clearnet_view');
@@ -458,12 +475,11 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
   return template(
     i18n.jobsTitle,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(sectionTitle),
-        p(i18n.jobsDescription)
+        p(i18n.jobsDescription),
+        renderReachChipJobs(viewerClearnet, i18n)
       ),
-      div({ class: "shop-title-row" }, renderReachChipJobs(viewerClearnet, i18n)),
-      br(),
       div(
         { class: "filters" },
         form(
@@ -472,9 +488,9 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
           input({ type: "hidden", name: "minSalary", value: String(minSalary ?? "") }),
           input({ type: "hidden", name: "maxSalary", value: String(maxSalary ?? "") }),
           input({ type: "hidden", name: "sort", value: sort }),
-          ...FILTERS.map((f) =>
+          ...(emptyMod ? [] : FILTERS.filter(jobChip).map((f) =>
             button({ type: "submit", name: "filter", value: f.key, class: filter === f.key ? "filter-btn active" : "filter-btn" }, String(i18n[f.i18n]).toUpperCase())
-          ),
+          )),
           button({ type: "submit", name: "filter", value: "CREATE", class: "create-button" }, i18n.jobsCreateJob)
         )
       )
@@ -509,30 +525,24 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
               return renderJobForm(jobToEdit, filter === "EDIT" ? "edit" : "create", params.spreadWarning)
             })()
           : section(
-              div(
-                { class: "jobs-search" },
+              emptyMod ? null : div(
+                { class: "jobs-search activity-filter-chips activity-toolbar-row" },
+                  renderModuleStatsBy(jobsOrCVs, j => String(j.status || 'OPEN').toUpperCase(), [{ value: 'OPEN', label: i18n.jobsFilterOpen }, { value: 'CLOSED', label: i18n.jobsFilterClosed }]),
                 form(
                   { method: "GET", action: "/jobs", class: "filter-box" },
                   input({ type: "hidden", name: "filter", value: filter || "ALL" }),
                   input({ type: "text", name: "search", value: search, placeholder: i18n.jobsSearchPlaceholder, class: "filter-box__input" }),
-                  div(
-                    { class: "filter-box__controls" },
-                    div(
-                      { class: "transfer-range" },
-                      input({ type: "number", name: "minSalary", step: "0.000001", min: "0", value: String(minSalary ?? ""), placeholder: i18n.jobsMinSalaryLabel, class: "filter-box__number transfer-amount-input" }),
-                      input({ type: "number", name: "maxSalary", step: "0.000001", min: "0", value: String(maxSalary ?? ""), placeholder: i18n.jobsMaxSalaryLabel, class: "filter-box__number transfer-amount-input" })
-                    ),
-                    select(
-                      { name: "sort", class: "filter-box__select" },
-                      option({ value: "recent", ...(sort === "recent" ? { selected: true } : {})}, i18n.jobsSortRecent),
-                      option({ value: "salary", ...(sort === "salary" ? { selected: true } : {})}, i18n.jobsSortSalary),
-                      option({ value: "subscribers", ...(sort === "subscribers" ? { selected: true } : {})}, i18n.jobsSortSubscribers)
-                    ),
-                    button({ type: "submit", class: "filter-box__button" }, i18n.jobsSearchButton)
-                  )
+                  input({ type: "number", name: "minSalary", step: "0.000001", min: "0", value: String(minSalary ?? ""), placeholder: i18n.jobsMinSalaryLabel, class: "filter-box__number transfer-amount-input" }),
+                  input({ type: "number", name: "maxSalary", step: "0.000001", min: "0", value: String(maxSalary ?? ""), placeholder: i18n.jobsMaxSalaryLabel, class: "filter-box__number transfer-amount-input" }),
+                  select(
+                    { name: "sort", class: "filter-box__select" },
+                    option({ value: "recent", ...(sort === "recent" ? { selected: true } : {})}, i18n.jobsSortRecent),
+                    option({ value: "salary", ...(sort === "salary" ? { selected: true } : {})}, i18n.jobsSortSalary),
+                    option({ value: "subscribers", ...(sort === "subscribers" ? { selected: true } : {})}, i18n.jobsSortSubscribers)
+                  ),
+                  button({ type: "submit", class: "filter-box__button" }, i18n.jobsSearchButton)
                 )
               ),
-              br(),
               div({ class: "jobs-list" }, renderJobList(jobsOrCVs, filter, { ...params, search, minSalary, maxSalary, sort }))
             )
     )
@@ -616,7 +626,7 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
     job.industry ? a({ href: `/industry/${encodeURIComponent(job.industry)}` }, renderStateChip("whole", "🏭", String(i18n.industryTitle || "Industry").toUpperCase())) : null,
     renderLifespanChip(job.lifetime, i18n),
     renderEcoTax(job.msgSize, job.id),
-    renderReachChip(isClearnet, i18n)
+    renderReachChip(isClearnet, i18n, `/c/jobs/${encodeURIComponent(job.id)}`)
   ].filter(Boolean)
 
   const nextVisibility = visibility === 'PUBLIC' ? 'HIDDEN' : 'PUBLIC'
@@ -685,7 +695,7 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
 
   return template(
     i18n.jobsTitle,
-    section(div({ class: "tags-header" }, h2(i18n.jobsTitle), p(i18n.jobsDescription))),
+    section(div({ class: "tags-header module-header-line" }, h2(i18n.jobsTitle), p(i18n.jobsDescription))),
     section(
       div(
         { class: "filters" },
@@ -707,9 +717,9 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
 }
 
 exports.clearnetJobView = async (job) => {
-  const { escapeHtml: esc, blobUrl: cnBlob, renderClearnetPage } = require('./clearnet_view');
+  const { escapeHtml: esc, renderRichText, renderKindTag, blobUrl: cnBlob, renderClearnetPage } = require('./clearnet_view');
   const title = esc(job.title || 'Job');
-  const desc = esc(job.description || '');
+  const desc = renderRichText(job.description || '');
   const req = esc(job.requirements || '');
   const lang = esc(String(job.languages || '').toUpperCase());
   const loc = esc(String(job.location || '').toUpperCase());
@@ -735,12 +745,14 @@ exports.clearnetJobView = async (job) => {
   const body = `
   <h1 class="cn-job-title">${title}</h1>
   <div class="cn-job-meta">
+    <span class="cn-job-meta-item">${renderKindTag('job')}</span>
     <span class="cn-job-meta-item">💼 ${jobTypeLabel}</span>
     ${job.createdAt ? `<span class="cn-job-meta-item">📅 ${esc(new Date(job.createdAt).toISOString().slice(0,10))}</span>` : ''}
     ${loc ? `<span class="cn-job-meta-item">📍 ${loc}</span>` : ''}
     ${lang ? `<span class="cn-job-meta-item">🗣 ${lang}</span>` : ''}
   </div>
   <div class="cn-job-comp">${compensation}</div>
+  <hr class="cn-sep"/>
   ${jobImg ? `<img class="cn-job-img" src="${jobImg}" alt="${title}"/>` : ''}
   ${desc ? `<div class="cn-job-section"><h2>Description</h2><p>${desc}</p></div>` : ''}
   ${req ? `<div class="cn-job-section"><h2>Requirements</h2><p>${req}</p></div>` : ''}

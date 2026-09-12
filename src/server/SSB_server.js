@@ -108,11 +108,32 @@ const isLockError = (err) => {
   return /Resource temporarily unavailable/i.test(msg) && /\.ssb\/.*LOCK/i.test(msg);
 };
 
+const isCorruptStoreError = (err) => {
+  const msg = String((err && err.message) || '');
+  const stack = String((err && err.stack) || '');
+  return /JSON|Unexpected token|Unexpected end/i.test(msg)
+    && /flumelog-offset|aligned-block-file|flumeview|flumedb/i.test(stack);
+};
+
 const handleFatal = (err) => {
   if (isLockError(err)) {
     console.log('');
     console.log('Another Oasis instance is already running on this device. Close the other instance (or kill the process) and try again.');
     console.log('');
+    process.exit(1);
+  }
+  if (isCorruptStoreError(err)) {
+    console.log('');
+    console.log('Oasis could not read its local database (a record in ~/.ssb/flume looks corrupted).');
+    console.log('This usually happens after an unclean shutdown or a disk error.');
+    console.log('');
+    console.log('What you can try, in order:');
+    console.log('  1. Simply start Oasis again — transient read errors often clear on the next boot.');
+    console.log('  2. Check your disk health (e.g. run fsck on the partition holding ~/.ssb).');
+    console.log('  3. Rebuild the indexes from Settings once Oasis starts, or remove the flume view');
+    console.log('     folders (NOT log.offset, NOT secret) so they are regenerated from the log.');
+    console.log('');
+    console.log(`Technical detail: ${String((err && err.message) || err)}`);
     process.exit(1);
   }
   throw err;
@@ -186,15 +207,27 @@ if (argv[0] === 'start') {
     } catch (_) {}
   }, 1000);
 
+  const ownFeedSeq = () => new Promise((res) => {
+    try {
+      const pull = require('pull-stream');
+      pull(
+        server.createUserStream({ id: server.id, reverse: true, limit: 1 }),
+        pull.collect((err, msgs) => res(err || !msgs || !msgs.length ? 0 : (msgs[0].value && msgs[0].value.sequence) || 0))
+      );
+    } catch (_) { res(0); }
+  });
+
   setTimeout(async () => {
     try {
+      if (!(await ownFeedSeq())) return;
       const bankingModel = require('../models/banking_model.js')({});
       await bankingModel.ensureSelfAddressPublished();
     } catch (_) {}
   }, 5000);
 
-  setTimeout(() => {
+  setTimeout(async () => {
     try {
+      if (!(await ownFeedSeq())) return;
       const pull = require('pull-stream');
       const version = String(require('./package.json').version || '');
       if (!version) return;

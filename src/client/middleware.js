@@ -42,7 +42,7 @@ const collectLocalIPs = () => {
 
 module.exports = ({ host, port, middleware, allowHost }) => {
   const assets = new Koa()
-  assets.use(koaStatic(join(__dirname, "..", "client", "assets"), { maxage: 60 * 60 * 1000 }));
+  assets.use(koaStatic(join(__dirname, "..", "client", "assets")));
 
   const app = new Koa();
   const validHosts = [];
@@ -179,6 +179,8 @@ module.exports = ({ host, port, middleware, allowHost }) => {
   middleware.forEach((m) => app.use(m));
 
   const server = app.listen({ host, port });
+
+  try { require("../backend/updater.js").getRemoteVersion().catch(() => {}); } catch (_) {}
 
   server.on("listening", () => {
     const address = server.address();

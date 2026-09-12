@@ -1,6 +1,7 @@
 "use strict";
 
 const { buildValidatedTombstoneSet } = require("./tombstone_validator");
+const { readTyped } = require("./typed_log");
 const debug = require("../server/node_modules/debug")("oasis");
 const { isRoot, isReply: isComment } = require("../server/node_modules/ssb-thread-schema");
 const lodash = require("../server/node_modules/lodash");
@@ -16,6 +17,7 @@ const os = require('os');
 
 const ssbRef = require("../server/node_modules/ssb-ref");
 const nameCache = require('../backend/nameCache');
+const sharedState = require('../configs/shared-state');
 
 const { getConfig } = require('../configs/config-manager.js');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
@@ -209,6 +211,7 @@ module.exports = ({ cooler, isPublic }) => {
     all_the_names = {};
 
     const allFeeds = Object.keys(feeds_to_name);
+    sharedState.setSyncedPeerCount(allFeeds.length);
     console.log(`- Synced-peers: [ ${allFeeds.length} ]`);
     console.time("- Sync-time");
 
@@ -325,6 +328,7 @@ models.about = {
       clearnetDocuments: result.clearnetDocuments === true,
       clearnetTorrents:  result.clearnetTorrents  === true,
       clearnetBookmarks: result.clearnetBookmarks === true,
+      clearnetPodcasts:  result.clearnetPodcasts  === true,
       profileShops:      result.profileShops      === true,
       profileJobs:       result.profileJobs       === true,
       profileEvents:     result.profileEvents     === true,
@@ -335,7 +339,9 @@ models.about = {
       profileImages:     result.profileImages     === true,
       profileDocuments:  result.profileDocuments  === true,
       profileTorrents:   result.profileTorrents   === true,
-      profileBookmarks:  result.profileBookmarks  === true
+      profileBookmarks:  result.profileBookmarks  === true,
+      profilePodcasts:   result.profilePodcasts   === true,
+      profileSchool:     result.profileSchool     === true
     };
   },
   name: async (feedId) => {
@@ -962,23 +968,8 @@ models.meta = {
     query,
     filter = null,
   }) => {
-    const source = ssb.createLogStream({ reverse: true,  limit: logLimit });
-
-    return new Promise((resolve, reject) => {
-      pull(
-        source,
-        pull.filter((msg) => {
-          return msg.value.content.type === "post";
-        }),
-        pull.collect((err, collectedMessages) => {
-          if (err) {
-           reject(err);
-          } else {
-           resolve(collectedMessages);
-          }
-        })
-      );
-    });
+    const collected = await readTyped(ssb, ["post"], { limit: logLimit });
+    return collected.filter((msg) => msg.value && msg.value.content && msg.value.content.type === "post").reverse();
   };
 
   const socialFilter = async ({
@@ -1947,6 +1938,7 @@ const post = {
           clearnetDocuments: r.clearnetDocuments === true,
           clearnetTorrents:  r.clearnetTorrents  === true,
           clearnetBookmarks: r.clearnetBookmarks === true,
+          clearnetPodcasts:  r.clearnetPodcasts  === true,
           profileShops:      r.profileShops      === true,
           profileJobs:       r.profileJobs       === true,
           profileEvents:     r.profileEvents     === true,
@@ -1957,7 +1949,9 @@ const post = {
           profileImages:     r.profileImages     === true,
           profileDocuments:  r.profileDocuments  === true,
           profileTorrents:   r.profileTorrents   === true,
-          profileBookmarks:  r.profileBookmarks  === true
+          profileBookmarks:  r.profileBookmarks  === true,
+          profilePodcasts:   r.profilePodcasts   === true,
+          profileSchool:     r.profileSchool     === true
         };
       };
       const prefs = visibilityPrefs ? normalizePrefs(visibilityPrefs) : undefined;
@@ -2133,12 +2127,7 @@ const post = {
     inbox: async () => {
       const ssb = await cooler.open();
       const myFeedId = ssb.id;
-      const rawMessages = await new Promise((resolve, reject) => {
-        pull(
-          ssb.createLogStream({ reverse: true, limit: logLimit }),
-          pull.collect((err, msgs) => (err ? reject(err) : resolve(msgs)))
-        );
-      });
+      const rawMessages = await readTyped(ssb, [], { limit: logLimit, withWindow: true });
      const decryptedMessages = rawMessages.map(msg => {
         try {
           return ssb.private.unbox(msg);
@@ -2152,7 +2141,7 @@ const post = {
           const content = msg.value?.content;
           const author = msg.value?.author;
           return content?.type === 'post' && content?.private === true && (author === myFeedId || content.to?.includes(myFeedId));
-      });
+      }).reverse();
     }
 
   };

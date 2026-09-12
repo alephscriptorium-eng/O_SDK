@@ -1,5 +1,5 @@
 const { form, button, div, h2, p, section, table, thead, tr, th, td, a, tbody, input } = require("../server/node_modules/hyperaxe");
-const { template, i18n } = require('./main_views');
+const { template, i18n, renderModuleStats } = require('./main_views');
 
 const getFilteredTags = (filter, tags) => {
   const filteredTags = Array.isArray(tags) ? [...tags] : [];
@@ -60,14 +60,15 @@ exports.tagsView = async (tags, filter, search = '') => {
 
   const title = i18n.tagsTitle;
 
+  const emptyTags = filteredTags.length === 0 && String(filter || 'all') === 'all' && !query;
   return template(
     title,
     section(
-      div({ class: 'tags-header' },
+      div({ class: 'tags-header module-header-line' },
         h2(i18n.tagsTitle),
         p(i18n.tagsDescription)
       ),
-      div({ class: 'filters' },
+      emptyTags ? null : div({ class: 'filters' },
         form({ method: 'GET', action: '/tags', class: 'ui-toolbar ui-toolbar--filters' },
           input({ type: 'hidden', name: 'search', value: query }),
           button({ type: 'submit', name: 'filter', value: 'all', class: filter === 'all' ? 'filter-btn active' : 'filter-btn' }, String(i18n.tagsFilterAll).toUpperCase()),
@@ -77,7 +78,8 @@ exports.tagsView = async (tags, filter, search = '') => {
           button({ type: 'submit', name: 'filter', value: 'cloud', class: filter === 'cloud' ? 'filter-btn active' : 'filter-btn' }, String(i18n.tagsFilterCloud).toUpperCase())
         )
       ),
-      div({ class: 'tags-search' },
+      emptyTags ? null : div({ class: 'tags-search activity-filter-chips activity-toolbar-row' },
+        renderModuleStats(filteredTags.length),
         form({ method: 'GET', action: '/tags', class: 'filter-box' },
           input({ type: 'hidden', name: 'filter', value: filter || 'all' }),
           input({ type: 'text', name: 'search', value: query, placeholder: i18n.tagsSearchPlaceholder, class: 'filter-box__input' }),

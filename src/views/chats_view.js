@@ -1,5 +1,5 @@
-const { div, h2, p, section, button, form, a, span, textarea, br, input, label, select, option, img, table, tr, td, ul, li, details, summary } = require("../server/node_modules/hyperaxe")
-const { template, i18n, userLink, userLinkLabel, renderStateChip, renderLifespanChip, renderSpreadButton, renderContentActions } = require("./main_views")
+const { div, h2, p, section, button, form, a, span, textarea, br, input, label, select, option, img, table, tr, td, ul, li, details, summary, video: videoHyperaxe, audio: audioHyperaxe } = require("../server/node_modules/hyperaxe")
+const { template, i18n, userLink, userLinkLabel, renderStateChip, renderLifespanChip, renderSpreadButton, renderContentActions, renderInviteQrCard, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty } = require("./main_views")
 const { renderEncryptedChip } = require("./clearnet_view")
 const { renderResults, renderBallot, outcomeOf } = require("./polls_view")
 const moment = require("../server/node_modules/moment")
@@ -44,14 +44,16 @@ const buildReturnTo = (filter, params = {}) => {
   return `/chats?${parts.join("&")}`
 }
 
-const renderModeButtons = (currentFilter) =>
+const renderModeButtons = (currentFilter, emptyMod = false, modesAvail = null) =>
   div({ class: "tribe-mode-buttons" },
-    ["all", "mine", "recent", "favorites", "open", "closed"].map(f =>
+    ...(emptyMod ? [] : [
+    ["all", "mine", "recent", "favorites", "open", "closed"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
       form({ method: "GET", action: "/chats" },
         input({ type: "hidden", name: "filter", value: f }),
         button({ type: "submit", class: currentFilter === f ? "filter-btn active" : "filter-btn" }, i18n[`chatFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase())
       )
     ),
+    ]),
     form({ method: "GET", action: "/chats" },
       input({ type: "hidden", name: "filter", value: "create" }),
       button({ type: "submit", class: "create-button" }, i18n.chatCreate)
@@ -72,7 +74,10 @@ const renderChatCard = (chat, filter, params = {}) => {
   const chips = [
     renderChatStatusChip(chat.status),
     renderEncryptedChip(i18n),
-    renderLifespanChip(chat.lifetime, i18n)
+    renderLifespanChip(chat.lifetime, i18n),
+    chat.subscriptionIn === true
+      ? renderStateChip("mutuals", "✉", i18n.subscriptionOn)
+      : (chat.subscriptionIn === false ? renderStateChip("closed", "✉", i18n.subscriptionOff) : null)
   ].filter(Boolean)
   const href = `/chats/${encodeURIComponent(chat.key)}`
 
@@ -88,14 +93,14 @@ const renderChatCard = (chat, filter, params = {}) => {
       })
     ),
     div({ class: "tribe-card-image-wrapper" },
-      a({ href: `/chats/${encodeURIComponent(chat.key)}` },
+      a({ href: `/chats/${encodeURIComponent(chat.key)}#chat-latest` },
         renderMediaBlob(chat.image, "/assets/images/default-avatar.png", { class: "tribe-card-hero-image" })
       )
     ),
     div({ class: "tribe-card-body" },
       div({ class: "shop-title-row" },
         h2({ class: "tribe-card-title" },
-          a({ href: `/chats/${encodeURIComponent(chat.key)}` }, chat.title || i18n.chatUntitled)
+          a({ href: `/chats/${encodeURIComponent(chat.key)}#chat-latest` }, chat.title || i18n.chatUntitled)
         )
       ),
       chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
@@ -119,7 +124,7 @@ const renderChatForm = (filter, chat = {}, params = {}) => {
       span(i18n.title || "Title"), br(),
       input({ type: "text", name: "title", maxlength: "100", required: true, placeholder: i18n.chatTitlePlaceholder, value: chat.title || "" }), br(), br(),
       span(i18n.chatDescription), br(),
-      textarea({ name: "description", rows: 4, placeholder: i18n.chatDescriptionPlaceholder }, chat.description || ""), br(), br(),
+      textarea({ name: "description", rows: 4, maxlength: "1000", placeholder: i18n.chatDescriptionPlaceholder }, chat.description || ""), br(), br(),
       span(i18n.uploadMedia), br(),
       input({ type: "file", name: "image", accept: "image/*" }), br(), br(),
       span(i18n.chatCategory), br(),
@@ -128,7 +133,7 @@ const renderChatForm = (filter, chat = {}, params = {}) => {
           option({ value: cat, ...((chat.category || "GENERAL") === cat ? { selected: true } : {}) }, catLabel(cat))
         )
       ), br(), br(),
-      span(i18n.chatStatusLabel || "Status"), br(),
+      span(i18n.chatTypeLabel), br(),
       select({ name: "status" },
         option({ value: "OPEN", ...((!chat.status || chat.status === "OPEN") ? { selected: true } : {}) }, i18n.chatStatusOpen),
         option({ value: "INVITE-ONLY", ...(chat.status === "INVITE-ONLY" ? { selected: true } : {}) }, i18n.chatStatusInviteOnly)
@@ -167,7 +172,7 @@ const renderChatTopics = (chats, activeKey) =>
     ...safeArr(chats).slice().sort((a, b) => chatActivityTs(b) - chatActivityTs(a)).map(c => {
       const key = c.rootId || c.key
       const active = activeKey && String(key) === String(activeKey)
-      return a({ href: `/chats/${encodeURIComponent(key)}`, class: active ? "chat-topic chat-topic-active" : "chat-topic" },
+      return a({ href: `/chats/${encodeURIComponent(key)}#chat-latest`, class: active ? "chat-topic chat-topic-active" : "chat-topic" },
         span({ class: "chat-topic-title" }, c.title || i18n.chatUntitled),
         span({ class: "chat-topic-meta" }, `${i18n.chatParticipants}: ${safeArr(c.members).length}`)
       )
@@ -218,20 +223,85 @@ const renderChatPoll = (poll, chat) => {
   )
 }
 
-const renderMessage = (msg, chatAuthor) => {
-  const isAuthor = String(msg.author) === String(chatAuthor)
+const REACTIONS = [
+  ["up", "👍"],
+  ["heart", "❤️"],
+  ["laugh", "😂"],
+  ["down", "👎"]
+]
+
+const anchorIdOf = (key) => "msg-" + String(key || "").replace(/[^a-zA-Z0-9]/g, "")
+
+const renderMessage = (msg, chat, opts = {}) => {
+  const isAuthor = String(msg.author) === String(chat.author)
   const isSelf = String(msg.author) === String(userId)
   const imageSrc = blobSrcOf(msg.image)
+  const mime = String(msg.mimeType || "")
   const imageNode = imageSrc
-    ? renderZoomableImage(imageSrc, { imgClass: "chat-message-image" })
+    ? (mime.startsWith("video/")
+        ? videoHyperaxe({ controls: true, class: "post-video chat-message-media", src: imageSrc, type: mime, preload: "metadata" })
+        : mime.startsWith("audio/")
+          ? audioHyperaxe({ controls: true, class: "post-audio chat-message-media", src: imageSrc, type: mime, preload: "metadata" })
+          : mime === "application/pdf"
+            ? a({ href: imageSrc, target: "_blank", rel: "noopener", class: "filter-btn chat-message-file" }, "📄 PDF")
+            : mime.includes("bittorrent") || mime === "application/x-torrent"
+              ? a({ href: imageSrc, class: "filter-btn chat-message-file" }, `🧲 ${i18n.torrentDownload}`)
+              : renderZoomableImage(imageSrc, { imgClass: "chat-message-image" }))
     : (msg.image ? renderMediaBlob(msg.image, null, { class: "chat-message-image" }) : null)
 
-  return div({ class: isSelf ? "chat-bubble-row chat-bubble-row-self" : "chat-bubble-row" },
-    div({ class: isSelf ? "chat-message chat-message-self" : isAuthor ? "chat-message chat-message-author" : "chat-message" },
+  const counts = (msg.reactions && msg.reactions.counts) || {}
+  const mine = (msg.reactions && msg.reactions.mine) || {}
+  const reactionNodes = REACTIONS.map(([code, icon]) => {
+    const n = Number(counts[code] || 0)
+    const label = n > 0 ? `${icon} ${n}` : icon
+    if (!opts.canWrite) return n > 0 ? span({ class: "chat-react-btn" }, label) : null
+    return form({ method: "POST", action: `/chats/${encodeURIComponent(chat.key)}/react`, class: "chat-react-form" },
+      input({ type: "hidden", name: "target", value: msg.key }),
+      input({ type: "hidden", name: "emoji", value: code }),
+      button({ type: "submit", class: mine[code] ? "chat-react-btn chat-react-active" : "chat-react-btn" }, label)
+    )
+  }).filter(Boolean)
+
+  const replyLink = opts.canWrite
+    ? a({ href: `/chats/${encodeURIComponent(chat.key)}?reply=${encodeURIComponent(msg.key)}#chat-message-form`, class: "chat-react-btn chat-reply-btn", title: i18n.chatReply }, "↩")
+    : null
+
+  const pinBtn = opts.isChatAuthor
+    ? form({ method: "POST", action: `/chats/${encodeURIComponent(chat.key)}/pin`, class: "chat-react-form chat-pin-toggle" },
+        input({ type: "hidden", name: "target", value: msg.key }),
+        button({ type: "submit", class: msg.pinned ? "chat-react-btn chat-react-active" : "chat-react-btn", title: msg.pinned ? i18n.chatUnpin : i18n.chatPin }, "📌")
+      )
+    : null
+
+  const quoteText = String((msg.reply && msg.reply.text) || "").trim()
+  const quote = msg.reply
+    ? a({ href: `#${anchorIdOf(msg.replyTo)}`, class: "chat-reply-quote" },
+        span({ class: "chat-reply-arrow" }, "↩ "),
+        span({ class: "chat-reply-text" }, quoteText ? `${quoteText}${quoteText.length >= 120 ? "…" : ""}` : userLinkLabel(msg.reply.author))
+      )
+    : null
+
+  const timeNode = span({ class: "chat-bubble-time" }, moment(msg.createdAt).format("HH:mm"))
+  const actionsRow = (reactionNodes.length || replyLink)
+    ? div({ class: "chat-msg-actions" }, ...reactionNodes, replyLink,
+        span({ class: replyLink ? "chat-bubble-time chat-time-inline" : "chat-bubble-time chat-time-inline chat-time-push" }, moment(msg.createdAt).format("HH:mm")))
+    : null
+
+  const bubbleClass = [
+    "chat-message",
+    isSelf ? "chat-message-self" : (isAuthor ? "chat-message-author" : ""),
+    msg.pinned ? "chat-message-pinned" : "",
+    pinBtn ? "chat-has-pin-toggle" : ""
+  ].filter(Boolean).join(" ")
+
+  return div({ id: anchorIdOf(msg.key), class: isSelf ? "chat-bubble-row chat-bubble-row-self" : "chat-bubble-row" },
+    div({ class: bubbleClass },
+      pinBtn,
       isSelf ? null : renderSenderLink(msg.author, isAuthor),
+      quote,
       renderMessageText(msg.text || ""),
       imageNode ? div({ class: "chat-message-image-wrap" }, imageNode) : null,
-      span({ class: "chat-bubble-time" }, moment(msg.createdAt).format("HH:mm"))
+      actionsRow || timeNode
     )
   )
 }
@@ -251,6 +321,7 @@ exports.renderChatInvitePage = (code) => {
 exports.chatsView = async (chats, filter, chatToEdit = null, params = {}) => {
   const q = safeText(params.q || "")
   const list = safeArr(chats)
+  const emptyMod = moduleIsEmpty(list, filter || "all", "all", q)
 
   const isForm = filter === "create" || filter === "edit"
 
@@ -273,15 +344,16 @@ exports.chatsView = async (chats, filter, chatToEdit = null, params = {}) => {
   return template(
     i18n.chatsTitle,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(headerText),
         p(i18n.modulesChatsDescription)
       )
     ),
-    section(renderModeButtons(filter)),
-    !isForm
+    section(renderModeButtons(filter, emptyMod, (params && params.modesAvail) || null)),
+    !isForm && !emptyMod
       ? section(
-          div({ class: "filters" },
+          div({ class: "filters activity-filter-chips activity-toolbar-row" },
+            renderModuleStatsBy(list, c => String(c.status || 'OPEN').toUpperCase(), [{ value: 'OPEN', label: i18n.chatStatusOpen }, { value: 'INVITE-ONLY', label: i18n.chatStatusInviteOnly }, { value: 'CLOSED', label: i18n.chatStatusClosed }]),
             form({ method: "GET", action: "/chats", class: "filter-box" },
               input({ type: "hidden", name: "filter", value: filter }),
               input({ type: "text", name: "q", placeholder: i18n.chatSearchPlaceholder, value: q, class: "filter-box__input" }),
@@ -314,10 +386,16 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
   const statusLabel = chat.status === "CLOSED" ? i18n.chatStatusClosed :
     chat.status === "INVITE-ONLY" ? i18n.chatStatusInviteOnly : i18n.chatStatusOpen
 
+  const chatShares = isAuthor || isMember
   const detailChips = [
     renderChatStatusChip(chat.status),
     renderEncryptedChip(i18n),
-    renderLifespanChip(chat.lifetime, i18n)
+    renderLifespanChip(chat.lifetime, i18n),
+    chat.subscription && chatShares
+      ? ((isAuthor || chat.subscription.subscribed === true)
+          ? renderStateChip("mutuals", "✉", i18n.subscriptionOn)
+          : renderStateChip("closed", "✉", i18n.subscriptionOff))
+      : null
   ].filter(Boolean)
   const chatSide = div({ class: "tribe-side" },
     div({ class: "card-header activity-card-header" },
@@ -331,6 +409,16 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
     div({ class: "tribe-card-members" },
       span({ class: "tribe-members-count" }, `${i18n.chatParticipants}: ${safeArr(chat.members).length}`)
     ),
+    chat.subscription && chatShares
+      ? renderSubscriptionBox({
+          target: chat.rootId || chat.key,
+          scope: "chats",
+          subscribed: chat.subscription.subscribed === true,
+          count: chat.subscription.count,
+          isOwner: isAuthor,
+          returnTo
+        })
+      : null,
     table({ class: "tribe-info-table" },
       tr(
         td({ class: "tribe-info-label" }, i18n.chatCreatedAt),
@@ -361,7 +449,8 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
         if (openInvite) return [
           div({ class: "tribe-open-invite" },
             span({ class: "card-label" }, i18n.tribeInviteCodeText),
-            span({ class: "tribe-open-invite-code" }, openInvite.code)
+            span({ class: "tribe-open-invite-code" }, openInvite.code),
+            renderInviteQrCard({ qrDataUrl: `/qr-invite-code/chats/${encodeURIComponent(openInvite.code)}` })
           ),
           form({ method: "POST", action: `/chats/open-invite/remove` },
             input({ type: "hidden", name: "chatId", value: chat.key }),
@@ -417,11 +506,17 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
   const msgList = safeArr(messages)
   const canWrite = (isMember || chat.status === "OPEN") && chat.status !== "CLOSED"
 
+  const pinnedMsgs = msgList.filter(m => m.pinned).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+  const replyMsg = params.reply ? msgList.find(m => String(m.key) === String(params.reply)) : null
+
   const chatMain = isRestrictedInviteOnly
     ? div({ class: "tribe-main chat-full-width" }, p({ class: "access-denied-msg" }, i18n.chatAccessDenied))
     : div({ class: "tribe-main chat-full-width" },
     msgList.length
       ? div({ class: "chat-jump-row" },
+          pinnedMsgs.length
+            ? a({ href: `#${anchorIdOf(pinnedMsgs[0].key)}`, class: "filter-btn chat-pinned-link" }, `${i18n.chatPinned} (${pinnedMsgs.length})`)
+            : null,
           a({ href: "#chat-latest", class: "filter-btn chat-jump-latest" }, i18n.chatJumpLatest)
         )
       : null,
@@ -446,19 +541,27 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
           const last = i === stream.length - 1
           const node = entry.kind === 'poll'
             ? renderChatPoll(entry.poll, chat)
-            : renderMessage(entry.msg, chat.author)
+            : renderMessage(entry.msg, chat, { canWrite, isChatAuthor: isAuthor })
           nodes.push(last ? div({ id: "chat-latest", class: "chat-latest-anchor" }, node) : node)
         })
         return nodes
       })()
     ),
     canWrite
-      ? div({ class: "chat-message-form" },
+      ? div({ id: "chat-message-form", class: "chat-message-form" },
+          replyMsg
+            ? div({ class: "chat-replying-banner" },
+                span({ class: "chat-reply-arrow" }, "↩ "),
+                span({ class: "chat-reply-text" }, String(replyMsg.text || "").trim() ? ` ${String(replyMsg.text).trim().slice(0, 120)}` : userLinkLabel(replyMsg.author)),
+                a({ href: `/chats/${encodeURIComponent(chat.key)}#chat-message-form`, class: "chat-reply-cancel", title: i18n.chatReplyCancel || "✕" }, "✕")
+              )
+            : null,
           form({ method: "POST", action: `/chats/${encodeURIComponent(chat.key)}/message`, enctype: "multipart/form-data" },
             input({ type: "hidden", name: "returnTo", value: `/chats/${encodeURIComponent(chat.key)}#chat-latest` }),
-            textarea({ name: "text", rows: 3, placeholder: i18n.chatMessagePlaceholder }), br(),
+            replyMsg ? input({ type: "hidden", name: "replyTo", value: replyMsg.key }) : null,
+            textarea({ name: "text", rows: 3, maxlength: "3000", placeholder: i18n.chatMessagePlaceholder }), br(),
             span(i18n.uploadMedia), br(),
-            input({ type: "file", name: "image", accept: "image/*,video/*" }), br(), br(),
+            input({ type: "file", name: "image", accept: "image/*,video/*,audio/*,application/pdf,.torrent" }), br(), br(),
             button({ type: "submit", class: "filter-btn" }, i18n.chatSendMessage)
           )
         )
@@ -471,7 +574,7 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
             span(i18n.pollQuestion), br(),
             input({ type: "text", name: "question", required: true, maxlength: "300", placeholder: i18n.pollQuestionPlaceholder }), br(), br(),
             span(i18n.pollOptions), br(),
-            textarea({ name: "options", rows: 4, required: true, placeholder: i18n.pollOptionsPlaceholder }), br(), br(),
+            textarea({ maxlength: "1000", name: "options", rows: 4, required: true, placeholder: i18n.pollOptionsPlaceholder }), br(), br(),
             div({ class: "poll-switch" },
               input({ type: "hidden", name: "anonymous", value: "0" }),
               label(input({ type: "checkbox", name: "anonymous", value: "1" }), " ", i18n.pollAnonymousLabel)
@@ -506,11 +609,11 @@ exports.singleChatView = async (chat, filter, messages = [], params = {}) => {
   return template(
     chat.title || i18n.chatUntitled,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(i18n.chatsTitle),
         p(i18n.modulesChatsDescription)
       ),
-      renderModeButtons(filter || "all")
+      renderModeButtons(filter || "all", false, (params && params.modesAvail) || null)
     ),
     section(
       div({ class: "tribe-details" },

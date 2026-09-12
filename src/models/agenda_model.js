@@ -6,6 +6,7 @@ const moment = require('../server/node_modules/moment');
 const agendaConfigPath = path.join(__dirname, '../configs/agenda-config.json');
 const { getConfig } = require('../configs/config-manager.js');
 const { buildValidatedTombstoneSet } = require('./tombstone_validator');
+const { readTyped } = require('./typed_log');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 
 function readAgendaConfig() {
@@ -19,132 +20,125 @@ function writeAgendaConfig(cfg) {
   fs.writeFileSync(agendaConfigPath, JSON.stringify(cfg, null, 2));
 }
 
-module.exports = ({ cooler, calendarsModel, eventsModel, tasksModel, marketModel, jobsModel, projectsModel, industryModel, housingModel, schoolModel }) => {
+module.exports = ({ cooler, campaignsModel = null, logisticsModel = null, calendarsModel, eventsModel, tasksModel, marketModel, jobsModel, projectsModel, industryModel, housingModel, schoolModel }) => {
   let ssb;
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb; };
 
   const STATUS_ORDER = ['FOR SALE', 'OPEN', 'RESERVED', 'CLOSED', 'SOLD'];
   const sIdx = s => STATUS_ORDER.indexOf(String(s || '').toUpperCase());
 
-  const fetchItems = (targetType) =>
-    new Promise((resolve, reject) => {
-      openSsb().then((ssbClient) => {
-        pull(
-          ssbClient.createLogStream({ limit: logLimit }),
-          pull.collect((err, msgs) => {
-            if (err) return reject(err);
+  const fetchItems = async (targetType) => {
+    const ssbClient = await openSsb();
+    const msgs = await readTyped(ssbClient, [targetType, 'tombstone'], { limit: logLimit });
 
-            const tomb = buildValidatedTombstoneSet(msgs);
-            const nodes = new Map();
-            const parent = new Map();
-            const child = new Map();
+    const tomb = buildValidatedTombstoneSet(msgs);
+    const nodes = new Map();
+    const parent = new Map();
+    const child = new Map();
 
-            for (const m of msgs) {
-              const k = m.key;
-              const v = m.value;
-              const c = v?.content;
-              if (!c) continue;
-              if (c.type === 'tombstone') continue;
-              if (c.type !== targetType) continue;
-              if (c.encryptedPayload) continue;
-              nodes.set(k, { key: k, ts: v.timestamp || 0, author: v.author, content: c });
-              if (c.replaces) parent.set(k, c.replaces);
-            }
+    for (const m of msgs) {
+      const k = m.key;
+      const v = m.value;
+      const c = v?.content;
+      if (!c) continue;
+      if (c.type === 'tombstone') continue;
+      if (c.type !== targetType) continue;
+      if (c.encryptedPayload) continue;
+      nodes.set(k, { key: k, ts: v.timestamp || 0, author: v.author, content: c });
+      if (c.replaces) parent.set(k, c.replaces);
+    }
 
-            for (const [k, p] of Array.from(parent.entries())) {
-              const cn = nodes.get(k);
-              const pn = nodes.get(p);
-              if (!pn) { parent.delete(k); continue; }
-              if (!cn || String(cn.author) !== String(pn.author)) { parent.delete(k); nodes.delete(k); }
-            }
-            for (const [k, p] of parent.entries()) child.set(p, k);
+    for (const [k, p] of Array.from(parent.entries())) {
+      const cn = nodes.get(k);
+      const pn = nodes.get(p);
+      if (!pn) { parent.delete(k); continue; }
+      if (!cn || String(cn.author) !== String(pn.author)) { parent.delete(k); nodes.delete(k); }
+    }
+    for (const [k, p] of parent.entries()) child.set(p, k);
 
-            const rootOf = (id) => { let cur = id; while (parent.has(cur) && nodes.has(parent.get(cur))) cur = parent.get(cur); return cur; };
+    const rootOf = (id) => { let cur = id; while (parent.has(cur) && nodes.has(parent.get(cur))) cur = parent.get(cur); return cur; };
 
-            const groups = new Map();
-            for (const id of nodes.keys()) {
-              const r = rootOf(id);
-              if (!groups.has(r)) groups.set(r, new Set());
-              groups.get(r).add(id);
-            }
+    const groups = new Map();
+    for (const id of nodes.keys()) {
+      const r = rootOf(id);
+      if (!groups.has(r)) groups.set(r, new Set());
+      groups.get(r).add(id);
+    }
 
-            const statusOrder = ['FOR SALE', 'OPEN', 'RESERVED', 'CLOSED', 'SOLD'];
-            const sIdx = s => statusOrder.indexOf(String(s || '').toUpperCase());
+    const statusOrder = ['FOR SALE', 'OPEN', 'RESERVED', 'CLOSED', 'SOLD'];
+    const sIdx = s => statusOrder.indexOf(String(s || '').toUpperCase());
 
-            const out = [];
+    const out = [];
 
-            for (const [root, ids] of groups.entries()) {
-              const items = Array.from(ids).map(id => nodes.get(id)).filter(n => n && !tomb.has(n.key));
-              if (!items.length) continue;
+    for (const [root, ids] of groups.entries()) {
+      const items = Array.from(ids).map(id => nodes.get(id)).filter(n => n && !tomb.has(n.key));
+      if (!items.length) continue;
 
-              let tipId = Array.from(ids).find(id => !child.has(id));
-              let tip = tipId ? nodes.get(tipId) : items.reduce((a, b) => a.ts > b.ts ? a : b);
+      let tipId = Array.from(ids).find(id => !child.has(id));
+      let tip = tipId ? nodes.get(tipId) : items.reduce((a, b) => a.ts > b.ts ? a : b);
 
-              if (targetType === 'market') {
-                let chosen = items[0];
-                for (const n of items) {
-                  const a = sIdx(n.content.status);
-                  const b = sIdx(chosen.content.status);
-                  if (a > b || (a === b && n.ts > chosen.ts)) chosen = n;
-                }
-                const c = chosen.content;
-                let status = c.status;
-                if (c.deadline) {
-                  const dl = moment(c.deadline);
-                  if (dl.isValid() && dl.isBefore(moment()) && String(status).toUpperCase() !== 'SOLD') status = 'DISCARDED';
-                }
-                if (status === 'FOR SALE' && (c.stock || 0) === 0) continue;
+      if (targetType === 'market') {
+        let chosen = items[0];
+        for (const n of items) {
+          const a = sIdx(n.content.status);
+          const b = sIdx(chosen.content.status);
+          if (a > b || (a === b && n.ts > chosen.ts)) chosen = n;
+        }
+        const c = chosen.content;
+        let status = c.status;
+        if (c.deadline) {
+          const dl = moment(c.deadline);
+          if (dl.isValid() && dl.isBefore(moment()) && String(status).toUpperCase() !== 'SOLD') status = 'DISCARDED';
+        }
+        if (status === 'FOR SALE' && (c.stock || 0) === 0) continue;
 
-                out.push({
-                  ...c,
-                  status,
-                  author: chosen.author,
-                  id: chosen.key,
-                  tipId: chosen.key,
-                  createdAt: c.createdAt || chosen.ts
-                });
-                continue;
-              }
+        out.push({
+          ...c,
+          status,
+          author: chosen.author,
+          id: chosen.key,
+          tipId: chosen.key,
+          createdAt: c.createdAt || chosen.ts
+        });
+        continue;
+      }
 
-              if (targetType === 'job') {
-                const latest = items.sort((a, b) => b.ts - a.ts)[0];
-                const withSubsNode = items
-                  .filter(n => Array.isArray(n.content.subscribers))
-                  .sort((a, b) => b.ts - a.ts)[0];
-                const subscribers = withSubsNode ? withSubsNode.content.subscribers : [];
-                const latestWithStatus = items
-                  .filter(n => typeof n.content.status !== 'undefined')
-                  .sort((a, b) => b.ts - a.ts)[0];
-                const resolvedStatus = latestWithStatus
-                  ? latestWithStatus.content.status
-                  : latest.content.status;
+      if (targetType === 'job') {
+        const latest = items.sort((a, b) => b.ts - a.ts)[0];
+        const withSubsNode = items
+          .filter(n => Array.isArray(n.content.subscribers))
+          .sort((a, b) => b.ts - a.ts)[0];
+        const subscribers = withSubsNode ? withSubsNode.content.subscribers : [];
+        const latestWithStatus = items
+          .filter(n => typeof n.content.status !== 'undefined')
+          .sort((a, b) => b.ts - a.ts)[0];
+        const resolvedStatus = latestWithStatus
+          ? latestWithStatus.content.status
+          : latest.content.status;
 
-                const c = { ...latest.content, status: resolvedStatus, subscribers };
+        const c = { ...latest.content, status: resolvedStatus, subscribers };
 
-                out.push({
-                  ...c,
-                  author: latest.author,
-                  id: latest.key,
-                  tipId: latest.key,
-                  createdAt: c.createdAt || latest.ts
-                });
-                continue;
-              }
+        out.push({
+          ...c,
+          author: latest.author,
+          id: latest.key,
+          tipId: latest.key,
+          createdAt: c.createdAt || latest.ts
+        });
+        continue;
+      }
 
-              out.push({
-                ...tip.content,
-                author: tip.author,
-                id: tip.key,
-                tipId: tip.key,
-                createdAt: tip.content.createdAt || tip.ts
-              });
-            }
+      out.push({
+        ...tip.content,
+        author: tip.author,
+        id: tip.key,
+        tipId: tip.key,
+        createdAt: tip.content.createdAt || tip.ts
+      });
+    }
 
-            resolve(out);
-          })
-        );
-      }).catch(reject);
-    });
+    return out;
+  };
 
   return {
     async listAgenda(filter = 'all') {
@@ -196,7 +190,15 @@ module.exports = ({ cooler, calendarsModel, eventsModel, tasksModel, marketModel
         ? schoolModel.listCourses('ALL', userId, {}).then(normalize).catch(() => [])
         : [];
 
-      const [tasksAll, eventsAll, transfersAll, tribesAll, marketAll, reportsAll, jobsAll, projectsAll, calendarsAll, industryAll, housingAll, schoolAll] = await Promise.all([
+      const campaignsViaModel = campaignsModel && typeof campaignsModel.listAll === 'function'
+        ? campaignsModel.listAll({ filter: 'all' }).catch(() => [])
+        : [];
+
+      const logisticsViaModel = logisticsModel && typeof logisticsModel.listAll === 'function'
+        ? logisticsModel.listAll({ filter: 'all' }).catch(() => [])
+        : [];
+
+      const [tasksAll, eventsAll, transfersAll, tribesAll, marketAll, reportsAll, jobsAll, projectsAll, calendarsAll, industryAll, housingAll, schoolAll, campaignsAll, logisticsAll] = await Promise.all([
         tasksViaModel,
         eventsViaModel,
         fetchItems('transfer'),
@@ -208,7 +210,9 @@ module.exports = ({ cooler, calendarsModel, eventsModel, tasksModel, marketModel
         calendarsViaModel,
         industryViaModel,
         housingViaModel,
-        schoolViaModel
+        schoolViaModel,
+        campaignsViaModel,
+        logisticsViaModel
       ]);
 
       const tasks = tasksAll.filter(c => Array.isArray(c.assignees) && c.assignees.includes(userId)).map(t => ({ ...t, type: 'task' }));
@@ -225,6 +229,12 @@ module.exports = ({ cooler, calendarsModel, eventsModel, tasksModel, marketModel
       const schoolCourses = schoolAll
         .filter(c => c.author === userId || (Array.isArray(c.students) && c.students.includes(userId)) || (Array.isArray(c.pending) && c.pending.some(pn => pn.author === userId)))
         .map(c => ({ ...c, type: 'schoolCourse', title: c.title, date: c.startDate || c.createdAt, teaching: c.author === userId }));
+      const campaigns = (Array.isArray(campaignsAll) ? campaignsAll : [])
+        .filter(c => c && c.deadline && (c.author === userId || (Array.isArray(c.signers) && c.signers.includes(userId))))
+        .map(c => ({ ...c, type: 'campaign', date: c.deadline, status: c.closed ? 'CLOSED' : 'OPEN' }));
+      const routes = (Array.isArray(logisticsAll) ? logisticsAll : [])
+        .filter(r => r && r.date && (r.author === userId || !!r.myBooking))
+        .map(r => ({ ...r, type: 'logisticsRoute', status: r.status === 'CLOSED' ? 'CLOSED' : 'OPEN' }));
       const housingPlaces = housingAll
         .filter(h => h.author === userId || (Array.isArray(h.requests) && h.requests.includes(userId)))
         .map(h => ({ ...h, type: 'housing', date: h.availableFrom || h.createdAt, requested: Array.isArray(h.requests) && h.requests.includes(userId) }));
@@ -266,6 +276,8 @@ module.exports = ({ cooler, calendarsModel, eventsModel, tasksModel, marketModel
         ...industryBuilds,
         ...housingPlaces,
         ...schoolCourses,
+        ...campaigns,
+        ...routes,
         ...calendars,
         ...calendarDates
       ];
@@ -288,6 +300,8 @@ module.exports = ({ cooler, calendarsModel, eventsModel, tasksModel, marketModel
         else if (filter === 'industry') filtered = filtered.filter(i => i.type === 'industry');
         else if (filter === 'housing') filtered = filtered.filter(i => i.type === 'housing');
         else if (filter === 'school') filtered = filtered.filter(i => i.type === 'schoolCourse');
+        else if (filter === 'campaigns') filtered = filtered.filter(i => i.type === 'campaign');
+        else if (filter === 'logistics') filtered = filtered.filter(i => i.type === 'logisticsRoute');
         else if (filter === 'calendars') filtered = filtered.filter(i => i.type === 'calendar' || i.type === 'calendarDate');
         else if (filter === 'today') {
           const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
@@ -344,6 +358,8 @@ module.exports = ({ cooler, calendarsModel, eventsModel, tasksModel, marketModel
           industry: mainItems.filter(i => i.type === 'industry').length,
           housing: mainItems.filter(i => i.type === 'housing').length,
           school: mainItems.filter(i => i.type === 'schoolCourse').length,
+          campaigns: mainItems.filter(i => i.type === 'campaign').length,
+          logistics: mainItems.filter(i => i.type === 'logisticsRoute').length,
           calendars: mainItems.filter(i => i.type === 'calendar' || i.type === 'calendarDate').length,
           today: mainItems.filter(i => { const d = itemTs(i); return d >= startOfDay.getTime() && d <= endOfDay.getTime(); }).length,
           upcoming: mainItems.filter(i => itemTs(i) > now).length,

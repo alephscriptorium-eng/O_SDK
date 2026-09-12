@@ -1,6 +1,7 @@
 const { form, button, div, h2, p, section, input, label, br, a, span, table, thead, tbody, tr, th, td, textarea, select, option, ul, li, img } = require('../server/node_modules/hyperaxe');
 const moment = require('../server/node_modules/moment');
-const { template, i18n, userLink, renderStateChip } = require('./main_views');
+const { template, i18n, userLink, renderStateChip, renderModuleStatsBy } = require('./main_views');
+const { renderUrl } = require('../backend/renderUrl');
 
 const CourtsE2EChip = () => renderStateChip('encrypted', '🔒', i18n.encryptedChipLabel || 'E2E');
 
@@ -41,12 +42,12 @@ const FILTERS = [
   { value: 'open', key: 'courtsFilterOpenCase' }
 ];
 
-const Tabs = (active) =>
+const Tabs = (active, emptyCourts = false) =>
   div(
     { class: 'filters' },
     form(
       { method: 'GET', action: '/courts' },
-      FILTERS.map((f) => {
+      FILTERS.filter((f) => !emptyCourts || f.value === 'open' || f.value === 'rules' || (f.value === active && active !== 'cases')).map((f) => {
         const isOpen = f.value === 'open';
         const cls =
           isOpen
@@ -363,58 +364,7 @@ const UserLinkFull = (id) => id ? userLink(id) : span('');
 const renderRichTextNodes = (raw) => {
   const text = String(raw || '');
   if (!text) return [];
-  const nodes = [];
-  let remaining = text;
-  const imgRegex = /!\[[^\]]*]\(([^)]+)\)/;
-  const linkRegex = /\[([^\]]+)]\((https?:\/\/[^)]+)\)/;
-  while (remaining.length) {
-    const imgMatch = imgRegex.exec(remaining);
-    const linkMatch = linkRegex.exec(remaining);
-    let next = null;
-    let type = null;
-    if (imgMatch && (!linkMatch || imgMatch.index < linkMatch.index)) {
-      next = imgMatch;
-      type = 'img';
-    } else if (linkMatch) {
-      next = linkMatch;
-      type = 'link';
-    }
-    if (!next) {
-      if (remaining.trim()) nodes.push(p(remaining));
-      break;
-    }
-    const idx = next.index;
-    if (idx > 0) {
-      const before = remaining.slice(0, idx);
-      if (before.trim()) nodes.push(p(before));
-    }
-    if (type === 'img') {
-      const ref = next[1];
-      nodes.push(
-        img({
-          class: 'evidence-image',
-          src: `/blob/${encodeURIComponent(ref)}`,
-          alt: 'evidence'
-        })
-      );
-    } else {
-      const labelText = next[1];
-      const url = next[2];
-      nodes.push(
-        a(
-          {
-            class: 'evidence-link',
-            href: url,
-            target: '_blank',
-            rel: 'noopener noreferrer'
-          },
-          labelText
-        )
-      );
-    }
-    remaining = remaining.slice(idx + next[0].length);
-  }
-  return nodes;
+  return text.split('\n').map(l => l.trim()).filter(Boolean).map(l => p(...renderUrl(l)));
 };
 
 const RichTextBlock = (raw) => {
@@ -1065,9 +1015,10 @@ const RulesContent = () => {
   );
 };
 
-const CaseSearch = (filter, search = '') =>
+const CaseSearch = (filter, search = '', items = null) =>
   div(
-    { class: 'filters' },
+    { class: 'filters activity-filter-chips activity-toolbar-row' },
+    items ? renderModuleStatsBy(items, c => c.status === 'OPEN' ? 'OPEN' : c.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'DONE', [{ value: 'OPEN', label: i18n.taskStatusOpen }, { value: 'IN_PROGRESS', label: i18n.taskStatusInProgress }, { value: 'DONE', label: i18n.taskStatusClosed }]) : null,
     form(
       { method: 'GET', action: '/courts', class: 'filter-box' },
       input({ type: 'hidden', name: 'filter', value: filter }),
@@ -1363,12 +1314,12 @@ const courtsView = async (state) => {
     i18n.courtsTitle,
     section(
       div(
-        { class: 'tags-header' },
+        { class: 'tags-header module-header-line' },
         h2(i18n.courtsTitle),
         p(i18n.courtsDescription)
       ),
-      Tabs(filter),
-      filter === 'cases' ? CaseSearch(filter, search) : null
+      Tabs(filter, cases.length === 0 && myCases.length === 0 && history.length === 0 && nominations.length === 0 && !String(search || '').trim()),
+      filter === 'cases' && ((Array.isArray(cases) && cases.length > 0) || String(search || '').trim()) ? CaseSearch(filter, search, cases) : null
     ),
     section(
       filter === 'cases' ? CasesTable(cases) : null,
@@ -1396,7 +1347,7 @@ const courtsCaseView = async (state) => {
     i18n.courtsTitle,
     section(
       div(
-        { class: 'tags-header' },
+        { class: 'tags-header module-header-line' },
         h2(i18n.courtsTitle),
         p(i18n.courtsDescription)
       ),

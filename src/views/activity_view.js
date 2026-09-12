@@ -1,5 +1,5 @@
 const { div, h2, p, section, button, form, a, input, img, textarea, br, span, video: videoHyperaxe, audio: audioHyperaxe, table, tr, td, th, details, summary } = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink, userLinkLabel, renderSpreadButton, renderContentActions } = require('./main_views');
+const { template, i18n, userLink, userLinkLabel, renderSpreadButton, renderContentActions, renderVotesSummary, renderModuleStats, renderCardMetaRow } = require('./main_views');
 const opinionCategories = require('../backend/opinion_categories');
 
 const OPINION_TYPES = new Set(['bookmark','votes','feed','image','audio','video','document','torrent']);
@@ -18,18 +18,30 @@ const { renderUrl } = require('../backend/renderUrl');
 const { letterOf } = require('./polls_view');
 const { getConfig } = require("../configs/config-manager.js");
 const { sanitizeHtml } = require('../backend/sanitizeHtml');
+const { renderZoomableImage } = require('./gallery_view');
+
+const MEDIA_MD_RE = /!?\[(?:image|video|audio|pdf|torrent)[^\]]*\]\(\s*&[^)\s]+\s*\)/g
+const stripMediaMarkdown = (text) => String(text || '').replace(MEDIA_MD_RE, '').replace(/\n{3,}/g, '\n\n').trim()
+const renderMediaObject = (m, href = null) => {
+  if (!m || typeof m !== 'object' || !m.blobId) return null
+  const src = `/blob/${encodeURIComponent(String(m.blobId))}`
+  if (href && m.kind !== 'video' && m.kind !== 'audio') return div({ class: 'card-field image-container media-left' }, a({ href, class: 'podcast-cover-link' }, img({ src, class: 'post-image', alt: '' })))
+  if (m.kind === 'video') return div({ class: 'card-field video-container' }, videoHyperaxe({ controls: true, class: 'post-video', src, preload: 'metadata' }))
+  if (m.kind === 'audio') return div({ class: 'card-field audio-container' }, audioHyperaxe({ controls: true, class: 'post-audio', src, preload: 'metadata' }))
+  return div({ class: 'card-field image-container media-left' }, renderZoomableImage(src, { imgClass: 'post-image' }))
+}
 
 const renderMediaBlob = (value, fallbackSrc = null) => {
   if (!value) return fallbackSrc ? img({ src: fallbackSrc, class: 'post-image' }) : null
   const s = String(value).trim()
   if (!s) return fallbackSrc ? img({ src: fallbackSrc, class: 'post-image' }) : null
-  if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}`, class: 'post-image' })
+  if (s.startsWith('&')) return renderZoomableImage(`/blob/${encodeURIComponent(s)}`, { imgClass: 'post-image' })
   const mVideo = s.match(/\[video:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
   if (mVideo) return videoHyperaxe({ controls: true, class: 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}` })
   const mAudio = s.match(/\[audio:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
   if (mAudio) return audioHyperaxe({ controls: true, class: 'post-audio', src: `/blob/${encodeURIComponent(mAudio[1])}` })
   const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
-  if (mImg) return img({ src: `/blob/${encodeURIComponent(mImg[1])}`, class: 'post-image' })
+  if (mImg) return renderZoomableImage(`/blob/${encodeURIComponent(mImg[1])}`, { imgClass: 'post-image' })
   return fallbackSrc ? img({ src: fallbackSrc, class: 'post-image' }) : null
 }
 
@@ -210,14 +222,14 @@ function buildActivityItemsWithPostThreads(deduped, allActions) {
           ? {
               id: safeMsgId(rootAction),
               author: rootAction.author,
-              text: excerptPostText(rootAction.value?.content || rootAction.content || {}, 240)
+              text: excerptPostText(rootAction.value?.content || rootAction.content || {}, 600)
             }
           : null,
         replies: replies.map(p => ({
           id: safeMsgId(p),
           author: p.author,
           ts: p.ts,
-          text: excerptPostText(p.value?.content || p.content || {}, 200)
+          text: excerptPostText(p.value?.content || p.content || {}, 600)
         }))
       }
     });
@@ -232,7 +244,7 @@ const SPREADABLE_TYPES = new Set([
   'post', 'audio', 'video', 'image', 'document', 'torrent', 'bookmark',
   'event', 'calendar', 'task', 'votes', 'vote', 'market', 'shop', 'shopProduct',
   'project', 'transfer', 'housing', 'job', 'report', 'industry', 'industryBuild', 'industryBlueprint',
-  'chat', 'chatMessage', 'pad', 'padEntry', 'forum', 'map', 'poll', 'blog', 'schoolCourse'
+  'chat', 'chatMessage', 'pad', 'padEntry', 'wikiPage', 'emergency', 'mailingList', 'logisticsRoute', 'podcast', 'podcastEpisode', 'campaign', 'forum', 'map', 'poll', 'blog', 'schoolCourse', 'feed'
 ]);
 
 function renderActionCards(actions, userId, allActions, spreadMap = new Map(), extras = {}) {
@@ -349,14 +361,20 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       headerText = `[${String(i18n.typeTask || 'TASK').toUpperCase()} · ASSIGNMENT]`;
     } else if (type === 'shopProduct') {
       headerText = `[SHOP · PRODUCT]`;
-    } else if (type === 'chat') {
-      headerText = `[CHAT \u00b7 ${String(i18n.chatThreadsLabel).toUpperCase()}]`;
     } else if (type === 'pad') {
       headerText = `[PAD · ${String(i18n.padNew || 'NEW').toUpperCase()}]`;
     } else if (type === 'ubiClaim') {
       headerText = `[UBI · CLAIM]`;
     } else if (type === 'ubiclaimresult') {
       headerText = `[UBI · RESULT]`;
+    } else if (type === 'wikiPage') {
+      headerText = `[${String(i18n.typeWiki || 'WIKI').toUpperCase()}]`;
+    } else if (type === 'emergencyUpdate') {
+      headerText = `[${String(i18n.typeEmergency || 'EMERGENCY').toUpperCase()} · ${String(i18n.emergencyLastUpdate || 'LAST UPDATE').toUpperCase()}]`;
+    } else if (type === 'campaignUpdate') {
+      headerText = `[${String(i18n.typeCampaign || 'CAMPAIGN').toUpperCase()} · ${String(i18n.emergencyLastUpdate || 'LAST UPDATE').toUpperCase()}]`;
+    } else if (type === 'podcastEpisode') {
+      headerText = `[${String(i18n.typePodcast || 'PODCAST').toUpperCase()} · ${String(i18n.typePodcastEpisode || 'EPISODE').toUpperCase()}]`;
     } else {
       const typeLabel = i18n[`type${capitalize(type)}`] || type;
       headerText = `[${String(typeLabel).toUpperCase()}]`;
@@ -567,7 +585,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
           ),
           image
             ? (/^(\/|https?:)/.test(String(image))
-                ? img({ src: image, class: 'feed-image tribe-image' })
+                ? renderZoomableImage(image, { imgClass: 'feed-image tribe-image' })
                 : renderMediaBlob(image, null))
             : null,
           p({ class: 'tribe-description' }, ...renderUrl(description || ''))
@@ -602,7 +620,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
           photo ?
             [
               br(),
-              img({ class: "cv-photo", src: `/blob/${encodeURIComponent(photo)}` }),
+              renderZoomableImage(`/blob/${encodeURIComponent(photo)}`, { imgClass: 'cv-photo', linkClass: 'zoom-inline' }),
               br()
             ]
             : "",
@@ -631,7 +649,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       const { url } = content;
       cardBody.push(
         div({ class: 'card-section image' },
-          img({ src: `/blob/${encodeURIComponent(url)}`, class: 'post-image' })
+          renderZoomableImage(`/blob/${encodeURIComponent(url)}`, { imgClass: 'post-image' })
         )
       );
     }
@@ -820,7 +838,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
   if (type === 'post') {
       const { contentWarning, text } = content || {};
       const rawText = text || '';
-      const POST_TRUNCATE_LEN = 300;
+      const POST_TRUNCATE_LEN = 1000;
       const isTruncated = rawText.length > POST_TRUNCATE_LEN;
       const displayText = isTruncated ? rawText.slice(0, POST_TRUNCATE_LEN) + '…' : rawText;
       const isHtml = typeof displayText === 'string' && /<\/?[a-z][\s\S]*>/i.test(displayText);
@@ -834,9 +852,11 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
               (url) =>
                 `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
             );
-       bodyNode = div({ class: 'post-text post-text-clamped', innerHTML: sanitizeHtml(linkified) });
+       bodyNode = div({ class: 'feed-text post-text post-text-clamped', innerHTML: sanitizeHtml(linkified) });
       } else {
-        bodyNode = p({ class: 'post-text post-text-pre post-text-clamped' }, ...renderUrlPreserveNewlines(displayText));
+        bodyNode = div({ class: 'feed-text' },
+          p({ class: 'post-text post-text-pre post-text-clamped' }, ...renderUrlPreserveNewlines(displayText))
+        );
       }
       const threadId = getThreadIdFromPost(action);
       const replyToId = getReplyToIdFromPost(action, byIdAll);
@@ -860,12 +880,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
               )
             : '',
           contentWarning ? h2({ class: 'content-warning' }, contentWarning) : '',
-          bodyNode,
-          isTruncated && threadId
-            ? div({ class: 'card-section-action' },
-                a({ href: `/thread/${encodeURIComponent(threadId)}#${encodeURIComponent(action.id || threadId)}`, class: 'comments-summary chat-thread-summary keep-reading-link' }, i18n.keepReading || 'Keep reading...')
-              )
-            : ''
+          bodyNode
         )
       );
     }
@@ -873,20 +888,19 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
     if (type === 'postThread') {
         const c = action.content || {};
         const threadId = c.threadId;
-        const href = `/thread/${encodeURIComponent(threadId)}#${encodeURIComponent(threadId)}`;
+        const href = `/blogs/${encodeURIComponent(threadId)}`;
         const root = c.root;
         const replies = Array.isArray(c.replies) ? c.replies : [];
         const repliesAsc = replies.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
-        const limit = 5;
-        const overflow = repliesAsc.length > limit;
-        const show = repliesAsc.slice(Math.max(0, repliesAsc.length - limit));
-        const lastId = repliesAsc.length ? repliesAsc[repliesAsc.length - 1].id : threadId;
-        const viewMoreHref = `/thread/${encodeURIComponent(threadId)}#${encodeURIComponent(lastId)}`;
+        const latest = repliesAsc.length ? repliesAsc[repliesAsc.length - 1] : null;
+        const titleText = root && root.text
+          ? (root.text.length > 90 ? `${root.text.slice(0, 90)}…` : root.text)
+          : threadId;
         return div({ class: 'trending-card post-thread' + (String(action.author) === String(userId) ? ' own-content' : '') },
             div({ class: 'card-header activity-card-header' },
                 div({ class: 'card-chips-row' },
                     span({ class: 'pm-exposition-chip pm-exposition-whole' },
-                        span({ class: 'pm-exposition-text' }, `${String(i18n.typePost || 'POST').toUpperCase()} · THREAD`)
+                        span({ class: 'pm-exposition-text' }, `${String(i18n.typePost || 'BLOG').toUpperCase()} · ${String(i18n.activityUpdateLabel || 'UPDATE').toUpperCase()}`)
                     )
                 ),
                 renderContentActions(threadId, href, {
@@ -896,30 +910,22 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
                 })
             ),
             div({ class: 'card-body' },
-		root && root.text
-		    ? div({ class: 'card-section' },
-			p({ class: 'post-text post-text-pre' }, ...renderUrlPreserveNewlines(root.text))
-		    )
-		    : '',
-		div({ class: 'card-section' },
-		show.map(r => {
-		    const rDate = r.ts ? new Date(r.ts).toLocaleString() : '';
-		    return div({ class: 'thread-reply-item' },
-			div({ class: 'thread-reply' },
-			    r.text ? p({ class: 'post-text post-text-pre' }, ...renderUrlPreserveNewlines(r.text)) : ''
-			),
-			div({ class: 'card-footer thread-reply-footer' },
-			    span({ class: 'date-link' }, rDate),
-			    userLink(r.author, action.authorNames && action.authorNames[r.author])
-			)
-		    );
-		}),
+                div({ class: 'card-section' },
+                    div({ class: 'card-field activity-update-title' },
+                        a({ href, class: 'card-value user-link' }, titleText),
+                        span({ class: 'card-label activity-update-counts' }, `💬 ${replies.length}`)
+                    ),
+                    latest && latest.text
+                        ? div({ class: 'feed-text activity-update-msg' },
+                            p({ class: 'post-text post-text-pre' }, ...renderUrlPreserveNewlines(latest.text))
+                          )
+                        : ''
+                )
+            ),
+            p({ class: 'card-footer' },
+                span({ class: 'date-link' }, `${action.ts ? new Date(action.ts).toLocaleString() : ''} ${i18n.performed} `),
+                userLink(action.author, action.authorNames && action.authorNames[action.author])
             )
-        ),
-        p({ class: 'card-footer' },
-            span({ class: 'date-link' }, `${action.ts ? new Date(action.ts).toLocaleString() : ''} ${i18n.performed} `),
-            userLink(action.author, action.authorNames && action.authorNames[action.author])
-        )
         );
     }
 
@@ -928,16 +934,15 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
         const chatRoot = c.chatRoot;
         const href = `/chats/${encodeURIComponent(chatRoot)}`;
         const chatTitle = c.title || chatRoot;
-        const chatDesc = c.description || '';
         const replies = Array.isArray(c.replies) ? c.replies : [];
         const repliesAsc = replies.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
-        const limit = 6;
+        const limit = 2;
         const show = repliesAsc.slice(Math.max(0, repliesAsc.length - limit));
         return div({ class: 'trending-card post-thread chat-thread' + (String(action.author) === String(userId) ? ' own-content' : '') },
             div({ class: 'card-header activity-card-header' },
                 div({ class: 'card-chips-row' },
                     span({ class: 'pm-exposition-chip pm-exposition-whole' },
-                        span({ class: 'pm-exposition-text' }, `${String(i18n.typeChat || 'CHAT').toUpperCase()} \u00b7 ${String(i18n.chatThreadsLabel).toUpperCase()}`)
+                        span({ class: 'pm-exposition-text' }, `${String(i18n.typeChat || 'CHAT').toUpperCase()} \u00b7 ${String(i18n.activityUpdateLabel || 'UPDATE').toUpperCase()}`)
                     )
                 ),
                 renderContentActions(chatRoot, href, {
@@ -949,35 +954,34 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
             ),
             div({ class: 'card-body' },
                 div({ class: 'card-section chat' },
-                    div({ class: 'card-field' }, a({ href, class: 'card-value user-link' }, chatTitle)),
-                    chatDesc ? div({ class: 'card-field' }, span({ class: 'card-value' }, chatDesc)) : '',
-                    div({ class: 'card-field chat-thread-meta' },
-                        span({ class: 'card-label' }, `${i18n.chatParticipants}: `),
-                        span({ class: 'card-value' }, String(c.members || 0)),
-                        span({ class: 'card-label' }, ` · ${i18n.chatMessagesLabel}: `),
-                        span({ class: 'card-value' }, String(c.messageCount || show.length))
+                    div({ class: 'card-field activity-update-title' },
+                        a({ href, class: 'card-value user-link' }, chatTitle),
+                        span({ class: 'card-label activity-update-counts' }, `👥: ${c.members || 0} · 💬 ${c.messageCount || show.length}`)
                     ),
-                show.length
-                    ? div({ class: 'card-section-action' },
-                      details({ class: 'chat-thread-details' },
-                        summary({ class: 'comments-summary chat-thread-summary keep-reading-link' }, i18n.keepReading || 'Keep reading...'),
-                        div({ class: 'card-section' },
-                            show.map(r => {
-                                const rDate = r.ts ? new Date(r.ts).toLocaleString() : '';
-                                return div({ class: 'thread-reply-item' },
-                                    div({ class: 'thread-reply' },
-                                        r.text ? p({ class: 'post-text thread-reply-text' }, ...renderUrlPreserveNewlines(r.text)) : ''
-                                    ),
-                                    div({ class: 'card-footer thread-reply-footer' },
-                                        span({ class: 'date-link' }, rDate),
-                                        userLink(r.author, action.authorNames && action.authorNames[r.author])
-                                    )
-                                );
-                            })
-                        )
-                      )
-                      )
-                    : null
+                    (() => {
+                        const latest = show.length ? show[show.length - 1] : null;
+                        if (!latest) return '';
+                        const rawBlob = String(latest.image || '').trim();
+                        const attSrc = rawBlob.startsWith('&') ? `/blob/${encodeURIComponent(rawBlob)}` : null;
+                        const mime = String(latest.mimeType || '');
+                        const attNode = attSrc
+                            ? (mime.startsWith('video/')
+                                ? videoHyperaxe({ controls: true, class: 'post-video', src: attSrc, type: mime, preload: 'metadata' })
+                                : mime.startsWith('audio/')
+                                  ? audioHyperaxe({ controls: true, class: 'post-audio', src: attSrc, type: mime, preload: 'metadata' })
+                                  : mime === 'application/pdf'
+                                    ? a({ href: attSrc, target: '_blank', rel: 'noopener', class: 'filter-btn' }, '📄 PDF')
+                                    : mime.includes('bittorrent') || mime === 'application/x-torrent'
+                                      ? a({ href: attSrc, class: 'filter-btn' }, `🧲 ${i18n.torrentDownload}`)
+                                      : renderZoomableImage(attSrc, { imgClass: 'post-image' }))
+                            : renderMediaBlob(latest.image);
+                        const textNode = latest.text
+                            ? p({ class: 'post-text post-text-pre' }, ...renderUrlPreserveNewlines(latest.text))
+                            : null;
+                        return (textNode || attNode)
+                            ? div({ class: 'feed-text activity-update-msg' }, ...[textNode, attNode].filter(Boolean))
+                            : '';
+                    })()
                 )
             ),
             p({ class: 'card-footer' },
@@ -1067,7 +1071,6 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
         : div({ class: 'post-text activity-spread-text activity-spread-missing' }, i18n.spreadContentUnavailable || 'Content not yet available (pending replication)'),
       spreadOriginalAuthor
         ? div({ class: 'card-field' },
-            span({ class: 'card-label' }, (i18n.spreadBy || 'By') + ': '),
             span({ class: 'card-value' }, userLink(spreadOriginalAuthor))
           )
         : '',
@@ -1102,28 +1105,21 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       const imgId = image ? (typeof image === 'string' ? image : (image.link || '')) : '';
       cardBody.push(
         div({ class: 'card-section about' },
-          imgId
-            ? img({ src: `/blob/${encodeURIComponent(imgId)}`, alt: name, class: 'activity-avatar' })
-            : img({ src: '/assets/images/default-avatar.png', alt: name, class: 'activity-avatar' }),
-          h2(userLink(about, name)),
-          description ? p({ class: 'tribe-side-description' }, ...renderUrlPreserveNewlines(String(description))) : null
+          div({ class: 'about-card-cols' },
+            div({ class: 'about-card-col-img' },
+              imgId
+                ? renderZoomableImage(`/blob/${encodeURIComponent(imgId)}`, { imgClass: 'activity-avatar', alt: name, linkClass: 'zoom-inline' })
+                : img({ src: '/assets/images/default-avatar.png', alt: name, class: 'activity-avatar' })
+            ),
+            div({ class: 'about-card-col-desc' },
+              h2({ class: 'about-card-header' }, userLink(about, name)),
+              description
+                ? p({ class: 'tribe-side-description' }, ...renderUrlPreserveNewlines(String(description)))
+                : null
+            )
+          )
         )
       );
-    }
-
-    if (type === 'pub') {
-      const { address } = content || {};
-      const { key } = address || {};
-      const pr = getProfile(key || '');
-      const src = pr.image ? `/blob/${encodeURIComponent(pr.image)}` : '/assets/images/default-avatar.png';
-      cardBody.push(
-        div({ class: 'card-section pub activity-pub' },
-          br(),
-          userLink(pr.id, pr.name),
-          br(),
-          img({ src, alt: pr.name || pr.id, class: 'activity-avatar' })
-        )
-     );
     }
 
     if (type === 'market') {
@@ -1184,9 +1180,8 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       const displayDesc = shortDescription || (description ? (description.length > 140 ? description.slice(0, 140) + "\u2026" : description) : "");
       cardBody.push(
         div({ class: 'card-section shop' },
-          div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopTitle || 'Shop') + ':'), span({ class: 'card-value' }, shopKey ? a({ href: `/shops/${encodeURIComponent(shopKey)}`, class: 'user-link' }, title || shopKey) : (title || ''))),
+          div({ class: 'card-field' }, span({ class: 'card-value' }, shopKey ? a({ href: `/shops/${encodeURIComponent(shopKey)}`, class: 'user-link' }, title || shopKey) : (title || ''))),
           displayDesc ? div({ class: 'card-field' }, span({ class: 'card-value' }, displayDesc)) : "",
-          visibility ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopVisibility || 'Visibility') + ':'), span({ class: 'card-value' }, visibility)) : "",
           location ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.shopLocation || 'Location') + ':'), span({ class: 'card-value' }, location)) : ""
         )
       );
@@ -1231,7 +1226,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
           ),
           image
             ? (/^(\/|https?:)/.test(String(image))
-                ? img({ src: image, class: 'feed-image tribe-image' })
+                ? renderZoomableImage(image, { imgClass: 'feed-image tribe-image' })
                 : renderMediaBlob(image, null))
             : null,
           p({ class: 'tribe-description' }, ...renderUrl(description || '')),
@@ -1260,7 +1255,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
           ) : null,
           image
             ? (/^(\/|https?:)/.test(String(image))
-                ? img({ src: image, class: 'feed-image tribe-image' })
+                ? renderZoomableImage(image, { imgClass: 'feed-image tribe-image' })
                 : renderMediaBlob(image, null))
             : null,
           notes ? p({ class: 'tribe-description' }, ...renderUrl(notes)) : ""
@@ -1284,7 +1279,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
           ),
           image
             ? (/^(\/|https?:)/.test(String(image))
-                ? img({ src: image, class: 'feed-image tribe-image' })
+                ? renderZoomableImage(image, { imgClass: 'feed-image tribe-image' })
                 : renderMediaBlob(image, null))
             : null,
           description ? p({ class: 'tribe-description' }, ...renderUrl(description)) : ""
@@ -1326,6 +1321,123 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
         div({ class: 'card-section' },
           div({ class: 'card-field' }, padKey ? a({ href: `/pads/${encodeURIComponent(padKey)}`, class: 'card-value user-link' }, padTitle || padKey) : span({ class: 'card-value' }, padTitle || '')),
           content.deadline ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.padDeadlineLabel || 'Deadline') + ':'), span({ class: 'card-value' }, content.deadline)) : ''
+        )
+      );
+    }
+
+    if (type === 'emergency') {
+      const emergencyKey = action.id || action.key || '';
+      const emergencyTitle = content.title || action.title || '';
+      cardBody.push(
+        div({ class: 'card-section' },
+          div({ class: 'card-field' }, emergencyKey ? a({ href: `/emergencies/${encodeURIComponent(emergencyKey)}`, class: 'card-value user-link' }, emergencyTitle || emergencyKey) : span({ class: 'card-value' }, emergencyTitle || '')),
+          content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.statusLabel || 'Status') + ':'), span({ class: 'card-value' }, String(content.status).toUpperCase())) : '',
+          content.category ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.emergencyCategoryLabel || 'Category') + ':'), span({ class: 'card-value' }, String(content.category).toUpperCase())) : '',
+          renderMediaBlob(content.text, null),
+          stripMediaMarkdown(content.text) ? p({ class: 'tribe-description' }, ...renderUrl(stripMediaMarkdown(content.text))) : ''
+        )
+      );
+    }
+
+    if (type === 'mailingList') {
+      const listKey = action.id || action.key || '';
+      const listTitle = content.title || action.title || '';
+      cardBody.push(
+        div({ class: 'card-section' },
+          div({ class: 'card-field' }, listKey ? a({ href: `/mailing/${encodeURIComponent(listKey)}`, class: 'card-value user-link' }, listTitle || listKey) : span({ class: 'card-value' }, listTitle || '')),
+          content.description ? div({ class: 'card-field' }, span({ class: 'card-value' }, String(content.description))) : ''
+        )
+      );
+    }
+
+    if (type === 'logisticsRoute') {
+      const routeKey = action.id || action.key || '';
+      const routeTitle = content.title || action.title || '';
+      cardBody.push(
+        div({ class: 'card-section' },
+          div({ class: 'card-field' }, routeKey ? a({ href: `/logistics/${encodeURIComponent(routeKey)}`, class: 'card-value user-link' }, routeTitle || routeKey) : span({ class: 'card-value' }, routeTitle || '')),
+          content.origin || content.destination ? div({ class: 'card-field' }, span({ class: 'card-value' }, `${content.origin || ''} → ${content.destination || ''}`)) : '',
+          content.kind ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.logisticsKindLabel || 'Type') + ':'), span({ class: 'card-value' }, `${String(content.kind).toUpperCase()} · ${String(content.mode || '').toUpperCase()}`)) : '',
+          content.date ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.logisticsDateLabel || 'Date') + ':'), span({ class: 'card-value' }, moment(content.date).format('YYYY/MM/DD HH:mm'))) : '',
+          renderMediaBlob(content.description, null),
+          stripMediaMarkdown(content.description) ? p({ class: 'tribe-description' }, ...renderUrl(stripMediaMarkdown(content.description))) : ''
+        )
+      );
+    }
+
+    if (type === 'podcast' || type === 'podcastEpisode') {
+      const pKey = action.id || action.key || '';
+      const pTitle = content.title || action.title || '';
+      const pHref = type === 'podcast' ? `/podcasts/${encodeURIComponent(pKey)}` : `/podcasts/episode/${encodeURIComponent(pKey)}`;
+      cardBody.push(
+        div({ class: 'card-section' },
+          type === 'podcastEpisode' ? '' : div({ class: 'card-field' }, pKey ? a({ href: pHref, class: 'card-value user-link' }, pTitle || pKey) : span({ class: 'card-value' }, pTitle || '')),
+          type === 'podcast' && content.category ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.podcastCategoryLabel || 'Category') + ':'), span({ class: 'card-value' }, String(content.category).toUpperCase())) : '',
+          renderMediaObject(type === 'podcast' ? content.cover : content.media, type === 'podcast' ? pHref : null),
+          stripMediaMarkdown(content.description) ? p({ class: 'tribe-description' }, ...renderUrl(stripMediaMarkdown(content.description).slice(0, 280))) : ''
+        )
+      );
+    }
+
+    if (type === 'campaign') {
+      const cpKey = action.id || action.key || '';
+      const cpTitle = content.title || action.title || '';
+      cardBody.push(
+        div({ class: 'card-section' },
+          div({ class: 'card-field' }, cpKey ? a({ href: `/campaigns/${encodeURIComponent(cpKey)}`, class: 'card-value user-link' }, cpTitle || cpKey) : span({ class: 'card-value' }, cpTitle || '')),
+          content.goal ? div({ class: 'card-field' }, span({ class: 'card-label' }, String(i18n.campaignSignaturesLabel || 'Signatures').toUpperCase() + ':'), span({ class: 'card-value' }, `${new Set(all.filter(x => x && x.type === 'campaignSignature' && x.content && (x.content.target === cpKey || x.content.target === (action.rootId || cpKey))).map(x => x.author)).size} / ${content.goal}`)) : '',
+          content.category ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.campaignCategoryLabel || 'Category') + ':'), span({ class: 'card-value' }, String(content.category).toUpperCase())) : '',
+          content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.statusLabel || 'Status') + ':'), span({ class: 'card-value' }, String(content.status).toUpperCase())) : '',
+          renderMediaBlob(content.text, null),
+          stripMediaMarkdown(content.text) ? p({ class: 'tribe-description' }, ...renderUrl(stripMediaMarkdown(content.text))) : ''
+        )
+      );
+    }
+
+    if (type === 'campaignUpdate') {
+      const targetId = String(content.target || '');
+      const parent = all.find(x => x && (x.id === targetId || x.key === targetId || x.rootId === targetId || x.tipId === targetId)) || null;
+      const parentContent = parent ? (parent.value?.content || parent.content || {}) : {};
+      const parentTitle = parentContent.title || '';
+      cardBody.push(
+        div({ class: 'card-section' },
+          div({ class: 'reply-context' },
+            span({ class: 'reply-context-meta' },
+              a({ href: `/campaigns/${encodeURIComponent(targetId)}`, class: 'tag-link' }, i18n.emergencyLastUpdate || 'LAST UPDATE'),
+              parentTitle ? span(' ', a({ href: `/campaigns/${encodeURIComponent(targetId)}`, class: 'user-link' }, parentTitle)) : ''
+            )
+          ),
+          renderMediaBlob(content.text, null),
+          stripMediaMarkdown(content.text) ? div({ class: 'card-field' }, p({ class: 'forum-reply-text' }, ...renderUrl(stripMediaMarkdown(content.text)))) : ''
+        )
+      );
+    }
+
+    if (type === 'emergencyUpdate') {
+      const targetId = String(content.target || '');
+      const parent = all.find(x => x && (x.id === targetId || x.key === targetId || x.rootId === targetId || x.tipId === targetId)) || null;
+      const parentContent = parent ? (parent.value?.content || parent.content || {}) : {};
+      const parentTitle = parentContent.title || '';
+      cardBody.push(
+        div({ class: 'card-section' },
+          div({ class: 'reply-context' },
+            span({ class: 'reply-context-meta' },
+              a({ href: `/emergencies/${encodeURIComponent(targetId)}`, class: 'tag-link' }, i18n.emergencyLastUpdate || 'LAST UPDATE'),
+              parentTitle ? span(' ', a({ href: `/emergencies/${encodeURIComponent(targetId)}`, class: 'user-link' }, parentTitle)) : ''
+            )
+          ),
+          renderMediaBlob(content.text, null),
+          stripMediaMarkdown(content.text) ? div({ class: 'card-field' }, p({ class: 'forum-reply-text' }, ...renderUrl(stripMediaMarkdown(content.text)))) : ''
+        )
+      );
+    }
+
+    if (type === 'wikiPage') {
+      const wikiKey = action.id || action.key || '';
+      const wikiTitle = content.title || action.title || '';
+      cardBody.push(
+        div({ class: 'card-section' },
+          div({ class: 'card-field' }, wikiKey ? a({ href: `/wiki/${encodeURIComponent(wikiKey)}`, class: 'card-value user-link' }, wikiTitle || wikiKey) : span({ class: 'card-value' }, wikiTitle || ''))
         )
       );
     }
@@ -1594,10 +1706,6 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
           description ? div({ class: 'card-field' },
             span({ class: 'card-value' }, String(description).length > 220 ? String(description).slice(0, 220) + '…' : description)
           ) : null,
-          div({ class: 'card-field' },
-            span({ class: 'card-label' }, (i18n.schoolCourseType || 'Course type') + ':'),
-            span({ class: 'card-value' }, String(visibility || '').toUpperCase() === 'INVITE' ? 'INVITE-ONLY' : (coursePaid ? 'PAID' : 'OPEN'))
-          ),
           coursePaid ? div({ class: 'card-field' },
             span({ class: 'card-label' }, (i18n.schoolPrice || 'Price (ECO)') + ':'),
             span({ class: 'card-value' }, `${Number(price).toFixed(2)} ECO`)
@@ -1688,7 +1796,13 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
     }
 
     if (type === 'parliamentProposal') {
-      const { title, description, method, status, voteId, createdAt } = content;
+      const { title, method, status, voteId, createdAt } = content;
+      const legacy = !content.campaignId ? String(content.description || '').match(/\n*\s*(\d+) signatures: \/campaigns\/(%[^\s]+\.sha256)\s*$/) : null;
+      const description = legacy ? String(content.description || '').slice(0, legacy.index).trim() : content.description;
+      const campaignId = content.campaignId || (legacy ? legacy[2] : '');
+      const liveSignatures = campaignId ? new Set(all.filter(x => x && x.type === 'campaignSignature' && x.content && x.content.target === campaignId).map(x => x.author)).size : 0;
+      const signatures = Math.max(liveSignatures, content.campaignId ? (Number(content.signatures) || 0) : (legacy ? Number(legacy[1]) || 0 : 0));
+      const goal = Number(content.goal) || 0;
 
       const methodUpper = String(
         i18n['parliamentMethod' + String(method || '').toUpperCase()] || method
@@ -1697,7 +1811,10 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       cardBody.push(
         div({ class: 'card-section parliament' },
           title ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentProposalTitle.toUpperCase() || 'Title') + ':'), span({ class: 'card-value' }, title)) : '',
-          description ? p({ class: 'card-section-text' }, description) : '',
+          renderMediaBlob(description, null),
+          stripMediaMarkdown(description) ? p({ class: 'card-section-text' }, ...renderUrl(stripMediaMarkdown(description))) : '',
+          campaignId ? div({ class: 'card-field' }, span({ class: 'card-label' }, String(i18n.campaignSignaturesLabel || 'Signatures').toUpperCase() + ':'), span({ class: 'card-value' }, `${signatures}${goal > 0 ? ` / ${goal}` : ''}`)) : '',
+          campaignId ? div({ class: 'card-field' }, a({ href: `/campaigns/${encodeURIComponent(campaignId)}`, class: 'card-value user-link' }, title || campaignId)) : '',
           div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentGovMethod || 'Method') + ':'), span({ class: 'card-value' }, methodUpper)),
           createdAt ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.createdAt.toUpperCase() || 'Created at') + ':'), span({ class: 'card-value' }, new Date(createdAt).toLocaleString())) : '',
           voteId ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentOpenVote.toUpperCase() || 'Open vote') + ':'), a({ href: `/votes/${encodeURIComponent(voteId)}`, class: 'tag-link' }, i18n.viewDetails || 'View details')) : '',
@@ -1811,7 +1928,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       div({ class: 'card-header activity-card-header' },
         div({ class: 'card-chips-row' },
           span({ class: 'pm-exposition-chip pm-exposition-whole' },
-            span({ class: 'pm-exposition-text' }, String(type || '').toUpperCase())
+            span({ class: 'pm-exposition-text' }, String(headerText || type || '').replace(/^\[|\]$/g, ''))
           )
         ),
         renderContentActions(msgId, detailHref, {
@@ -1823,12 +1940,16 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       ),
       ...cardBody,
       (() => {
-        if (!OPINION_TYPES.has(type)) return null;
-        const routeFn = OPINION_ROUTES[type];
-        if (!routeFn) return null;
+        const footerAuthorId = action.author || (content && content.proposer) || '';
+        const footerNode = p({ class: 'card-footer' },
+          span({ class: 'date-link' }, `${date} ${i18n.performed} `),
+          userLink(footerAuthorId, (action.authorNames && action.authorNames[footerAuthorId]) || getProfile(footerAuthorId).name)
+        );
+        const routeFn = OPINION_TYPES.has(type) ? OPINION_ROUTES[type] : null;
+        if (!routeFn) return footerNode;
         const ops = (action.value?.content?.opinions) || (action.content?.opinions) || {};
         const opsTotal = Object.values(ops).reduce((s, n) => s + (Number(n) || 0), 0);
-        return details({ class: 'opinions-voting-collapse' },
+        const votingNode = details({ class: 'opinions-voting-collapse' },
           summary({ class: 'opinions-summary' },
             span({ class: 'opinions-summary-icon' }, 'ꔍ'),
             span({ class: 'opinions-summary-count' }, `(${opsTotal})`)),
@@ -1840,13 +1961,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
             )
           )
         );
-      })(),
-      (() => {
-        const footerAuthorId = action.author || (content && content.proposer) || '';
-        return p({ class: 'card-footer' },
-          span({ class: 'date-link' }, `${date} ${i18n.performed} `),
-          userLink(footerAuthorId, (action.authorNames && action.authorNames[footerAuthorId]) || getProfile(footerAuthorId).name)
-        );
+        return [renderVotesSummary(ops), renderCardMetaRow(votingNode, footerNode)];
       })()
     );
   });
@@ -1864,7 +1979,9 @@ const FAV_KIND_BY_TYPE = {
   report: 'reports', votes: 'votes', poll: 'polls', market: 'market',
   housing: 'housing', job: 'jobs', project: 'projects', shop: 'shops',
   chat: 'chats', chatThread: 'chats', pad: 'pads', calendar: 'calendars',
-  map: 'maps', forum: 'forum', transfer: 'transfers', post: 'blogs'
+  map: 'maps', forum: 'forum', transfer: 'transfers', post: 'blogs',
+  wikiPage: 'wiki', emergency: 'emergencies', mailingList: 'mailing', logisticsRoute: 'logistics',
+  podcast: 'podcasts', podcastEpisode: 'podcasts', campaign: 'campaigns', campaignUpdate: 'campaigns'
 };
 
 const favOptsFor = (type, id, extras = {}) => {
@@ -1928,12 +2045,20 @@ function getViewDetailsAction(type, action) {
     case 'task':       return `/tasks/${id}`;
     case 'taskAssignment': return `/tasks/${encodeURIComponent(action.content?.taskId || action.tipId || action.id)}`;
     case 'about':      return `/author/${encodeURIComponent(action.author)}`;
-    case 'pub':        return `/invites`;
     case 'market':     return `/market/${id}`;
     case 'shop':       return `/shops/${id}`;
     case 'shopProduct': return `/shops/product/${id}`;
     case 'chat':       return `/chats/${id}`;
     case 'pad':        return `/pads/${id}`;
+    case 'wikiPage':   return `/wiki/${id}`;
+    case 'emergency':      return `/emergencies/${id}`;
+    case 'emergencyUpdate': return action.content && action.content.target ? `/emergencies/${encodeURIComponent(action.content.target)}` : '/emergencies';
+    case 'campaignUpdate': return action.content && action.content.target ? `/campaigns/${encodeURIComponent(action.content.target)}` : '/campaigns';
+    case 'mailingList': return `/mailing/${id}`;
+    case 'logisticsRoute': return `/logistics/${id}`;
+    case 'podcast': return `/podcasts/${id}`;
+    case 'podcastEpisode': return `/podcasts/episode/${id}`;
+    case 'campaign': return `/campaigns/${id}`;
     case 'calendar':   return `/calendars/${id}`;
     case 'housing':    return `/housing/${id}`;
     case 'job':        return `/jobs/${id}`;
@@ -1977,6 +2102,12 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     { type: 'feed',      label: i18n.typeFeed },
     { type: 'chat',      label: i18n.typeChat },
     { type: 'pad',       label: i18n.typePad },
+    { type: 'wiki',      label: i18n.typeWiki },
+    { type: 'emergency',     label: i18n.typeEmergency },
+    { type: 'mailing',   label: i18n.typeMailingList },
+    { type: 'logistics', label: i18n.typeLogisticsRoute },
+    { type: 'podcast',   label: i18n.typePodcast },
+    { type: 'campaign',  label: i18n.typeCampaign },
     { type: 'forum',     label: i18n.typeForum },
     { type: 'map',       label: i18n.typeMap },
     { type: 'banking',   label: i18n.typeBanking },
@@ -2007,6 +2138,12 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     larp:       ['larpHousePost'],
     inhabitants:['about'],
     chat:       ['chat', 'chatThread'],
+    wiki:       ['wikiPage'],
+    mailing:    ['mailingList'],
+    emergency:  ['emergency', 'emergencyUpdate'],
+    logistics:  ['logisticsRoute'],
+    podcast:    ['podcast', 'podcastEpisode'],
+    campaign:   ['campaign', 'campaignUpdate'],
     industry:   ['industry', 'industryBuild', 'industryBlueprint', 'industryAllocation']
   };
   const ALLOWED_TYPES = new Set();
@@ -2015,6 +2152,7 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     if (GROUP_SUBTYPES[type]) GROUP_SUBTYPES[type].forEach(t => ALLOWED_TYPES.add(t));
     else ALLOWED_TYPES.add(type);
   }
+  const rawActions = actions;
   actions = actions.filter(action => ALLOWED_TYPES.has(action.type));
 
   let filteredActions;
@@ -2044,6 +2182,18 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     filteredActions = actions.filter(action => action.type === 'torrent');
   } else if (filter === 'chat') {
     filteredActions = actions.filter(action => (action.type === 'chat' || action.type === 'chatThread') && action.type !== 'tombstone');
+  } else if (filter === 'wiki') {
+    filteredActions = actions.filter(action => action.type === 'wikiPage');
+  } else if (filter === 'emergency') {
+    filteredActions = actions.filter(action => action.type === 'emergency' || action.type === 'emergencyUpdate');
+  } else if (filter === 'mailing') {
+    filteredActions = actions.filter(action => action.type === 'mailingList');
+  } else if (filter === 'logistics') {
+    filteredActions = actions.filter(action => action.type === 'logisticsRoute');
+  } else if (filter === 'podcast') {
+    filteredActions = actions.filter(action => action.type === 'podcast' || action.type === 'podcastEpisode');
+  } else if (filter === 'campaign') {
+    filteredActions = actions.filter(action => action.type === 'campaign' || action.type === 'campaignUpdate');
   } else if (filter === 'industry') {
     filteredActions = actions.filter(action => ['industry', 'industryBuild', 'industryBlueprint', 'industryAllocation'].includes(action.type) && action.type !== 'tombstone');
   } else {
@@ -2141,48 +2291,46 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
   };
 
   const sub = MODULE_SUB_FILTERS[filter];
+  const emptyAct = actions.length === 0 && !qs;
 
   let html = template(
     title,
     section(
-      div({ class: 'tags-header' },
+      div({ class: 'tags-header activity-header-line' },
         h2(i18n.activityList),
         p(desc)
       ),
-      div({ class: 'activity-filter-grid' },
-        ...(() => {
-          const COLUMNS = [
-            ['all', 'mine', 'recent', 'top'],
-            ['inhabitants', 'tribe', 'larp', 'schoolCourse', 'parliament', 'courts'],
-            ['votes', 'event', 'calendar', 'task', 'report'],
-            ['banking', 'market', 'housing', 'project', 'industry', 'job', 'shop', 'transfer'],
-            ['post', 'feed', 'chat', 'pad', 'forum', 'map'],
-            ['audio', 'bookmark', 'document', 'image', 'torrent', 'video']
+      emptyAct ? null : div({ class: 'activity-filter-chips' },
+        (() => {
+          const ORDER = [
+            'all', 'mine', 'recent', 'top',
+            'inhabitants', 'tribe', 'larp', 'schoolCourse', 'parliament', 'courts', 'emergency',
+            'votes', 'event', 'calendar', 'task', 'report', 'campaign',
+            'banking', 'market', 'housing', 'project', 'industry', 'job', 'shop', 'transfer', 'logistics',
+            'post', 'feed', 'chat', 'pad', 'wiki', 'mailing', 'forum', 'map',
+            'audio', 'bookmark', 'document', 'image', 'torrent', 'video', 'podcast'
           ];
           const byType = new Map(activityTypes.map(t => [t.type, t]));
-          const placed = new Set(COLUMNS.flat());
-          const leftovers = activityTypes.filter(t => !placed.has(t.type));
-          return COLUMNS
-            .map(col => col.map(type => byType.get(type)).filter(Boolean))
-            .concat(leftovers.length ? [leftovers] : [])
-            .filter(col => col.length);
-        })().map(col =>
-          div({ class: 'activity-filter-col' },
-            col.map(({ type, label }) =>
-              form({ method: 'GET', action: '/activity' },
-                input({ type: 'hidden', name: 'filter', value: type }),
-                button({ type: 'submit', class: filter === type ? 'filter-btn active' : 'filter-btn' }, label)
-              )
-            )
-          )
-        )
+          const placed = new Set(ORDER);
+          const presentActionTypes = new Set(actions.map(a2 => a2.type));
+          const metaKeep = new Set(['all', 'mine', 'recent', 'top']);
+          const hasContentFor = (type) =>
+            metaKeep.has(type) || (GROUP_SUBTYPES[type] || [type]).some(t2 => presentActionTypes.has(t2));
+          const ordered = ORDER.map(type => byType.get(type)).filter(Boolean)
+            .concat(activityTypes.filter(t => !placed.has(t.type)))
+            .filter(({ type }) => hasContentFor(type));
+          return ordered.map(({ type, label }) =>
+            a({
+              href: `/activity?filter=${encodeURIComponent(type)}`,
+              class: filter === type ? 'activity-chip active' : 'activity-chip'
+            }, label)
+          );
+        })()
       ),
-      sub
-        ? div({ class: 'activity-sub-filter' },
-            sub.filters.map(f => a({ href: `${sub.url}?filter=${encodeURIComponent(f)}`, class: 'filter-btn' }, String(f).toUpperCase()))
-          )
-        : null,
-      div({ class: 'filters' },
+      emptyAct ? null : div({ class: 'activity-filter-chips activity-toolbar-row' },
+        renderModuleStats(filteredActions.length, [], null, { showInhabitants: true, showTribes: true }),
+        sub ? span({ class: 'activity-subchip-label' }, '\u21b3') : '',
+        sub ? sub.filters.map(f => a({ href: `${sub.url}?filter=${encodeURIComponent(f)}`, class: 'activity-chip' }, String(f).toUpperCase())) : '',
         form({ method: 'GET', action: '/activity', class: 'filter-box' },
           input({ type: 'hidden', name: 'filter', value: filter }),
           input({ type: 'text', name: 'q', value: qs, placeholder: i18n.activitySearchPlaceholder, class: 'filter-box__input' }),
@@ -2191,15 +2339,14 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
           )
         )
       ),
-    section({ class: 'feed-container' }, renderActionCards(filteredActions, userId, actions, spreadMap, extras))
+    section({ class: 'feed-container' }, renderActionCards(filteredActions, userId, rawActions, spreadMap, extras))
     )
   );
 
   const hasDocument = actions.some(a => a && a.type === 'document');
   if (hasDocument) {
     html += `
-      <script type="module" src="/js/pdf.min.mjs"></script>
-      <script src="/js/pdf-viewer.js"></script>
+      <script type="module" src="/js/pdf-viewer.js?v=102"></script>
     `;
   }
   return html;

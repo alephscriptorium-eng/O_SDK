@@ -10,7 +10,7 @@ const visibleComments = (comments) => (Array.isArray(comments) ? comments : []).
   return t && String(t).trim();
 });
 
-const renderCommentCard = (c) => {
+const renderCommentCard = (c, extra = null) => {
   const author = (c && c.value && c.value.author) || "";
   const ts = (c && c.value && c.value.timestamp) || (c && c.timestamp);
   const absDate = ts ? moment(ts).format("YYYY/MM/DD HH:mm") : "";
@@ -21,20 +21,20 @@ const renderCommentCard = (c) => {
 
   return div({ class: "votations-comment-card", id: c && c.key ? c.key : undefined },
     span({ class: "created-at" },
-      span(i18n.createdBy),
       author ? userLink(author) : span("(unknown)"),
       absDate ? span(" | ") : "",
       absDate ? span({ class: "votations-comment-date" }, absDate) : "",
       relDate ? span({ class: "votations-comment-date" }, " | ", i18n.sendTime) : "",
       relDate && rootId ? a({ href: `/thread/${encodeURIComponent(rootId)}#${encodeURIComponent(c.key)}` }, relDate) : ""
     ),
-    p({ class: "votations-comment-text" }, ...renderUrl(String(text)))
+    p({ class: "votations-comment-text" }, ...renderUrl(String(text))),
+    extra
   );
 };
 
-const renderCommentsSection = ({ action, comments = [], returnTo = null, closedNote = null, extraClass = "" } = {}) => {
+const renderCommentsSection = ({ action, comments = [], returnTo = null, closedNote = null, extraClass = "", open = false, commentExtra = null } = {}) => {
   const list = visibleComments(comments);
-  return details({ class: "comments-collapse" + (extraClass ? ` ${extraClass}` : "") },
+  return details({ class: "comments-collapse" + (extraClass ? ` ${extraClass}` : ""), ...(open ? { open: true } : {}) },
     summary({ class: list.length > 0 ? "comments-summary engage-on" : "comments-summary" },
       span({ class: "comments-summary-icon" }, COMMENT_ICON),
       span({ class: "comments-summary-count" }, `(${list.length})`)
@@ -46,14 +46,14 @@ const renderCommentsSection = ({ action, comments = [], returnTo = null, closedN
             h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
             form({ method: "POST", action, class: "comment-form", enctype: "multipart/form-data" },
               returnTo ? input({ type: "hidden", name: "returnTo", value: returnTo }) : null,
-              textarea({ name: "text", rows: 4, class: "comment-textarea", placeholder: i18n.voteNewCommentPlaceholder }),
+              textarea({ name: "text", rows: 4, maxlength: "4000", class: "comment-textarea", placeholder: i18n.voteNewCommentPlaceholder }),
               div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
               br(),
               button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
             )
           ),
       list.length
-        ? div({ class: "comments-list" }, ...list.map(renderCommentCard))
+        ? div({ class: "comments-list" }, ...list.map(c => renderCommentCard(c, typeof commentExtra === "function" ? commentExtra(c) : null)))
         : (closedNote ? null : p({ class: "votations-no-comments" }, i18n.voteNoCommentsYet))
     )
   );

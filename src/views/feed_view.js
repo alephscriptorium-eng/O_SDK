@@ -1,6 +1,6 @@
-const { div, h2, p, section, button, form, a, span, textarea, br, input, h1, label } = require("../server/node_modules/hyperaxe");
+const { div, h2, p, section, button, form, a, span, textarea, br, input, h1, label, img } = require("../server/node_modules/hyperaxe");
 const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink } = require("./comments_view");
-const { template, i18n, renderOpinionsVoting, userLink, renderContentActions, renderEngagement } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, userLink, renderContentActions, renderEngagement, renderVotesSummary, renderModuleStats, moduleIsEmpty } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
 const { renderTextWithStyles } = require("../backend/renderTextWithStyles");
 const moment = require("../server/node_modules/moment");
@@ -62,16 +62,6 @@ const generateFilterButtons = (filters, currentFilter, action, extra = {}) => {
   );
 };
 
-const renderVotesSummary = (opinions = {}) => {
-  const entries = Object.entries(opinions).filter(([, v]) => Number(v) > 0);
-  if (!entries.length) return null;
-  entries.sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
-  return div(
-    { class: "votes" },
-    entries.map(([category, count]) => span({ class: "vote-category" }, `${category}: ${count}`))
-  );
-};
-
 const renderCardField = (labelText, value) =>
   div(
     { class: "card-field" },
@@ -83,11 +73,12 @@ const renderFeedCommentsSection = (feedKey, comments = []) => {
   return renderSharedCommentsSection({
     action: `/feed/${encodeURIComponent(feedKey)}/comments`,
     comments: comments,
-    returnTo: null
+    returnTo: null,
+    open: true
   });
 };
 
-const renderFeedCard = (feed) => {
+const renderFeedCard = (feed, spreadMap = null) => {
     const content = feed.value.content || {};
     const rawText = typeof content.text === "string" ? content.text : "";
     const safeText = rawText.trim();
@@ -100,7 +91,8 @@ const renderFeedCard = (feed) => {
 
     const alreadyRefeeded = Array.isArray(content.refeeds_inhabitants) && me ? content.refeeds_inhabitants.includes(me) : false;
 
-    const authorId = feed.value.author || content.author || "";
+    const authorId = content.author || feed.value.author || "";
+    const signerId = feed.value.author || "";
     const refeedsNum = Number(content.refeeds || 0) || 0;
     const commentCount = Number(content.commentCount || 0);
     const styledHtml = rewriteHashtagLinks(renderTextWithStyles(safeText));
@@ -110,7 +102,12 @@ const renderFeedCard = (feed) => {
         div(
             { class: "card-header activity-card-header" },
             span(),
-            renderContentActions(feed.key, `/feed/${encodeURIComponent(feed.key)}`, { author: authorId, reportTitle: safeText })
+            renderContentActions(feed.key, `/feed/${encodeURIComponent(feed.key)}`, {
+                author: authorId,
+                spread: (spreadMap && spreadMap.get(feed.key)) || null,
+                reportTitle: safeText,
+                ...(((signerId && String(signerId) === String(me)) || (authorId && String(authorId) === String(me))) ? { deleteAction: `/feed/delete/${encodeURIComponent(feed.key)}` } : {})
+            })
         ),
         div(
             { class: "card-section feed-card-body" },
@@ -119,28 +116,17 @@ const renderFeedCard = (feed) => {
             div(
                 { class: "refeed-column" },
                 h1(String(refeedsNum)),
-                form(
-                    { method: "POST", action: `/feed/refeed/${encodeURIComponent(feed.key)}` },
-                    button({ class: alreadyRefeeded ? "refeed-btn active" : "refeed-btn", type: "submit", ...(alreadyRefeeded ? { disabled: true } : {}) }, i18n.refeedButton)
-                ),
-                alreadyRefeeded ? p({ class: "muted" }, i18n.alreadyRefeeded) : null
+                (authorId && String(authorId) === String(me))
+                    ? null
+                    : form(
+                        { method: "POST", action: `/feed/refeed/${encodeURIComponent(feed.key)}` },
+                        button({ class: alreadyRefeeded ? "refeed-btn active" : "refeed-btn", type: "submit", ...(alreadyRefeeded ? { disabled: true } : {}) }, i18n.refeedButton)
+                    ),
             ),
             div(
                 { class: "feed-main" },
                 div({ class: "feed-text", innerHTML: sanitizeHtml(styledHtml) }),
-                h2(
-                    `${i18n.totalOpinions}: ${totalCount}`,
-                    ...(() => {
-                        const entries = voteEntries.filter(([, v]) => Number(v) > 0);
-                        if (!entries.length) return [];
-                        const maxVal = Math.max(...entries.map(([, v]) => Number(v)));
-                        const dominant = entries.filter(([, v]) => Number(v) === maxVal).map(([k]) => i18n['vote' + k.charAt(0).toUpperCase() + k.slice(1)] || k);
-                        return [
-                            span({ class: 'feed-vote-sep' }, '|'),
-                            span({ class: 'feed-vote-dominant' }, `${i18n.moreVoted || 'More Voted'}: ${dominant.join(' + ')}`)
-                        ];
-                    })()
-                ),
+                renderVotesSummary(content.opinions),
                 p(
                     { class: "card-footer" },
                     span({ class: "date-link" }, `${createdAt} ${i18n.performed} `),
@@ -157,8 +143,45 @@ const renderFeedCard = (feed) => {
     );
 };
 
+const renderFeedSideTags = (trendingTags) =>
+  div({ class: "feed-side feed-side-right" },
+    div({ class: "feed-side-box" },
+      h2({ class: "feed-side-title" }, i18n.feedTrendingTitle || "Trending Tags"),
+      trendingTags.length
+        ? div({ class: "feed-side-tags" },
+            trendingTags.map(t => a({ href: `/feed?tag=${encodeURIComponent(t.name || t)}`, class: "tag-link" }, `#${t.name || t}`)))
+        : p({ class: "muted" }, "—")
+    )
+  );
+
+const renderFeedSideUsers = (activeUsers) =>
+  div({ class: "feed-side feed-side-left" },
+    div({ class: "feed-side-box" },
+      h2({ class: "feed-side-title" }, i18n.feedActiveTitle || "Active Inhabitants"),
+      activeUsers.length
+        ? div({ class: "feed-side-users" },
+            activeUsers.map(u => div({ class: "feed-side-user" },
+              img({ src: u.avatarUrl || "/assets/images/default-avatar.png", class: "feed-side-avatar" }),
+              userLink(u.id)
+            )))
+        : p({ class: "muted" }, "—")
+    )
+  );
+
+const feedChipFor = (filter, censusF) => (mode) => {
+  if (mode === filter) return true;
+  if (!Array.isArray(censusF)) return true;
+  if (mode === "MINE") return censusF.some((f) => String(f && f.value && f.value.author) === String(config.keys.id));
+  if (mode === "TODAY") return censusF.some((f) => (Number(f && f.value && f.value.timestamp) || 0) >= Date.now() - 86400000);
+  return true;
+};
+
 exports.feedView = (feeds, opts = "ALL") => {
   const { filter, q, tag, msg } = normalizeOptions(opts);
+  const workspace = !!(opts && typeof opts === "object" && opts.workspace) && require("../configs/config-manager.js").getConfig().ux?.current === "feed";
+  const spreadMap = (opts && typeof opts === "object" && opts.spreadMap instanceof Map) ? opts.spreadMap : null;
+  const trendingTags = (opts && typeof opts === "object" && Array.isArray(opts.trendingTags)) ? opts.trendingTags : [];
+  const activeUsers = (opts && typeof opts === "object" && Array.isArray(opts.activeUsers)) ? opts.activeUsers : [];
 
   const title =
     filter === "MINE"
@@ -175,57 +198,71 @@ exports.feedView = (feeds, opts = "ALL") => {
                 ? `${i18n.searchTitle || "Search"}: “${q}”`
                 : i18n.feedTitle;
 
-  const header = div({ class: "tags-header" }, h2(title), p(i18n.FeedshareYourOpinions));
+  const header = div({ class: "tags-header module-header-line" }, h2(title), p(i18n.FeedshareYourOpinions));
   const successBanner = msg === 'feedPublished'
     ? div({ class: 'feed-success-msg' }, p('✓ ' + (i18n.feedPublishedSuccess || 'Feed published successfully!')))
     : null;
 
   const extra = { q, tag };
+  const emptyMod = moduleIsEmpty(feeds, filter, "ALL", q || tag);
+  const censusF = Array.isArray(opts.censusList) ? opts.censusList : feeds;
+  const feedChip = feedChipFor(filter, censusF);
 
-  return template(
-    title,
-    section(
-      header,
-      successBanner,
-      div(
-        { class: "mode-buttons-row" },
-        ...generateFilterButtons(["ALL", "MINE", "TODAY", "TOP"], filter, "/feed", extra),
-        form({ method: "GET", action: "/feed/create" }, button({ type: "submit", class: "create-button filter-btn" }, i18n.createFeedTitle || "Create Feed"))
-      ),
-      div(
-        { class: "feed-tools-row" },
-        form(
-          { method: "GET", action: "/feed", class: "filter-box" },
-          input({ type: "hidden", name: "filter", value: filter }),
-          tag ? input({ type: "hidden", name: "tag", value: tag }) : null,
-          input({ type: "text", name: "q", value: q, placeholder: i18n.searchPlaceholder || "Search", class: "filter-box__input" }),
-          div({ class: "filter-box__controls" },
-            button({ type: "submit", class: "filter-box__button" }, i18n.searchButton || "Search")
-          )
+  const centerContent = section(
+    header,
+    successBanner,
+    div(
+      { class: "mode-buttons-row" },
+      ...(emptyMod ? [] : generateFilterButtons(["ALL", "MINE", "TODAY", "TOP"].filter(feedChip), filter, "/feed", extra)),
+      form({ method: "GET", action: "/feed/create" }, button({ type: "submit", class: "create-button filter-btn" }, i18n.createFeedTitle || "Create Feed"))
+    ),
+    emptyMod ? null : div(
+      { class: "feed-tools-row activity-filter-chips activity-toolbar-row" },
+        renderModuleStats(feeds.length),
+      form(
+        { method: "GET", action: "/feed", class: "filter-box" },
+        input({ type: "hidden", name: "filter", value: filter }),
+        tag ? input({ type: "hidden", name: "tag", value: tag }) : null,
+        input({ type: "text", name: "q", value: q, placeholder: i18n.feedSearchPlaceholder || i18n.searchPlaceholder || "Search", class: "filter-box__input" }),
+        div({ class: "filter-box__controls" },
+          button({ type: "submit", class: "filter-box__button" }, i18n.searchButton || "Search")
         )
-      ),
-      section(
-        filter === "CREATE"
-          ? form(
-              { method: "POST", action: "/feed/create" },
-              textarea({
-                name: "text",
-                placeholder: i18n.feedPlaceholder,
-                required: true,
-                minlength: String(FEED_TEXT_MIN),
-                maxlength: String(FEED_TEXT_MAX),
-                rows: 4,
-                cols: 50
-              }),
-              br(),
-              button({ type: "submit", class: "create-button" }, i18n.createFeedButton)
-            )
-          : feeds && feeds.length > 0
-            ? div({ class: "feed-container" }, feeds.map((feed) => renderFeedCard(feed)).filter(Boolean))
-            : div({ class: "no-results" }, p(i18n.noFeedsFound))
       )
+    ),
+    section(
+      filter === "CREATE"
+        ? form(
+            { method: "POST", action: "/feed/create" },
+            textarea({
+              name: "text",
+              placeholder: i18n.feedPlaceholder,
+              required: true,
+              minlength: String(FEED_TEXT_MIN),
+              maxlength: String(FEED_TEXT_MAX),
+              rows: 4,
+              cols: 50
+            }),
+            br(),
+            button({ type: "submit", class: "create-button" }, i18n.createFeedButton)
+          )
+        : feeds && feeds.length > 0
+          ? div({ class: "feed-container" }, feeds.map((feed) => renderFeedCard(feed, spreadMap)).filter(Boolean))
+          : div({ class: "no-results" }, p(i18n.noFeedsFound))
     )
   );
+
+  if (workspace) {
+    return template(
+      title,
+      div({ class: "feed-workspace" },
+        renderFeedSideUsers(activeUsers),
+        div({ class: "feed-workspace-center" }, centerContent),
+        renderFeedSideTags(trendingTags)
+      )
+    );
+  }
+
+  return template(title, centerContent);
 };
 
 exports.feedCreateView = (opts = {}) => {
@@ -234,8 +271,8 @@ exports.feedCreateView = (opts = {}) => {
   return template(
     i18n.createFeedTitle,
     section(
-      div({ class: "tags-header" }, h2(i18n.createFeedTitle), p(i18n.FeedshareYourOpinions)),
-      div({ class: "mode-buttons-row" }, ...generateFilterButtons(["ALL", "MINE", "TODAY", "TOP"], "CREATE", "/feed", { q, tag })),
+      div({ class: "tags-header module-header-line" }, h2(i18n.createFeedTitle), p(i18n.FeedshareYourOpinions)),
+      div({ class: "mode-buttons-row" }, ...generateFilterButtons(["ALL"], "CREATE", "/feed", { q, tag })),
       form(
         { method: "POST", action: "/feed/create" },
         textarea({
@@ -255,10 +292,12 @@ exports.feedCreateView = (opts = {}) => {
 };
 
 exports.singleFeedView = (feed, comments = [], params = {}) => {
+  const feedChip = feedChipFor("ALL", Array.isArray(params.censusList) ? params.censusList : null);
   const content = feed.value?.content || {};
   const rawText = typeof content.text === "string" ? content.text : "";
   const safeText = rawText.trim();
-  const authorId = feed.value?.author || content.author || "";
+  const authorId = content.author || feed.value?.author || "";
+  const signerId = feed.value?.author || "";
   const createdAt = formatDate(feed);
   const styledHtml = rewriteHashtagLinks(renderTextWithStyles(safeText));
   const me = config?.keys?.id;
@@ -268,15 +307,15 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
 
   return template(
     i18n.feedDetailTitle || "Feed",
-    section(div({ class: "tags-header" }, h2(i18n.feedTitle), p(i18n.FeedshareYourOpinions))),
+    section(div({ class: "tags-header module-header-line" }, h2(i18n.feedTitle), p(i18n.FeedshareYourOpinions))),
     section(
       div(
         { class: "filters" },
         form(
           { method: "GET", action: "/feed", class: "ui-toolbar ui-toolbar--filters" },
           button({ type: "submit", name: "filter", value: "ALL", class: "filter-btn" }, i18n.ALLButton || "ALL"),
-          button({ type: "submit", name: "filter", value: "MINE", class: "filter-btn" }, i18n.MINEButton || "MINE"),
-          button({ type: "submit", name: "filter", value: "TODAY", class: "filter-btn" }, i18n.TODAYButton || "TODAY"),
+          ...(feedChip("MINE") ? [button({ type: "submit", name: "filter", value: "MINE", class: "filter-btn" }, i18n.MINEButton || "MINE")] : []),
+          ...(feedChip("TODAY") ? [button({ type: "submit", name: "filter", value: "TODAY", class: "filter-btn" }, i18n.TODAYButton || "TODAY")] : []),
           button({ type: "submit", name: "filter", value: "TOP", class: "filter-btn" }, i18n.TOPButton || "TOP"),
           form({ method: "GET", action: "/feed/create" }, button({ type: "submit", class: "create-button" }, i18n.createFeedTitle || "Create Feed"))
         )
@@ -285,7 +324,12 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
         { class: "bookmark-item card feed-detail-card" },
         div({ class: "card-header activity-card-header" },
           span(),
-          renderContentActions(feed.key, null, { spread: params.spreads || null, author: authorId, reportTitle: safeText })
+          renderContentActions(feed.key, null, {
+            spread: params.spreads || null,
+            author: authorId,
+            reportTitle: safeText,
+            ...(((signerId && String(signerId) === String(me)) || (authorId && String(authorId) === String(me))) ? { deleteAction: `/feed/delete/${encodeURIComponent(feed.key)}` } : {})
+          })
         ),
         br,
         div(
@@ -293,11 +337,12 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
           div(
             { class: "refeed-column" },
             h1(String(refeedsNum)),
-            form(
-              { method: "POST", action: `/feed/refeed/${encodeURIComponent(feed.key)}` },
-              button({ class: alreadyRefeeded ? "refeed-btn active" : "refeed-btn", type: "submit", ...(alreadyRefeeded ? { disabled: true } : {}) }, i18n.refeedButton)
-            ),
-            alreadyRefeeded ? p({ class: "muted" }, i18n.alreadyRefeeded) : null
+            (authorId && String(authorId) === String(me))
+              ? null
+              : form(
+                  { method: "POST", action: `/feed/refeed/${encodeURIComponent(feed.key)}` },
+                  button({ class: alreadyRefeeded ? "refeed-btn active" : "refeed-btn", type: "submit", ...(alreadyRefeeded ? { disabled: true } : {}) }, i18n.refeedButton)
+              ),
           ),
           div(
             { class: "feed-main" },

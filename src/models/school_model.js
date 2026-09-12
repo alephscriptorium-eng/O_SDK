@@ -1,6 +1,7 @@
 const pull = require("../server/node_modules/pull-stream")
 const moment = require("../server/node_modules/moment")
 const { getConfig } = require("../configs/config-manager.js")
+const { readTyped } = require("./typed_log")
 const opinionCategories = require("../backend/opinion_categories")
 const logLimit = getConfig().ssbLogStream?.limit || 1000
 
@@ -44,13 +45,13 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
   let ssb
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb }
 
-  const readAll = async (ssbClient) =>
-    new Promise((resolve, reject) =>
-      pull(
-        ssbClient.createLogStream({ limit: logLimit }),
-        pull.collect((err, msgs) => err ? reject(err) : resolve(msgs))
-      )
-    )
+  const SCHOOL_TYPES = [
+    "schoolCourse", "schoolLesson", "schoolLessonMedia", "schoolExam", "schoolExamQuestion",
+    "schoolExamResult", "schoolProgress", "schoolOpinion", "schoolCertificate", "schoolCommentHide",
+    "schoolEnroll", "school-invite", "tombstone", "tribe-keys", "transfer", "transferConfirm", "chatMember", "chat"
+  ]
+
+  const readAll = async (ssbClient) => readTyped(ssbClient, SCHOOL_TYPES, { limit: logLimit, withWindow: true })
 
   const buildIndex = (messages, ssbClient) => {
     const tomb = new Set()
@@ -69,12 +70,18 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
     const questionNodes = new Map()
     const progressLatest = new Map()
     const examResultLatest = new Map()
+    const chatByCourse = new Map()
 
     for (const m of messages) {
       const key = m.key
       const v = m.value || {}
       const c = v.content
       if (!c) continue
+
+      if (c.type === "chat") {
+        if (typeof c.courseId === "string" && c.courseId && !chatByCourse.has(c.courseId)) chatByCourse.set(c.courseId, key)
+        continue
+      }
 
       if (c.type === "tombstone" && c.target) {
         tomb.add(c.target)
@@ -104,7 +111,7 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
         const ts = v.timestamp || m.timestamp || 0
         const k = `${c.courseId}::${author}`
         const prev = enrollLatest.get(k)
-        if (!prev || ts >= prev.ts) enrollLatest.set(k, { ts, value: !!c.value, author, courseId: c.courseId, transferId: c.transferId || null })
+        if (!prev || ts >= prev.ts) enrollLatest.set(k, { ts, value: !!c.value, author, courseId: c.courseId, transferId: c.transferId || null, keyProof: c.keyProof || null })
         continue
       }
 
@@ -169,7 +176,7 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
           if (c.type === "schoolEnroll" && c.courseId) {
             const k = `${c.courseId}::${author}`
             const prev = enrollLatest.get(k)
-            if (!prev || ts >= prev.ts) enrollLatest.set(k, { ts, value: !!c.value, author, courseId: c.courseId, transferId: c.transferId || null })
+            if (!prev || ts >= prev.ts) enrollLatest.set(k, { ts, value: !!c.value, author, courseId: c.courseId, transferId: c.transferId || null, keyProof: c.keyProof || null })
             continue
           }
           if (c.type === "schoolProgress" && c.courseId && c.lessonId) {
@@ -231,10 +238,10 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
     for (const r of roots) tipByRoot.set(r, tipOf(r))
 
     const enrollByCourse = new Map()
-    for (const { courseId, author, value, transferId } of enrollLatest.values()) {
+    for (const { courseId, author, value, transferId, keyProof } of enrollLatest.values()) {
       if (!enrollByCourse.has(courseId)) enrollByCourse.set(courseId, new Map())
       const enrollments = enrollByCourse.get(courseId)
-      if (value) enrollments.set(author, { transferId })
+      if (value) enrollments.set(author, { transferId, keyProof: keyProof || null })
       else enrollments.delete(author)
     }
 
@@ -276,14 +283,18 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
       }
     }
 
-    return { tomb, courseNodes, lessonNodes, certNodes, examNodes, parent, child, rootOf, tipOf, tipByRoot, enrollByCourse, transferAgg, grantsByCourse, opinionsByCourse, progressByCourse, examResultLatest, lessonRootOf, lessonChildOf, questionNodes }
+    return { tomb, courseNodes, lessonNodes, certNodes, examNodes, parent, child, rootOf, tipOf, tipByRoot, enrollByCourse, transferAgg, grantsByCourse, opinionsByCourse, progressByCourse, examResultLatest, lessonRootOf, lessonChildOf, questionNodes, chatByCourse }
   }
 
-  const buildCourseObject = (node, rootId, enrollments, transferAgg, grants, opinionAgg) => {
+  const keyProofFor = (keyHex, studentId) => {
+    try { return nodeCrypto.createHmac("sha256", Buffer.from(keyHex, "hex")).update(String(studentId), "utf8").digest("hex") } catch (_) { return null }
+  }
+
+  const buildCourseObject = (node, rootId, enrollments, transferAgg, grants, opinionAgg, chatByCourse = new Map()) => {
     let c = node.c || {}
+    const ringKeys = schoolCrypto ? (schoolCrypto.getKeys(rootId) || []) : []
     if (c.encryptedPayload) {
-      const keys = schoolCrypto ? (schoolCrypto.getKeys(rootId) || []) : []
-      const dec = keys.length && schoolCrypto ? schoolCrypto.decryptContent(c, keys.map(k => [k])) : { ...c, _undecryptable: true }
+      const dec = ringKeys.length && schoolCrypto ? schoolCrypto.decryptContent(c, ringKeys.map(k => [k])) : { ...c, _undecryptable: true }
       if (dec._undecryptable) return { undecryptable: true, id: node.key, rootId, author: node.author }
       c = dec
     }
@@ -294,7 +305,9 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
     const paid = Number.isFinite(priceN) && priceN > 0
     const students = []
     const pending = []
+    const grantedViaInvite = []
     for (const [student, info] of (enrollments || new Map())) {
+      if (info.keyProof && ringKeys.some(k => keyProofFor(k, student) === info.keyProof)) grantedViaInvite.push(student)
       if (paid) {
         const signatures = info.transferId ? (transferAgg && transferAgg.get(info.transferId)) : null
         if (signatures && signatures.size >= 2) students.push(student)
@@ -313,15 +326,16 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
       price: Number.isFinite(priceN) && priceN > 0 ? priceN.toFixed(6) : "0.000000",
       visibility: String(c.visibility || "PUBLIC").toUpperCase() === "INVITE" ? "INVITE" : "PUBLIC",
       status: String(c.status || "ONGOING").toUpperCase() === "CLOSED" ? "CLOSED" : "ONGOING",
-      invited: normalizeIds(c.invited),
+      invited: normalizeIds(c.invited).filter(id => !students.includes(id)),
       startDate: c.startDate || null,
-      chatId: c.chatId || null,
+      chatId: c.chatId || chatByCourse.get(rootId) || null,
+      inviteCode: c.inviteCode || null,
       author: node.author || c.author,
       createdAt: c.createdAt || new Date(node.ts).toISOString(),
       updatedAt: c.updatedAt || null,
       students,
       pending,
-      granted: grants ? Array.from(grants) : [],
+      granted: Array.from(new Set([...(grants ? Array.from(grants) : []), ...grantedViaInvite])),
       opinions: opinionAgg ? opinionAgg.opinions : {},
       opinions_inhabitants: opinionAgg ? Array.from(opinionAgg.voters) : []
     }
@@ -383,13 +397,6 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
 
       const priceN = toNum(data.price)
       const protectedCourse = (Number.isFinite(priceN) && priceN > 0) || String(data.visibility || "PUBLIC").toUpperCase() === "INVITE"
-      let chatId = null
-      if (chatsModel) {
-        try {
-          const chat = await chatsModel.createChat(`Course: ${title}`, description, null, "school", protectedCourse ? "INVITE-ONLY" : "OPEN", normalizeTags(data.tags))
-          chatId = chat && chat.key ? chat.key : null
-        } catch {}
-      }
       const content = {
         type: "schoolCourse",
         title,
@@ -405,7 +412,7 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
           if (d && d.slice(0, 10) < new Date().toISOString().slice(0, 10)) throw new Error("Start date cannot be in the past")
           return d
         })(),
-        chatId,
+        chatId: null,
         author: ssbClient.id,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -418,6 +425,11 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
         toPublish = schoolCrypto.encryptContent(content, [courseKey], true)
       }
       const published = await new Promise((res, rej) => ssbClient.publish(toPublish, (e, m) => e ? rej(e) : res(m)))
+      if (published && published.key && chatsModel) {
+        try {
+          await chatsModel.createChat(`Course: ${title}`, description, blobId, "school", protectedCourse ? "INVITE-ONLY" : "OPEN", normalizeTags(data.tags), null, { courseId: published.key })
+        } catch {}
+      }
       if (published && published.key) {
         if (courseKey) {
           schoolCrypto.setKey(published.key, courseKey, 1)
@@ -515,6 +527,8 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
 
       if (data.invited !== undefined) patch.invited = normalizeIds(data.invited)
 
+      if (data.inviteCode !== undefined) patch.inviteCode = String(data.inviteCode || "") || null
+
       if (data.startDate !== undefined) patch.startDate = normalizeDate(data.startDate)
 
       const next = {
@@ -540,7 +554,12 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
         const key = await ensureCourseKey(ssbClient, idx.rootOf(tipId))
         if (key) toPublish = schoolCrypto.encryptContent(next, [key], true)
       }
-      return new Promise((res, rej) => ssbClient.publish(toPublish, (e, m) => e ? rej(e) : res(m)))
+      const published = await new Promise((res, rej) => ssbClient.publish(toPublish, (e, m) => e ? rej(e) : res(m)))
+      const linkedChatId = existingContent.chatId || idx.chatByCourse.get(idx.rootOf(tipId)) || null
+      if (patch.image !== undefined && linkedChatId && chatsModel && typeof chatsModel.updateChatById === "function") {
+        try { await chatsModel.updateChatById(linkedChatId, { image: patch.image }) } catch {}
+      }
+      return published
     },
 
     async updateCourseStatus(id, status) {
@@ -573,7 +592,6 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
         const key = await ensureCourseKey(ssbClient, course.rootId)
         if (key) await publishKeyGrant(ssbClient, course.rootId, key, ids)
       }
-      await addToChat(ssbClient, course, ids)
       return updated
     },
 
@@ -972,6 +990,25 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
       if (course.visibility !== "INVITE") throw new Error("Only invite courses use invitation codes")
       if (!schoolCrypto) throw new Error("School crypto unavailable")
 
+      if (course.inviteCode) {
+        const messages = await readAll(ssbClient)
+        const alive = messages.some(m => {
+          const c = m.value && m.value.content
+          if (!c || c.type !== "school-invite" || c.target !== course.rootId) return false
+          try { return schoolCrypto.hashInviteCode(course.inviteCode, c.salt) === c.codeHash } catch { return false }
+        })
+        if (alive) return { code: course.inviteCode, courseId: course.rootId }
+        const key = await ensureCourseKey(ssbClient, course.rootId)
+        if (!key) throw new Error("Course key unavailable")
+        const salt = schoolCrypto.generateInviteSalt()
+        const ek = schoolCrypto.encryptForInvite(key, course.inviteCode, salt)
+        await new Promise((res, rej) => ssbClient.publish({
+          type: "school-invite", target: course.rootId, ek, salt,
+          codeHash: schoolCrypto.hashInviteCode(course.inviteCode, salt)
+        }, (e) => e ? rej(e) : res()))
+        return { code: course.inviteCode, courseId: course.rootId }
+      }
+
       const key = await ensureCourseKey(ssbClient, course.rootId)
       if (!key) throw new Error("Course key unavailable")
 
@@ -982,22 +1019,28 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
         type: "school-invite", target: course.rootId, ek, salt,
         codeHash: schoolCrypto.hashInviteCode(code, salt)
       }, (e) => e ? rej(e) : res()))
+      try { await this.updateCourse(courseId, { inviteCode: code }) } catch (_) {}
       return { code, courseId: course.rootId }
     },
 
-    async joinByInvite(code) {
+    async joinByInvite(rawCode) {
       if (!schoolCrypto) throw new Error("School crypto unavailable")
       const ssbClient = await openSsb()
       const me = ssbClient.id
       const messages = await readAll(ssbClient)
 
+      const candidates = Array.from(new Set([String(rawCode || "").trim(), String(rawCode || "").trim().toLowerCase()])).filter(Boolean)
       let matched = null
+      let code = null
       for (const m of messages) {
         const c = m.value && m.value.content
         if (!c || c.type !== "school-invite") continue
-        try {
-          if (schoolCrypto.hashInviteCode(code, c.salt) === c.codeHash) { matched = c; break }
-        } catch {}
+        for (const cand of candidates) {
+          try {
+            if (schoolCrypto.hashInviteCode(cand, c.salt) === c.codeHash) { matched = c; code = cand; break }
+          } catch {}
+        }
+        if (matched) break
       }
       if (!matched) throw new Error("Invalid or expired invite code")
 
@@ -1010,7 +1053,12 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
       const node = idx.courseNodes.get(tipId)
       if (!node) throw new Error("Course not found")
       const teacherId = node.author
-      const priceN = toNum(node.c.price)
+      let cc = node.c
+      if (cc.encryptedPayload) {
+        const dec = schoolCrypto.decryptContent(cc, [[courseKey]])
+        if (dec && !dec._undecryptable) cc = dec
+      }
+      const priceN = toNum(cc.price)
 
       if (teacherId !== me) {
         const enrollments = idx.enrollByCourse.get(matched.target) || new Map()
@@ -1021,12 +1069,13 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
             const bill = await transfersModel.createTransfer(teacherId, "SCHOOL", priceN.toFixed(6), deadline, ["SCHOOL"], "ECONOMIC")
             transferId = bill && bill.key ? bill.key : null
           }
-          const msg = { type: "schoolEnroll", courseId: matched.target, value: true, transferId, createdAt: new Date().toISOString() }
+          const msg = { type: "schoolEnroll", courseId: matched.target, value: true, transferId, keyProof: keyProofFor(courseKey, me), createdAt: new Date().toISOString() }
           await new Promise((res, rej) => ssbClient.private.publish(msg, [me, teacherId], (e, m) => e ? rej(e) : res(m)))
         }
-        if (node.c.chatId) {
+        const enrollChatId = cc.chatId || idx.chatByCourse.get(matched.target) || null
+        if (enrollChatId) {
           try {
-            await new Promise((res) => ssbClient.publish({ type: "chatMember", target: node.c.chatId, member: me, on: true, createdAt: new Date().toISOString() }, () => res()))
+            await new Promise((res) => ssbClient.publish({ type: "chatMember", target: enrollChatId, member: me, on: true, createdAt: new Date().toISOString() }, () => res()))
           } catch {}
         }
       }
@@ -1160,7 +1209,7 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
       const progressSet = (idx.progressByCourse.get(course.rootId) || new Map()).get(student) || new Set()
       for (const lesson of lessons) {
         const lessonRoot = idx.lessonRootOf(lesson.id)
-        const lessonExams = exams.filter(x => !x.locked && x.lessonId && x.lessonId === lessonRoot)
+        const lessonExams = exams.filter(x => !x.locked && x.questions.length && x.lessonId && x.lessonId === lessonRoot)
         if (lessonExams.length) {
           for (const x of lessonExams) {
             const r = idx.examResultLatest.get(`${x.id}::${student}`)
@@ -1264,6 +1313,36 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
       return certs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     },
 
+    async lessonRootOf(lessonId) {
+      const ssbClient = await openSsb()
+      const messages = await readAll(ssbClient)
+      const idx = buildIndex(messages, ssbClient)
+      return idx.lessonRootOf(lessonId) || lessonId
+    },
+
+    async listHiddenComments(courseId) {
+      const ssbClient = await openSsb()
+      const course = await this.getCourseById(courseId)
+      const messages = await readAll(ssbClient)
+      const hidden = new Set()
+      for (const m of messages) {
+        const c = m.value?.content
+        if (!c || c.type !== "schoolCommentHide" || !c.target) continue
+        if (m.value?.author !== course.author) continue
+        if (c.courseId !== course.rootId) continue
+        hidden.add(c.target)
+      }
+      return hidden
+    },
+
+    async hideComment(courseId, commentId) {
+      const ssbClient = await openSsb()
+      const course = await this.getCourseById(courseId)
+      if (course.author !== ssbClient.id) throw new Error("Only the teacher can hide comments")
+      const content = { type: "schoolCommentHide", courseId: course.rootId, target: commentId, author: ssbClient.id, createdAt: new Date().toISOString() }
+      return new Promise((res, rej) => ssbClient.publish(content, (e, m) => e ? rej(e) : res(m)))
+    },
+
     async listCourses(filter = "ALL", viewerId = null, query = {}) {
       const ssbClient = await openSsb()
       const viewer = viewerId || ssbClient.id
@@ -1276,7 +1355,7 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
         if (idx.tomb.has(tipId)) continue
         const node = idx.courseNodes.get(tipId)
         if (!node) continue
-        const course = buildCourseObject(node, rootId, idx.enrollByCourse.get(rootId), idx.transferAgg, idx.grantsByCourse.get(rootId), idx.opinionsByCourse.get(rootId))
+        const course = buildCourseObject(node, rootId, idx.enrollByCourse.get(rootId), idx.transferAgg, idx.grantsByCourse.get(rootId), idx.opinionsByCourse.get(rootId), idx.chatByCourse)
         if (course.undecryptable) continue
         if (!canView(course, viewer)) continue
         courses.push(course)
@@ -1322,7 +1401,7 @@ module.exports = ({ cooler, transfersModel, schoolCrypto, chatsModel }) => {
       const node = idx.courseNodes.get(tipId)
       if (!node) throw new Error("Course not found")
 
-      const course = buildCourseObject(node, rootId, idx.enrollByCourse.get(rootId), idx.transferAgg, idx.grantsByCourse.get(rootId), idx.opinionsByCourse.get(rootId))
+      const course = buildCourseObject(node, rootId, idx.enrollByCourse.get(rootId), idx.transferAgg, idx.grantsByCourse.get(rootId), idx.opinionsByCourse.get(rootId), idx.chatByCourse)
       if (course.undecryptable) throw new Error("Course not found")
       if (!canView(course, viewer)) throw new Error("Course not found")
       return course

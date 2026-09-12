@@ -1,6 +1,6 @@
 const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, ul, li, table, thead, tbody, tr, th, td, progress, video, audio } = require("../server/node_modules/hyperaxe")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning } = require("./main_views")
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderUrl } = require("../backend/renderUrl")
@@ -401,7 +401,10 @@ const renderProjectList = exports.renderProjectList = (projects, filter, spreadM
         : null
       const chips = [
         renderProjectStatusChip(pr.status),
-        renderLifespanChip(pr.lifetime, i18n)
+        renderLifespanChip(pr.lifetime, i18n),
+        pr.subscriptionIn === true
+          ? renderStateChip("mutuals", "✉", i18n.subscriptionOn)
+          : (pr.subscriptionIn === false ? renderStateChip("closed", "✉", i18n.subscriptionOff) : null)
       ].filter(Boolean)
 
       const isOwn = pr.author && String(pr.author) === String(userId)
@@ -458,11 +461,14 @@ const renderProjectForm = (project, mode, spreadWarning = null) => {
       br(),
       label(i18n.projectDescription),
       br(),
-      textarea({ name: "description", rows: "6", required: true, placeholder: i18n.projectDescriptionPlaceholder }, pr.description || ""),
+      textarea({ maxlength: "5000", name: "description", rows: "6", required: true, placeholder: i18n.projectDescriptionPlaceholder }, pr.description || ""),
       br(),
       label(i18n.projectImage),
       br(),
       input({ type: "file", name: "image" }),
+      br(),
+      label(i18n.uploadMedia), br(),
+      input({ type: "file", name: "blob" }),
       br(),
       pr.image ? renderMediaBlob(pr.image) : null,
       br(),
@@ -488,7 +494,7 @@ const renderProjectForm = (project, mode, spreadWarning = null) => {
       br(),
       label(i18n.projectMilestoneDescription),
       br(),
-      textarea({ name: "milestoneDescription", rows: "3", placeholder: i18n.projectMilestoneDescriptionPlaceholder }),
+      textarea({ maxlength: "5000", name: "milestoneDescription", rows: "3", placeholder: i18n.projectMilestoneDescriptionPlaceholder }),
       br(),
       label(i18n.projectMilestoneTargetPercent),
       br(),
@@ -515,27 +521,41 @@ exports.projectsView = async (projectsOrForm, filter, _unused, params = {}) => {
   const sectionTitle = i18n[filterObj.title] || i18n.projectAllTitle
   const { renderReachChip: renderReachChipProjects } = require('./clearnet_view');
   const viewerClearnetProjects = !!(params.viewerPrefs && params.viewerPrefs.clearnetProjects);
+  const emptyMod = moduleIsEmpty(Array.isArray(projectsOrForm) ? projectsOrForm : [], f, "ALL", params.q);
+  const censusP = Array.isArray(params.censusList) ? params.censusList : (Array.isArray(projectsOrForm) ? projectsOrForm : []);
+  const projChip = (x) => {
+    const m = x.key;
+    if (m === f) return true;
+    if (m === "TOP") return censusP.length > 0;
+    if (m === "MINE") return censusP.some(pr => String(pr.author) === String(userId));
+    if (m === "APPLIED") return censusP.some(pr => String(pr.author) !== String(userId) && [pr.members, pr.participants, pr.applicants].some(l => Array.isArray(l) && l.includes(userId)));
+    if (m === "ACTIVE" || m === "PAUSED" || m === "COMPLETED") return censusP.some(pr => String(pr.status || "ACTIVE").toUpperCase() === m);
+    if (m === "FOLLOWING") return censusP.some(pr => Array.isArray(pr.followers) && pr.followers.includes(userId));
+    if (m === "RECENT") return censusP.some(pr => (Date.parse(pr.createdAt || "") || 0) >= Date.now() - 86400000);
+    if (m === "BACKERS") return censusP.some(pr => safeArr(pr.backers).length > 0);
+    return true;
+  };
 
   return template(
     i18n.projectsTitle,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(sectionTitle),
-        p(i18n.projectsDescription)
+        p(i18n.projectsDescription),
+        renderReachChipProjects(viewerClearnetProjects, i18n)
       ),
-      div({ class: "shop-title-row" }, renderReachChipProjects(viewerClearnetProjects, i18n)),
-      br(),
       div(
         { class: "filters" },
         form(
           { method: "GET", action: "/projects", class: "ui-toolbar ui-toolbar--filters" },
-          FILTERS.map((x) => button({ type: "submit", name: "filter", value: x.key, class: f === x.key ? "filter-btn active" : "filter-btn" }, String(i18n[x.i18n]).toUpperCase()))
+          (emptyMod ? [] : FILTERS.filter(projChip).map((x) => button({ type: "submit", name: "filter", value: x.key, class: f === x.key ? "filter-btn active" : "filter-btn" }, String(i18n[x.i18n]).toUpperCase())))
             .concat(button({ type: "submit", name: "filter", value: "CREATE", class: "create-button" }, i18n.projectCreateProject))
         )
       ),
       f === "CREATE" || f === "EDIT"
         ? null
-        : div({ class: "filters" },
+        : emptyMod ? null : div({ class: "filters activity-filter-chips activity-toolbar-row" },
+          renderModuleStatsBy(projectsOrForm, pr => String(pr.status || 'ACTIVE').toUpperCase(), [{ value: 'ACTIVE', label: i18n.projectStatusACTIVE }, { value: 'PAUSED', label: i18n.projectStatusPAUSED }, { value: 'COMPLETED', label: i18n.projectStatusCOMPLETED }, { value: 'CANCELLED', label: i18n.projectStatusCANCELLED }]),
             form({ method: "GET", action: "/projects", class: "filter-box" },
               input({ type: "hidden", name: "filter", value: f }),
               input({ type: "text", name: "q", value: safeText(params.q), placeholder: i18n.projectSearchPlaceholder, class: "filter-box__input" }),
@@ -576,7 +596,12 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
     renderProjectStatusChip(pr.status),
     isFollower ? renderStateChip("whole", "★", i18n.projectFollowing || "FOLLOWING") : null,
     renderLifespanChip(pr.lifetime, i18n),
-    renderEcoTax(pr.msgSize, pr.id || pr.key)
+    renderEcoTax(pr.msgSize, pr.id || pr.key),
+    pr.subscription
+      ? ((isAuthor || pr.subscription.subscribed === true)
+          ? renderStateChip("mutuals", "✉", i18n.subscriptionOn)
+          : renderStateChip("closed", "✉", i18n.subscriptionOff))
+      : null
   ].filter(Boolean)
 
   const sideActions = []
@@ -633,7 +658,18 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
     div({ class: "job-price-line card-salary" }, `${i18n.projectFollowers}: ${followersCount(pr)}`),
     renderProgressBlock(i18n.projectProgress + ":", `${pct}%`, pct, 100),
     goal > 0 ? renderProgressBlock(i18n.projectFunding + ":", `${fundingPct}%`, fundingPct, 100) : null,
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
+    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
+    pr.subscription
+      ? renderSubscriptionBox({
+          target: pr.rootId || pr.id,
+          scope: "projects",
+          subscribed: pr.subscription.subscribed === true,
+          count: pr.subscription.count,
+          isOwner: isAuthor,
+          canWrite: isAuthor,
+          returnTo
+        })
+      : null
   )
 
   const projectMain = div({ class: "tribe-main" },
@@ -667,7 +703,7 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
   return template(
     i18n.projectsTitle,
     section(
-      div({ class: "tags-header" }, h2(i18n.projectsTitle), p(i18n.projectsDescription)),
+      div({ class: "tags-header module-header-line" }, h2(i18n.projectsTitle), p(i18n.projectsDescription)),
       div(
         { class: "filters" },
         form(
@@ -682,10 +718,10 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
 }
 
 exports.clearnetProjectView = async (project) => {
-  const { escapeHtml: esc, blobUrl: cnBlob, renderClearnetPage } = require('./clearnet_view');
+  const { escapeHtml: esc, renderRichText, renderKindTag, blobUrl: cnBlob, renderClearnetPage } = require('./clearnet_view');
   const pr = project || {};
   const title = esc(pr.title || 'Project');
-  const desc = esc(pr.description || '');
+  const desc = renderRichText(pr.description || '');
   const goal = Math.max(0, toNum(pr.goal) || 0);
   const pledged = Math.max(0, toNum(pr.pledged) || 0);
   const fundingPct = goal > 0 ? Math.min(100, Math.round((pledged / goal) * 100)) : 0;
@@ -719,9 +755,11 @@ ${Array.from({ length: 21 }, (_, i) => `.cn-prj-bar-fill-${i * 5}{width:${i * 5}
   const body = `
   <h1 class="cn-prj-title">${title}</h1>
   <div class="cn-prj-meta">
+    ${renderKindTag('project')}
     <span class="cn-prj-status">${esc(status)}</span>
     ${pr.createdAt ? `<span class="cn-prj-date">📅 ${esc(new Date(pr.createdAt).toISOString().slice(0,10))}</span>` : ''}
   </div>
+  <hr class="cn-sep"/>
   ${projectImg ? `<img class="cn-prj-img" src="${projectImg}" alt="${title}"/>` : ''}
   ${goal > 0 ? `
   <div class="cn-prj-funding">

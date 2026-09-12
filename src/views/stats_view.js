@@ -1,5 +1,6 @@
 const { div, h2, p, section, button, form, input, ul, li, a, h3, span, strong, table, thead, tbody, tr, td, th } = require("../server/node_modules/hyperaxe");
 const { template, i18n, userLink } = require('./main_views');
+const sharedState = require('../configs/shared-state');
 
 Object.assign(i18n, {
   statsChat: "Chats",
@@ -39,7 +40,7 @@ exports.statsView = (stats, filter) => {
     'bookmark', 'event', 'task', 'votes', 'report', 'feed', 'project', 'industry', 'industryBlueprint',
     'image', 'torrent', 'audio', 'video', 'document', 'transfer', 'post', 'tribe',
     'market', 'forum', 'job', 'aiExchange', 'map', 'shop', 'shopProduct',
-    'chat', 'chatMessage', 'pad', 'padEntry', 'gameScore', 'calendar', 'calendarDate', 'calendarNote',
+    'chat', 'chatMessage', 'pad', 'padEntry', 'wikiPage', 'emergency', 'emergencyConfirm', 'emergencyUpdate', 'mailingList', 'logisticsRoute', 'logisticsRating', 'podcast', 'podcastEpisode', 'podcastPlay', 'campaign', 'campaignSignature', 'campaignUpdate', 'gameScore', 'calendar', 'calendarDate', 'calendarNote',
     'schoolCourse', 'schoolLesson', 'schoolEnroll', 'schoolCertificate',
     'parliamentCandidature','parliamentTerm','parliamentProposal','parliamentRevocation','parliamentLaw',
     'courtsCase','courtsEvidence','courtsAnswer','courtsVerdict','courtsSettlement','courtsSettlementProposal','courtsSettlementAccepted','courtsNomination','courtsNominationVote'
@@ -73,6 +74,19 @@ exports.statsView = (stats, filter) => {
     chatMessage: i18n.statsChatMessage,
     pad: i18n.statsPad,
     padEntry: i18n.statsPadEntry,
+    wikiPage: i18n.statsWiki,
+    emergency: i18n.statsEmergency,
+    emergencyConfirm: i18n.statsEmergencyConfirm,
+    emergencyUpdate: i18n.statsEmergencyUpdate,
+    mailingList: i18n.statsMailingList,
+    logisticsRoute: i18n.statsLogisticsRoute,
+    logisticsRating: i18n.statsLogisticsRating,
+    podcast: i18n.statsPodcast,
+    podcastEpisode: i18n.statsPodcastEpisode,
+    podcastPlay: i18n.statsPodcastPlay,
+    campaign: i18n.statsCampaign,
+    campaignSignature: i18n.statsCampaignSignature,
+    campaignUpdate: i18n.statsCampaignUpdate,
     gameScore: i18n.statsGameScore,
     schoolCourse: i18n.statsSchoolCourse,
     schoolLesson: i18n.statsSchoolLesson,
@@ -176,7 +190,8 @@ exports.statsView = (stats, filter) => {
     const networkCO2 = parseFloat((totalMB * kWhPerMB * gCO2PerKWh).toFixed(2));
     const inhabitants = stats.usersKPIs?.totalInhabitants || stats.inhabitants || 1;
     const userCO2 = parseFloat((networkCO2 / Math.max(1, inhabitants)).toFixed(2));
-    const maxAnnualCO2 = 500;
+    const gCO2PerInhabitantYear = 50;
+    const maxAnnualCO2 = Math.max(500, Math.max(1, inhabitants) * gCO2PerInhabitantYear);
 
     if (filter === 'MINE') {
       const pct = networkCO2 > 0 ? Math.min(100, (userCO2 / networkCO2) * 100) : 0;
@@ -245,7 +260,7 @@ exports.statsView = (stats, filter) => {
         div({ class: `carbon-bar-fill carbon-bar-network ${wClass(pct)}` })
       ),
       p({ class: 'carbon-bar-note' }, strong(`${pct.toFixed(1)}%`), ` ${i18n.statsCarbonOfEstMax || 'of estimated max capacity'} · `, strong(`${yearPct.toFixed(1)}%`), ` ${i18n.statsCarbonYearProgress || 'of the year elapsed'}`),
-      p({ class: 'carbon-bar-formula' }, 'Based on local data storage weight ', strong('(0.0002 kWh/MB × 475 g CO₂/kWh)'))
+      p({ class: 'carbon-bar-formula' }, 'Based on local data storage weight ', strong('(0.0002 kWh/MB × 475 g CO₂/kWh)'), ` · max: ${gCO2PerInhabitantYear} g CO₂ × ${Math.max(1, inhabitants)} inhabitants`)
     );
   })();
 
@@ -285,7 +300,8 @@ exports.statsView = (stats, filter) => {
       kpi(i18n.statsTotalMsgs || 'Total messages', networkKPIs.totalMsgs || 0),
       kpi(i18n.statsLogsTitle || 'Logs', stats?.logsCount || 0),
       kpi(i18n.statsAITraining, C(stats, 'aiExchange') || 0),
-      kpi(i18n.statsPUBs, stats.pubsCount || 0)
+      kpi(i18n.statsPUBs, stats.pubsCount || 0),
+      kpi(i18n.statsSyncedPeers, sharedState.getSyncedPeerCount() || 0)
     )
   );
 
@@ -312,6 +328,10 @@ exports.statsView = (stats, filter) => {
     const max = Math.max(1, ...rows.map(r => Number(r.count) || 0));
     return div({ class: 'stats-block' },
       h2(i18n.statsActivity7d),
+      kpiGrid(
+        kpi(i18n.statsActivity7dTotal, stats.activity?.daily7Total || 0),
+        kpi(i18n.statsActivity30dTotal, stats.activity?.daily30Total || 0)
+      ),
       rows.length
         ? ul({ class: 'stats-toplist' },
             ...rows.map(row => {
@@ -326,11 +346,7 @@ exports.statsView = (stats, filter) => {
               );
             })
           )
-        : p({ class: 'no-content' }, i18n.no_results || 'No data'),
-      div({ class: 'stats-activity-totals' },
-        span(`${i18n.statsActivity7dTotal}: `, strong(String(stats.activity?.daily7Total || 0))),
-        span(`${i18n.statsActivity30dTotal}: `, strong(String(stats.activity?.daily30Total || 0)))
-      )
+        : p({ class: 'no-content' }, i18n.no_results || 'No data')
     );
   })();
 
@@ -420,8 +436,8 @@ exports.statsView = (stats, filter) => {
 
   const allMode = filter === 'ALL'
     ? div({ class: 'stats-container' }, [
-        networkBlock,
         activityBlock,
+        networkBlock,
         totalOpinions > 0
           ? div({ class: 'stats-block' },
               h2(`${i18n.statsNetworkOpinions}: ${totalOpinions}`),
@@ -439,8 +455,8 @@ exports.statsView = (stats, filter) => {
 
   const mineMode = filter === 'MINE'
     ? div({ class: 'stats-container' }, [
-        networkBlock,
         activityBlock,
+        networkBlock,
         totalOpinions > 0
           ? div({ class: 'stats-block' },
               h2(`${i18n.statsYourOpinions}: ${totalOpinions}`),
@@ -498,7 +514,7 @@ exports.statsView = (stats, filter) => {
   return template(
     title,
     section(
-      div({ class: 'tags-header' },
+      div({ class: 'tags-header module-header-line' },
         h2(title),
         p(description)
       ),
@@ -511,11 +527,11 @@ exports.statsView = (stats, filter) => {
         )
       ),
       section(
-        filter === 'ALL' ? networkStrip : null,
         filter === 'MINE' ? accountCard : null,
         filter === 'ALL' ? storageCard : null,
+        filter === 'ALL' ? networkStrip : null,
         tombMode,
-        carbonCard,
+        filter === 'TOMBSTONE' && !(Number(stats.userTombstoneCount || 0) || Number(stats.tombstoneKPIs?.networkTombstoneCount || 0)) ? null : carbonCard,
         filter !== 'TOMBSTONE' ? ecoTaxBlock : null,
         allMode,
         mineMode

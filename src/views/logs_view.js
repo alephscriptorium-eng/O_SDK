@@ -1,5 +1,5 @@
 const { div, h2, p, section, button, form, span, table, thead, tbody, tr, th, td, input, textarea, br, option, select, a, label } = require("../server/node_modules/hyperaxe");
-const { template, i18n } = require("./main_views");
+const { template, i18n, renderModuleStatsBy } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderUrl } = require("../backend/renderUrl");
@@ -21,10 +21,10 @@ const filterLabel = (f) => {
   return map[f] || f.toUpperCase();
 };
 
-const renderFilterBar = (current, hasItems = true) =>
+const renderFilterBar = (current, hasItems = true, emptyLogs = false, avail = null) =>
   div({ class: "activity-sub-filter" },
-    form({ method: "GET", action: "/logs", class: "sub-filter-form" },
-      FILTERS.map(f =>
+    emptyLogs ? null : form({ method: "GET", action: "/logs", class: "sub-filter-form" },
+      FILTERS.filter(f => f === current || f === "always" || !avail || avail[f] !== false).map(f =>
         button({
           type: "submit", name: "filter", value: f,
           class: current === f ? "filter-btn active" : "filter-btn"
@@ -42,9 +42,10 @@ const renderFilterBar = (current, hasItems = true) =>
       : null
   );
 
-const renderSearchBox = (current, search) => {
+const renderSearchBox = (current, search, items = null) => {
   const q = search || {};
-  return div({ class: "logs-search" },
+  return div({ class: "logs-search activity-filter-chips activity-toolbar-row" },
+    items ? renderModuleStatsBy(items, e => (e && e.mode === 'ai' ? 'ai' : 'manual'), [{ value: 'manual', label: i18n.logsModeManual }, { value: 'ai', label: i18n.logsModeAI }]) : null,
     form({ method: "GET", action: "/logs", class: "filter-box" },
       input({ type: "hidden", name: "filter", value: current || 'today' }),
       input({
@@ -68,11 +69,18 @@ const renderSearchBox = (current, search) => {
   );
 };
 
-const renderToolbar = (current, search, hasItems) =>
-  div({ class: "logs-toolbar-wrap" },
-    renderFilterBar(current, hasItems),
-    renderSearchBox(current, search)
-  );
+const renderToolbar = (current, search, hasItems, items = null, emptyLogs = false, avail = null) =>
+  emptyLogs
+    ? div({ class: "filters" },
+        form({ method: "GET", action: "/logs", class: "ui-toolbar ui-toolbar--filters" },
+          input({ type: "hidden", name: "view", value: "create" }),
+          button({ type: "submit", class: "create-button" }, i18n.logsCreate || 'Create Log')
+        )
+      )
+    : div({ class: "logs-toolbar-wrap" },
+        renderFilterBar(current, hasItems, emptyLogs, avail),
+        renderSearchBox(current, search, items)
+      );
 
 const truncate = (value, max = 160) => {
   const text = String(value == null ? '' : value).trim();
@@ -160,7 +168,7 @@ const renderCreateForm = (mode, aiModOn) => {
     : div({ class: "div-center audio-form" },
         form({ method: "POST", action: "/logs/create" },
           input({ type: "hidden", name: "mode", value: "manual" }),
-          textarea({ name: "text", rows: "8", required: true, placeholder: i18n.logsTextPlaceholder || 'Describe your experiences...' }),
+          textarea({ maxlength: "5000", name: "text", rows: "8", required: true, placeholder: i18n.logsTextPlaceholder || 'Describe your experiences...' }),
           br(), br(),
           button({ type: "submit", class: "create-button" }, i18n.logsWriteButton || 'Write')
         )
@@ -172,7 +180,7 @@ const renderEditForm = (entry) => {
   return div({ class: "div-center audio-form" },
     h2(i18n.logsEditTitle || 'Update Log'),
     form({ method: "POST", action: `/logs/update/${encodeURIComponent(entry.key)}` },
-      textarea({ name: "text", rows: "8", required: true }, entry.text || ''),
+      textarea({ maxlength: "5000", name: "text", rows: "8", required: true }, entry.text || ''),
       input({ type: "hidden", name: "label", value: entry.label || '' }),
       br(), br(),
       button({ type: "submit", class: "create-button" }, i18n.logsUpdateButton || 'Update')
@@ -214,7 +222,7 @@ exports.logsView = (items, filter, mode, opts = {}) => {
   const screen = (...blocks) => template(
     listTitle,
     section(
-      div({ class: "tags-header" }, h2(listTitle), p(description)),
+      div({ class: "tags-header module-header-line" }, h2(listTitle), p(description)),
       renderFilterBar(filter),
       ...blocks
     )
@@ -229,9 +237,11 @@ exports.logsView = (items, filter, mode, opts = {}) => {
   if (view === 'detail' && opts.entry) {
     return screen(renderDetail(opts.entry));
   }
+  const sr = opts.search || {};
+  const emptyLogs = Number(opts.total ?? items.length) === 0 && !String(sr.q || '').trim() && !String(sr.type || '').trim() && !String(sr.date || '').trim();
   const body = section(
-    div({ class: "tags-header" }, h2(listTitle), p(description)),
-    renderToolbar(filter, opts.search || {}, hasItems),
+    div({ class: "tags-header module-header-line" }, h2(listTitle), p(description)),
+    renderToolbar(filter, opts.search || {}, hasItems, items, emptyLogs, opts.avail || null),
     div({ class: "logs-list" }, renderTable(items))
   );
   return template(listTitle, body);

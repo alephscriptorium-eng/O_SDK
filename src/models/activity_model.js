@@ -167,7 +167,8 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel, industryModel }
       const c = a.content || {};
       if (c.tribeId || c.encryptedText) continue;
       const root = c.chatId;
-      if (!root || typeof c.text !== 'string' || !c.text) continue;
+      if (!root) continue;
+      if (!(typeof c.text === 'string' && c.text) && !c.image) continue;
       if (!msgsByRoot.has(root)) msgsByRoot.set(root, []);
       msgsByRoot.get(root).push(a);
     }
@@ -197,9 +198,9 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel, industryModel }
           chatRoot: root,
           title: info.title || '',
           description: info.description || '',
-          members: info.members || 0,
+          members: Math.max(info.members || 0, new Set(asc.map(m => m.author)).size),
           messageCount: asc.length,
-          replies: asc.slice(-CHAT_THREAD_LIMIT).map(m => ({ id: m.id, author: m.author, ts: m.ts || 0, text: (m.content && m.content.text) || '' }))
+          replies: asc.slice(-CHAT_THREAD_LIMIT).map(m => ({ id: m.id, author: m.author, ts: m.ts || 0, text: (m.content && m.content.text) || '', image: (m.content && m.content.image) || null, mimeType: (m.content && m.content.mimeType) || '' }))
         }
       });
     }
@@ -225,7 +226,7 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel, industryModel }
 
       const results = await new Promise((resolve, reject) => {
         pull(
-          ssbClient.createLogStream({ reverse: true, limit: logLimit }),
+          ssbClient.createLogStream({ reverse: true }),
           pull.collect((err, msgs) => err ? reject(err) : resolve(msgs))
         );
       });
@@ -790,6 +791,12 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel, industryModel }
       else if (filter === 'industry')
         out = deduped.filter(a => ['industry', 'industryBuild', 'industryBlueprint', 'industryAllocation'].includes(a.type) && isVisible(a));
       else if (filter === 'pad') out = deduped.filter(a => a.type === 'pad' && (a.content || {}).status === 'OPEN');
+      else if (filter === 'wiki') out = deduped.filter(a => a.type === 'wikiPage' && isVisible(a));
+      else if (filter === 'emergency') out = deduped.filter(a => (a.type === 'emergency' || a.type === 'emergencyUpdate') && isVisible(a));
+      else if (filter === 'campaign') out = deduped.filter(a => (a.type === 'campaign' || a.type === 'campaignUpdate') && isVisible(a));
+      else if (filter === 'mailing') out = deduped.filter(a => a.type === 'mailingList' && isVisible(a));
+      else if (filter === 'logistics') out = deduped.filter(a => a.type === 'logisticsRoute' && isVisible(a));
+      else if (filter === 'podcast') out = deduped.filter(a => (a.type === 'podcast' || a.type === 'podcastEpisode') && isVisible(a));
       else if (filter === 'chat') out = deduped.filter(a => (a.type === 'chat' || a.type === 'chatThread') && isAllowedTribeActivity(a) && isVisible(a));
       else if (filter === 'calendar') out = deduped.filter(a => a.type === 'calendar' && (a.content || {}).status === 'OPEN');
       else if (filter === 'transfer') out = deduped.filter(a => a.type === 'transfer' && isVisible(a));

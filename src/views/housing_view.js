@@ -1,6 +1,6 @@
 const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, video, table, tr, td } = require("../server/node_modules/hyperaxe")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { template, i18n, userLink, renderOpenClosedChip, renderStateChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderOpinionsVoting, renderEngagement, renderSpreadEditWarning } = require("./main_views")
+const { template, i18n, userLink, renderOpenClosedChip, renderStateChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderOpinionsVoting, renderEngagement, renderSpreadEditWarning, renderModuleStatsBy, moduleIsEmpty } = require("./main_views")
 const { blobUrl, blobIdOf, isVideoEntry, imagesOf, renderMediaThumb, renderPhotoGallery, renderGalleryFields } = require("./gallery_view")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
@@ -169,9 +169,9 @@ const renderHousingList = (items, filter, params = {}) => {
       const isOwn = item.author && String(item.author) === String(userId)
       const requested = safeArr(item.requests).includes(userId)
       const chips = [
+        item.visibility === "HIDDEN" ? renderVisibilityChip("HIDDEN", i18n) : null,
         renderTypeChip(item),
         renderStatusChip(item.status),
-        item.visibility === "HIDDEN" ? renderVisibilityChip("HIDDEN", i18n) : null,
         requested ? renderRequestedChip() : null,
         renderLifespanChip(item.lifetime, i18n)
       ].filter(Boolean)
@@ -263,12 +263,12 @@ const renderHousingForm = (item = {}, mode = "create", maxImages = MAX_IMAGES, s
       ...renderGalleryFields(item, isEdit, maxImages),
       label(i18n.housingDescription),
       br(),
-      textarea({ name: "description", rows: "6", required: true, placeholder: i18n.housingDescriptionPlaceholder }, item.description || ""),
+      textarea({ maxlength: "5000", name: "description", rows: "6", required: true, placeholder: i18n.housingDescriptionPlaceholder }, item.description || ""),
       br(),
       br(),
       label(i18n.housingRules),
       br(),
-      textarea({ name: "rules", rows: "4", placeholder: i18n.housingRulesPlaceholder }, item.rules || ""),
+      textarea({ maxlength: "5000", name: "rules", rows: "4", placeholder: i18n.housingRulesPlaceholder }, item.rules || ""),
       br(),
       br(),
       label(i18n.housingPlace),
@@ -303,7 +303,7 @@ const renderHousingForm = (item = {}, mode = "create", maxImages = MAX_IMAGES, s
       br(),
       label(i18n.housingAvailableFrom),
       br(),
-      input({ type: "date", name: "availableFrom", required: true, min: isEdit ? undefined : today(), value: item.availableFrom ? String(item.availableFrom).slice(0, 10) : "" }),
+      input({ type: "date", name: "availableFrom", required: true, min: today(), value: item.availableFrom ? String(item.availableFrom).slice(0, 10) : "" }),
       br(),
       br(),
       label(i18n.housingAvailableTo),
@@ -313,7 +313,7 @@ const renderHousingForm = (item = {}, mode = "create", maxImages = MAX_IMAGES, s
       br(),
       label(i18n.housingTags),
       br(),
-      input({ type: "text", name: "tags", value: Array.isArray(item.tags) ? item.tags.join(", ") : (item.tags || "") }),
+      input({ type: "text", name: "tags", placeholder: i18n.tagsPlaceholder, value: Array.isArray(item.tags) ? item.tags.join(", ") : (item.tags || "") }),
       br(),
       br(),
       label(i18n.visibilityLabel || "Visibility"),
@@ -329,7 +329,19 @@ const renderHousingForm = (item = {}, mode = "create", maxImages = MAX_IMAGES, s
   )
 }
 
-const renderFiltersBar = (filter, params = {}) =>
+const housingChip = (censusH, filter, x) => {
+  const m = x.key
+  if (m === filter) return true
+  if (m === "TOP") return censusH.length > 0
+  if (m === "MINE") return censusH.some(h => String(h.author) === String(userId))
+  if (m === "RECENT") return censusH.some(h => (Date.parse(h.createdAt || "") || 0) >= Date.now() - 86400000)
+  if (m === "REQUESTED") return censusH.some(h => safeArr(h.requests).includes(userId))
+  if (m === "SALE" || m === "RENT" || m === "COUCHSURFING") return censusH.some(h => String(h.housing_type || "").toUpperCase() === m)
+  if (m === "OPEN" || m === "CLOSED") return censusH.some(h => String(h.status || "OPEN").toUpperCase() === m)
+  return true
+}
+
+const renderFiltersBar = (filter, params = {}, emptyMod = false, censusH = null) =>
   div({ class: "filters" },
     form({ method: "GET", action: "/housing", class: "ui-toolbar ui-toolbar--filters" },
       input({ type: "hidden", name: "search", value: safeText(params.search || "") }),
@@ -337,9 +349,9 @@ const renderFiltersBar = (filter, params = {}) =>
       input({ type: "hidden", name: "maxPrice", value: String(params.maxPrice ?? "") }),
       input({ type: "hidden", name: "place", value: safeText(params.place || "") }),
       input({ type: "hidden", name: "sort", value: safeText(params.sort || "") }),
-      ...FILTERS.map(f =>
+      ...(emptyMod ? [] : (censusH ? FILTERS.filter(x => housingChip(censusH, filter, x)) : FILTERS).map(f =>
         button({ type: "submit", name: "filter", value: f.key, class: filter === f.key ? "filter-btn active" : "filter-btn" }, String(i18n[f.i18n]).toUpperCase())
-      ),
+      )),
       button({ type: "submit", name: "filter", value: "CREATE", class: "create-button" }, i18n.housingCreateButton)
     )
   )
@@ -352,41 +364,38 @@ exports.housingView = async (items, filter = "ALL", params = {}) => {
   const sort = safeText(params.sort || "recent")
 
   const isForm = filter === "CREATE" || filter === "EDIT"
+  const emptyMod = moduleIsEmpty(Array.isArray(items) ? items : [], filter, "ALL", search || place || String(minPrice || "") || String(maxPrice || ""))
 
   return template(
     i18n.housingTitle,
     section(
-      div({ class: "tags-header" },
+      div({ class: "tags-header module-header-line" },
         h2(i18n.housingTitle),
         p(i18n.housingDescriptionText)
       ),
-      renderFiltersBar(filter, { search, minPrice, maxPrice, place, sort })
+      renderFiltersBar(filter, { search, minPrice, maxPrice, place, sort }, emptyMod, Array.isArray(params.censusList) ? params.censusList : (Array.isArray(items) ? items : []))
     ),
     section(
       isForm
         ? renderHousingForm(filter === "EDIT" ? (Array.isArray(items) ? items[0] : items) || {} : (params.draft || {}), filter === "EDIT" ? "edit" : "create", Number(params.maxImages) > 0 ? Number(params.maxImages) : MAX_IMAGES, await renderSpreadEditWarning(filter === "EDIT" ? ((Array.isArray(items) ? items[0] : items) || {}).id : null))
         : section(
-            div({ class: "housing-search" },
+            emptyMod ? null : div({ class: "housing-search activity-filter-chips activity-toolbar-row" },
+              renderModuleStatsBy(items, it => String(it.status || '').toUpperCase(), [{ value: 'OPEN', label: i18n.housingFilterOpen }, { value: 'CLOSED', label: i18n.housingFilterClosed }]),
               form({ method: "GET", action: "/housing", class: "filter-box" },
                 input({ type: "hidden", name: "filter", value: filter || "ALL" }),
                 input({ type: "text", name: "search", value: search, placeholder: i18n.housingSearchPlaceholder, class: "filter-box__input" }),
-                div({ class: "filter-box__controls" },
-                  input({ type: "text", name: "place", value: place, placeholder: i18n.housingPlacePlaceholder, class: "filter-box__input housing-place-input" }),
-                  div({ class: "transfer-range" },
-                    input({ type: "number", name: "minPrice", step: "0.01", min: "0", value: String(minPrice ?? ""), placeholder: i18n.housingMinPrice, class: "filter-box__number transfer-amount-input" }),
-                    input({ type: "number", name: "maxPrice", step: "0.01", min: "0", value: String(maxPrice ?? ""), placeholder: i18n.housingMaxPrice, class: "filter-box__number transfer-amount-input" })
-                  ),
-                  select({ name: "sort", class: "filter-box__select" },
+                input({ type: "text", name: "place", value: place, placeholder: i18n.housingPlacePlaceholder, class: "filter-box__input housing-place-input" }),
+                input({ type: "number", name: "minPrice", step: "0.01", min: "0", value: String(minPrice ?? ""), placeholder: i18n.housingMinPrice, class: "filter-box__number transfer-amount-input" }),
+                input({ type: "number", name: "maxPrice", step: "0.01", min: "0", value: String(maxPrice ?? ""), placeholder: i18n.housingMaxPrice, class: "filter-box__number transfer-amount-input" }),
+                select({ name: "sort", class: "filter-box__select" },
                     option({ value: "recent", ...(sort === "recent" ? { selected: true } : {})}, i18n.housingSortRecent),
                     option({ value: "price", ...(sort === "price" ? { selected: true } : {})}, i18n.housingSortPrice),
                     option({ value: "requests", ...(sort === "requests" ? { selected: true } : {})}, i18n.housingSortRequests),
                     option({ value: "rating", ...(sort === "rating" ? { selected: true } : {})}, i18n.housingSortRating)
                   ),
                   button({ type: "submit", class: "filter-box__button" }, i18n.housingSearchButton)
-                )
               )
             ),
-            br(),
             div({ class: "housing-list" }, renderHousingList(items, filter, params))
           )
     )
@@ -408,9 +417,9 @@ exports.singleHousingView = async (item, filter = "ALL", comments = [], params =
   const voters = safeArr(item.opinions_inhabitants)
 
   const chips = [
+    item.visibility === "HIDDEN" ? renderVisibilityChip("HIDDEN", i18n) : null,
     renderTypeChip(item),
     renderStatusChip(item.status),
-    item.visibility === "HIDDEN" ? renderVisibilityChip("HIDDEN", i18n) : null,
     requested ? renderRequestedChip() : null,
     renderLifespanChip(item.lifetime, i18n),
     renderEcoTax(item.msgSize, item.id)
@@ -488,7 +497,7 @@ exports.singleHousingView = async (item, filter = "ALL", comments = [], params =
   return template(
     i18n.housingTitle,
     section(
-      div({ class: "tags-header" }, h2(i18n.housingTitle), p(i18n.housingDescriptionText)),
+      div({ class: "tags-header module-header-line" }, h2(i18n.housingTitle), p(i18n.housingDescriptionText)),
       renderFiltersBar(filter, params),
       div({ class: "tribe-details" }, housingSide, housingMain)
     )
