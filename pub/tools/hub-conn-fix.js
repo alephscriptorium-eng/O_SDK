@@ -33,7 +33,10 @@ try {
 } catch (e) {
   console.log('conn.json unreadable:', e.message);
 }
-const stale = entries.filter((a) => a !== cleanAddr && a.startsWith(cleanAddr + ':'));
+// Entrada "stale" = cualquier direccion (sea cual sea el host: el invite se redime con la IP del bridge,
+// no con el alias) que lleve la clave del pub seguida de un seed: `...~shs:KEY:SEED`.
+const keyRe = new RegExp('~shs:' + m[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ':[^:]+$');
+const stale = entries.filter((a) => a !== cleanAddr && keyRe.test(a));
 console.log('conn.json entries:', entries.length, '| stale (con seed):', stale.length);
 
 ssbClient(config.keys, config, (err, sbot) => {
