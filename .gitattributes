@@ -6,3 +6,5 @@ Dockerfile.* text eol=lf
 Caddyfile text eol=lf
 *.env text eol=lf
 *.env.example text eol=lf
+# Configs del HUB clearnet: bind-mounts de fichero en contenedores Linux (nginx template, ssb-config, oasis-config.json).
+pub/config/hub/* text eol=lf
