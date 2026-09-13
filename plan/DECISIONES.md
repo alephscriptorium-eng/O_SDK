@@ -133,6 +133,18 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   bot deriva del identificador y se declara sin `vis_*` (no se lista a sí
   mismo). Registro de la serie: `docs/PUB/HUB-PROTOCOL.md` §11.
 
+- **D-O15 · 2026-09-13 · El HUB replica a hops 3 (supera el «hops 2» de
+  D-O13).** Medido tras activar: el pub sigue directamente a 3 feeds, así
+  que a 2 saltos el HUB solo tenía 5 autores y `/c` listaba 0 habitantes;
+  los 5 feeds con Clearnet activado que el pub replica están a 3 saltos
+  (seguidos por La Plaza). Opciones valoradas: (1) hops 3 en el HUB,
+  reversible y sin mensajes permanentes; (2) que Azofaifo siga a La Plaza,
+  que le daría grafo propio y un `contact` permanente; (3) que el pub siga
+  a la gente de La Plaza, que escribe en el feed del pub. El custodio
+  delegó la elección: se aplica (1); (3) queda disponible si quiere curar
+  el grafo del pub a mano. El disco sigue gobernado por `hub-disk.sh` y
+  el orden de rebajas de HUB-PROTOCOL §7 pasa a «limit → hops 3→2».
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |

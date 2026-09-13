@@ -3,7 +3,7 @@
   "caps": { "shs": "H5EC+V5BU9s0lWxCkt4z8a095Sj8a6TgiLKPYi1JD7s=" },
   "pub": false,
   "local": false,
-  "friends": { "dunbar": 150, "hops": 2 },
+  "friends": { "dunbar": 150, "hops": 3 },
   "gossip": { "connections": 5, "local": false, "friends": true, "seed": false, "global": false },
   "replicationScheduler": { "autostart": true, "partialReplication": null },
   "autofollow": { "enabled": false, "feeds": [] },

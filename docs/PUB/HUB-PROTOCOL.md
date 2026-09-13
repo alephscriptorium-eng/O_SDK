@@ -79,7 +79,7 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
 | Pieza | Fichero | Qué fija | Estado |
 |---|---|---|---|
 | Servicios `oasis-hub` + `hub-cache` | `pub/docker-compose.pub.yml` | misma imagen, `command: ["backend"]`, env `OASIS_*`, `mem_limit`, healthcheck a `/c/inhabitant/@AAAA…=.ed25519` (**no** a `/c`, que es O(N·k)), sin `ports`, sin `profiles` | ⏳ WP-O46 |
-| Identidad y replicación | `pub/config/hub/ssb-config` (bind `:ro` a `~/.ssb/config`) | `caps.shs` del ciclo, `pub:false`, `friends.hops:2`, **sin `seeds`** (un seed al pub mete su clave en `gossip.json` antes del invite y el backend responde `alreadyFederated` sin redimirlo; la conexión persistente la deja `hub-conn-fix.js` en `conn.json`), `connections` **completo** (`mergeDeep` reemplaza arrays enteros) con `incoming.net.host: 0.0.0.0` **obligatorio** (el entrypoint pasa `--host 0.0.0.0`; otro valor = crash loop «conflicting connection settings») | ✅ G2 |
+| Identidad y replicación | `pub/config/hub/ssb-config` (bind `:ro` a `~/.ssb/config`) | `caps.shs` del ciclo, `pub:false`, `friends.hops:3` (D-O15: con 2 el HUB solo alcanzaba los 3 seguidos directos del pub y `/c` quedaba vacío; los habitantes con Clearnet están a 3 saltos, seguidos por La Plaza), **sin `seeds`** (un seed al pub mete su clave en `gossip.json` antes del invite y el backend responde `alreadyFederated` sin redimirlo; la conexión persistente la deja `hub-conn-fix.js` en `conn.json`), `connections` **completo** (`mergeDeep` reemplaza arrays enteros) con `incoming.net.host: 0.0.0.0` **obligatorio** (el entrypoint pasa `--host 0.0.0.0`; otro valor = crash loop «conflicting connection settings») | ✅ G2 |
 | Normalizar `conn.json` tras el invite | `pub/tools/hub-conn-fix.js` (se copia al HUB con `docker cp`; `pub/tools` no está montado allí) | tras `invite.accept`, ssb-invite deja la dirección del pub **con el seed y sin `key`**: el HUB reconecta con la identidad desechable y el pub no replica; sin `key` nunca reconecta tras un reinicio. El script hace forget `addr:SEED` · remember `{key,type:pub,autoconnect}` · connect | ✅ G3 |
 | Visor | `pub/config/hub/oasis-config.json` (bind `:ro`) | copia del de `src/configs/` con 6 claves fijadas: `aiMod/aiNavMod:off`, `walletPub.pubId:""`, `ssbLogStream.limit:20000`, `lanBroadcasting:false`, `themes.current:"Dark-SNH"` (en 1.0.8 el original ya trae `pubId:""` y `Dark-SNH` → **4 diferencias efectivas**) | ✅ escrito (G1) |
 | Caché HTTP | `pub/config/hub/nginx.conf.template` | `proxy_cache_path … max_size=${HUB_CACHE_MAX_SIZE} inactive=7d`, caché negativa (404 30 s, 5xx 5 s, WP-O53), `proxy_hide_header` de las cabeceras del backend, `limit_req` por XFF, `location / { return 404; }`; en `/assets/*` `proxy_ignore_headers Cache-Control` (koa-static manda `max-age=0`). En **local Windows** el cache dir es el volumen nombrado `hub_http_cache` (los bind mounts rompen `proxy_cache`); en el VPS es la ruta bind | ✅ G4 |
@@ -258,7 +258,7 @@ decide el tope duro (WP-O47).
      (nginx purga solo hasta el nuevo tope).
    - `blobs/` → `prune-blobs --dry-run`, luego `prune-blobs`. Después de una poda grande,
      un reinicio del HUB es más rápido (el entrypoint hace `chown -R` de `blobs/` en cada arranque).
-   - `flume/` → el log replicado **no se poda**. Opciones por orden: `friends.hops` 2→1 en
+   - `flume/` → el log replicado **no se poda**. Opciones por orden: `friends.hops` 3→2 en
      `ssb-config` + `up -d --no-deps oasis-hub` (acota el crecimiento futuro, no reduce lo
      replicado) · como último recurso, con el HUB parado, vaciar `ssb-data/` **conservando**
      `secret`, `config`, `conn.json`, `gossip.json`, `oasis-first-contact` y dejar que
@@ -286,7 +286,8 @@ nueva + otro invite», no una pérdida.
 `NODE_OPTIONS=--max-old-space-size` ≈ 0,7·límite. A las 24 h: `docker stats` →
 `mem_limit = ceil(1,5 · pico)` (mín. 768m). Presupuesto:
 `pub + mem_limit + 128m (nginx) + ~150m (caddy) + ~100m (panel) ≤ 3 GB`. Si no cabe, el
-orden de rebajas es **`ssbLogStream.limit` → hops 2→1 → nunca el pub**. El pub hoy no tiene
+orden de rebajas es **`ssbLogStream.limit` → hops 3→2 → nunca el pub** (con hops 2 `/c` se
+queda sin habitantes salvo que el pub siga directamente a gente con Clearnet). El pub hoy no tiene
 `mem_limit`: un pico del HUB puede empujarlo al OOM-killer → WP-O47.
 
 ## 8. Rollback

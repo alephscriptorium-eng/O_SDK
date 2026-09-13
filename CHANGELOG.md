@@ -27,6 +27,8 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
   rama: ruta de `ssb-admin.js` en la imagen viva, `seeds` retirado del
   `ssb-config` (bloqueaba el invite con `alreadyFederated`) y filtro de
   `hub-conn-fix.js` por host. Reporte: `plan/REPORTES/WP-O46-hub-nodo-soporte.md`.
+- HUB a **hops 3** (D-O15): con 2 el HUB solo alcanzaba los 3 seguidos
+  directos del pub y `/c` quedaba vacío.
 
 ### Docs — HUB clearnet como nodo de soporte (2026-09-13)
 
