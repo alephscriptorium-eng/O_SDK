@@ -72,7 +72,7 @@
     "devops:hub-disk": "bash ./devops/scripts/hub-disk.sh",
     "devops:site:deploy": "bash ./devops/scripts/deploy-site.sh",
     "pub:site:deploy": "npm run devops:site:deploy",
-    "skills:sync": "node scripts/sync-claude-skills.mjs",
+    "skills:sync": "alephscript-skills-sync --runtime claude",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs"
   },
