@@ -1,0 +1,17 @@
+{
+  "logging": { "level": "notice" },
+  "caps": { "shs": "H5EC+V5BU9s0lWxCkt4z8a095Sj8a6TgiLKPYi1JD7s=" },
+  "pub": false,
+  "local": false,
+  "friends": { "dunbar": 150, "hops": 2 },
+  "gossip": { "connections": 5, "local": false, "friends": true, "seed": false, "global": false },
+  "replicationScheduler": { "autostart": true, "partialReplication": null },
+  "autofollow": { "enabled": false, "feeds": [] },
+  "connections": {
+    "incoming": {
+      "net":  [ { "scope": "device", "transform": "shs", "port": 8008, "host": "0.0.0.0" } ],
+      "unix": [ { "scope": ["device"], "transform": "noauth" } ]
+    },
+    "outgoing": { "net": [ { "transform": "shs" } ], "tunnel": [], "onion": [], "ws": [] }
+  }
+}

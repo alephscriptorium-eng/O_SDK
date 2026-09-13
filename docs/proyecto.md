@@ -35,6 +35,9 @@ re-replica desde la red.
 - **[Protocolo de recuperación](/PUB/RECOVERY-PROTOCOL)** — triaje de
   integridad, salvamento del repo por *plumbing*, rebuild de imagen y la
   secuencia sbot-puro → sync → GUI que evita bifurcar el feed.
+- **[Protocolo del HUB clearnet](/PUB/HUB-PROTOCOL)** — el HUB web `/c`
+  como *nodo de soporte* (segundo nodo SSB, misma imagen, caché nginx en
+  disco): activación, verificación, disco, memoria, upgrades y rollback.
 
 ## Verificación
 

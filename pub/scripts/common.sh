@@ -83,6 +83,9 @@ validate_vps_persistent_paths() {
   require_vps_persistent_path "OASIS_PUB_CADDY_DATA_DIR" "${OASIS_PUB_CADDY_DATA_DIR:-../volumes-dev/oasis-pub/caddy-data}"
   require_vps_persistent_path "OASIS_PUB_CADDY_CONFIG_DIR" "${OASIS_PUB_CADDY_CONFIG_DIR:-../volumes-dev/oasis-pub/caddy-config}"
   require_vps_persistent_path "OASIS_PUB_TEATRO_DIR" "${OASIS_PUB_TEATRO_DIR:-../volumes-dev/teatro}"
+  require_vps_persistent_path "OASIS_HUB_SSB_DATA_DIR" "${OASIS_HUB_SSB_DATA_DIR:-../volumes-dev/oasis-hub/ssb-data}"
+  require_vps_persistent_path "OASIS_HUB_LOGS_DIR" "${OASIS_HUB_LOGS_DIR:-../volumes-dev/oasis-hub/logs}"
+  require_vps_persistent_path "OASIS_HUB_HTTP_CACHE_DIR" "${OASIS_HUB_HTTP_CACHE_DIR:-../volumes-dev/oasis-hub/http-cache}"
 }
 
 ensure_runtime_dirs() {
@@ -92,6 +95,9 @@ ensure_runtime_dirs() {
   mkdir_pub_path "${OASIS_PUB_CADDY_DATA_DIR:-../volumes-dev/oasis-pub/caddy-data}"
   mkdir_pub_path "${OASIS_PUB_CADDY_CONFIG_DIR:-../volumes-dev/oasis-pub/caddy-config}"
   mkdir_pub_path "${OASIS_PUB_TEATRO_DIR:-../volumes-dev/teatro}"
+  mkdir_pub_path "${OASIS_HUB_SSB_DATA_DIR:-../volumes-dev/oasis-hub/ssb-data}"
+  mkdir_pub_path "${OASIS_HUB_LOGS_DIR:-../volumes-dev/oasis-hub/logs}"
+  mkdir_pub_path "${OASIS_HUB_HTTP_CACHE_DIR:-../volumes-dev/oasis-hub/http-cache}"
 }
 
 ensure_env_from_template() {

@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/ico.png">
   <link rel="apple-touch-icon" href="/ico.png">
   <meta name="description"
-    content="Vestíbulo del Scriptorium dentro del PUB: entrada a las salas Hackería, Parlament y futuras habitaciones layer2.">
+    content="Vestíbulo del Scriptorium dentro del PUB: entrada a las salas Hackería, Parlament, Teatro, HUB clearnet y futuras habitaciones layer2.">
   <link rel="stylesheet" href="/assets/fanzine.css">
   <style>
     body {
@@ -178,6 +178,7 @@
     · <a href="/hackeria/">Hackería</a>
     · <a href="/parlament/">Parlament</a>
     · <a href="/teatro/">Teatro</a>
+    · <a href="/hub/">HUB</a>
   </div>
 
   <header class="header">
@@ -195,7 +196,7 @@
   </div>
 
   <div class="stats-bar tilt-l" aria-label="Estado del vestíbulo">
-    <div class="stat"><span class="val">3</span><span class="lbl">Salas vivas</span></div>
+    <div class="stat"><span class="val">4</span><span class="lbl">Salas vivas</span></div>
     <div class="stat"><span class="val">1</span><span class="lbl">Vestíbulo</span></div>
     <div class="stat"><span class="val">PUB</span><span class="lbl">Nodo base</span></div>
     <div class="stat"><span class="val">Layer2</span><span class="lbl">Ordenado</span></div>
@@ -219,6 +220,9 @@
       │
       ├──▶ TEATRO
       │     catálogo de obras estáticas · Obra Nº 1: Aleph Cero
+      │
+      ├──▶ HUB
+      │     lectura pública /c · solo GET · opt-in · nodo de soporte
       │
       └──▶ FUTURAS SALAS
             sesiones · revisits · corpus · mapping · otras habitaciones
@@ -270,6 +274,20 @@
           <li>Entrada útil cuando vienes a leer, no a cacharrear.</li>
         </ul>
         <a class="door-link" href="/teatro/">Entrar en Teatro →</a>
+      </div>
+
+      <div class="room-card">
+        <div class="room-stamp">Sala 04</div>
+        <div class="room-title">HUB</div>
+        <div class="room-copy">La lectura pública del pub: lo que cada habitante marcó como <b>Clearnet</b>,
+          servido en <b>/c</b> por un nodo de soporte de solo lectura. Doce tipos, un solo verbo (GET),
+          nada sin opt-in.</div>
+        <ul>
+          <li>Cuenta de soporte propia: no escribe en el pub, replica y muestra.</li>
+          <li>Podcasts, blog, eventos, audios, vídeos, documentos… por ruta.</li>
+          <li>Entrada útil cuando vienes a leer lo que los habitantes publican en claro.</li>
+        </ul>
+        <a class="door-link" href="/hub/">Entrar en el HUB →</a>
       </div>
     </div>
   </div>
@@ -394,6 +412,10 @@
             <td><a class="deep-link" href="/teatro/">Teatro</a></td>
           </tr>
           <tr>
+            <td>Leer lo que los habitantes publican en claro</td>
+            <td><a class="deep-link" href="/hub/">HUB</a></td>
+          </tr>
+          <tr>
             <td>Presentar el mapa general del PUB</td>
             <td><a class="deep-link" href="/">Escrivivir.Pub</a></td>
           </tr>
@@ -497,6 +519,8 @@
     <span class="kw-inv">layer2</span>
     <span class="kw">oasis</span>
     <span class="kw-inv">pub</span>
+    <span class="kw">hub</span>
+    <span class="kw-inv">clearnet</span>
   </div>
 
   <script>

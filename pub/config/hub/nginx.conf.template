@@ -1,0 +1,58 @@
+proxy_cache_path /var/cache/hub levels=1:2 keys_zone=hub:10m
+                 max_size=${HUB_CACHE_MAX_SIZE} inactive=7d use_temp_path=off;
+limit_req_zone $http_x_forwarded_for zone=hub_req:10m rate=10r/s;   # todo llega desde la IP de Caddy
+map $upstream_cache_status $hub_cache_status { default $upstream_cache_status; "" "BYPASS"; }
+
+server {
+  listen 80;
+  server_name _;
+  resolver 127.0.0.11 valid=30s ipv6=off;       # DNS interno de Docker
+  set $hub_up http://${HUB_UPSTREAM};
+  if ($request_method !~ ^(GET|HEAD)$) { return 405; }        # 2ª barrera; el backend ya 403ea
+
+  location = /hub-cache-health { access_log off; return 200 "ok\n"; }
+
+  proxy_hide_header X-Frame-Options;          # las fija Caddy (header global del vhost)
+  proxy_hide_header X-Content-Type-Options;
+  proxy_hide_header Referrer-Policy;
+  proxy_hide_header Permissions-Policy;
+  proxy_hide_header Set-Cookie;
+  proxy_ignore_headers Set-Cookie;
+
+  proxy_http_version 1.1;
+  proxy_set_header Host $host;                # Caddy conserva el Host del cliente
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto https;
+  proxy_set_header Connection "";
+  proxy_connect_timeout 5s;
+  proxy_read_timeout 40s;
+
+  proxy_cache hub;
+  proxy_cache_key "$scheme$host$request_uri";
+  proxy_cache_lock on;
+  proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+  proxy_cache_background_update on;
+  proxy_cache_valid 200 301 302 60s;
+  proxy_cache_valid 404 30s;                  # caché negativa con caducidad (WP-O53)
+  proxy_cache_valid 500 502 503 504 5s;
+  add_header X-Cache-Status $hub_cache_status always;
+
+  location ^~ /c/blob/ {                      # immutable del backend; ausente = hasta 30 s de want
+    limit_req zone=hub_req burst=40 nodelay;
+    proxy_cache_lock_timeout 35s;
+    proxy_cache_lock_age 35s;
+    proxy_cache_valid 200 30d;
+    proxy_cache_valid 404 30s;
+    proxy_pass $hub_up;                       # SIN URI: pasa $request_uri crudo (%2F intacto)
+  }
+  location ~ ^/(c|clearnet)(/|$|\?) {
+    limit_req zone=hub_req burst=20 nodelay;
+    proxy_pass $hub_up;
+  }
+  location ~ ^/assets/(styles|themes|images)/ {
+    proxy_ignore_headers Cache-Control Expires Set-Cookie;   # koa-static manda max-age=0 -> sin esto nunca cachea (todo MISS)
+    proxy_cache_valid 200 1d;
+    proxy_pass $hub_up;
+  }
+  location / { return 404; }                  # nada más del backend sale por aquí
+}

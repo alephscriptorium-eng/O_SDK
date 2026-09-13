@@ -170,7 +170,9 @@ check_mount() {
 }
 
 check_layout() {
-  local dir
+  local dir hub_root
+  # HUB clearnet (WP-O46): estado del nodo de soporte, hermano de DATA_ROOT en el volumen de datos.
+  hub_root="$(dirname "$DATA_ROOT")/oasis-hub"
   local dirs=(
     "$REPO_DIR"
     "$DATA_ROOT"
@@ -179,6 +181,9 @@ check_layout() {
     "$DATA_ROOT/caddy-data"
     "$DATA_ROOT/caddy-config"
     "$DATA_ROOT/backups"
+    "$hub_root/ssb-data"
+    "$hub_root/logs"
+    "$hub_root/http-cache"
   )
 
   for dir in "${dirs[@]}"; do

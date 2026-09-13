@@ -77,6 +77,62 @@ services:
     networks:
       - oasis_pub_net
 
+  oasis-hub:                      # nodo de soporte: backend.js --public con sbot embebido (gui.js:12-16)
+    image: oasis-pub-scriptorium:latest      # misma imagen que el pub, sin build
+    container_name: oasis-pub-hub
+    command: ["backend"]                     # docker-entrypoint.sh:521-524 -> node backend.js --host 0.0.0.0
+    restart: unless-stopped
+    depends_on: [oasis-pub]
+    environment:
+      NODE_ENV: production
+      OASIS_SKIP_AI_MODEL: "true"
+      OASIS_SERVER_CONFIG_OVERRIDE: /home/oasis/.ssb/config
+      HOME: /home/oasis
+      SSB_PATH: /home/oasis/.ssb
+      OASIS_PUBLIC: ${OASIS_HUB_PUBLIC:-true}     # false SOLO durante el bootstrap del invite
+      OASIS_OPEN: "false"
+      OASIS_ALLOW_HOST: ${OASIS_HUB_ALLOW_HOST:-pub.escrivivir.co}
+      NODE_OPTIONS: ${OASIS_HUB_NODE_OPTIONS:---max-old-space-size=1024}
+    volumes:
+      - "${OASIS_HUB_SSB_DATA_DIR:-../volumes-dev/oasis-hub/ssb-data}:/home/oasis/.ssb"
+      - "${OASIS_HUB_LOGS_DIR:-../volumes-dev/oasis-hub/logs}:/app/logs"
+      - "${OASIS_HUB_SSB_CONFIG_FILE:-./config/hub/ssb-config}:/home/oasis/.ssb/config:ro"
+      - "${OASIS_HUB_OASIS_CONFIG_FILE:-./config/hub/oasis-config.json}:/app/src/configs/oasis-config.json:ro"
+    # sin ports: 3000 y 8008 solo en oasis_pub_net
+    mem_limit: ${OASIS_HUB_MEM_LIMIT:-1536m}      # generoso el día 1; 1.5×pico tras 24 h (dosier 07 §G6)
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+    healthcheck:   # feed inexistente pero válido: una consulta backlinks, 200; NO /c (O(N·k), F11)
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1:3000/c/inhabitant/@AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=.ed25519"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks: [oasis_pub_net]
+
+  hub-cache:                      # caché HTTP en disco delante del HUB
+    image: nginx:alpine
+    container_name: oasis-pub-hub-cache
+    restart: unless-stopped
+    depends_on: [oasis-hub]
+    environment:
+      HUB_UPSTREAM: oasis-hub:3000
+      HUB_CACHE_MAX_SIZE: ${HUB_CACHE_MAX_SIZE:-2g}
+    volumes:
+      - ./config/hub/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - "${OASIS_HUB_HTTP_CACHE_DIR:-../volumes-dev/oasis-hub/http-cache}:/var/cache/hub"
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/hub-cache-health >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [oasis_pub_net]
+
   pub-frontend:
     profiles: ["frontend"]
     build:
@@ -99,3 +155,9 @@ services:
 networks:
   oasis_pub_net:
     driver: bridge
+
+volumes:
+  # Caché HTTP del HUB como volumen nombrado (Docker Desktop/Windows: los bind mounts
+  # rompen proxy_cache de nginx -> "fstat() failed (2)" y todo sale MISS). En VPS se usa
+  # la ruta bind de OASIS_HUB_HTTP_CACHE_DIR (ext4); en local: OASIS_HUB_HTTP_CACHE_DIR=hub_http_cache.
+  hub_http_cache: {}

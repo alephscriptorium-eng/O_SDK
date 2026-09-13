@@ -62,3 +62,9 @@ if [ -n "$api" ] && command -v python3 >/dev/null 2>&1; then
 else
   echo "  (no se pudo leer el directorio; fallback: scraping / pedir aviso al admin)"
 fi
+echo
+
+echo "-- Disco del HUB (hub-disk.sh check; best-effort) --"
+# Nunca fatal: si el HUB no está desplegado o falla el SSH, deploy-status sigue.
+hub_line="$(bash "$REPO_ROOT/devops/scripts/hub-disk.sh" check 2>/dev/null || true)"
+echo "  ${hub_line:-(hub-disk.sh check no disponible — ¿HUB aún no desplegado / SSH?)}"

@@ -443,6 +443,55 @@ material de identidad en la página (caso fundante: token en claro).
 **CA** · Cero servicios declarados sin código · cero duplicados de datos ·
 lo retirado queda documentado con motivo.
 
+| **WP-O46** | **P1** | Sala 04 · HUB clearnet como nodo de soporte |
+
+**BRIEF** · Servir el HUB web de solo lectura de Oasis 1.0.8 (`/c`, 12
+tipos) desde un **segundo nodo SSB con identidad propia** (`oasis-hub`:
+`backend.js --public` con sbot embebido, misma imagen, `command:
+["backend"]`, hops 2) que redime un invite del pub y replica su grafo;
+caché HTTP en disco (`hub-cache`, nginx `max_size`) y estado en el volumen
+de datos (`/srv/oasis/oasis-hub/*`); bloque `@hub` en Caddy; puerta
+estática Sala 04 (`/hub/`); utilidad `hub-disk.sh`. El contenedor del pub
+**no cambia** (ni imagen, ni entrypoint, ni su servicio en el compose).
+Visibilidad opt-in del habitante (`CA-ANTI-AUTORIDAD`); la cuenta de
+soporte `azofaifo-scriptorium-skin-bot-1` (D-O14) se declara en su `about`
+y no se lista a sí misma. Doc viva:
+`docs/PUB/HUB-PROTOCOL.md`; plan y dosier: `ARCHIVO/DISCO/oasis-clearweb/`.
+**CA** · `/c`, `/c/inhabitant/%40%2F…`, `/assets/images/snh-oasis.jpg` →
+200 con CSP `script-src 'none'`, **una** `X-Frame-Options` y
+`X-Cache-Status` · segunda petición a `/c` = HIT · landing,
+`/assets/fanzine.css`, `/public/status` y los 5 vhosts intactos tras
+`caddy reload` · el feed del pub solo crece por el `contact` del
+follow-back (secuencia antes/después = +1) · el pub sigue healthy y no se
+reinicia en ningún paso · todo el estado nuevo bajo `/srv/oasis/oasis-hub`
+y `df /` igual antes/después · feed del HUB tras 24 h = solo `contact`,
+`pub` (lo publica ssb-invite al aceptar), `about` y `oasisVersion` (cero
+`private`) · `hub-disk.sh check` → 0 · rollback ensayado
+(< 5 min) · journal.
+**Hostil-omite** · habitante sin `visibilityPrefs.clearnet` → «not
+accessible» (200 upstream), nunca contenido · `POST /c` → 405 en nginx (en
+el backend: 400 sin Referer, 302 `?error=…public mode…` con Referer) ·
+`/settings`, `/profile`, `/publish`, `/update`,
+`/json/x`, `/qr/x` desde el vhost → respuesta estática de Caddy, jamás el
+HUB · parar `oasis-hub` no afecta al pub (`whoami`, `invite`, replicación)
+· parar el pub deja `/c` sirviendo réplica/caché (STALE) ·
+`OASIS_HUB_PUBLIC=false` **nunca** con `@hub` activo en Caddy · invite con
+host reescrito: `conn.json` del HUB apunta a `oasis-pub`, no a la IP
+pública.
+Dep: WP-O74. Relación: WP-O44, WP-O50 (doctrina), WP-O53, WP-O91, WP-O01
+(crear `plan/BRIEFS/`, `plan/REPORTES/`). Asientos: D-O13, D-O14.
+
+| **WP-O47** | **P2** | Tope duro de disco para el HUB |
+
+**BRIEF** · `hub-disk.sh` mide y poda pero no impide; falta un límite
+físico para `/srv/oasis/oasis-hub` (imagen loop de tamaño fijo o cuota de
+proyecto ext4) y `mem_limit` también para el pub (hoy sin límite: un pico
+del HUB puede empujarlo al OOM-killer).
+**CA** · llenar el HUB hasta el tope no toca `/srv/oasis/oasis-pub` ni `/`
+· el pub sobrevive a un OOM del HUB · decidido con 30 días de
+`hub-disk.sh --json`.
+Dep: WP-O46.
+
 ---
 
 ## L5 · Pub / L1 permanente
@@ -699,6 +748,9 @@ Dep: WP-O22, WP-O26, WP-O62.
 contrato operativo. Encaja con la separación manifiesto/estado.
 **CA** · Contrato común, paths distintos · el runtime no depende de dónde
 está montado.
+Relación: WP-O46 fija el contrato para el HUB (`/srv/oasis/oasis-hub/*`,
+verificado en `verify-debian13-base.sh`; `docs/PUB/HUB-PROTOCOL.md` §2) —
+cierra la parte «ruta»; queda el contrato general.
 
 | **WP-O92** | **P2** | Federación LAN → WAN |
 
@@ -791,9 +843,11 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 | prioridad | WPs |
 | --------- | --- |
 | **P0** | **16** |
-| **P1** | **38** |
-| **P2** | **21** |
-| **total** | **75** |
+| **P1** | **39** |
+| **P2** | **22** |
+| **total** | **77** |
+
+(2026-09-13: +WP-O46 P1, +WP-O47 P2 en L4, asiento D-O13.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11
@@ -802,7 +856,7 @@ O20 env único · O22 compose · O30 contrato de montaje · O31 separación
 física · O35 T5 · O70 gate de claves · **O76 CI producto** · **O95
 aceptación por operador externo**.
 
-Distribución: L0 8 · L1 10 · L2 7 · L3 10 · L4 6 · L5 7 · L6 8 · L7 7 ·
+Distribución: L0 8 · L1 10 · L2 7 · L3 10 · L4 8 · L5 7 · L6 8 · L7 7 ·
 L8 4 · L9 6 · L10 1.
 
 `BLOQUEA:` WP-O10, WP-O70 (+O76 bloquea releases). ⛔: O13 (externa Z) ·

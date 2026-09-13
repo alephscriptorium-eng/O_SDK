@@ -46,6 +46,10 @@ Si despliegas en ese host, **no** empieces desde `.env.example`. Usa `pub/.env.v
 - `pub-panel-api`: API local de control/monitorización, puerto local `127.0.0.1:8787`.
 - `pub-web`: Caddy con HTTPS automático para `pub.escrivivir.co`.
 - `pub-frontend`: perfil opcional para integrar tu app Node.js/Angular 21 cuando la aportes.
+- `oasis-hub` (**planificado**, WP-O46): HUB clearnet `/c` como **nodo de soporte**: misma imagen,
+  `command: ["backend"]`, identidad SSB propia, estado en `/srv/oasis/oasis-hub`. Solo red Docker.
+- `hub-cache` (**planificado**, WP-O46): nginx con caché en disco acotada delante de `oasis-hub`.
+  Caddy enruta `/c*` aquí. Todo en `docs/PUB/HUB-PROTOCOL.md`.
 
 ## Panel de control
 
