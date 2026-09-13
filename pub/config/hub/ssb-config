@@ -4,8 +4,7 @@
   "pub": false,
   "local": false,
   "friends": { "dunbar": 150, "hops": 2 },
-  "gossip": { "connections": 5, "local": false, "friends": true, "seed": true, "global": false },
-  "seeds": ["net:oasis-pub:8008~shs:/snvahvaTP5obvdiYva9OX9NNnTSlUQbEUBSuDRzrZA="],
+  "gossip": { "connections": 5, "local": false, "friends": true, "seed": false, "global": false },
   "replicationScheduler": { "autostart": true, "partialReplication": null },
   "autofollow": { "enabled": false, "feeds": [] },
   "connections": {

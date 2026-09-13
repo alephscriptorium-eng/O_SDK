@@ -77,7 +77,7 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
 | Pieza | Fichero | Qué fija | Estado |
 |---|---|---|---|
 | Servicios `oasis-hub` + `hub-cache` | `pub/docker-compose.pub.yml` | misma imagen, `command: ["backend"]`, env `OASIS_*`, `mem_limit`, healthcheck a `/c/inhabitant/@AAAA…=.ed25519` (**no** a `/c`, que es O(N·k)), sin `ports`, sin `profiles` | ⏳ WP-O46 |
-| Identidad y replicación | `pub/config/hub/ssb-config` (bind `:ro` a `~/.ssb/config`) | `caps.shs` del ciclo, `pub:false`, `friends.hops:2`, `seeds` → `oasis-pub:8008`, `connections` **completo** (`mergeDeep` reemplaza arrays enteros) con `incoming.net.host: 0.0.0.0` **obligatorio** (el entrypoint pasa `--host 0.0.0.0`; otro valor = crash loop «conflicting connection settings») | ✅ G2 |
+| Identidad y replicación | `pub/config/hub/ssb-config` (bind `:ro` a `~/.ssb/config`) | `caps.shs` del ciclo, `pub:false`, `friends.hops:2`, **sin `seeds`** (un seed al pub mete su clave en `gossip.json` antes del invite y el backend responde `alreadyFederated` sin redimirlo; la conexión persistente la deja `hub-conn-fix.js` en `conn.json`), `connections` **completo** (`mergeDeep` reemplaza arrays enteros) con `incoming.net.host: 0.0.0.0` **obligatorio** (el entrypoint pasa `--host 0.0.0.0`; otro valor = crash loop «conflicting connection settings») | ✅ G2 |
 | Normalizar `conn.json` tras el invite | `pub/tools/hub-conn-fix.js` (se copia al HUB con `docker cp`; `pub/tools` no está montado allí) | tras `invite.accept`, ssb-invite deja la dirección del pub **con el seed y sin `key`**: el HUB reconecta con la identidad desechable y el pub no replica; sin `key` nunca reconecta tras un reinicio. El script hace forget `addr:SEED` · remember `{key,type:pub,autoconnect}` · connect | ✅ G3 |
 | Visor | `pub/config/hub/oasis-config.json` (bind `:ro`) | copia del de `src/configs/` con 6 claves fijadas: `aiMod/aiNavMod:off`, `walletPub.pubId:""`, `ssbLogStream.limit:20000`, `lanBroadcasting:false`, `themes.current:"Dark-SNH"` (en 1.0.8 el original ya trae `pubId:""` y `Dark-SNH` → **4 diferencias efectivas**) | ✅ escrito (G1) |
 | Caché HTTP | `pub/config/hub/nginx.conf.template` | `proxy_cache_path … max_size=${HUB_CACHE_MAX_SIZE} inactive=7d`, caché negativa (404 30 s, 5xx 5 s, WP-O53), `proxy_hide_header` de las cabeceras del backend, `limit_req` por XFF, `location / { return 404; }`; en `/assets/*` `proxy_ignore_headers Cache-Control` (koa-static manda `max-age=0`). En **local Windows** el cache dir es el volumen nombrado `hub_http_cache` (los bind mounts rompen `proxy_cache`); en el VPS es la ruta bind | ✅ G4 |
@@ -220,9 +220,9 @@ Mientras el HUB se recrea, `/c` sirve `STALE` desde nginx; el pub no depende del
 **Rollback** del upgrade con HUB: retag de la imagen vieja + `up -d --no-deps --no-build oasis-pub oasis-hub`.
 
 **5.4 Si cambia la identidad del pub** (recuperación, `RECOVERY-PROTOCOL.md`): el HUB apunta
-al pub por clave (`seeds` en `ssb-config`, `conn.json`). Actualizar `seeds`, borrar la
-entrada vieja de `conn.json` y repetir el bootstrap del invite (§3 paso 3). El `secret`
-del HUB no cambia.
+al pub por clave en `conn.json`. Con el HUB parado, vaciar `conn.json` y `gossip.json` (la
+clave vieja en `gossip.json` haría que el nuevo invite respondiera `alreadyFederated`) y
+repetir el bootstrap del invite (§3 paso 3). El `secret` del HUB no cambia.
 
 ## 6. Disco: mantener el tamaño del HUB
 
@@ -303,6 +303,10 @@ orden de rebajas es **`ssbLogStream.limit` → hops 2→1 → nunca el pub**. El
 - Layout vivo `/opt/oasis-scriptorium/OASIS_PUB` (pre-refactor, **sin git**); `.env.prod`
   solo allí. `host.env` dice `…/pub` → exporta `REMOTE_REPO_DIR=/opt/oasis-scriptorium/OASIS_PUB`
   antes de los scripts de `devops/` (nota en `UPGRADE-PROTOCOL.md` §0).
+- **Dentro de la imagen viva el árbol también es pre-refactor**: `ssb-admin.js` está en
+  `/app/OASIS_PUB/tools/ssb-admin.js`, no en `/app/pub/tools/…` (MODULE_NOT_FOUND en el deploy
+  del 2026-09-13). Es la ruta que usa el `scripts/whoami.sh` vivo. Cuando se migre el layout y se
+  reconstruya la imagen, volverá a `/app/pub/tools/`.
 - El compose vivo tiene el mount del Teatro añadido a mano (`TEATRO-PROTOCOL.md` §6):
   subir el compose del repo **diffeado** contra el vivo, con backup `*.bak-hub-<fecha>`.
 - `site/scriptorium/index.html` vivo lleva dos valores propios: fusionar, no pisar.
