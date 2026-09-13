@@ -12,6 +12,18 @@
     reverse_proxy pub-panel-api:8787
   }
 
+  # HUB clearnet: nodo de soporte oasis-hub detrás de la caché hub-cache.
+  # /assets/* NO entero: /assets/fanzine.css es de la landing. /qr/* no se expone.
+  @hub path /c /c/* /clearnet /assets/styles/* /assets/themes/* /assets/images/*
+  handle @hub {
+    reverse_proxy hub-cache:80 {
+      transport http {
+        dial_timeout 5s
+        response_header_timeout 45s
+      }
+    }
+  }
+
   handle {
     root * /srv/site
     try_files {path} {path}/index.html /index.html
