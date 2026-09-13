@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HUB · Scriptorium</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/ico.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/ico.png">
+  <link rel="apple-touch-icon" href="/ico.png">
+  <meta name="description"
+    content="HUB clearnet del Scriptorium: lectura pública (/c) de lo que cada habitante de Oasis marcó como Clearnet, servido por un nodo de soporte de solo lectura.">
+  <link rel="stylesheet" href="/assets/fanzine.css">
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(0, 0, 0, 0.05), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(0, 0, 0, 0.04), transparent 28rem),
+        #f6f1e6;
+      max-width: 980px;
+    }
+
+    .nav-top {
+      font-size: 0.62rem;
+      text-align: right;
+      padding: 5px 0 4px;
+      border-bottom: 1px dashed #000;
+      margin-bottom: 2px;
+    }
+
+    .nav-top a {
+      text-decoration: none;
+      color: #000;
+      border-bottom: 1.5px solid #000;
+      letter-spacing: 1px;
+      padding: 1px 2px;
+    }
+
+    .nav-top a:hover {
+      background: #000;
+      color: #fff;
+    }
+
+    .door-link {
+      display: inline-block;
+      border: 2px solid #000;
+      padding: 6px 11px;
+      text-decoration: none;
+      color: #000;
+      font-size: 0.64rem;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      font-weight: bold;
+      background: #fff;
+      margin-right: 6px;
+      margin-top: 6px;
+    }
+
+    .door-link:hover {
+      background: #000;
+      color: #fff;
+    }
+
+    .who-card {
+      border: 2px solid #000;
+      background: #fff;
+      padding: 14px 16px;
+      position: relative;
+    }
+
+    .who-stamp {
+      display: inline-block;
+      background: #000;
+      color: #fff;
+      padding: 2px 7px;
+      font-size: 0.56rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+
+    .who-title {
+      font-size: 0.95rem;
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+      font-weight: bold;
+      word-break: break-all;
+    }
+
+    .who-copy {
+      font-size: 0.68rem;
+      line-height: 1.55;
+      margin-bottom: 10px;
+    }
+
+    .who-meta {
+      font-size: 0.6rem;
+      letter-spacing: 1px;
+      opacity: 0.65;
+    }
+
+    .tiny-note {
+      font-size: 0.62rem;
+      line-height: 1.45;
+      opacity: 0.76;
+    }
+
+    .tbl code {
+      font-size: 0.62rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="nav-top">
+    <a href="/">← Escrivivir.Pub</a>
+    · <a href="/scriptorium/">Vestíbulo</a>
+    · <a href="/hackeria/">Hackería</a>
+    · <a href="/parlament/">Parlament</a>
+    · <a href="/teatro/">Teatro</a>
+  </div>
+
+  <header class="header">
+    <div class="stamp">Sala 04</div>
+    <h1>HUB</h1>
+    <div class="sub">Lectura pública de lo que los habitantes publican en claro</div>
+    <div class="sub2">Solo lectura, solo GET, opt-in del habitante. Cero JavaScript en esta puerta; la vista vive en <code>/c</code>.</div>
+    <div class="issue">PUB.ESCRIVIVIR.CO · HUB CLEARNET · 2026</div>
+  </header>
+
+  <div class="washi"></div>
+
+  <div class="callout tilt-r">
+    Cualquier pub que te replique puede servirte en claro: aquí lo hace un nodo de soporte, no el pub.
+  </div>
+
+  <div class="stats-bar tilt-l" aria-label="Ficha del HUB">
+    <div class="stat"><span class="val">12</span><span class="lbl">Tipos</span></div>
+    <div class="stat"><span class="val">GET</span><span class="lbl">Único verbo</span></div>
+    <div class="stat"><span class="val">Opt-in</span><span class="lbl">Visibilidad</span></div>
+    <div class="stat"><span class="val">0</span><span class="lbl">JS en la puerta</span></div>
+    <div class="stat"><span class="val">/c</span><span class="lbl">Puerta</span></div>
+  </div>
+
+  <div class="cutout diagram-wrap">
+    <div class="tape tape-tl"></div>
+    <div class="tape tape-br"></div>
+    <h2>☞ Nodo de soporte</h2>
+    <pre class="diagram"> HABITANTE (su Oasis)
+      │  replica su feed · Perfil → Editar → Clearnet (opt-in)
+      ▼
+ PUB  oasis-pub-scriptorium  (sbot · intacto · no sirve web)
+      │  invite → follow-back (una vez) · replicación SSB
+      ▼
+ NODO DE SOPORTE  azofaifo-scriptorium-skin-bot-1
+      │  cuenta SSB propia · hops 2 · backend --public
+      │  replica lo que el pub replica · no escribe en el pub
+      ▼
+ CACHÉ  nginx en disco (max_size · caché negativa)
+      │
+      ▼
+ EDGE  Caddy  /c  /c/*  /clearnet  /assets/{styles,themes,images}/*
+      │
+      ▼
+ TÚ, con un navegador cualquiera  →  /c
+
+ Regla de la sala:
+ lo que no se marcó como Clearnet no existe aquí.</pre>
+  </div>
+
+  <div class="cutout tilt-l">
+    <div class="tape tape-tr"></div>
+    <h3>Quién sirve esto</h3>
+
+    <div class="who-card">
+      <div class="who-stamp">Cuenta de soporte · bot nº 1</div>
+      <div class="who-title">azofaifo-scriptorium-skin-bot-1</div>
+      <div class="who-copy">
+        Este HUB lo sirve una <b>cuenta de soporte</b> del pub, de solo lectura. No publica por nadie
+        ni escribe en el pub: replica lo que el pub replica y muestra solo lo que cada habitante marcó
+        como Clearnet. Se declara en su propio perfil y no se lista a sí misma.
+      </div>
+      <div class="who-meta">TIPO: scriptorium-skin · SOLO LECTURA · NO ESCRIBE EN EL PUB · FEED ID: pendiente hasta el alta</div>
+      <div class="tiny-note" style="margin-top:10px;">
+        Serie de bots de soporte: <code>&lt;nombre&gt;-&lt;tipo&gt;-bot-&lt;cardinal&gt;</code>. Otros bots
+        conectarán las vistas de hackería, parlamento o teatro; cada uno con su cuenta y su contenedor.
+      </div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="col">
+      <div class="cutout tilt-r">
+        <div class="tape tape-tl"></div>
+        <h3>Cómo entrar</h3>
+        <div class="tip">Todo el HUB: <a class="deep-link" href="/c">/c</a> (alias <code>/clearnet</code>).</div>
+        <div class="tip">Filtrar por tipo: <a class="deep-link" href="/c?type=events">/c?type=events</a>.</div>
+        <div class="tip">Un habitante: <code>/c/inhabitant/&lt;feedId&gt;</code> (el feedId va codificado en la URL:
+          <code>%40</code> por <code>@</code>, <code>%2F</code> por <code>/</code>, <code>%3D</code> por <code>=</code>).</div>
+        <a class="door-link" href="/c">Entrar en el HUB →</a>
+      </div>
+
+      <div class="cutout tilt-l" style="margin-top:12px;">
+        <div class="tape tape-bl"></div>
+        <h3>Cómo aparecer</h3>
+        <div class="key-concept">En tu Oasis: <b>Perfil → Editar → Clearnet</b>, y marca los módulos que quieras exponer.</div>
+        <div class="tip">La preferencia viaja con tu feed: no hay nada que configurar en el pub.</div>
+        <div class="tip">Cualquier pub que te replique aplica tu elección; este también.</div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="cutout tilt-l">
+        <div class="tape tape-tr"></div>
+        <h3>Qué no verás</h3>
+        <div class="warn">Nada de quien no haya activado Clearnet: su página responde «not accessible».</div>
+        <div class="warn">Nada privado ni cifrado: solo los módulos marcados por su autor.</div>
+        <div class="warn">Ningún formulario: todo POST está bloqueado (405 en la caché, 403 en el visor).</div>
+        <div class="tip">Rutas de administración (<code>/settings</code>, <code>/profile</code>, <code>/publish</code>…) no llegan al HUB: responde la landing estática.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cutout tilt-r2">
+    <div class="tape tape-tl"></div>
+    <div class="tape tape-br"></div>
+    <h3>Los 12 tipos · <code>/c/&lt;tipo&gt;/&lt;id&gt;</code></h3>
+    <table class="tbl">
+      <tr>
+        <th>Tipo</th>
+        <th>Ruta de detalle</th>
+        <th>Tipo</th>
+        <th>Ruta de detalle</th>
+      </tr>
+      <tr>
+        <td>Podcasts</td>
+        <td><code>/c/podcasts/&lt;id&gt;</code></td>
+        <td>Blog</td>
+        <td><code>/c/blog/&lt;key&gt;</code></td>
+      </tr>
+      <tr>
+        <td>Shops</td>
+        <td><code>/c/shops/&lt;id&gt;</code></td>
+        <td>Audios</td>
+        <td><code>/c/audios/&lt;id&gt;</code></td>
+      </tr>
+      <tr>
+        <td>Jobs</td>
+        <td><code>/c/jobs/&lt;id&gt;</code></td>
+        <td>Videos</td>
+        <td><code>/c/videos/&lt;id&gt;</code></td>
+      </tr>
+      <tr>
+        <td>Events</td>
+        <td><code>/c/events/&lt;id&gt;</code></td>
+        <td>Images</td>
+        <td><code>/c/images/&lt;id&gt;</code></td>
+      </tr>
+      <tr>
+        <td>Projects</td>
+        <td><code>/c/projects/&lt;id&gt;</code></td>
+        <td>Documents</td>
+        <td><code>/c/documents/&lt;id&gt;</code></td>
+      </tr>
+      <tr>
+        <td>School</td>
+        <td><code>/c/school/&lt;id&gt;</code></td>
+        <td>Torrents</td>
+        <td><code>/c/torrents/&lt;id&gt;</code></td>
+      </tr>
+    </table>
+    <div class="tiny-note" style="margin-top:8px;">
+      Listados por tipo con <code>/c?type=&lt;tipo&gt;</code>. Los medios referenciados se sirven en <code>/c/blob/&lt;blobId&gt;</code>.
+    </div>
+  </div>
+
+  <div class="cutout" style="text-align:center;">
+    <h3>Keywords</h3>
+    <span class="kw">hub</span>
+    <span class="kw-inv">clearnet</span>
+    <span class="kw">solo-lectura</span>
+    <span class="kw-inv">opt-in</span>
+    <span class="kw">nodo-de-soporte</span>
+    <span class="kw-inv">oasis</span>
+    <span class="kw">ssb</span>
+    <span class="kw-inv">pub</span>
+  </div>
+
+  <footer class="footer">
+    <a href="https://github.com/escrivivir-co/aleph-scriptorium/blob/main/LICENSE.md">vAIGPLv1</a> · hub · <a
+      href="https://escrivivir-co.github.io/aleph-scriptorium/">scriptorium v1.0.0-beta.1</a> · <a
+      href="https://escrivivir.co">escrivivir.co</a> · 2026
+  </footer>
+
+</body>
+
+</html>
