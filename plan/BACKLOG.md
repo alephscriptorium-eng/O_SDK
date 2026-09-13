@@ -448,7 +448,7 @@ lo retirado queda documentado con motivo.
 **BRIEF** · Servir el HUB web de solo lectura de Oasis 1.0.8 (`/c`, 12
 tipos) desde un **segundo nodo SSB con identidad propia** (`oasis-hub`:
 `backend.js --public` con sbot embebido, misma imagen, `command:
-["backend"]`, hops 2) que redime un invite del pub y replica su grafo;
+["backend"]`, hops 3 desde D-O15; el plan decía 2) que redime un invite del pub y replica su grafo;
 caché HTTP en disco (`hub-cache`, nginx `max_size`) y estado en el volumen
 de datos (`/srv/oasis/oasis-hub/*`); bloque `@hub` en Caddy; puerta
 estática Sala 04 (`/hub/`); utilidad `hub-disk.sh`. El contenedor del pub
