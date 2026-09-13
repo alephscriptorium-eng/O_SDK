@@ -4,11 +4,13 @@
 > `https://github.com/alephscriptorium-eng/O_SDK.git`). El HUB vive en
 > `https://pub.escrivivir.co/c` y su puerta es la Sala 04 del Scriptorium (`/hub/`).
 
-> **Estado · 2026-09-13 · IMPLEMENTADO en la rama `wp/O46-hub-nodo-soporte`, gates
-> locales G1-G7 pasados contra el pub local; NO desplegado en el VPS.** Plan vivo y dosier:
-> `ARCHIVO/DISCO/oasis-clearweb/v2.md` (sección «Hallazgos de los gates locales») + `dosier/`
-> (WP-O46, asientos D-O13/D-O14). Cuando se active: cambiar esta línea por «ACTIVADO
-> `<fecha>`», rellenar §10, §11 y la línea del journal.
+> **Estado · ACTIVADO 2026-09-13 19:55 UTC** en `pub.escrivivir.co` (WP-O46, rama
+> `wp/O46-hub-nodo-soporte`). Cuenta de soporte `azofaifo-scriptorium-skin-bot-1` =
+> `@KM+ZBipR18VSyjNTFjAOnsmz6EiobGYHb3ZCZ4ZxQYI=.ed25519`. Journal `--mode server+hub`
+> 20:02 UTC. Plan, dosier y hallazgos de gates y deploy: `ARCHIVO/DISCO/oasis-clearweb/v2.md`
+> + `dosier/`; reporte `plan/REPORTES/WP-O46-hub-nodo-soporte.md` (asientos D-O13/D-O14).
+> Pendientes: ajuste de memoria a las 24 h (§7), caché a los 7 días (§6), rollback nivel 1
+> no ensayado (decisión del custodio: deja `/c` sin servicio ~1 min).
 
 Checklist operativo para **activar, operar, mantener en disco y llevar a través de
 los upgrades** el HUB web de solo lectura de Oasis (`/c`, 12 tipos de contenido,
@@ -316,11 +318,22 @@ orden de rebajas es **`ssbLogStream.limit` → hops 2→1 → nunca el pub**. El
 
 ## 10. Registro
 
-Al activar: `deploy-log.sh --target pub --host pub.escrivivir.co --version 1.0.8 --caps-shs <shs> --cycle 6 --feed <feed del pub> --mode server+hub`
-· `hub-disk.sh status --json` (línea base) ·
-feed id del HUB anotado aquí: `<pendiente>` · cambiar la línea de estado de la cabecera ·
-`CHANGELOG.md` `[Unreleased]` Added · reporte `plan/REPORTES/WP-O46-hub-nodo-soporte.md` ·
-revisión adversarial con la contraevidencia de `dosier/05` · merge.
+**Activación 2026-09-13 (registro).** Journal: `deploy-log.sh … --version 1.0.8 --cycle 6 --mode server+hub`
+a las 20:02:48 UTC (gitSha `7ed4641`). Línea base de disco (`devops/logs/hub-disk.jsonl`, no versionado):
+`{"ts":"2026-09-13T20:01:43Z","srvOasisPct":15,"rootPct":49,"hubFlumeBytes":211139,"hubBlobsBytes":0,"hubCacheBytes":92927,"hubMemMiB":112}`.
+Memoria al cierre: HUB 113 MiB / 1,5 GiB · pub 88 MiB · Caddy 74 MiB · nginx 5 MiB. Feed del pub sin
+cambios (`contact` +1 hacia el HUB). Pub `StartedAt` 2026-09-12 17:02 UTC antes y después: **no se
+reinició**. Backups en el VPS con sufijo `.bak-hub-2026-09-13` (compose, `.env.prod`, Caddyfile,
+`tools/hub-conn-fix.js`, `site/index.html`, `site/scriptorium/index.html`) y
+`config/hub/ssb-config.bak-hub-2026-09-13-seeds`. Reporte: `plan/REPORTES/WP-O46-hub-nodo-soporte.md`.
+Pendiente: revisión adversarial con la contraevidencia de `dosier/05` · merge a `main`.
+
+**Desviaciones del plan durante el deploy** (todas corregidas en la rama y en `v2.md`):
+ruta viva de `ssb-admin.js` en la imagen (`/app/OASIS_PUB/tools/`, §9) · `seeds` retirado del
+`ssb-config` (bloqueaba el invite con `alreadyFederated`) · `hub-conn-fix.js` filtraba la entrada
+con seed por host (`7ed4641`) · el contador de `contact` del pub con `grep -c` no se mueve en un log
+binario (usar `grep -a -o | wc -l` o buscar `"contact":"<HUB_ID>"`) · el site se subió fichero a
+fichero con merge a tres bandas en vez de `deploy-site.sh` (riesgo 10 del plan).
 
 Cada upgrade posterior: §5 completo + una línea del journal con `--mode server+hub`.
 Cada semana: §6 `status --json`. Riesgos abiertos heredados del plan (`v2.md` «Riesgos y
@@ -338,7 +351,7 @@ contenedor propio + estado en el volumen de datos.
 
 | # | `name` (about) | Tipo | Qué sirve | Contenedor · estado | Feed id | Alta |
 |---|---|---|---|---|---|---|
-| 1 | `azofaifo-scriptorium-skin-bot-1` | `scriptorium-skin` | HUB clearnet `/c` (Sala 04) | `oasis-pub-hub` · `/srv/oasis/oasis-hub` | `<pendiente>` | ⏳ WP-O46 |
+| 1 | `azofaifo-scriptorium-skin-bot-1` | `scriptorium-skin` | HUB clearnet `/c` (Sala 04) | `oasis-pub-hub` · `/srv/oasis/oasis-hub` | `@KM+ZBipR18VSyjNTFjAOnsmz6EiobGYHb3ZCZ4ZxQYI=.ed25519` | 2026-09-13 (WP-O46) |
 | 2… | `azofaifo-<tipo>-bot-<n>` | hackería · parlamento · teatro… | la vista que conecte | uno por servicio | | por decidir |
 
 Plantilla del `about` (multipart `name` + `description`, `POST /profile/edit` en fase

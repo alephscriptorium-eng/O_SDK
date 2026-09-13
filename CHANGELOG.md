@@ -19,7 +19,14 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
   `check` en `deploy-status.sh`; layout `/srv/oasis/oasis-hub/*` en
   `verify-debian13-base.sh`; Sala 04 `pub/site/hub/` + puerta en el
   vestíbulo y en Accesos. Gates locales G1-G7 pasados (hallazgos en
-  `ARCHIVO/DISCO/oasis-clearweb/v2.md`). **No desplegado en el VPS.**
+  `ARCHIVO/DISCO/oasis-clearweb/v2.md`).
+- **Desplegado en `pub.escrivivir.co` el 2026-09-13 (19:55 UTC)**: `/c` servido por
+  la cuenta de soporte `azofaifo-scriptorium-skin-bot-1`
+  (`@KM+ZBipR18VSyjNTFjAOnsmz6EiobGYHb3ZCZ4ZxQYI=.ed25519`), Sala 04 en `/hub/`,
+  el pub sin reiniciar. Tres paradas durante el deploy, corregidas en la
+  rama: ruta de `ssb-admin.js` en la imagen viva, `seeds` retirado del
+  `ssb-config` (bloqueaba el invite con `alreadyFederated`) y filtro de
+  `hub-conn-fix.js` por host. Reporte: `plan/REPORTES/WP-O46-hub-nodo-soporte.md`.
 
 ### Docs — HUB clearnet como nodo de soporte (2026-09-13)
 
