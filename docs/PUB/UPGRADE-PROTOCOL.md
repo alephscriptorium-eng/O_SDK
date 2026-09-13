@@ -24,6 +24,8 @@ bash devops/scripts/deploy-status.sh        # journal + pub vivo (SSH) + presenc
 ```
 
 No asumas el estado. Este comando lo dice: versión/cap/feed del pub vivo y verde/rojo(motivo).
+Si `docker ps` en el VPS muestra `oasis-pub-hub`, el **HUB clearnet está activo**: la imagen es
+compartida y el upgrade tiene pasos extra → `HUB-PROTOCOL.md` §5 antes de seguir.
 
 > **Layout del VPS.** Mientras el host siga en el layout pre-refactor (`OASIS_PUB/`, sin `.git`),
 > exporta `REMOTE_REPO_DIR=/opt/oasis-scriptorium/OASIS_PUB` antes de cualquier script de `devops/`
@@ -53,7 +55,8 @@ rama `upgrade/oasis-X.Y.Z`:
 git switch -c upgrade/oasis-X.Y.Z
 git rm -r -q src && git checkout oasis-upstream/main -- src/     # overlay LIMPIO: borra lo que upstream borró
 git checkout HEAD -- src/configs/blockchain-cycle.json           # único fichero fork-only bajo src/
-git checkout oasis-upstream/main -- docs/PUB/clearnet.md docs/PUB/deploy.md   # docs upstream (opcional)
+git checkout oasis-upstream/main -- docs/PUB/deploy.md          # docs upstream (opcional). clearnet.md lleva
+                                                                 # una nota del fork en cabecera: si lo traes, repónla
 # Re-aplicar A MANO los 4 guards sobre los ficheros NUEVOS (tabla de abajo). Nunca `git checkout HEAD --`
 # de los ficheros viejos: desde 1.0.x settings_view.js y ssb_config.js cambian mucho en upstream
 # (telegram, verificación, statePath) y recuperar la versión vieja rompe el árbol nuevo.
@@ -85,6 +88,12 @@ Fuera de `src/` se mantiene **wholesale** (nunca overlay): `Dockerfile`, `docker
 `docker-entrypoint.sh`, `scripts/patch-node-modules.js`, `pub/**`, `devops/**`,
 `caddy/**`. `install.sh`/`oasis.sh` son bare-metal → sync con upstream opcional.
 
+**Invariantes del HUB (no son guards, pero se verifican).** El HUB clearnet no añade nada a
+`src/`, pero depende de comportamientos upstream sin API estable (getter de `SSB_server`,
+prefijo `OASIS_` de yargs, rutas `/c/*`, flag `oasis-first-contact`, cabeceras del backend).
+Con el HUB activo, correr el bloque de greps de `HUB-PROTOCOL.md` §5.1 sobre el árbol nuevo y
+regenerar `pub/config/hub/oasis-config.json` desde el `src/configs/oasis-config.json` nuevo (§5.2).
+
 ### Verificación de invariantes (crítica)
 
 ```bash
@@ -102,10 +111,14 @@ ls src/configs/blockchain-cycle.json              # preservado
 - Contrato AI: `ai_service.mjs` espera modelo `oasis-42-1-chat.Q4_K_M.gguf` en `:4001`. Revisar si
   upstream lo cambió.
 
-## 4. Deploy por rol (misma imagen, dos modos)
+## 4. Deploy por rol (misma imagen, tres modos)
+
+Una sola imagen `oasis-pub-scriptorium:latest`, tres `command` del entrypoint: `server` (pub: solo
+sbot) · `backend` (HUB clearnet: `backend.js --public` con sbot embebido e identidad propia,
+`HUB-PROTOCOL.md`) · `full` (cliente: sbot + GUI + IA).
 
 **Preservar siempre** (bind mounts): el dir `.ssb` (`secret`=identidad, `flume`, `blobs`, `gossip.json`)
-y `ai-models`.
+y `ai-models`. Con el HUB activo, también `/srv/oasis/oasis-hub/ssb-data` (su `secret` y `conn.json`).
 
 - **Cliente** (`docker-compose.yml`, modo `full`): `docker compose build && docker compose up -d`.
 - **Pub** (VPS `/opt/oasis-scriptorium`): **no es un checkout git**. `deploy.sh` solo hace
@@ -132,9 +145,13 @@ y `ai-models`.
     `restart pub-web` a ciegas.
   - **Landing**: no tocar. `pub/site/index.html` lee versión/ciclo/cap en vivo
     (`/public/status`, `/public/network`).
+  - **HUB activo**: el retag de la imagen **no** recrea `oasis-pub-hub`. Tras el healthcheck del pub,
+    `... up -d --no-deps oasis-hub` (pub primero, HUB después; `hub-cache` no cambia). Mientras
+    tanto `/c` sirve `STALE` desde nginx. Secuencia y comprobaciones: `HUB-PROTOCOL.md` §5.3.
 - El `deploy.sh` del pub (versión del repo) **apenda al journal** (A0b) al terminar (`devops/scripts/deploy-log.sh`).
   Si desplegaste a mano (build + up), apúntalo desde la máquina operadora:
-  `bash devops/scripts/deploy-log.sh --target pub --host pub.escrivivir.co --version X.Y.Z --caps-shs <shs> --cycle 6 --feed <feed> --mode server`.
+  `bash devops/scripts/deploy-log.sh --target pub --host pub.escrivivir.co --version X.Y.Z --caps-shs <shs> --cycle 6 --feed <feed> --mode server`
+  (`--mode server+hub` si el HUB está activo).
 
 ## 5. Ciclo de red — dos casos
 
@@ -142,7 +159,8 @@ y `ai-models`.
 - **Rotar** (solo si el proyecto rota a un cap nuevo): editar en lockstep `caps.shs` + `autofollow.feeds`
   en `pub/config/ssb/config(.local)`, `src/configs/server-config.json`, `docs/PUB/*.example` +
   `deploy.md`, `devops/scripts/pub-federation.sh` (`EXPECTED_SHS`/`SNH_FEED`),
-  `pub/site/index.html`; luego `pub-federation.sh announce` + `follow-solarnethub` + re-emitir
+  `pub/site/index.html` y, con el HUB activo, `pub/config/hub/ssb-config` (`caps.shs`; HUB y pub
+  rotan juntos, el follow entre ambos sobrevive); luego `pub-federation.sh announce` + `follow-solarnethub` + re-emitir
   invites. Cambiar `caps.shs` = red SSB distinta (los del cap viejo dejan de hacer handshake).
 
 ## 6. Healthcheck post-upgrade + rollback
@@ -151,10 +169,14 @@ y `ai-models`.
   enviar+descargar un fileShare por `/pm/file`; `whoami` = mismo feed id.
 - **Pub**: `bash devops/scripts/deploy-status.sh` → contenedor healthy, `caps.shs` OK, feed id sin cambios;
   `pub:invite` funciona (canario del override `OASIS_SERVER_CONFIG_OVERRIDE`).
+- **HUB** (si activo): `oasis-pub-hub` healthy con la imagen nueva, feed id del HUB sin cambios, `/c`
+  200 y `X-Cache-Status` MISS→HIT, sin `EROFS` en sus logs, `hub-disk.sh check` → 0
+  (`HUB-PROTOCOL.md` §4 y §5.3).
 - **Discoverability** (aparte): para pasar a verde en el directorio hace falta **follow-back** de un
   pub raíz (redimir invite de La Plaza / pedir follow). Progreso: `followersBack` sube de 0.
 - **Rollback** (pub, < 2 min): `docker tag oasis-pub-scriptorium:<ver-vieja> oasis-pub-scriptorium:latest`
-  + `docker compose --env-file .env.prod -f docker-compose.pub.yml up -d --no-deps --no-build oasis-pub`;
+  + `docker compose --env-file .env.prod -f docker-compose.pub.yml up -d --no-deps --no-build oasis-pub`
+  (añade `oasis-hub` al `up` si el HUB está activo);
   restaurar `src/` desde `src.old` o el tgz. `.ssb` intacto ⇒ sin pérdida de identidad. Backup de
   `ssb-data` disponible. Cliente: `git switch` a la rama previa + rebuild.
 
@@ -164,37 +186,19 @@ y `ai-models`.
 (`devops/logs/deploy-history.jsonl`) tiene la línea del deploy. Si se rotó ciclo o se
 consiguió follow-back, re-`announce` y verificar la fila de `pub.escrivivir.co` en el directorio.
 
-## 8. HUB clearnet (opcional, desde 1.0.x) — no activado por defecto
+## 8. HUB clearnet — ver `HUB-PROTOCOL.md`
 
 Desde 1.0.x el pub puede servir un **HUB web de solo lectura** en `/c` con el contenido público de los
 habitantes que hayan activado *Clearnet* en su perfil (`docs/PUB/clearnet.md`). **En Docker no basta con
 Caddy**: nuestro modo `server` arranca solo `SSB_server.js`, mientras que `oasis.sh server` de upstream
-arranca sbot + `backend.js --public --no-open --host=0.0.0.0`. Activarlo son tres cambios, independientes
-del upgrade de `src/`:
+arranca sbot + `backend.js --public`. Cómo lo resolvemos, cómo se activa, cómo se mantiene en disco y
+qué cambia en cada upgrade está en **`HUB-PROTOCOL.md`** (estado en su cabecera).
 
-1. `docker-entrypoint.sh`, modo `server`: forzar `aiMod`/`aiNavMod` a `off`, arrancar `SSB_server.js start`
-   en background, esperar el socket y `exec node backend.js --public --no-open --host=0.0.0.0
-   --allow-host="$OASIS_PUB_WEB_HOST"`. El puerto 3000 no se publica al host (solo red Docker).
-2. `docker-compose.pub.yml`: pasar `OASIS_PUB_WEB_HOST` al servicio `oasis-pub`.
-3. `Caddyfile`, vhost del pub, **antes** del `handle` de la landing:
-
-   ```caddyfile
-   @hub path /c /c/* /clearnet /qr/* /assets/styles/* /assets/themes/* /assets/images/*
-   handle @hub {
-     @blob path /c/blob/*
-     header @blob Cache-Control "public, max-age=31536000, immutable"
-     reverse_proxy oasis-pub:3000
-   }
-   ```
-
-Por qué así (verificado en 1.0.8; coincide con la doc web de Oasis para "HUB que comparte dominio", que
-trae Apache/nginx con `/c`, `/assets`, `/qr` y `--allow-host`, más completa que el `clearnet.md` del tarball):
-
-- `/assets` **colisiona** con la landing (`pub/site/assets/fanzine.css`): proxyear subrutas, no `/assets/*`.
-- `--allow-host` es obligatorio: `/c*` salta la validación de Host de `middleware.js`, pero `/clearnet`
-  (redirect a `/c`) y `/qr/:feedId` (QR del habitante) no → 400 sin él. `/assets` se sirve antes de la validación.
-- **Barras codificadas**: nuestro feed empieza por `@/…`, así que las URLs son `/c/inhabitant/%40%2F…`
-  (el caso `AllowEncodedSlashes NoDecode` / `nocanon` de Apache). Caddy pasa el URI crudo, pero es el
-  primer `curl` a hacer tras activar.
-- `/c/blob/*` es content-addressed → cache inmutable. `/qr` ya manda `no-store`.
-- El modo `--public` bloquea todo POST y redacta a quien no haya optado; Caddy además solo enruta `/c*`.
+Historia, para no repetirla: la receta que vivió aquí (ciclo 1.0.8) proxyaba **al backend del pub** con un
+modo `server-hub` del entrypoint (sbot + backend en el mismo contenedor, rebuild de imagen) y enrutaba
+`/qr/*`. Se **retiró** el 2026-09-13 (D-O13) por la v2: el HUB es un **nodo de soporte** con identidad
+propia en su propio contenedor (`command: ["backend"]`, misma imagen, sin rebuild), el sbot del pub no
+se toca y `/qr/*` queda fuera porque la vista clearnet no lo usa y codifica `localhost:3000`. Siguen
+valiendo, y están recogidos allí, los hechos del proxy: `/assets/*` entero colisiona con la landing,
+`--allow-host` es obligatorio para `/clearnet`, las URLs de nuestro feed llevan `%40%2F` sin decodificar
+y `/c/blob/*` es inmutable.

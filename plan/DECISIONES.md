@@ -104,6 +104,35 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   con `/`); identidad git del carril = `vigia-O <alephscriptorium@gmail.com>`
   (preflight `verificar-identidad.mjs` antes de commitear en repo nuevo).
 
+- **D-O13 · 2026-09-13 · HUB clearnet = nodo de soporte con identidad
+  propia y estado en `/srv/oasis`; el pub no sirve web.** Asiento del
+  custodio (tres correcciones sobre el plan v1): **a)** el sbot del pub no
+  se toca (ni proceso extra, ni entrypoint nuevo, ni rebuild) · **b)** el
+  HUB es **otra cuenta SSB** que replica al pub y sirve `/c` desde su propio
+  contenedor (`backend.js --public` con sbot embebido, misma imagen,
+  hops 2) · **c)** todo el estado y la caché van al volumen de datos
+  (40 GB), con utilidad para medir y acotar (`hub-disk.sh`). Decisiones
+  anexas: caché HTTP en disco desde el día 1 (nginx `max_size`) · Sala 04
+  en `/hub/` · paridad de los 12 tipos. **Supera** la línea de
+  `UPGRADE-PROTOCOL.md` §8 (proxy al backend del pub, modo `server-hub`)
+  que queda retirada. Cumple D-O6 (`CA-ANTI-AUTORIDAD`: opt-in viaja con
+  el feed; el HUB no se lista a sí mismo), D-O7 (fail-open en topología,
+  fail-closed en capacidades) y la doctrina WP-O50 (no montar la identidad
+  ajena). Delta del fork en `src/`: cero. Fuente: plan v2 + dosier
+  (`ARCHIVO/DISCO/oasis-clearweb/`), revisión adversarial F1-F20; doc viva
+  `docs/PUB/HUB-PROTOCOL.md`. Ejecución: WP-O46 (⏳); tope duro de disco y
+  `mem_limit` del pub: WP-O47.
+
+- **D-O14 · 2026-09-13 · Identidad de los bots de soporte:
+  `<nombre>-<tipo>-bot-<cardinal>`.** Asiento del custodio. La cuenta que
+  sirve el HUB (D-O13) se llama **`azofaifo-scriptorium-skin-bot-1`**:
+  *Azofaifo* es el nombre, `scriptorium-skin` el tipo (piel web del
+  Scriptorium) y `1` el cardinal, porque habrá otros servicios pinchados
+  al pub —hackería, parlamento, teatro u otros— conectando sus vistas,
+  cada uno con su cuenta, su cardinal y su contenedor. El `about` de cada
+  bot deriva del identificador y se declara sin `vis_*` (no se lista a sí
+  mismo). Registro de la serie: `docs/PUB/HUB-PROTOCOL.md` §11.
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |

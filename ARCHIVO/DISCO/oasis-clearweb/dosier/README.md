@@ -5,6 +5,9 @@ replanificación del 2026-09-13 (tres exploraciones paralelas del repo + una rev
 del diseño). Sirve para que el worker del WP-O46 y su revisor no tengan que rehacer la
 investigación, y para que el asiento D-O13 cite hechos y no recuerdos.
 
+**Doc viva** (lo que el siguiente agente debe leer primero): `docs/PUB/HUB-PROTOCOL.md`. Este dosier
+es la evidencia detrás de ese protocolo; el protocolo es lo que se mantiene.
+
 Convención: **[V]** verificado en el repo (con `ruta:línea`) · **[NV]** no verificable aquí (falta
 `src/server/node_modules`, depende del VPS o de doc externa) · **[VPS]** dato tomado de evidencia
 operativa versionada (`pub/BACKLOG.md`, backups, journal), no medido en esta sesión.
@@ -35,3 +38,4 @@ operativa versionada (`pub/BACKLOG.md`, backups, journal), no medido en esta ses
 | 2026-09-13 (v2) | El sbot del pub no se toca · el HUB es otra cuenta SSB (nodo de soporte) en contenedor propio · estado y caché en el volumen de datos con utilidad de control |
 | 2026-09-13 (v2) | Caché HTTP en disco (nginx, `max_size`) desde el día 1 |
 | 2026-09-13 (v2) | Replicación del nodo de soporte a hops 2 |
+| 2026-09-13 (integración) | Identidad de la cuenta de soporte: **`azofaifo-scriptorium-skin-bot-1`** (`<nombre>-<tipo>-bot-<cardinal>`: Azofaifo = nombre · `scriptorium-skin` = tipo de bot, piel web del Scriptorium · `1` = cardinal de la serie; vendrán otros bots que conecten las vistas de hackería, parlamento o teatro). Asiento D-O14 |

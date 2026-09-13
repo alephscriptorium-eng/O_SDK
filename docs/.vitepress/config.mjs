@@ -53,7 +53,8 @@ export default defineConfig({
     'install/**',
     'CHANGELOG.md',
     'security.md',
-    'PUB/deploy.md'
+    'PUB/deploy.md',
+    'PUB/clearnet.md'
   ],
   themeConfig: {
     back: BACK,
@@ -66,7 +67,8 @@ export default defineConfig({
         items: [
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
-          { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' }
+          { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' },
+          { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' }
         ]
       },
       { text: 'Repo', link: BACK.repo }
@@ -84,7 +86,8 @@ export default defineConfig({
         items: [
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
-          { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' }
+          { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' },
+          { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' }
         ]
       }
     ],

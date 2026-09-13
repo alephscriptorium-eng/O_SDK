@@ -198,7 +198,10 @@ traen `Cache-Control` → mandan los `proxy_cache_valid`; si se quiere que el na
   @hub path /c /c/* /clearnet /assets/styles/* /assets/themes/* /assets/images/*
   handle @hub {
     reverse_proxy hub-cache:80 {
-      transport http { dial_timeout 5s  response_header_timeout 45s }
+      transport http {              # multilínea obligatoria: `transport http { a  b }` en una línea no valida (G1)
+        dial_timeout 5s
+        response_header_timeout 45s
+      }
     }
   }
 

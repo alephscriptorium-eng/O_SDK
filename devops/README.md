@@ -236,6 +236,28 @@ Todas las operaciones se registran en `devops/logs/federation.log` (ignorado por
 
 El peer inicial recomendado es `solarnethub.com` / `@0qSCyK3xyL71X4qKkmf84Cb2riP6OeUqxCvbP2Z6HWs=.ed25519` (seed ciclo 6 / Oasis 0.8.3), documentado en `docs/PUB/deploy.md`.
 
+### 9. Controlar el disco del HUB clearnet (nodo de soporte)
+
+> Estado: **planificado** (WP-O46, `docs/PUB/HUB-PROTOCOL.md`). El script y las rutas existen
+> cuando el HUB se active; hasta entonces este apartado es el contrato.
+
+El HUB clearnet corre como segundo nodo SSB (`oasis-pub-hub`) con todo su estado en el volumen de
+datos: `/srv/oasis/oasis-hub/{ssb-data,logs,http-cache}`. Lo que crece (log replicado, blobs,
+caché nginx) y lo que se puede podar está en `HUB-PROTOCOL.md` §6. La utilidad es
+`hub-disk.sh` (SSH vía `lib-host.sh`; read-only salvo `prune-*`):
+
+```bash
+bash devops/scripts/hub-disk.sh status            # df de / y /srv/oasis, du por subdir, nº blobs, docker stats
+bash devops/scripts/hub-disk.sh check             # umbrales 75/90 % sobre ambos discos → exit 0/1/2
+bash devops/scripts/hub-disk.sh prune-blobs --dry-run --older-than 30   # blobs no accedidos (content-addressed, se re-piden)
+bash devops/scripts/hub-disk.sh prune-cache       # vacía la caché nginx (solo tras un rebuild de índices)
+bash devops/scripts/hub-disk.sh --json >> devops/logs/hub-disk.jsonl    # serie temporal (no versionada)
+```
+
+Nunca toca `flume/`, `secret`, `conn.json` ni `gossip*.json`. `deploy-status.sh` imprime la línea
+de `check`. Layout del host que verifica `verify-debian13-base.sh` desde WP-O46:
+`/srv/oasis/oasis-pub/*` (pub, intacto) · `/srv/oasis/teatro/` · `/srv/oasis/oasis-hub/*` (HUB).
+
 ## Por qué una carpeta separada
 
 - Mantiene las claves del VPS fuera de `~/.ssh/` global, así no se mezclan con otras identidades personales.

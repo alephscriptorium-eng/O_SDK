@@ -1,5 +1,10 @@
 # Oasis HUB Clearnet Guide
 
+> **Nota del fork (o-sdk).** Documento upstream, sin cambios. En este fork el HUB **no** lo sirve el
+> pub: lo sirve un **nodo de soporte** con identidad SSB propia en su propio contenedor, detrás de una
+> caché nginx y del Caddy compartido. Activación, operación, disco y upgrades:
+> [`HUB-PROTOCOL.md`](./HUB-PROTOCOL.md). Si traes este fichero de upstream en un upgrade, repón esta nota.
+
 A PUB launched with `sh oasis.sh server` does two things: it replicates the network, and it serves a **read-only web HUB** with the public content of the inhabitants it replicates. Guests reach it from the clearnet with a normal browser: they can read, listen and watch, but never write. Every POST is blocked in this mode.
 
 ## What is served
