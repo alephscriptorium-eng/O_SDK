@@ -69,6 +69,7 @@
     "devops:federation": "bash ./devops/scripts/pub-federation.sh",
     "devops:invite": "bash ./devops/scripts/generate-invite.sh",
     "devops:test-invite": "bash ./devops/scripts/test-invite.sh",
+    "devops:hub-disk": "bash ./devops/scripts/hub-disk.sh",
     "devops:site:deploy": "bash ./devops/scripts/deploy-site.sh",
     "pub:site:deploy": "npm run devops:site:deploy",
     "skills:sync": "node scripts/sync-claude-skills.mjs",
