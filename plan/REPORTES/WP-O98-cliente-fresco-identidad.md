@@ -79,6 +79,6 @@
 
 ## Pendientes (fuera de este WP, decisión del custodio)
 
-- Retirar lo antiguo (`CLIENT-PROTOCOL.md` §7): `docker rm oasis-server-dev`, `docker rmi alephscript-clean-oasis-dev` (4,36 GB), `docker volume rm alephscript-clean_* blockchaincomport_*`, redes; el directorio físico como backup frío (sus `*.nul-damaged-bak` suman 5,7 GB).
+- ~~Retirar lo antiguo~~ **Hecho el 2026-09-17 a petición del custodio** (§7): `oasis-server-dev` eliminado, imagen `alephscript-clean-oasis-dev` (4,36 GB) borrada, los 6 volúmenes `alephscript-clean_*`/`blockchaincomport_*` y las 2 redes eliminados; `oasis-client` siguió healthy. El directorio físico `BlockchainComPortolumes-dev` (9,4 GB, con `secret`) queda como backup frío; sus `*.nul-damaged-bak` (5,7 GB) y los blobs dañados son los candidatos a borrar cuando el custodio decida.
 - Copiar `devops/backups/client/20260917-153020/` fuera de la máquina.
 - Los 4 blobs propios ausentes (`Verification`) llegarán de la red si algún par los conserva; si no, son las imágenes dañadas en julio.

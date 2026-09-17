@@ -12,7 +12,7 @@
 > del sbot puro; 46 = `karmaScore` de la GUI; `seq_pub` = 46; `Verification`: forks 0). Manifiesto
 > `volumes-dev/ssb-data/.import-20260917-153020.txt`; backup `devops/backups/client/20260917-153020/`.
 > Blobs del origen descartados (todos dañados por NUL): 4 propios pendientes de la red. Reporte
-> `plan/REPORTES/WP-O98-cliente-fresco-identidad.md`. Instalación antigua **sin retirar** (§7).
+> `plan/REPORTES/WP-O98-cliente-fresco-identidad.md`. Instalación antigua **retirada** el mismo día (§7: contenedor, imagen, 6 volúmenes y 2 redes); el directorio físico queda como backup frío.
 
 Checklist operativo para **dar de alta un cliente fresco, traer una identidad SSB existente sin
 bifurcar su feed, sincronizarlo con el pub, subirlo de versión, verificarlo y volver atrás**.
