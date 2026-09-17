@@ -22,7 +22,7 @@ o-sdk aporta al pack: el **rol pub**, el **edge TLS compartido** y el
 
 | Rol | Artefacto | Estado |
 | --- | --------- | ------ |
-| Cliente | `docker-compose.yml` → `oasis-client` | ✅ funcional (GUI :3000, SSB :8008) |
+| Cliente | `docker-compose.yml` → `oasis-client` | ✅ funcional (GUI :3000, SSB :8008) · alta, importación de identidad, upgrade y rollback en `docs/CLIENT-PROTOCOL.md` |
 | Pub | `pub/docker-compose.pub.yml` → `oasis-pub` + `pub-panel-api` + `pub-web` | ✅ desplegado en VPS |
 | Wallet | `ecoin/` (profile `ecoin`) | ✅ opcional, desacoplado |
 | Sidecar blobs | `pub/blobstore-sidecar/` | ⚠️ **huérfano**: no está en ningún compose vivo |

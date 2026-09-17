@@ -68,7 +68,8 @@ export default defineConfig({
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
           { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' },
-          { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' }
+          { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' },
+          { text: 'Protocolo del cliente', link: '/CLIENT-PROTOCOL' }
         ]
       },
       { text: 'Repo', link: BACK.repo }
@@ -87,7 +88,8 @@ export default defineConfig({
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
           { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' },
-          { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' }
+          { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' },
+          { text: 'Protocolo del cliente', link: '/CLIENT-PROTOCOL' }
         ]
       }
     ],

@@ -58,7 +58,8 @@ empaqueta en Docker para que la levantes en un comando.
 ```bash
 git clone https://github.com/alephscriptorium-eng/O_SDK.git
 cd O_SDK
-docker compose up -d oasis-client      # cliente + SSB + IA
+npm run setup                          # crea volumes-dev/{ssb-data,ai-models,logs,ecoin-data} (sin esto el bind falla)
+docker compose up -d oasis-client      # cliente + SSB + IA  (o `npm run up`, que hace ambos)
 # GUI en http://localhost:3000
 ```
 
