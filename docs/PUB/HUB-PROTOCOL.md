@@ -13,7 +13,7 @@
 > no ensayado (decisión del custodio: deja `/c` sin servicio ~1 min).
 
 Checklist operativo para **activar, operar, mantener en disco y llevar a través de
-los upgrades** el HUB web de solo lectura de Oasis (`/c`, 12 tipos de contenido,
+los upgrades** el HUB web de solo lectura de Oasis (`/c`, 16 tipos de contenido desde 1.1.2; 12 en 1.0.8,
 `./clearnet.md`). Deriva del plan v2 del 2026-09-13 y de su revisión adversarial
 (20 hallazgos, `dosier/05-revision-adversarial.md`).
 
@@ -82,8 +82,8 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
 | Identidad y replicación | `pub/config/hub/ssb-config` (bind `:ro` a `~/.ssb/config`) | `caps.shs` del ciclo, `pub:false`, `friends.hops:3` (D-O15: con 2 el HUB solo alcanzaba los 3 seguidos directos del pub y `/c` quedaba vacío; los habitantes con Clearnet están a 3 saltos, seguidos por La Plaza), **sin `seeds`** (un seed al pub mete su clave en `gossip.json` antes del invite y el backend responde `alreadyFederated` sin redimirlo; la conexión persistente la deja `hub-conn-fix.js` en `conn.json`), `connections` **completo** (`mergeDeep` reemplaza arrays enteros) con `incoming.net.host: 0.0.0.0` **obligatorio** (el entrypoint pasa `--host 0.0.0.0`; otro valor = crash loop «conflicting connection settings») | ✅ G2 |
 | Normalizar `conn.json` tras el invite | `pub/tools/hub-conn-fix.js` (se copia al HUB con `docker cp`; `pub/tools` no está montado allí) | tras `invite.accept`, ssb-invite deja la dirección del pub **con el seed y sin `key`**: el HUB reconecta con la identidad desechable y el pub no replica; sin `key` nunca reconecta tras un reinicio. El script hace forget `addr:SEED` · remember `{key,type:pub,autoconnect}` · connect | ✅ G3 |
 | Visor | `pub/config/hub/oasis-config.json` (bind `:ro`) | copia del de `src/configs/` con 6 claves fijadas: `aiMod/aiNavMod:off`, `walletPub.pubId:""`, `ssbLogStream.limit:20000`, `lanBroadcasting:false`, `themes.current:"Dark-SNH"` (en 1.0.8 el original ya trae `pubId:""` y `Dark-SNH` → **4 diferencias efectivas**) | ✅ escrito (G1) |
-| Caché HTTP | `pub/config/hub/nginx.conf.template` | `proxy_cache_path … max_size=${HUB_CACHE_MAX_SIZE} inactive=7d`, caché negativa (404 30 s, 5xx 5 s, WP-O53), `proxy_hide_header` de las cabeceras del backend, `limit_req` por XFF, `location / { return 404; }`; en `/assets/*` `proxy_ignore_headers Cache-Control` (koa-static manda `max-age=0`). En **local Windows** el cache dir es el volumen nombrado `hub_http_cache` (los bind mounts rompen `proxy_cache`); en el VPS es la ruta bind | ✅ G4 |
-| Edge | `pub/caddy/Caddyfile` (bloque `@hub` del vhost del pub) | `reverse_proxy hub-cache:80`; `transport http {…}` en multilínea; `/qr/*` **fuera**; `/assets/*` entero **no** (`fanzine.css` es de la landing); `header {}` global intacto | ✅ G1/G4 |
+| Caché HTTP | `pub/config/hub/nginx.conf.template` | `proxy_cache_path … max_size=${HUB_CACHE_MAX_SIZE} inactive=7d`, caché negativa (404 30 s, 5xx 5 s, WP-O53), `proxy_hide_header` de las cabeceras del backend, `limit_req` por XFF, `location / { return 404; }`; en `/assets/*` y en `/c/assets/*` (visor 1.1.2) `proxy_ignore_headers Cache-Control` (koa-static manda `max-age=0`). En **local Windows** el cache dir es el volumen nombrado `hub_http_cache` (los bind mounts rompen `proxy_cache`); en el VPS es la ruta bind | ✅ G4 |
+| Edge | `pub/caddy/Caddyfile` (bloque `@hub` del vhost del pub) | `reverse_proxy hub-cache:80`; `transport http {…}` en multilínea; `/qr/*` **fuera**; `/assets/*` entero **no** (`fanzine.css` es de la landing); desde 1.1.2 el visor usa `/c/assets/*`, ya cubierto por `/c/*`; `header {}` global intacto | ✅ G1/G4 |
 | Variables | `pub/.env.vps.example`, `.env.local.example`, `.env.example`; `.env.prod` del VPS | `OASIS_HUB_{SSB_DATA,LOGS,HTTP_CACHE}_DIR`, `OASIS_HUB_{SSB_CONFIG,OASIS_CONFIG}_FILE`, `OASIS_HUB_ALLOW_HOST`, `HUB_CACHE_MAX_SIZE`, `OASIS_HUB_MEM_LIMIT`, `OASIS_HUB_NODE_OPTIONS`, `OASIS_HUB_PUBLIC` (comentada) | ⏳ |
 | Validación de rutas | `pub/scripts/common.sh` (`validate_vps_persistent_paths`, `ensure_runtime_dirs`) · `devops/scripts/verify-debian13-base.sh` (`check_layout`) | las tres rutas `OASIS_HUB_*_DIR` absolutas bajo `/srv/oasis` en layout canónico | ⏳ |
 | Control de disco | `devops/scripts/hub-disk.sh` (npm `devops:hub-disk`) | `status` · `check` · `prune-blobs` · `prune-cache` · `--json` (§6) | ⏳ |
@@ -175,8 +175,10 @@ grep -c '"/c/blob/' src/backend/backend.js                                # blob
 grep -c 'visibilityPrefs' src/backend/backend.js                          # opt-in por habitante
 grep -c 'oasis-first-contact' src/models/onboarding_model.js              # nombre del flag anti-PM de bienvenida
 grep -c 'ssbLogStream' src/models/inhabitants_model.js                    # ventana de autores de /c
-grep -c 'OASIS_SERVER_CONFIG_OVERRIDE' src/server/ssb_config.js           # guard del fork del que el HUB depende
-grep -on '/assets/[a-z]*' src/views/clearnet_view.js | sort -u            # subárboles que Caddy debe enrutar
+grep -c 'OASIS_SERVER_CONFIG_OVERRIDE' src/server/ssb_config.js           # guard del fork del que el HUB depende (0 en upstream: es nuestro)
+grep -c 'mount("/c/assets"' src/client/middleware.js                     # 1.1.2+: assets del visor bajo /c/assets (location propia en nginx)
+grep -on '/c/assets/[a-z]*\|/assets/[a-z]*' src/views/clearnet_view.js | sort -u   # subárboles que Caddy/nginx deben enrutar y cachear
+git diff <tag-viejo> oasis-upstream/main -- src/backend/backend.js | grep -o '^+.*\.get("/c/[^"]*"'   # rutas /c/* nuevas → paridad en Sala 04
 grep -n 'X-Frame-Options\|Referrer-Policy\|Permissions-Policy' src/client/middleware.js   # lista de proxy_hide_header
 ```
 
@@ -220,6 +222,29 @@ bash devops/scripts/hub-disk.sh prune-cache                # si el upgrade reind
 
 Mientras el HUB se recrea, `/c` sirve `STALE` desde nginx; el pub no depende del HUB.
 **Rollback** del upgrade con HUB: retag de la imagen vieja + `up -d --no-deps --no-build oasis-pub oasis-hub`.
+
+**5.5 Hechos del ciclo 1.0.8→1.1.2 (2026-09-17).** Todos los greps de §5.1 ≥ 1 sobre el árbol
+nuevo; `ssb-*` en `src/server/package.json` sin cambios (G3 no se repitió); `oasis-config.json` y
+`server-config.json` sin cambios upstream (la copia del HUB no se regeneró; diff = las 4
+diferencias efectivas); cabeceras del backend iguales (`proxy_hide_header` intacto).
+Lo que sí cambió y cómo se adaptó:
+
+- El visor pasa de `/assets/images` a **`/c/assets/images`** (`app.use(mount("/c/assets", assets))`
+  nuevo en `middleware.js`). Caddy `/c/*` ya lo cubría; en nginx caía en la `location` genérica de
+  `/c` **sin** `proxy_ignore_headers Cache-Control` → MISS perpetuo. Se añadió `location ~ ^/c/assets/`
+  (1 d). Las rutas `/assets/(styles|themes|images)` se mantienen por compatibilidad.
+- **Cuatro rutas de detalle nuevas**: `/c/bookmarks/:id`, `/c/feed/:id`, `/c/market/:id`, `/c/wiki/:id`
+  (12 → 16 tipos; la guía upstream `clearnet.md` lista 15, omite bookmarks). Paridad en la Sala 04.
+- **`/c/qr/:feedId`** nuevo (PNG con `Cache-Control: no-store`): entra por `/c/*` y nginx no lo cachea.
+  Codifica `http://localhost:3000/qr-action/follow/…` (`QR_ACTION_BASE` es constante): inútil desde el
+  clearnet pero inocuo. La política no cambia: `/qr/*` sigue fuera.
+- Opt-in por habitante: tres claves nuevas en `visibilityPrefs` (`clearnetMarket`, `clearnetFeed`,
+  `clearnetWiki`); `/profile/clearnet-toggle` desaparece (activar cualquier módulo hace público al
+  habitante; apagarlos todos lo retira).
+- `onboarding_model.js`: el flag `oasis-first-contact` sigue; añade `adopt(feedId)`. `SSB_server.js`:
+  el detalle técnico de lock/corrupción solo se imprime con `--debug`/`OASIS_DEBUG`.
+- Overlay en Windows: con `core.autocrlf` los ficheros nuevos salen **CRLF** en el árbol de trabajo;
+  `git diff` normaliza, pero un reemplazo literal con `\n` no casa. Detectar el EOL antes de editar.
 
 **5.4 Si cambia la identidad del pub** (recuperación, `RECOVERY-PROTOCOL.md`): el HUB apunta
 al pub por clave en `conn.json`. Con el HUB parado, vaciar `conn.json` y `gossip.json` (la

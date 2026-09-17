@@ -45,6 +45,11 @@ server {
     proxy_cache_valid 404 30s;
     proxy_pass $hub_up;                       # SIN URI: pasa $request_uri crudo (%2F intacto)
   }
+  location ~ ^/c/assets/ {                    # 1.1.2: el visor clearnet referencia /c/assets/* (mount nuevo en middleware.js)
+    proxy_ignore_headers Cache-Control Expires Set-Cookie;   # koa-static manda max-age=0 -> sin esto nunca cachea
+    proxy_cache_valid 200 1d;
+    proxy_pass $hub_up;
+  }
   location ~ ^/(c|clearnet)(/|$|\?) {
     limit_req zone=hub_req burst=20 nodelay;
     proxy_pass $hub_up;

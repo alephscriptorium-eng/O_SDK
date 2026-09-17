@@ -136,7 +136,7 @@
   </div>
 
   <div class="stats-bar tilt-l" aria-label="Ficha del HUB">
-    <div class="stat"><span class="val">12</span><span class="lbl">Tipos</span></div>
+    <div class="stat"><span class="val">16</span><span class="lbl">Tipos</span></div>
     <div class="stat"><span class="val">GET</span><span class="lbl">Único verbo</span></div>
     <div class="stat"><span class="val">Opt-in</span><span class="lbl">Visibilidad</span></div>
     <div class="stat"><span class="val">0</span><span class="lbl">JS en la puerta</span></div>
@@ -225,7 +225,7 @@
   <div class="cutout tilt-r2">
     <div class="tape tape-tl"></div>
     <div class="tape tape-br"></div>
-    <h3>Los 12 tipos · <code>/c/&lt;tipo&gt;/&lt;id&gt;</code></h3>
+    <h3>Los 16 tipos · <code>/c/&lt;tipo&gt;/&lt;id&gt;</code></h3>
     <table class="tbl">
       <tr>
         <th>Tipo</th>
@@ -269,9 +269,21 @@
         <td>Torrents</td>
         <td><code>/c/torrents/&lt;id&gt;</code></td>
       </tr>
+      <tr>
+        <td>Market</td>
+        <td><code>/c/market/&lt;id&gt;</code></td>
+        <td>Feed</td>
+        <td><code>/c/feed/&lt;id&gt;</code></td>
+      </tr>
+      <tr>
+        <td>Wiki</td>
+        <td><code>/c/wiki/&lt;id&gt;</code></td>
+        <td>Bookmarks</td>
+        <td><code>/c/bookmarks/&lt;id&gt;</code></td>
+      </tr>
     </table>
     <div class="tiny-note" style="margin-top:8px;">
-      Listados por tipo con <code>/c?type=&lt;tipo&gt;</code>. Los medios referenciados se sirven en <code>/c/blob/&lt;blobId&gt;</code>.
+      Listados por tipo con <code>/c?type=&lt;tipo&gt;</code>. Los medios referenciados se sirven en <code>/c/blob/&lt;blobId&gt;</code>. Market, Feed, Wiki y Bookmarks llegan con Oasis 1.1.2.
     </div>
   </div>
 

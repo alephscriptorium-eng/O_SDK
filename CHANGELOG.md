@@ -5,6 +5,22 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Upgrade Oasis 1.0.8 → 1.1.2 con el HUB activo (WP-O97, 2026-09-17)
+
+- Rama `upgrade/oasis-1.1.2`: overlay limpio de `src/` desde upstream
+  `3c9bf9a` (releases 1.0.9–1.1.2), 4 fork guards repuestos
+  (`git diff oasis-upstream/main --stat -- src/` = guards +
+  `blockchain-cycle.json`), `docs/PUB/clearnet.md` actualizado con la nota
+  del fork. Ciclo de red sin cambios (cap `H5EC+V5B…`, ciclo 6).
+- HUB (`HUB-PROTOCOL.md` §5.5): el visor pasa a `/c/assets/*` → nueva
+  `location` cacheada en `pub/config/hub/nginx.conf.template`; cuatro rutas
+  de detalle nuevas (market, feed, wiki, bookmarks) → Sala 04 pasa de 12 a
+  16 tipos; `/c/qr/:feedId` entra por `/c/*` sin caché (`no-store`).
+  `ssb-*`, `oasis-config.json`, `server-config.json` y cabeceras del backend
+  sin cambios upstream.
+- `UPGRADE-PROTOCOL.md`: guards por fichero (checkout de HEAD solo si
+  upstream no lo tocó), aviso CRLF en Windows, chequeos post-upgrade del HUB.
+
 ### Added — HUB clearnet como nodo de soporte, implementación (WP-O46, 2026-09-13)
 
 - Rama `wp/O46-hub-nodo-soporte`. `pub/docker-compose.pub.yml`: servicios

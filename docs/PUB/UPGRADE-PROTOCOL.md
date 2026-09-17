@@ -6,7 +6,8 @@
 
 Checklist operativo reutilizable para subir el fork dockerizado de Oasis a una nueva versión
 upstream (KrakensLab/oasis) sin perder identidad SSB ni los "fork guards". Deriva del plan de
-upgrade y de lo aprendido en los ciclos 0.8.3→0.8.8, 0.8.8→0.9.6 y 0.9.6→1.0.8.
+upgrade y de lo aprendido en los ciclos 0.8.3→0.8.8, 0.8.8→0.9.6, 0.9.6→1.0.8 y 1.0.8→1.1.2
+(el primero con el HUB clearnet activo: `HUB-PROTOCOL.md` §5.5).
 
 > **Modelo mental del "ciclo".** El *ciclo de red* NO lo calcula ningún código local
 > (`blockchain-cycle.json` no lo lee nadie; `computeCycle()` de LARP es otra cosa). Es una
@@ -65,7 +66,11 @@ git checkout oasis-upstream/main -- docs/PUB/deploy.md          # docs upstream 
 Por qué `git rm` antes del checkout: `git checkout <tree> -- src/` sobreescribe pero **no borra**, y así
 quedaron restos de ciclos anteriores (`media-favorites.*`, retirados por upstream en 0.9.2) hasta 1.0.8.
 
-Los cuatro guards, en concreto (ciclo 1.0.8):
+Los cuatro guards, en concreto (ciclo 1.0.8; idénticos en 1.1.2). Si upstream **no tocó** un fichero
+entre las dos versiones (`git diff <tag-viejo> oasis-upstream/main --stat -- <fichero>` vacío), sí vale
+`git checkout HEAD -- <fichero>` para ese guard (en 1.1.2: `ssb_config.js` y `updater.js`); los que
+cambiaron (`backend.js`, `settings_view.js`) se editan a mano sobre el fichero nuevo. En Windows el
+overlay sale **CRLF** en el árbol de trabajo (`autocrlf`): detecta el EOL antes de un reemplazo literal.
 
 | Fichero | Qué reponer sobre el fichero nuevo |
 |---|---|
@@ -171,7 +176,8 @@ y `ai-models`. Con el HUB activo, también `/srv/oasis/oasis-hub/ssb-data` (su `
   `pub:invite` funciona (canario del override `OASIS_SERVER_CONFIG_OVERRIDE`).
 - **HUB** (si activo): `oasis-pub-hub` healthy con la imagen nueva, feed id del HUB sin cambios, `/c`
   200 y `X-Cache-Status` MISS→HIT, sin `EROFS` en sus logs, `hub-disk.sh check` → 0
-  (`HUB-PROTOCOL.md` §4 y §5.3).
+  (`HUB-PROTOCOL.md` §4 y §5.3). Desde 1.1.2: `/c/assets/images/snh-oasis.jpg` 200 y MISS→HIT;
+  una ruta de detalle nueva (p. ej. `/c/wiki/x`) responde 200 con «not accessible»/not found, no 404 de nginx.
 - **Discoverability** (aparte): para pasar a verde en el directorio hace falta **follow-back** de un
   pub raíz (redimir invite de La Plaza / pedir follow). Progreso: `followersBack` sube de 0.
 - **Rollback** (pub, < 2 min): `docker tag oasis-pub-scriptorium:<ver-vieja> oasis-pub-scriptorium:latest`

@@ -14,6 +14,7 @@
 
   # HUB clearnet: nodo de soporte oasis-hub detrás de la caché hub-cache.
   # /assets/* NO entero: /assets/fanzine.css es de la landing. /qr/* no se expone.
+  # Desde Oasis 1.1.2 el visor usa /c/assets/* (cubierto por /c/*); /assets/{styles,themes,images} se mantiene por compatibilidad.
   @hub path /c /c/* /clearnet /assets/styles/* /assets/themes/* /assets/images/*
   handle @hub {
     reverse_proxy hub-cache:80 {
