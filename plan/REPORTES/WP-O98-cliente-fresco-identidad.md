@@ -79,6 +79,6 @@
 
 ## Pendientes (fuera de este WP, decisión del custodio)
 
-- ~~Retirar lo antiguo~~ **Hecho el 2026-09-17 a petición del custodio** (§7): `oasis-server-dev` eliminado, imagen `alephscript-clean-oasis-dev` (4,36 GB) borrada, los 6 volúmenes `alephscript-clean_*`/`blockchaincomport_*` y las 2 redes eliminados; `oasis-client` siguió healthy. El directorio físico `BlockchainComPortolumes-dev` (9,4 GB, con `secret`) queda como backup frío; sus `*.nul-damaged-bak` (5,7 GB) y los blobs dañados son los candidatos a borrar cuando el custodio decida.
+- ~~Retirar lo antiguo~~ **Hecho el 2026-09-17 a petición del custodio** (§7): `oasis-server-dev` eliminado, imagen `alephscript-clean-oasis-dev` (4,36 GB) borrada, los 6 volúmenes `alephscript-clean_*`/`blockchaincomport_*` y las 2 redes eliminados; `oasis-client` siguió healthy. El directorio físico `BlockchainComPortolumes-dev` (9,4 GB, con `secret`) queda como backup frío; sus `*.nul-damaged-bak` (5,7 GB) y los 97 blobs dañados (213 MB) **se borraron a continuación a petición del custodio**: el directorio pasa de 9,4 GB a 3,9 GB y conserva `secret`, `flume/log.offset`, `gossip.json`, `keys/` y el `.gguf` sano.
 - Copiar `devops/backups/client/20260917-153020/` fuera de la máquina.
 - Los 4 blobs propios ausentes (`Verification`) llegarán de la red si algún par los conserva; si no, son las imágenes dañadas en julio.
