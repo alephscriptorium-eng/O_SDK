@@ -200,7 +200,23 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel, industryModel }
           description: info.description || '',
           members: Math.max(info.members || 0, new Set(asc.map(m => m.author)).size),
           messageCount: asc.length,
-          replies: asc.slice(-CHAT_THREAD_LIMIT).map(m => ({ id: m.id, author: m.author, ts: m.ts || 0, text: (m.content && m.content.text) || '', image: (m.content && m.content.image) || null, mimeType: (m.content && m.content.mimeType) || '' }))
+          replies: (() => {
+            const byId = new Map(asc.map(m => [m.id, m]));
+            return asc.slice(-CHAT_THREAD_LIMIT).map(m => {
+              const quotedId = (m.content && typeof m.content.replyTo === 'string') ? m.content.replyTo : null;
+              const quoted = quotedId ? byId.get(quotedId) : null;
+              return {
+                id: m.id,
+                author: m.author,
+                ts: m.ts || 0,
+                text: (m.content && m.content.text) || '',
+                image: (m.content && m.content.image) || null,
+                mimeType: (m.content && m.content.mimeType) || '',
+                replyTo: quotedId,
+                reply: quoted ? { id: quoted.id, author: quoted.author, text: String((quoted.content && quoted.content.text) || '').slice(0, 140) } : null
+              };
+            });
+          })()
         }
       });
     }
@@ -536,7 +552,7 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel, industryModel }
         const v = msg && msg.value;
         const c = v && v.content;
         if (!c || typeof c !== 'object') continue;
-        const isOpinion = c.type === 'feedOpinion' && typeof c.target === 'string';
+        const isOpinion = typeof c.type === 'string' && /Opinion$/.test(c.type) && c.type !== 'pollOpinion' && typeof c.target === 'string';
         const isVoteAction = c.type === 'feed-action' && c.action === 'vote' && (typeof c.root === 'string' || typeof c.target === 'string');
         if (!isOpinion && !isVoteAction) continue;
         const target = isOpinion ? c.target : String(c.root || c.target);
@@ -596,6 +612,19 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel, industryModel }
           a.pollVoters = tally ? tally.voters.size : 0;
         }
         let content = voteAgg ? { ...c, ...voteAgg } : a.content;
+        if (a.type !== 'feed' && a.type !== 'votes' && (feedOpinionsByRoot.get(actionRoot) || []).length) {
+          const base = a.content || {};
+          const opinions = { ...(base.opinions || {}) };
+          const voters = Array.isArray(base.opinions_inhabitants) ? base.opinions_inhabitants.slice() : [];
+          const voterSet = new Set(voters);
+          for (const op of feedOpinionsByRoot.get(actionRoot)) {
+            if (!op.author || voterSet.has(op.author)) continue;
+            voterSet.add(op.author);
+            voters.push(op.author);
+            if (op.category) opinions[op.category] = (Number(opinions[op.category]) || 0) + 1;
+          }
+          content = { ...content, opinions, opinions_inhabitants: voters };
+        }
         if (a.type === 'feed') {
           const base = a.content || {};
           const opinions = { ...(base.opinions || {}) };
@@ -625,6 +654,8 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel, industryModel }
       let deduped = latest.filter(a => !a.tipId || a.tipId === a.id || (a.type === 'tribe' && !parentOf.has(a.id)));
 
       const mediaTypes = new Set(['image','video','audio','document','bookmark','map']);
+      const textTypes = new Set(['feed', 'post']);
+      const REPEAT_WINDOW_MS = 10 * 60 * 1000;
       const perAuthorUnique = new Set();
       const byKey = new Map();
       const norm = s => String(s || '').trim().toLowerCase();
@@ -663,6 +694,19 @@ module.exports = ({ cooler, tribeCrypto, tribesModel, padsModel, industryModel }
             byKey.set(key, { ...a, __effTs: effTs, __hasImage: newHasImage });
           } else if (prevHasImage === newHasImage && effTs > prev.__effTs) {
             byKey.set(key, { ...a, __effTs: effTs, __hasImage: newHasImage });
+          }
+        } else if (textTypes.has(a.type)) {
+          const t = norm(c.text);
+          const key = t ? `${a.type}:${a.author}:${t}` : null;
+          const prev = key ? byKey.get(key) : null;
+          if (!key) {
+            byKey.set(`id:${a.id}`, { ...a, __effTs: effTs });
+          } else if (!prev) {
+            byKey.set(key, { ...a, __effTs: effTs });
+          } else if (Math.abs(effTs - prev.__effTs) <= REPEAT_WINDOW_MS) {
+            if (effTs > prev.__effTs) byKey.set(key, { ...a, __effTs: effTs });
+          } else {
+            byKey.set(`id:${a.id}`, { ...a, __effTs: effTs });
           }
         } else if (a.type === 'tribe') {
           const t = norm(c.title);

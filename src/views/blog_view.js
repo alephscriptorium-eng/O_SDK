@@ -3,8 +3,7 @@ const { renderCommentsSection: renderSharedCommentsSection } = require("./commen
 const { template, i18n, userLink, renderOpinionsVoting, renderEngagement, renderSpreadButton, renderContentActions, renderSubscriptionBox, renderModuleStats, moduleIsEmpty } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
-const { renderUrl } = require("../backend/renderUrl");
-const { renderTextWithStyles } = require("../backend/renderTextWithStyles");
+const { renderStyledHtml } = require("../backend/renderStyledText");
 const { sanitizeHtml } = require("../backend/sanitizeHtml");
 
 const userId = config.keys.id;
@@ -73,10 +72,9 @@ const renderBlogCard = (blog, filter, spreadInfo) => {
             h2({ class: "tribe-card-title" }, a({ href }, blog.subject))
           )
         : null,
-      div({ class: "blog-card-text", innerHTML: sanitizeHtml(renderTextWithStyles(excerpt(blog.text))) }),
+      div({ class: "blog-card-text", innerHTML: sanitizeHtml(renderStyledHtml(excerpt(blog.text))) }),
       p({ class: "card-footer" },
-        span({ class: "date-link" }, moment(blog.createdAt).format("YYYY/MM/DD HH:mm")),
-        span(" · "),
+        span({ class: "date-link" }, `${moment(blog.createdAt).format("YYYY/MM/DD HH:mm")}`),
         userLink(blog.author)
       )
     )
@@ -134,7 +132,8 @@ exports.blogView = async (blogs = [], filter = "ALL", params = {}) => {
     section(
       div({ class: "tags-header module-header-line" },
         h2(i18n.blogTitle),
-        p(i18n.blogDescription)
+        p(i18n.blogDescription),
+        (() => { const { renderReachChip } = require('./clearnet_view'); return params && params.viewerPrefs ? renderReachChip(params.viewerPrefs.clearnetPosts === true, i18n, `/c/inhabitant/${encodeURIComponent((params && params.viewerId) || '')}`) : null; })()
       )
     ),
     renderFilterBar(showForm ? "CREATE" : filter, params.q, !showForm, Array.isArray(blogs) ? blogs.length : 0, params.censusList),
@@ -142,7 +141,7 @@ exports.blogView = async (blogs = [], filter = "ALL", params = {}) => {
       ? renderCreateForm()
       : section(
           blogs.length
-            ? div({ class: "jobs-grid" }, ...blogs.map(b => renderBlogCard(b, filter, spreadMap.get(b.id))))
+            ? div({ class: "blogs-grid" }, ...blogs.map(b => renderBlogCard(b, filter, spreadMap.get(b.id))))
             : div({ class: "no-content-box" }, p({ class: "no-content" }, i18n.blogNoItems))
         )
   );
@@ -185,7 +184,7 @@ exports.singleBlogView = async (blog, comments = [], params = {}) => {
 
   const blogMain = div({ class: "tribe-main" },
     div({ class: "job-section" },
-      div({ class: "blog-detail-text", innerHTML: sanitizeHtml(renderTextWithStyles(blog.text || "")) })
+      div({ class: "blog-detail-text", innerHTML: sanitizeHtml(renderStyledHtml(blog.text || "")) })
     ),
     renderEngagement(blog.id,
       renderOpinionsVoting('/blogs/opinions', blog.id, blog.opinions, href, blog.opinions_inhabitants),

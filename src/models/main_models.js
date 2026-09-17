@@ -296,7 +296,9 @@ models.about = {
       key: "publicWebHosting",
       feedId,
     });
-    return result === true;
+    if (result === true) return true;
+    const prefs = await getAbout({ key: "visibilityPrefs", feedId }).catch(() => null);
+    return !!(prefs && typeof prefs === 'object' && prefs.clearnet === true);
   },
   deviceSource: async (feedId) => {
     const result = await getAbout({ key: "deviceSource", feedId });
@@ -329,6 +331,10 @@ models.about = {
       clearnetTorrents:  result.clearnetTorrents  === true,
       clearnetBookmarks: result.clearnetBookmarks === true,
       clearnetPodcasts:  result.clearnetPodcasts  === true,
+      clearnetSchool:    result.clearnetSchool    === true,
+      clearnetMarket:    result.clearnetMarket    === true,
+      clearnetFeed:      result.clearnetFeed      === true,
+      clearnetWiki:      result.clearnetWiki      === true,
       profileShops:      result.profileShops      === true,
       profileJobs:       result.profileJobs       === true,
       profileEvents:     result.profileEvents     === true,
@@ -341,7 +347,10 @@ models.about = {
       profileTorrents:   result.profileTorrents   === true,
       profileBookmarks:  result.profileBookmarks  === true,
       profilePodcasts:   result.profilePodcasts   === true,
-      profileSchool:     result.profileSchool     === true
+      profileSchool:     result.profileSchool     === true,
+      profileMarket:     result.profileMarket     === true,
+      profileFeed:       result.profileFeed       === true,
+      profileWiki:       result.profileWiki       === true
     };
   },
   name: async (feedId) => {
@@ -1939,6 +1948,10 @@ const post = {
           clearnetTorrents:  r.clearnetTorrents  === true,
           clearnetBookmarks: r.clearnetBookmarks === true,
           clearnetPodcasts:  r.clearnetPodcasts  === true,
+          clearnetSchool:    r.clearnetSchool    === true,
+          clearnetMarket:    r.clearnetMarket    === true,
+          clearnetFeed:      r.clearnetFeed      === true,
+          clearnetWiki:      r.clearnetWiki      === true,
           profileShops:      r.profileShops      === true,
           profileJobs:       r.profileJobs       === true,
           profileEvents:     r.profileEvents     === true,
@@ -1951,7 +1964,10 @@ const post = {
           profileTorrents:   r.profileTorrents   === true,
           profileBookmarks:  r.profileBookmarks  === true,
           profilePodcasts:   r.profilePodcasts   === true,
-          profileSchool:     r.profileSchool     === true
+          profileSchool:     r.profileSchool     === true,
+          profileMarket:     r.profileMarket     === true,
+          profileFeed:       r.profileFeed       === true,
+          profileWiki:       r.profileWiki       === true
         };
       };
       const prefs = visibilityPrefs ? normalizePrefs(visibilityPrefs) : undefined;

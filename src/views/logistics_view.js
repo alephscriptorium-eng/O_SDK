@@ -2,7 +2,7 @@ const { hr, div, h2, h3, p, section, button, form, a, span, br, textarea, input,
 const { template, i18n, userLink, renderStateChip, renderContentActions, renderModuleStats, renderOpinionsVoting, renderEngagement, moduleIsEmpty } = require("./main_views");
 const { renderCommentsSection } = require("./comments_view");
 const { renderMapLocationVisitLabel } = require("./maps_view");
-const { renderUrl } = require("../backend/renderUrl");
+const { renderStyledText } = require("../backend/renderStyledText");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 
@@ -272,7 +272,7 @@ const renderBooking = (route, b) =>
           button({ type: "submit", class: "tribe-action-btn" }, String(i18n.logisticsDeliver).toUpperCase())
         )
       : null,
-    p({ class: "card-footer" }, span({ class: "date-link" }, fmt(b.createdAt)), userLink(b.booker))
+    p({ class: "card-footer" }, span({ class: "date-link" }, `${fmt(b.createdAt)}`), userLink(b.booker))
   );
 
 const renderBookForm = (route) =>
@@ -293,7 +293,7 @@ const renderRatings = (route) =>
       ? div({ class: "logistics-ratings-list" }, ...route.ratings.map(r => div({ class: "logistics-rating" },
           div({ class: "emergency-update-head logistics-rating-head" }, div({ class: "card-chips-row" }, renderStateChip("neutral", "", stars(r.score)))),
           r.text ? p(r.text) : null,
-          p({ class: "card-footer" }, span({ class: "date-link" }, fmt(r.createdAt)), userLink(r.author))
+          p({ class: "card-footer" }, span({ class: "date-link" }, `${fmt(r.createdAt)}`), userLink(r.author))
         )))
       : p(route.closed ? i18n.logisticsNoRatings : i18n.logisticsRatingsWhenClosed),
     route.canRate
@@ -380,7 +380,7 @@ exports.singleLogisticsView = async (route, params = {}) => {
     ownerActions.length ? div({ class: "tribe-side-actions owner-actions" }, ...ownerActions) : null
   );
   const main = div({ class: "tribe-main" },
-    route.description ? div({ class: "logistics-body" }, ...renderUrl(route.description)) : null,
+    route.description ? div({ class: "logistics-body" }, ...renderStyledText(route.description)) : null,
     route.canBook ? div({ class: "card-section" }, renderBookForm(route)) : null,
     route.bookings.length
       ? div({ class: "card-section logistics-bookings" },

@@ -6,8 +6,8 @@ const moment = require("../server/node_modules/moment");
 const { template, i18n, userLink, renderSpreadButton, renderPrivacyChip, renderLifespanChip, renderContentActions, renderInviteQrCard, renderStateChip, renderSubscriptionBox, renderModuleStats, moduleIsEmpty } = require('./main_views');
 const { renderEncryptedChip: renderForumEncryptedChip } = require('./clearnet_view');
 const { config } = require('../server/SSB_server.js');
-const { renderUrl } = require('../backend/renderUrl');
-const { renderTextWithStyles } = require('../backend/renderTextWithStyles');
+const { renderStyledText } = require('../backend/renderStyledText');
+const { renderStyledHtml } = require('../backend/renderStyledText');
 const { sanitizeHtml } = require('../backend/sanitizeHtml');
 
 const userId = config.keys.id;
@@ -133,7 +133,7 @@ const renderThread = (nodes, level = 0, forumId) => {
         { class: classList },
         div({ class: 'comment-header' },
           span({ class: 'date-link' },
-            `${moment(m.timestamp).format('YYYY/MM/DD HH:mm:ss')} ${i18n.performed}`),
+            `${moment(m.timestamp).format('YYYY/MM/DD HH:mm')}`),
           userLink(m.author),
           div({ class: 'comment-votes' },
             span({ class: 'votes-count' }, `▲: ${m.positiveVotes || 0}`),
@@ -150,7 +150,7 @@ const renderThread = (nodes, level = 0, forumId) => {
               ...(m.text || '').split('\n')
                 .map(l => l.trim())
                 .filter(l => l)
-                .map(l => p(...renderUrl(l)))
+                .map(l => p(...renderStyledText(l, { zoomImages: true })))
             )
           )
         ),
@@ -212,7 +212,7 @@ const renderForumList = (forums, currentFilter, spreadMap = new Map()) => {
             ),
 	    div({
 	      class: 'forum-body',
-	      innerHTML: sanitizeHtml(renderTextWithStyles(f.text || ''))
+	      innerHTML: sanitizeHtml(renderStyledHtml(f.text || ''))
 	    }),
             div({ class: 'forum-meta' },
               span({ class: 'forum-positive-votes' },
@@ -226,7 +226,7 @@ const renderForumList = (forums, currentFilter, spreadMap = new Map()) => {
             ),
             div({ class: 'forum-footer' },
               span({ class: 'date-link' },
-                `${moment(f.createdAt).format('YYYY/MM/DD HH:mm:ss')} ${i18n.performed}`),
+                `${moment(f.createdAt).format('YYYY/MM/DD HH:mm')}`),
               userLink(f.author)
             ),
             currentFilter === 'mine' && f.author === userId
@@ -397,7 +397,7 @@ exports.singleForumView = async (forum, messagesData, currentFilter) => {
             : null,
 	  div({
 	    class: 'forum-body',
-	    innerHTML: sanitizeHtml(renderTextWithStyles(forum.text || ''))
+	    innerHTML: sanitizeHtml(renderStyledHtml(forum.text || ''))
 	  }),
           div({ class: 'forum-meta' },
             span({ class: 'forum-positive-votes' },
@@ -411,7 +411,7 @@ exports.singleForumView = async (forum, messagesData, currentFilter) => {
           ),
           div({ class: 'forum-footer' },
             span({ class: 'date-link' },
-              `${moment(forum.createdAt).format('YYYY/MM/DD HH:mm:ss')} ${i18n.performed}`),
+              `${moment(forum.createdAt).format('YYYY/MM/DD HH:mm')}`),
             userLink(forum.author)
           )
         )

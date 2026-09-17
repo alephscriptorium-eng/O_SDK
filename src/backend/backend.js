@@ -143,7 +143,8 @@ const sendErrorPage = (ctx, message, { title, status } = {}) => {
       }
     }
   } catch (_) {}
-  if (backUrl && ctx.method !== 'GET' && (!status || status === 400 || status === 403 || status === 404) && !backUrl.pathname.startsWith('/c/')) {
+  const backIsPage = !!backUrl && (() => { try { return !!router.match(backUrl.pathname, 'GET').route; } catch (_) { return false; } })();
+  if (backUrl && backIsPage && ctx.method !== 'GET' && (!status || status === 400 || status === 403 || status === 404) && !backUrl.pathname.startsWith('/c/')) {
     backUrl.searchParams.set('error', String(message || ''));
     ctx.redirect(backUrl.pathname + backUrl.search + backUrl.hash);
     return;
@@ -365,74 +366,173 @@ const resolveExternalBaseUrl = (ctx) => {
   }
   return `${protocol}://${rawHost}`;
 };
+const tsOf = (...values) => {
+  for (const v of values) {
+    const t = typeof v === 'number' ? v : Date.parse(v || '');
+    if (Number.isFinite(t) && t > 0) return t;
+  }
+  return 0;
+};
+const dayOf = (ts) => ts ? new Date(ts).toISOString().slice(0, 10) : '';
+const sizeOf = (bytes) => {
+  let value = Number(bytes) || 0;
+  if (value <= 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit += 1; }
+  return `${unit === 0 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`;
+};
+const hostOf = (url) => {
+  try {
+    const u = new URL(String(url || ''));
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return u.hostname.replace(/^www\./, '');
+  } catch (_) { return ''; }
+};
+const blobSizeOf = async (value) => {
+  const { blobIdOf } = require('../views/clearnet_view');
+  const id = blobIdOf(value);
+  if (!id) return '';
+  try {
+    const ssbSize = await cooler.open();
+    return await new Promise((resolve) => {
+      try {
+        ssbSize.blobs.size(id, (err, bytes) => resolve(err ? '' : sizeOf(bytes)));
+      } catch (_) { resolve(''); }
+    });
+  } catch (_) { return ''; }
+};
+const detailsOf = (...parts) => parts.map(p => String(p == null ? '' : p).trim()).filter(Boolean).slice(0, 4);
+const clearnetDetails = (kind, x) => {
+  if (!x) return [];
+  if (kind === 'market') {
+    const type = String(x.item_type || '').toLowerCase();
+    return detailsOf(type === 'auction' ? '🔨 AUCTION' : type === 'exchange' ? '🔁 EXCHANGE' : type.toUpperCase());
+  }
+  if (kind === 'events') return detailsOf(x.location ? `📍 ${x.location}` : '');
+  if (kind === 'jobs') {
+    const time = String(x.job_time || '').toLowerCase();
+    return detailsOf(
+      x.job_type ? `💼 ${String(x.job_type).toUpperCase()}` : '',
+      time === 'partial' ? '⏱ PART TIME' : time === 'complete' ? '⏱ FULL TIME' : ''
+    );
+  }
+  if (kind === 'podcasts') return detailsOf(Number(x.episodeCount) > 0 ? `🎙 ${Number(x.episodeCount)} EPISODES` : '');
+  if (kind === 'projects') {
+    const progress = Number(x.progress);
+    return detailsOf(Number.isFinite(progress) ? `📈 ${Math.max(0, Math.min(100, Math.round(progress)))}%` : '');
+  }
+  return [];
+};
+const attachCommentMeta = async (actions) => {
+  const list = Array.isArray(actions) ? actions : [];
+  if (!list.length) return list;
+  try {
+    const ssbComments = await cooler.open();
+    const { readTyped } = require('../models/typed_log');
+    const posts = await readTyped(ssbComments, ['post', 'feed-action'], { limit: getConfig().ssbLogStream?.limit || 1000 });
+    const byRoot = new Map();
+    for (const m of posts || []) {
+      const c = m && m.value && m.value.content;
+      if (!c) continue;
+      if (c.type === 'feed-action' && c.action !== 'comment') continue;
+      const root = c.root || c.fork;
+      if (!root || !String(c.text || '').trim()) continue;
+      const ts = (m.value && m.value.timestamp) || 0;
+      const prev = byRoot.get(root);
+      if (!prev) byRoot.set(root, { count: 1, lastKey: m.key, lastTs: ts });
+      else {
+        prev.count += 1;
+        if (ts >= prev.lastTs) { prev.lastKey = m.key; prev.lastTs = ts; }
+      }
+    }
+    for (const a of list) {
+      if (!a) continue;
+      const hit = byRoot.get(a.id) || byRoot.get(a.rootId) || byRoot.get(a.key);
+      a.commentCount = hit ? hit.count : 0;
+      a.lastCommentKey = hit ? hit.lastKey : null;
+    }
+  } catch (_) {}
+  return list;
+};
+const settingsReports = { verification: null, rebuild: null };
 const collectClearnetItems = async (feedId, prefs, { max = 5 } = {}) => {
     const MAX_PER_SECTION = max;
-  const items = { shops: [], jobs: [], events: [], projects: [], posts: [], audios: [], videos: [], images: [], documents: [], torrents: [], podcasts: [], school: [] };
-  const mediaItemMapper = (m, { withImage = false } = {}) => ({
+  const items = { shops: [], jobs: [], events: [], projects: [], posts: [], audios: [], videos: [], images: [], documents: [], torrents: [], podcasts: [], school: [], market: [], feed: [], wiki: [], bookmarks: [] };
+  const tagsOf = (x) => (Array.isArray(x && x.tags) ? x.tags : []).map(t => String(t || '').trim()).filter(Boolean).slice(0, 12);
+  const dated = (item, ts) => ({ ...item, ts, meta: item.meta || dayOf(ts) });
+  const mediaItemMapper = (m, { withImage = false, mediaKind = null } = {}) => dated({
     id: m.key,
     title: m.title || 'Untitled',
     image: withImage ? (m.url || null) : null,
+    media: mediaKind && m.url ? { kind: mediaKind, blobId: m.url } : null,
     snippet: m.description || '',
-    meta: m.createdAt ? new Date(m.createdAt).toISOString().slice(0, 10) : ''
-  });
+    tags: tagsOf(m)
+  }, tsOf(m.createdAt, m.ts));
   if (prefs.clearnetSchool) {
     try {
       const courses = await schoolModel.listCourses('ALL', feedId, {}).catch(() => []);
-      items.school = (courses || []).filter(c => c.author === feedId && c.visibility === 'PUBLIC' && !(Number(c.price) > 0)).slice(0, MAX_PER_SECTION).map(c => ({
+      items.school = (courses || []).filter(c => c.author === feedId && c.visibility === 'PUBLIC' && !(Number(c.price) > 0)).slice(0, MAX_PER_SECTION).map(c => dated({
         id: c.id,
         title: c.title || 'Untitled',
         image: c.image || null,
         snippet: c.description || '',
-        meta: c.startDate ? new Date(c.startDate).toISOString().slice(0, 10) : ''
-      }));
+        tags: tagsOf(c),
+        meta: c.startDate ? dayOf(tsOf(c.startDate)) : undefined
+      }, tsOf(c.createdAt, c.ts, c.startDate)));
     } catch (_) {}
   }
   if (prefs.clearnetShops) {
     try {
       const shops = await shopsModel.listAll({ filter: 'all' }).catch(() => []);
-      items.shops = (shops || []).filter(s => s.author === feedId && String(s.visibility || '').toUpperCase() !== 'CLOSED').slice(0, MAX_PER_SECTION).map(s => ({
+      items.shops = (shops || []).filter(s => s.author === feedId && String(s.visibility || '').toUpperCase() !== 'CLOSED').slice(0, MAX_PER_SECTION).map(s => dated({
         id: s.key,
         title: s.title || 'Untitled',
         image: s.image || null,
         snippet: s.shortDescription || s.description || '',
-        meta: s.location || ''
-      }));
+        tags: tagsOf(s)
+      }, tsOf(s.createdAt, s.ts)));
     } catch (_) {}
   }
   if (prefs.clearnetJobs) {
     try {
       const jobs = await jobsModel.listJobs('ALL', feedId).catch(() => []);
-      items.jobs = (jobs || []).filter(j => j.author === feedId && String(j.status || '').toUpperCase() !== 'CLOSED' && String(j.visibility || 'PUBLIC').toUpperCase() !== 'HIDDEN').slice(0, MAX_PER_SECTION).map(j => ({
+      items.jobs = (jobs || []).filter(j => j.author === feedId && String(j.status || '').toUpperCase() !== 'CLOSED' && String(j.visibility || 'PUBLIC').toUpperCase() !== 'HIDDEN').slice(0, MAX_PER_SECTION).map(j => dated({
         id: j.id,
         title: j.title || 'Untitled',
         image: j.image || null,
         snippet: j.description || '',
-        meta: j.location ? String(j.location).toUpperCase() : ''
-      }));
+        details: clearnetDetails('jobs', j),
+        tags: tagsOf(j)
+      }, tsOf(j.createdAt, j.ts)));
     } catch (_) {}
   }
   if (prefs.clearnetEvents) {
     try {
       const events = await eventsModel.listAll(feedId, 'all').catch(() => []);
-      items.events = (events || []).filter(e => e.organizer === feedId && String(e.status || '').toUpperCase() !== 'CLOSED' && e.isPublic !== 'private').slice(0, MAX_PER_SECTION).map(e => ({
+      items.events = (events || []).filter(e => e.organizer === feedId && String(e.status || '').toUpperCase() !== 'CLOSED' && e.isPublic !== 'private').slice(0, MAX_PER_SECTION).map(e => dated({
         id: e.id,
         title: e.title || 'Untitled',
         image: null,
         snippet: e.description || '',
-        meta: e.date ? new Date(e.date).toISOString().slice(0, 10) : (e.location || '')
-      }));
+        details: clearnetDetails('events', e),
+        tags: tagsOf(e),
+        meta: e.date ? dayOf(tsOf(e.date)) : undefined
+      }, tsOf(e.createdAt, e.ts, e.date)));
     } catch (_) {}
   }
   if (prefs.clearnetProjects) {
     try {
       const projects = await projectsModel.listProjects('ALL').catch(() => []);
-      items.projects = (projects || []).filter(p => p.author === feedId && String(p.status || '').toUpperCase() !== 'CANCELLED').slice(0, MAX_PER_SECTION).map(p => ({
+      items.projects = (projects || []).filter(p => p.author === feedId && String(p.status || '').toUpperCase() !== 'CANCELLED').slice(0, MAX_PER_SECTION).map(p => dated({
         id: p.id || p.key,
         title: p.title || 'Untitled',
         image: p.image || null,
         snippet: p.description || '',
-        meta: p.status ? String(p.status).toUpperCase() : ''
-      }));
+        details: clearnetDetails('projects', p),
+        price: Number(p.goal) > 0 ? `${(Number(p.pledged) || 0).toFixed(2)} / ${Number(p.goal).toFixed(2)}` : null,
+        tags: tagsOf(p)
+      }, tsOf(p.createdAt, p.ts)));
     } catch (_) {}
   }
   if (prefs.clearnetPosts) {
@@ -449,14 +549,13 @@ const collectClearnetItems = async (feedId, prefs, { max = 5 } = {}) => {
                 const c = m.value.content;
                 const cleanText = String(c.text || '').replace(/<[^>]+>/g, '').replace(/!\[[^\]]*\]\([^)]*\)/g, '');
                 const firstLine = cleanText.split('\n').find(l => l.trim()) || '';
-                const dateIso = m.value.timestamp ? new Date(m.value.timestamp).toISOString().slice(0, 10) : '';
-                return {
+                const postTs = tsOf(m.value.timestamp, c.createdAt);
+                return dated({
                   id: m.key,
                   title: c.contentWarning || firstLine.slice(0, 80) || 'Blog',
                   image: null,
-                  snippet: c.contentWarning ? firstLine.slice(0, 200) : cleanText.slice(0, 200),
-                  meta: dateIso
-                };
+                  snippet: c.contentWarning ? firstLine.slice(0, 200) : cleanText.slice(0, 200)
+                }, postTs);
               }));
             })
           );
@@ -467,43 +566,99 @@ const collectClearnetItems = async (feedId, prefs, { max = 5 } = {}) => {
   if (prefs.clearnetAudios) {
     try {
       const audios = await audiosModel.listAll('all').catch(() => []);
-      items.audios = (audios || []).filter(m => m.author === feedId).slice(0, MAX_PER_SECTION).map(m => mediaItemMapper(m));
+      items.audios = (audios || []).filter(m => m.author === feedId).slice(0, MAX_PER_SECTION).map(m => mediaItemMapper(m, { mediaKind: 'audio' }));
     } catch (_) {}
   }
   if (prefs.clearnetVideos) {
     try {
       const videos = await videosModel.listAll('all').catch(() => []);
-      items.videos = (videos || []).filter(m => m.author === feedId).slice(0, MAX_PER_SECTION).map(m => mediaItemMapper(m));
+      items.videos = (videos || []).filter(m => m.author === feedId).slice(0, MAX_PER_SECTION).map(m => mediaItemMapper(m, { mediaKind: 'video' }));
     } catch (_) {}
   }
   if (prefs.clearnetImages) {
     try {
       const images = await imagesModel.listAll('all').catch(() => []);
-      items.images = (images || []).filter(m => m.author === feedId).slice(0, MAX_PER_SECTION).map(m => mediaItemMapper(m, { withImage: true }));
+      items.images = (images || []).filter(m => m.author === feedId).slice(0, MAX_PER_SECTION).map(m => mediaItemMapper(m, { mediaKind: 'image' }));
     } catch (_) {}
   }
   if (prefs.clearnetDocuments) {
     try {
       const documents = await documentsModel.listAll('all').catch(() => []);
-      items.documents = (documents || []).filter(m => m.author === feedId).slice(0, MAX_PER_SECTION).map(m => mediaItemMapper(m));
+      items.documents = await Promise.all((documents || []).filter(m => m.author === feedId).slice(0, MAX_PER_SECTION).map(async (m) => ({ ...mediaItemMapper(m), details: detailsOf(await blobSizeOf(m.url)).map(v => `⇩ ${v}`) })));
     } catch (_) {}
   }
   if (prefs.clearnetTorrents) {
     try {
       const torrents = await torrentsModel.listAll('all').catch(() => []);
-      items.torrents = (torrents || []).filter(m => m.author === feedId).slice(0, MAX_PER_SECTION).map(m => mediaItemMapper(m));
+      items.torrents = await Promise.all((torrents || []).filter(m => m.author === feedId).slice(0, MAX_PER_SECTION).map(async (m) => ({ ...mediaItemMapper(m), details: detailsOf(await blobSizeOf(m.url)).map(v => `⇩ ${v}`) })));
+    } catch (_) {}
+  }
+  if (prefs.clearnetMarket) {
+    try {
+      const marketItems = await marketModel.listAllItems('all').catch(() => []);
+      items.market = (marketItems || []).filter(i => (i.seller || i.author) === feedId && String(i.status || '').toUpperCase() === 'FOR SALE' && String(i.visibility || '').toUpperCase() !== 'HIDDEN').slice(0, MAX_PER_SECTION).map(i => dated({
+        id: i.id || i.key,
+        title: i.title || 'Untitled',
+        image: i.image || null,
+        snippet: i.description || '',
+        price: i.price || null,
+        details: clearnetDetails('market', i),
+        tags: tagsOf(i)
+      }, tsOf(i.createdAt, i.ts)));
+    } catch (_) {}
+  }
+  if (prefs.clearnetFeed) {
+    try {
+      const feeds = await feedModel.listFeeds('ALL').catch(() => []);
+      items.feed = (feeds || []).filter(f => (f.author || (f.value && f.value.author)) === feedId).slice(0, MAX_PER_SECTION).map(f => {
+        const c = (f.value && f.value.content) || f.content || f;
+        const text = String(c.text || '').replace(/<[^>]+>/g, '');
+        return dated({
+          id: f.key || f.id,
+          title: '',
+          image: null,
+          snippet: text,
+          tags: []
+        }, tsOf(c.createdAt, f.ts, f.value && f.value.timestamp));
+      });
+    } catch (_) {}
+  }
+  if (prefs.clearnetWiki) {
+    try {
+      const pages = await wikiModel.listPages({ filter: 'all' }).catch(() => []);
+      items.wiki = (pages || []).filter(w => w.author === feedId && !w.tribeId).slice(0, MAX_PER_SECTION).map(w => dated({
+        id: w.id,
+        title: w.title || 'Untitled',
+        image: w.image || null,
+        snippet: w.body || '',
+        tags: tagsOf(w)
+      }, tsOf(w.updatedAt, w.createdAt, w.ts)));
     } catch (_) {}
   }
   if (prefs.clearnetPodcasts) {
     try {
       const channels = await podcastsModel.listAll({ filter: 'all' }).catch(() => []);
-      items.podcasts = (channels || []).filter(c => c.author === feedId && (c.episodeCount || 0) > 0).slice(0, MAX_PER_SECTION).map(c => ({
+      items.podcasts = (channels || []).filter(c => c.author === feedId && (c.episodeCount || 0) > 0).slice(0, MAX_PER_SECTION).map(c => dated({
         id: c.id,
         title: c.title || 'Untitled',
         image: c.cover && c.cover.kind === 'image' ? c.cover.blobId : null,
+        media: (() => { const eps = Array.isArray(c.episodes) ? c.episodes : []; const last = eps[eps.length - 1]; return last && last.media && last.media.blobId ? { kind: last.media.kind === 'video' ? 'video' : 'audio', blobId: last.media.blobId } : null; })(),
         snippet: c.description || '',
-        meta: c.createdAt ? new Date(c.createdAt).toISOString().slice(0, 10) : ''
-      }));
+        details: clearnetDetails('podcasts', c),
+        tags: tagsOf(c)
+      }, tsOf(c.lastActivityTs, c.createdAt, c.ts)));
+    } catch (_) {}
+  }
+  if (prefs.clearnetBookmarks) {
+    try {
+      const bookmarks = await bookmarksModel.listAll('all').catch(() => []);
+      items.bookmarks = (bookmarks || []).filter(b => b.author === feedId && b.url).slice(0, MAX_PER_SECTION).map(b => dated({
+        id: b.id,
+        title: hostOf(b.url) || 'Bookmark',
+        image: null,
+        snippet: [b.url, b.description].filter(Boolean).join('\n\n'),
+        tags: tagsOf(b)
+      }, tsOf(b.createdAt, b.ts)));
     } catch (_) {}
   }
   try {
@@ -535,6 +690,23 @@ const collectClearnetItems = async (feedId, prefs, { max = 5 } = {}) => {
   return items;
 };
 const QR_ACTION_BASE = 'http://localhost:3000';
+const sendFeedQr = async (ctx) => {
+  const feedId = decodeURIComponent(ctx.params.feedId || '');
+  const reqSize = parseInt(ctx.query.size, 10);
+  const width = Number.isFinite(reqSize) ? Math.max(64, Math.min(512, reqSize)) : 240;
+  try {
+    const QRCode = require('../server/node_modules/qrcode');
+    const targetUrl = `${QR_ACTION_BASE}/qr-action/follow/${encodeURIComponent(feedId)}`;
+    const buf = await QRCode.toBuffer(targetUrl, { type: 'png', width, margin: 1, errorCorrectionLevel: 'M' });
+    ctx.set('Content-Type', 'image/png');
+    ctx.set('Cache-Control', 'no-store');
+    ctx.body = buf;
+  } catch (e) {
+    ctx.status = 500;
+    ctx.body = '';
+  }
+  };
+
 const QR_JOIN_MODS = {
   school:    { mod: 'schoolMod',    join: async (code) => { const { courseId } = await schoolModel.joinByInvite(code); return `/school/course/${encodeURIComponent(courseId)}`; } },
   forum:     { mod: 'forumMod',     join: async (code) => { const { forumId } = await forumModel.joinByInvite(code); return `/forum/${encodeURIComponent(forumId)}`; } },
@@ -657,6 +829,7 @@ Alternatively, you can set the default port in ${defaultConfigFile} with:
   } else if (err && (err.name === 'OpenError' || (typeof err.message === 'string' && /Resource temporarily unavailable/i.test(err.message) && /\.ssb\/.*LOCK/i.test(err.message)))) {
     console.log("");
     console.log("Another Oasis instance is already running on this machine. Close the other instance (or kill the process) and try again.");
+    console.log(`Detail: ${String((err && err.message) || err)}`);
     console.log("");
     process.exit(1);
   } else {
@@ -975,13 +1148,19 @@ const notifyEmergencyWatchers = async (rootId, subject) => {
   } catch (_) {}
 };
 
+const subscribeOnFirstTouch = async (target, scope) => {
+  try {
+    if (await subscriptionsModel.myState(target)) return;
+    await subscriptionsModel.setSubscription(target, scope, true);
+  } catch (_) {}
+};
+
 const notifyWikiWatchers = async (rootId, subject, tribeId = null) => {
   try {
     const page = await wikiModel.getPage(rootId, { tribeId });
     if (!page) return;
     const actor = getViewerId();
-    const editors = Array.isArray(page.versions) ? page.versions.map(v => v && v.author).filter(Boolean) : [];
-    const recipients = Array.from(new Set([...(await listRecipientsFor({ target: page.id, owner: page.author })), ...editors])).filter(id => String(id) !== String(actor));
+    const recipients = (await listRecipientsFor({ target: page.id, owner: page.author })).filter(id => String(id) !== String(actor));
     if (!recipients.length) return;
     const href = `/wiki/${encodeURIComponent(page.id)}${page.tribeId ? `?tribeId=${encodeURIComponent(page.tribeId)}` : ''}`;
     const verb = subject === 'WIKI_RESTORED' ? 'restored an earlier version of' : 'edited';
@@ -1741,6 +1920,30 @@ const isMissingContentError = (err) => {
     msg.includes('undecodable');
 };
 
+const isBlankText = (value) => !String(value == null ? '' : value)
+  .replace(/<[^>]*>/g, '')
+  .replace(/[\u200B-\u200D\uFEFF\u2060\u00A0]/g, '')
+  .trim();
+const isPastDate = (raw, { dayOnly = false } = {}) => {
+  const value = String(raw == null ? '' : raw).trim();
+  if (!value) return false;
+  const t = Date.parse(value);
+  if (!Number.isFinite(t)) return false;
+  if (dayOnly) { const today = new Date(); today.setHours(0, 0, 0, 0); return t < today.getTime(); }
+  return t < Date.now() - 60 * 1000;
+};
+const rejectPastDates = (ctx, fields, fallback) => {
+  if (!fields.some(([value, opts]) => isPastDate(value, opts || {}))) return false;
+  const { i18n } = require('../views/main_views');
+  const message = encodeURIComponent(i18n.dateInPastError || 'The date cannot be in the past');
+  let back = fallback;
+  try {
+    const u = new URL(ctx.request.header.referer || '');
+    if ((u.protocol === 'http:' || u.protocol === 'https:') && u.host === ctx.host) back = u.pathname + u.search;
+  } catch (_) {}
+  ctx.redirect(`${back}${back.includes('?') ? '&' : '?'}error=${message}`);
+  return true;
+};
 const commentAction = async (ctx, kind, idParam) => {
   const modKey = contentModCheck[kind];
   if (modKey && !checkMod(ctx, modKey)) { ctx.redirect('/modules'); return; }
@@ -1749,7 +1952,7 @@ const commentAction = async (ctx, kind, idParam) => {
   const rt = safeReturnTo(ctx, `/${kind}/${encodeURIComponent(itemId)}`, [`/${kind}`]);
   const blobMarkdown = await handleBlobUpload(ctx, 'blob');
   if (blobMarkdown) text += blobMarkdown;
-  if (!text) { ctx.redirect(rt); return; }
+  if (isBlankText(text)) { ctx.redirect(rt); return; }
   await post.publish({ text, root: itemId, dest: itemId });
   ctx.redirect(rt);
 };
@@ -2468,7 +2671,7 @@ router
       : (await schoolModel.listCourses('all', getViewerId(), { q: '', sort }).catch(() => []))
           .map(c2 => ({ ...c2, isFavorite: fav.has(String(c2.rootId || c2.id)) }));
     const schoolModesAvail = schoolModesFromCensus(schoolCensus, getViewerId());
-    ctx.body = await schoolView(courses, filter, null, { q, sort, subscriptions, modesAvail: schoolModesAvail });
+    ctx.body = await schoolView(courses, filter, null, { q, sort, subscriptions, modesAvail: schoolModesAvail, viewerPrefs: await about.visibilityPrefs(getViewerId()).catch(() => null), viewerId: getViewerId() });
   })
   .get('/school/course/:id', async (ctx) => {
     if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
@@ -2486,6 +2689,7 @@ router
     const b = ctx.request.body, imageBlob = ctx.request.files?.image ? await handleBlobUpload(ctx, 'image') : null;
     const courseType = String(b.courseType || 'OPEN').toUpperCase();
     if (courseType === 'PAID' && !(parseFloat(String(b.price || '').replace(',', '.')) > 0)) throw new Error('Invalid price');
+    if (rejectPastDates(ctx, [[b.startDate]], '/school?filter=create')) return;
     await schoolModel.createCourse({ title: stripDangerousTags(b.title), description: stripDangerousTags(b.description), tags: b.tags, price: courseType === 'OPEN' ? '0' : b.price, visibility: courseType === 'INVITE' ? 'INVITE' : 'PUBLIC', startDate: b.startDate, image: imageBlob });
     try { activityModel.invalidateCache(); } catch (_) {}
     ctx.redirect('/school?filter=mine');
@@ -2543,6 +2747,7 @@ router
   .post('/school/lesson/add/:id', koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body;
+    if (rejectPastDates(ctx, [[b.sessionDate]], '/school')) return;
     await schoolModel.addLesson(ctx.params.id, { title: stripDangerousTags(b.title), text: stripDangerousTags(b.text), unit: stripDangerousTags(b.unit || ''), order: b.order, sessionDate: b.sessionDate });
     try {
       const course = await schoolModel.getCourseById(ctx.params.id, getViewerId());
@@ -4291,8 +4496,14 @@ router
     const spreadMap = new Map();
     const SPREADABLE = new Set(['post','audio','video','image','document','torrent','bookmark','event','calendar','task','votes','vote','market','shop','shopProduct','project','industry','industryBuild','industryBlueprint','transfer','housing','job','report','chat','chatMessage','pad','padEntry','wikiPage','emergency','mailingList','logisticsRoute','podcast','podcastEpisode','campaign','forum','map','schoolCourse']);
     const targets = (allActions || []).filter(a => a && a.id && typeof a.id === 'string' && a.id.startsWith('%') && /\.sha256$/.test(a.id) && SPREADABLE.has(a.type));
-    const results = await Promise.all(targets.map(a => spreads.forMessage(a.id).catch(() => null)));
-    targets.forEach((a, i) => { if (results[i]) spreadMap.set(a.id, results[i]); });
+    const spreadKeysOf = (a) => Array.from(new Set([a.id, a.rootId, a.tipId].filter(k => typeof k === 'string' && k.startsWith('%'))));
+    const results = await Promise.all(targets.map(a => Promise.all(spreadKeysOf(a).map(k => spreads.forMessage(k).catch(() => null)))));
+    targets.forEach((a, i) => {
+      const parts = (results[i] || []).filter(Boolean);
+      if (!parts.length) return;
+      const voters = Array.from(new Set(parts.flatMap(pt => Array.isArray(pt.voters) ? pt.voters : [])));
+      spreadMap.set(a.id, { ...parts[0], voters, count: voters.length || Math.max(...parts.map(pt => Number(pt.count) || 0)), alreadySpread: parts.some(pt => pt.alreadySpread) });
+    });
     try {
       const uniqAuthors = new Set();
       const collect = (v) => { if (v && /^@.+\.ed25519$/.test(String(v))) uniqAuthors.add(String(v)); };
@@ -4320,6 +4531,7 @@ router
       }
     } catch (_) {}
     const favIndex = await contentFavorites.getFavoriteIndex().catch(() => new Map());
+    await attachCommentMeta(allActions);
     ctx.body = activityView(allActions, filter, userId, q, { spreadMap, favIndex, returnTo: `/activity?filter=${encodeURIComponent(filter)}` });
   })
   .get("/profile", async (ctx) => {
@@ -4415,6 +4627,12 @@ router
     const flag = (v) => v === '1' || v === 'on' || v === true;
     const clearnetShops     = flag(body.vis_clearnetShops);
     const clearnetSchool    = flag(body.vis_clearnetSchool);
+    const clearnetMarket    = flag(body.vis_clearnetMarket);
+    const clearnetFeed      = flag(body.vis_clearnetFeed);
+    const clearnetWiki      = flag(body.vis_clearnetWiki);
+    const profileMarket     = flag(body.vis_profileMarket);
+    const profileFeed       = flag(body.vis_profileFeed);
+    const profileWiki       = flag(body.vis_profileWiki);
     const clearnetJobs      = flag(body.vis_clearnetJobs);
     const clearnetEvents    = flag(body.vis_clearnetEvents);
     const clearnetProjects  = flag(body.vis_clearnetProjects);
@@ -4450,7 +4668,13 @@ router
       gpg:      flag(body.vis_gpg),
       fediverse: flag(body.vis_fediverse),
       fediverseHandle: typeof body.fediverseHandle === 'string' ? body.fediverseHandle : '',
-      clearnet: clearnetShops || clearnetSchool || clearnetJobs || clearnetEvents || clearnetProjects || clearnetPosts || clearnetAudios || clearnetVideos || clearnetImages || clearnetDocuments || clearnetTorrents || clearnetBookmarks || clearnetPodcasts,
+      clearnet: clearnetShops || clearnetSchool || clearnetJobs || clearnetEvents || clearnetProjects || clearnetPosts || clearnetAudios || clearnetVideos || clearnetImages || clearnetDocuments || clearnetTorrents || clearnetBookmarks || clearnetPodcasts || clearnetMarket || clearnetFeed || clearnetWiki,
+      clearnetMarket,
+      clearnetFeed,
+      clearnetWiki,
+      profileMarket,
+      profileFeed,
+      profileWiki,
       clearnetShops,
       clearnetSchool,
       clearnetJobs,
@@ -4522,23 +4746,6 @@ router
     ctx.set('Content-Disposition', `attachment; filename="${encodeURIComponent(feedId)}.asc"`);
     ctx.body = armored;
   })
-  .post("/profile/clearnet-toggle", koaBody(), async (ctx) => {
-    const myFeedId = await meta.myFeedId();
-    const current = await about.visibilityPrefs(myFeedId).catch(() => null) || {};
-    const subKeys = [
-      'clearnetShops', 'clearnetSchool', 'clearnetJobs', 'clearnetEvents', 'clearnetProjects',
-      'clearnetPosts', 'clearnetAudios', 'clearnetVideos', 'clearnetImages',
-      'clearnetDocuments', 'clearnetTorrents', 'clearnetBookmarks', 'clearnetPodcasts'
-    ];
-    const anyEnabled = subKeys.some(k => current[k] === true) || current.clearnet === true;
-    const nextOn = !anyEnabled;
-    const nextPrefs = { ...current, clearnet: nextOn };
-    for (const k of subKeys) nextPrefs[k] = nextOn;
-    try {
-      await post.publishProfileEdit({ visibilityPrefs: nextPrefs });
-    } catch (e) { console.error('profile/clearnet-toggle:', e.message); }
-    ctx.redirect('/profile');
-  })
   .get("/json/:message", async (ctx) => {
     if (config.public) {
       throw new Error(
@@ -4589,22 +4796,8 @@ router
     }
     ctx.body = buffer;
   })
-  .get("/qr/:feedId", async (ctx) => {
-    const feedId = decodeURIComponent(ctx.params.feedId || '');
-    const reqSize = parseInt(ctx.query.size, 10);
-    const width = Number.isFinite(reqSize) ? Math.max(64, Math.min(512, reqSize)) : 240;
-    try {
-      const QRCode = require('../server/node_modules/qrcode');
-      const targetUrl = `${QR_ACTION_BASE}/qr-action/follow/${encodeURIComponent(feedId)}`;
-      const buf = await QRCode.toBuffer(targetUrl, { type: 'png', width, margin: 1, errorCorrectionLevel: 'M' });
-      ctx.set('Content-Type', 'image/png');
-      ctx.set('Cache-Control', 'no-store');
-      ctx.body = buf;
-    } catch (e) {
-      ctx.status = 500;
-      ctx.body = '';
-    }
-  })
+  .get("/qr/:feedId", sendFeedQr)
+  .get("/c/qr/:feedId", sendFeedQr)
   .get("/qr-invite/tribe/:id", async (ctx) => {
     if (!checkMod(ctx, 'tribesMod')) { ctx.status = 404; ctx.body = ''; return; }
     try {
@@ -4701,7 +4894,11 @@ router
   })
   .get("/settings", async (ctx) => {
     const cfg = getConfig(), theme = ctx.cookies.get("theme") || "Dark-SNH";
-    ctx.body = await settingsView({ theme, version: version.toString(), aiPrompt: cfg.ai?.prompt || "", fediverseAccount: fediverseModel.getAccount(), fediverseError: typeof ctx.query.fediverseError === "string" ? ctx.query.fediverseError : "", telegramAccount: fediverseModel.telegram.getAccount(), telegramLogin: fediverseModel.telegram.loginState(), telegramError: typeof ctx.query.telegramError === "string" ? ctx.query.telegramError : (fediverseModel.telegram.loginState() && fediverseModel.telegram.loginState().error) || "" });
+    const verification = settingsReports.verification;
+    const rebuild = settingsReports.rebuild;
+    settingsReports.verification = null;
+    settingsReports.rebuild = null;
+    ctx.body = await settingsView({ theme, version: version.toString(), aiPrompt: cfg.ai?.prompt || "", fediverseAccount: fediverseModel.getAccount(), fediverseError: typeof ctx.query.fediverseError === "string" ? ctx.query.fediverseError : "", telegramAccount: fediverseModel.telegram.getAccount(), telegramLogin: fediverseModel.telegram.loginState(), telegramError: typeof ctx.query.telegramError === "string" ? ctx.query.telegramError : (fediverseModel.telegram.loginState() && fediverseModel.telegram.loginState().error) || "", verification, rebuild });
   })
   .get("/peers", async (ctx) => {
     const { discoveredPeers, unknownPeers } = await meta.discovered();
@@ -5137,7 +5334,7 @@ router
       } catch (_) {}
     }
     const censusFeeds = (String(filter || 'ALL').toUpperCase() === 'ALL' && !q && !tag) ? feeds : await feedModel.listFeeds({ filter: 'ALL', q: '', tag: '' }).catch(() => []);
-    ctx.body = feedView(feeds, { filter, q, tag, msg, workspace: uxFeed, trendingTags, activeUsers, spreadMap: feedSpreadMap, censusList: censusFeeds });
+    ctx.body = feedView(feeds, { filter, q, tag, msg, workspace: uxFeed, trendingTags, activeUsers, spreadMap: feedSpreadMap, censusList: censusFeeds, viewerPrefs: await about.visibilityPrefs(getViewerId()).catch(() => null), viewerId: getViewerId() });
   })
   .get("/feed/create", async (ctx) => {
     const q = typeof ctx.query.q === "string" ? ctx.query.q : "";
@@ -5349,7 +5546,7 @@ router
   .post("/settings/fediverse/disconnect", koaBody(), async (ctx) => {
     try { fediverseModel.disconnect(); } catch (_) {}
     try { await post.publishFediverseHandle(''); } catch (_) {}
-    ctx.redirect('/settings');
+    ctx.redirect("/settings#multiverse");
   })
   .post("/settings/telegram/start", koaBody(), async (ctx) => {
     try {
@@ -5442,6 +5639,7 @@ router
     if (!checkMod(ctx, 'pollsMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body || {};
     try {
+      if (rejectPastDates(ctx, [[b.deadline]], '/polls')) return;
       await pollsModel.createPoll({
         question: stripDangerousTags(b.question),
         options: stripDangerousTags(String(b.options || '')).split('\n'),
@@ -5510,7 +5708,7 @@ router
     const spreadMap = await spreads.forMessages((blogs || []).map(b => b && b.id)).catch(() => new Map());
     await warmAuthorNames(blogs);
     const blogCensus = (String(filter).toUpperCase() === 'ALL' && !q) ? blogs : await blogModel.listAll('ALL', { q: '', favorites: [...fav] }).catch(() => []);
-    ctx.body = await blogView(blogs, filter, { q, spreadMap, censusList: blogCensus });
+    ctx.body = await blogView(blogs, filter, { q, spreadMap, censusList: blogCensus, viewerPrefs: await about.visibilityPrefs(getViewerId()).catch(() => null), viewerId: getViewerId() });
   })
   .get('/blogs/:blogId', async ctx => {
     if (!checkMod(ctx, 'blogsMod')) { ctx.redirect('/modules'); return; }
@@ -5672,11 +5870,11 @@ router
       const q = ctx.query || {};
       const rawMods = q.modules === undefined ? [] : (Array.isArray(q.modules) ? q.modules : [q.modules]);
       const opts = { scope: q.scope || 'all', blobs: q.blobs === undefined ? '1' : q.blobs, modules: rawMods, since: q.since || '' };
-      const type = String(q.type || (q.restored !== undefined ? 'RESTORE' : 'RECOVERY')).toUpperCase();
-      const restored = q.restored !== undefined ? { messages: Number(q.restored) || 0, skipped: Number(q.skipped) || 0, blobs: Number(q.blobs_added) || 0, failed: Number(q.failed) || 0 } : null;
+      const type = String(q.type || 'RECOVERY').toUpperCase();
+      const restoreJob = type === 'RESTORE' ? backupModel.restoreStatus() : null;
       const kit = type === 'RECOVERY' && isLoopbackRequest(ctx) ? backupModel.recoveryKit() : null;
-      if (kit) ctx.set('Cache-Control', 'no-store');
-      ctx.body = await backupView({ type, options: { scope: opts.scope, sinceTs: opts.since ? Date.parse(opts.since) || null : null }, restored, kit });
+      if (kit || restoreJob) ctx.set('Cache-Control', 'no-store');
+      ctx.body = await backupView({ type, options: { scope: opts.scope, sinceTs: opts.since ? Date.parse(opts.since) || null : null }, restoreJob, kit });
     } catch (error) { sendErrorPage(ctx, error.message); }
   })
   .get('/backup/recovery-kit', async (ctx) => {
@@ -5904,7 +6102,7 @@ router
     }
     const spreadMap = await spreads.forMessages((marketItems || []).map(x => x && (x.id || x.key)));
     await warmAuthorNames(marketItems);
-    ctx.body = await marketView(marketItems, filter, null, { q, minPrice, maxPrice, sort, spreadMap, industry: ctx.query.industry || "", title: ctx.query.title || "", description: ctx.query.description || "", price: ctx.query.price || "", tags: ctx.query.tags || "", stock: ctx.query.stock || "" });
+    ctx.body = await marketView(marketItems, filter, null, { q, minPrice, maxPrice, sort, spreadMap, viewerPrefs: await about.visibilityPrefs(getViewerId()).catch(() => null), viewerId: getViewerId(), industry: ctx.query.industry || "", title: ctx.query.title || "", description: ctx.query.description || "", price: ctx.query.price || "", tags: ctx.query.tags || "", stock: ctx.query.stock || "" });
   })
   .get("/market/edit/:id", async (ctx) => {
     if (!checkMod(ctx, 'marketMod')) { ctx.redirect('/modules'); return; }
@@ -6171,6 +6369,83 @@ router
     ctx.type = 'text/html';
     ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'audio', item });
   })
+  .get("/c/market/:id", async (ctx) => {
+    let item; try { item = await marketModel.getItemById(ctx.params.id); } catch (_) {}
+    const seller = item && (item.seller || item.author);
+    const p = seller ? await about.visibilityPrefs(seller).catch(() => null) : null;
+    if (!item || !p || p.clearnetMarket !== true || String(item.visibility || '').toUpperCase() === 'HIDDEN') {
+      ctx.type = 'text/html';
+      ctx.body = require('../views/clearnet_view').renderClearnetNotFound();
+      return;
+    }
+    ctx.type = 'text/html';
+    ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'market', item: { ...item, author: seller, url: item.image || null, details: clearnetDetails('market', item) } });
+  })
+  .get("/c/feed/:id", async (ctx) => {
+    let entry; try { entry = await feedModel.getFeedById(ctx.params.id); } catch (_) {}
+    const author = entry && (entry.author || (entry.value && entry.value.author));
+    const p = author ? await about.visibilityPrefs(author).catch(() => null) : null;
+    if (!entry || !p || p.clearnetFeed !== true) {
+      ctx.type = 'text/html';
+      ctx.body = require('../views/clearnet_view').renderClearnetNotFound();
+      return;
+    }
+    const c = (entry.value && entry.value.content) || entry.content || entry;
+    const text = String(c.text || '');
+    ctx.type = 'text/html';
+    ctx.body = require('../views/clearnet_view').renderClearnetMediaView({
+      kind: 'feed',
+      item: { title: '', description: text, createdAt: c.createdAt || (entry.value && entry.value.timestamp) || null, author, tags: [] }
+    });
+  })
+  .get("/c/wiki/:id", async (ctx) => {
+    let page; try { page = await wikiModel.getPage(ctx.params.id); } catch (_) {}
+    const p = page && page.author ? await about.visibilityPrefs(page.author).catch(() => null) : null;
+    if (!page || page.tribeId || !p || p.clearnetWiki !== true) {
+      ctx.type = 'text/html';
+      ctx.body = require('../views/clearnet_view').renderClearnetNotFound();
+      return;
+    }
+    const wikiLinks = new Set();
+    try {
+      const { extractWikiLinks } = require('../models/wiki_model');
+      const slugs = extractWikiLinks(page.body || '');
+      if (slugs.length) {
+        const all = await wikiModel.listPages({ filter: 'all' }).catch(() => []);
+        const bySlug = new Map();
+        for (const w of all || []) { if (!w || w.tribeId) continue; for (const alias of [w.slug, ...(Array.isArray(w.aliases) ? w.aliases : [])]) if (alias && !bySlug.has(alias)) bySlug.set(alias, w); }
+        const prefsByAuthor = new Map();
+        for (const slug of slugs) {
+          const target = bySlug.get(slug);
+          if (!target) continue;
+          if (!prefsByAuthor.has(target.author)) {
+            prefsByAuthor.set(target.author, await about.visibilityPrefs(target.author).catch(() => null));
+          }
+          const targetPrefs = prefsByAuthor.get(target.author);
+          if (targetPrefs && targetPrefs.clearnetWiki === true) wikiLinks.add(slug);
+        }
+      }
+    } catch (_) {}
+    ctx.type = 'text/html';
+    ctx.body = require('../views/clearnet_view').renderClearnetMediaView({
+      kind: 'wiki',
+      item: { title: page.title, description: page.body || '', createdAt: page.updatedAt || page.createdAt, author: page.author, tags: page.tags || [], wikiLinks }
+    });
+  })
+  .get("/c/bookmarks/:id", async (ctx) => {
+    let item; try { item = await bookmarksModel.getBookmarkById(ctx.params.id); } catch (_) {}
+    const p = item && item.author ? await about.visibilityPrefs(item.author).catch(() => null) : null;
+    if (!item || !item.url || !p || p.clearnetBookmarks !== true) {
+      ctx.type = 'text/html';
+      ctx.body = require('../views/clearnet_view').renderClearnetNotFound();
+      return;
+    }
+    ctx.type = 'text/html';
+    ctx.body = require('../views/clearnet_view').renderClearnetMediaView({
+      kind: 'bookmark',
+      item: { title: hostOf(item.url) || 'Bookmark', description: [item.url, item.description].filter(Boolean).join('\n\n'), createdAt: item.createdAt || null, author: item.author, tags: item.tags || [] }
+    });
+  })
   .get("/c/podcasts/:id", async (ctx) => {
     let channel; try { channel = await podcastsModel.getChannelById(ctx.params.id); } catch (_) {}
     const p = channel && channel.author ? await about.visibilityPrefs(channel.author).catch(() => null) : null;
@@ -6213,7 +6488,7 @@ router
       return;
     }
     ctx.type = 'text/html';
-    ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'document', item });
+    ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'document', item: { ...item, details: detailsOf(await blobSizeOf(item.url)).map(v => `⇩ ${v}`) } });
   })
   .get("/c/torrents/:id", async (ctx) => {
     let item; try { item = await torrentsModel.getTorrentById(ctx.params.id); } catch (_) {}
@@ -6224,7 +6499,7 @@ router
       return;
     }
     ctx.type = 'text/html';
-    ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'torrent', item });
+    ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'torrent', item: { ...item, details: detailsOf(await blobSizeOf(item.url)).map(v => `⇩ ${v}`) } });
   })
   .get("/c/blog/:msgKey", async (ctx) => {
     const msgKey = String(ctx.params.msgKey || '');
@@ -6511,7 +6786,7 @@ router
     const censusList = (filter === "all" && !q) ? pages : wikiCensus.map(x => ({ ...x, isFavorite: favWiki.has(String(x.id)) }));
     const spreadMap = await spreads.forMessages(pages.map(x => x && x.id));
     await warmAuthorNames(pages);
-    ctx.body = await wikiView(pages, filter, { q, tribeId, tribe, censusList, spreadMap });
+    ctx.body = await wikiView(pages, filter, { q, tribeId, tribe, censusList, spreadMap, viewerPrefs: await about.visibilityPrefs(uid).catch(() => null), viewerId: uid });
   })
   .get("/wiki/:id/history", async (ctx) => {
     if (!checkMod(ctx, 'wikiMod')) { ctx.redirect('/modules'); return; }
@@ -6550,7 +6825,7 @@ router
     const subscription = await subscriptionStateFor(page.id, String(page.author) === String(uid)).catch(() => null);
     const censusList = await wikiModel.listPages({ tribeId: page.tribeId || null, filter: 'all' }).catch(() => []);
     await warmAuthorNames([page, ...page.versions]);
-    ctx.body = await wikiPageView(page, { version, diff, tribe, subscription, censusList, spread: await spreads.forMessage(page.id).catch(() => null) });
+    ctx.body = await wikiPageView(page, { version, diff, tribe, subscription, censusList, spread: await spreads.forMessage(page.id).catch(() => null), authorPrefs: await about.visibilityPrefs(page.author).catch(() => null) });
   })
   .get("/pads", async (ctx) => {
     if (!checkMod(ctx, 'padsMod')) { ctx.redirect('/modules'); return; }
@@ -6928,6 +7203,7 @@ router
     if (!checkMod(ctx, 'industryMod')) { ctx.redirect('/modules'); return; }
     try {
       const image = ctx.request.files?.image ? await handleBlobUpload(ctx, "image") : null
+      if (rejectPastDates(ctx, [[ctx.request.body && ctx.request.body.startDate, { dayOnly: true }], [ctx.request.body && ctx.request.body.endDate, { dayOnly: true }]], '/industry')) return;
       const res = await industryModel.createBuild(ctx.params.fid, { ...(ctx.request.body || {}), image })
       ctx.redirect(`/industry/build/${encodeURIComponent(res.key)}`)
     } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
@@ -8183,8 +8459,11 @@ router
     const uploadedFile = ctx.request.files?.uploadedFile, pw = ctx.request.body.importPassword;
     if (!uploadedFile) return ctx.redirect('/backup');
     if (!pw || pw.length < 32) return ctx.redirect('/backup');
-    try { await backupModel.importKeys({ filePath: uploadedFile.filepath, password: pw }); ctx.redirect('/backup'); }
-    catch (error) { sendErrorPage(ctx, error.message, { status: 400 }); }
+    try {
+      const imported = await backupModel.importKeys({ filePath: uploadedFile.filepath, password: pw });
+      try { onboardingModel.adopt(imported.id); } catch (_) {}
+      ctx.redirect('/backup');
+    } catch (error) { sendErrorPage(ctx, error.message, { status: 400 }); }
   })
   .post('/backup/export', koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
@@ -8208,12 +8487,12 @@ router
   .post('/backup/import', koaBody({ multipart: true, formidable: { keepExtensions: true, uploadDir: os.tmpdir(), maxFileSize: 4 * 1024 * 1024 * 1024 } }), async (ctx) => {
     if (!checkMod(ctx, 'backupMod')) return ctx.redirect('/modules');
     const uploadedFile = ctx.request.files?.uploadedFile, pw = ctx.request.body.importPassword;
-    if (!uploadedFile || !pw || String(pw).length < 32) return ctx.redirect('/backup');
-    try {
-      const res = await backupModel.restoreBackup({ filePath: uploadedFile.filepath, password: String(pw) });
-      try { activityModel.invalidateCache(); } catch (_) {}
-      ctx.redirect(`/backup?restored=${res.messages}&skipped=${res.skipped}&blobs_added=${res.blobs}&failed=${res.failed}`);
-    } catch (error) { sendErrorPage(ctx, error.message, { status: 400 }); }
+    if (!uploadedFile || !pw || String(pw).length < 32) return ctx.redirect('/backup?type=RESTORE');
+    const current = backupModel.restoreStatus();
+    if (current && current.running) { try { fs.unlinkSync(uploadedFile.filepath); } catch (_) {} return ctx.redirect('/backup?type=RESTORE'); }
+    const job = backupModel.startRestore({ filePath: uploadedFile.filepath, password: String(pw) });
+    job.promise.then(() => { try { activityModel.invalidateCache(); } catch (_) {} });
+    ctx.redirect('/backup?type=RESTORE');
   })
 
   .post('/trending/:contentId/:category', async (ctx) => {
@@ -8268,6 +8547,7 @@ router
     const text = ctx.request.body?.text != null ? stripDangerousTags(String(ctx.request.body.text)) : "";
     const imageMarkdown = ctx.request.files?.blob ? await handleBlobUpload(ctx, 'blob') : null;
     const fullText = imageMarkdown ? (text ? text + '\n' : '') + imageMarkdown : text;
+    if (isBlankText(fullText)) { ctx.redirect(`/feed/${encodeURIComponent(ctx.params.feedId)}`); return; }
     await feedModel.addComment(ctx.params.feedId, fullText);
     ctx.redirect(`/feed/${encodeURIComponent(ctx.params.feedId)}`);
   })
@@ -8791,6 +9071,7 @@ router
       ctx.body = await taskView([], 'create', null, b.returnTo, { draft: { ...b, images: draftImages } });
       return;
     }
+    if (rejectPastDates(ctx, [[b.startTime], [b.endTime]], '/tasks?filter=create')) return;
     await tasksModel.createTask(stripDangerousTags(b.title), stripDangerousTags(b.description), b.startTime, b.endTime, b.priority, stripDangerousTags(b.location), b.tags, b.isPublic, { images: draftImages, video: media.clip || '' });
     ctx.redirect(safeReturnTo(ctx, '/tasks?filter=mine', ['/tasks']));
   })
@@ -8960,6 +9241,7 @@ router
     const b = ctx.request.body || {};
     try {
       const blobMarkdown = await handleBlobUpload(ctx, 'blob');
+      if (rejectPastDates(ctx, [[b.date]], '/logistics?filter=create')) return;
       const res = await logisticsModel.createRoute({ kind: b.kind, mode: b.mode, title: stripDangerousTags(String(b.title || '')), description: stripDangerousTags(String(b.description || '')) + (blobMarkdown || ''), origin: stripDangerousTags(String(b.origin || '')), destination: stripDangerousTags(String(b.destination || '')), mapUrl: stripDangerousTags(String(b.mapUrl || '')), date: b.date, recurrence: b.recurrence, seats: b.seats, size: stripDangerousTags(String(b.size || '')), weight: stripDangerousTags(String(b.weight || '')), priceType: b.priceType, price: b.price, orderRef: stripDangerousTags(String(b.orderRef || '')), tags: b.tags || '' });
       ctx.redirect(`/logistics/${encodeURIComponent(res.key)}`);
     } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }); }
@@ -9088,6 +9370,7 @@ router
       let text = stripDangerousTags(String(b.text || ''));
       const blobMarkdown = await handleBlobUpload(ctx, 'blob');
       if (blobMarkdown) text += blobMarkdown;
+      if (rejectPastDates(ctx, [[b.deadline]], '/campaigns?filter=create')) return;
       const res = await campaignsModel.createCampaign({ title: stripDangerousTags(String(b.title || '')), text, category: b.category, goal: b.goal, deadline: b.deadline, tags: b.tags || '', mapUrl: stripDangerousTags(String(b.mapUrl || '')) });
       ctx.redirect(`/campaigns/${encodeURIComponent(res.key)}`);
     } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }); }
@@ -9249,6 +9532,7 @@ router
       until: b.intervalDeadline || b.recurrenceUntil || ''
     };
     const eventAttachment = await handleBlobUpload(ctx, 'blob');
+    if (rejectPastDates(ctx, [[b.date]], '/events?filter=create')) return;
     const evResult = await eventsModel.createEvent(stripDangerousTags(b.title), stripDangerousTags(b.description) + (eventAttachment || ''), b.date, stripDangerousTags(b.location), b.price, b.url, b.attendees || [], b.tags, b.isPublic, stripDangerousTags(b.mapUrl), b.clearnetPublic, { images: draftImages, video: media.clip || '' }, recurrence);
     if ([].concat(b.addToCalendar).includes("1") && evResult && evResult.key) {
       try {
@@ -9317,6 +9601,7 @@ router
     const b = ctx.request.body, defaultOptions = ['YES', 'NO', 'ABSTENTION', 'CONFUSED', 'FOLLOW_MAJORITY', 'NOT_INTERESTED'];
     const parsedOptions = b.options ? b.options.split(',').map(o => o.trim()).filter(Boolean) : defaultOptions;
     try {
+      if (rejectPastDates(ctx, [[b.deadline]], '/votes?filter=create')) return;
       await votesModel.createVote(stripDangerousTags(b.question), b.deadline, parsedOptions, String(b.tags || '').split(',').map(t => t.trim()).filter(Boolean));
     } catch (err) {
       ctx.redirect(voteFormRedirect('create', null, err, b));
@@ -9586,6 +9871,7 @@ router
     const b = ctx.request.body, image = await handleBlobUpload(ctx, "image"), parsedStock = parseInt(String(b.stock || "0"), 10);
     if (!parsedStock || parsedStock <= 0) ctx.throw(400, "Stock must be a positive number.");
     const pickLast = v => Array.isArray(v) ? v[v.length - 1] : v, shpVal = pickLast(b.includesShipping);
+    if (rejectPastDates(ctx, [[b.deadline]], '/market?filter=create')) return;
     await marketModel.createItem(b.item_type, stripDangerousTags(b.title), stripDangerousTags(b.description), image, b.price, b.tags, b.item_status, b.deadline, shpVal === "1" || shpVal === "on" || shpVal === true || shpVal === "true", parsedStock, stripDangerousTags(b.mapUrl), { industry: stripDangerousTags(b.industry || "") }, b.visibility);
     ctx.redirect(safeReturnTo(ctx, "/market", ["/market"]));
   })
@@ -9676,6 +9962,7 @@ router
     }
     let created = null
     try {
+      if (rejectPastDates(ctx, [[b.availableFrom, { dayOnly: true }], [b.availableTo, { dayOnly: true }]], '/housing?filter=create')) return;
       created = await housingModel.createHousing({
         housing_type: stripDangerousTags(b.housing_type),
         property_type: stripDangerousTags(b.property_type),
@@ -10124,7 +10411,7 @@ router
     let uploadMime = imageBlob && uploadFile ? String(uploadFile.mimetype || '') : null;
     if (uploadMime === 'application/octet-stream' && /\.torrent$/i.test(String(uploadFile?.originalFilename || ''))) uploadMime = 'application/x-bittorrent';
     const replyTo = String(ctx.request.body.replyTo || '').trim() || null;
-    if (!text && !imageBlob) { ctx.redirect(`/chats/${encodeURIComponent(ctx.params.chatId)}`); return; }
+    if (isBlankText(text) && !imageBlob) { ctx.redirect(`/chats/${encodeURIComponent(ctx.params.chatId)}`); return; }
     try {
       await chatsModel.sendMessage(ctx.params.chatId, text, imageBlob, replyTo, uploadMime);
     } catch (err) {
@@ -10166,8 +10453,22 @@ router
     let body = stripDangerousTags(String(b.body || ""));
     const blobMarkdown = await handleBlobUpload(ctx, 'blob');
     if (blobMarkdown) body += blobMarkdown;
-    const res = await wikiModel.createPage({ title: stripDangerousTags(String(b.title || "")), body, tags: b.tags || "", editPolicy: String(b.status || b.editPolicy || "OPEN"), tribeId });
-    ctx.redirect(`/wiki/${encodeURIComponent(res.key)}${tribeId ? `?tribeId=${encodeURIComponent(tribeId)}` : ""}`);
+    try {
+      const title = stripDangerousTags(String(b.title || ""));
+      const res = await wikiModel.createPage({ title, body, tags: b.tags || "", editPolicy: String(b.status || b.editPolicy || "OPEN"), tribeId });
+      if (res.existing) {
+        const censusList = await wikiModel.listPages({ tribeId, filter: 'all' }).catch(() => []);
+        const tribe = tribeId ? await tribesModel.getTribeById(tribeId).catch(() => null) : null;
+        const draft = { title: title.slice(0, 100), body, tags: stripDangerousTags(String(b.tags || "")), status: String(b.status || "OPEN"), summary: "" };
+        ctx.status = 409;
+        ctx.body = await wikiView([], 'create', { draft, tribe, tribeId, censusList, returnTo: String(b.returnTo || ""), notice: require('../views/main_views').i18n.wikiDuplicateTitle });
+        return;
+      }
+      ctx.redirect(`/wiki/${encodeURIComponent(res.key)}${tribeId ? `?tribeId=${encodeURIComponent(tribeId)}` : ""}`);
+    } catch (e) {
+      if (isSsbTooLargeError(e)) { sendErrorPage(ctx, require('../views/main_views').i18n.publishTooLong || 'Your post is too long. Please shorten it.', { status: 400 }); return; }
+      sendErrorPage(ctx, e.message || String(e), { status: 400 });
+    }
   })
   .post("/wiki/preview", koaBody({ multipart: true, formidable: { maxFileSize: maxSize } }), async (ctx) => {
     if (!checkMod(ctx, 'wikiMod')) { ctx.redirect('/modules'); return; }
@@ -10195,18 +10496,26 @@ router
     if (blobMarkdown) body += blobMarkdown;
     try {
       const res = await wikiModel.updatePage(ctx.params.id, { title: stripDangerousTags(String(b.title || "")), body, tags: b.tags || "", editPolicy: b.status || b.editPolicy, summary: stripDangerousTags(String(b.summary || "")) });
+      if (String(res.author || '') !== String(getViewerId())) await subscribeOnFirstTouch(res.rootId, 'wiki');
       await notifyWikiWatchers(res.rootId, 'WIKI_EDITED', b.tribeId || null);
       ctx.redirect(`/wiki/${encodeURIComponent(res.rootId)}${b.tribeId ? `?tribeId=${encodeURIComponent(b.tribeId)}` : ""}`);
-    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 403 }); }
+    } catch (e) {
+      if (isSsbTooLargeError(e)) { sendErrorPage(ctx, require('../views/main_views').i18n.publishTooLong || 'Your post is too long. Please shorten it.', { status: 400 }); return; }
+      sendErrorPage(ctx, e.message || String(e), { status: 403 });
+    }
   })
   .post("/wiki/restore/:id", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'wikiMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body || {};
     try {
       const res = await wikiModel.restoreVersion(ctx.params.id, String(b.version || ""));
+      if (String(res.author || '') !== String(getViewerId())) await subscribeOnFirstTouch(res.rootId, 'wiki');
       await notifyWikiWatchers(res.rootId, 'WIKI_RESTORED', b.tribeId || null);
       ctx.redirect(`/wiki/${encodeURIComponent(res.rootId)}${b.tribeId ? `?tribeId=${encodeURIComponent(b.tribeId)}` : ""}`);
-    } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 403 }); }
+    } catch (e) {
+      if (isSsbTooLargeError(e)) { sendErrorPage(ctx, require('../views/main_views').i18n.publishTooLong || 'Your post is too long. Please shorten it.', { status: 400 }); return; }
+      sendErrorPage(ctx, e.message || String(e), { status: 403 });
+    }
   })
   .post("/wiki/delete/:id", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'wikiMod')) { ctx.redirect('/modules'); return; }
@@ -10225,6 +10534,7 @@ router
       if (!t || !t.members.includes(getViewerId())) { ctx.status = 403; ctx.redirect('/tribes'); return; }
       await tribesModel.ensureTribeKeyDistribution(tribeId).catch(() => {});
     }
+    if (rejectPastDates(ctx, [[b.deadline]], '/pads?filter=create')) return;
     const msg = await padsModel.createPad(
       stripDangerousTags(b.title || ""),
       b.status || "OPEN",
@@ -10346,6 +10656,7 @@ router
     }
     const { intervalWeekly, intervalMonthly, intervalYearly } = readInterval(b);
     try {
+      if (rejectPastDates(ctx, [[b.deadline], [b.firstDate], [b.intervalDeadline]], '/calendars?filter=create')) return;
       const msg = await calendarsModel.createCalendar({
         title: stripDangerousTags(b.title || ""),
         status: b.status || "OPEN",
@@ -10457,6 +10768,7 @@ router
     const b = ctx.request.body || {};
     const { intervalWeekly, intervalMonthly, intervalYearly } = readInterval(b);
     try {
+      if (rejectPastDates(ctx, [[b.date], [b.intervalDeadline]], '/calendars')) return;
       const dateMsgs = await calendarsModel.addDate(ctx.params.id, b.date || "", stripDangerousTags(b.label || ""), intervalWeekly, intervalMonthly, intervalYearly, b.intervalDeadline || "");
       const noteText = stripDangerousTags(String(b.text || "").trim());
       if (noteText && Array.isArray(dateMsgs)) {
@@ -10522,6 +10834,7 @@ router
     const projectAttachment = await handleBlobUpload(ctx, 'blob');
     if (projectAttachment) b.description = String(b.description || '') + projectAttachment;
     const bounties = b.bountiesInput ? String(b.bountiesInput).split("\n").filter(Boolean).map(l => { const [t,a,d] = String(l).split("|"); return { title: String(t||"").trim(), amount: parseFloat(a||0)||0, description: String(d||"").trim(), milestoneIndex: null }; }) : [];
+    if (rejectPastDates(ctx, [[b.deadline], [b.milestoneDueDate]], '/projects?filter=create')) return;
     await projectsModel.createProject({ title: b.title, description: b.description, goal: b.goal != null && b.goal !== "" ? parseFloat(b.goal) : 0, deadline: b.deadline ? new Date(b.deadline).toISOString() : null, progress: b.progress != null && b.progress !== "" ? parseInt(b.progress,10) : 0, bounties, image, milestoneTitle: b.milestoneTitle, milestoneDescription: b.milestoneDescription, milestoneTargetPercent: b.milestoneTargetPercent, milestoneDueDate: b.milestoneDueDate, mapUrl: stripDangerousTags(b.mapUrl), clearnetPublic: b.clearnetPublic });
     ctx.redirect(safeReturnTo(ctx, "/projects?filter=MINE", ["/projects"]));
   })
@@ -10562,6 +10875,7 @@ router
     let milestoneIndex = null, bountyIndex = null, mob = b.milestoneOrBounty || "";
     if (String(mob).startsWith("milestone:")) milestoneIndex = parseInt(String(mob).split(":")[1], 10);
     else if (String(mob).startsWith("bounty:")) bountyIndex = parseInt(String(mob).split(":")[1], 10);
+    if (rejectPastDates(ctx, [[b.deadline]], '/transfers?filter=create')) return;
     const transfer = await transfersModel.createTransfer(project.author, "Project Pledge", pledgeAmount, moment().add(14, "days").toISOString(), ["backer-pledge", `project:${latestId}`]);
     await projectsModel.pledgeToProject(latestId, uid, pledgeAmount, { transferId: transfer.key || transfer.id, milestoneIndex, bountyIndex });
     await pmModel.sendMessage([project.author], "PROJECT_PLEDGE", `${await actorLink(getViewerId())} has pledged ${pledgeAmount} ECO to your project: [${project.title || 'a project'}](/projects/${encodeURIComponent(latestId)})`);
@@ -10702,7 +11016,7 @@ router
   .post("/settings/workflow", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
     const workflow = workflowsModel.getWorkflow(String(ctx.request.body.workflow || '').trim());
-    if (!workflow) { ctx.redirect('/settings'); return; }
+    if (!workflow) { ctx.redirect("/settings#workflows"); return; }
     const cfg = getConfig();
     const enabled = new Set(workflowsModel.modulesOf(workflow));
     workflowsModel.ALL_MODULES.forEach(mod => { cfg.modules[`${mod}Mod`] = enabled.has(mod) ? 'on' : 'off'; });
@@ -10711,14 +11025,14 @@ router
     if (!enabled.has('aiNav') && cfg.ux) cfg.ux.current = 'blocks';
     saveConfig(cfg);
     ctx.cookies.set("theme", cfg.themes.current, { httpOnly: true, sameSite: 'strict', secure: ctx.secure });
-    ctx.redirect("/settings");
+    ctx.redirect("/settings#workflows");
   })
   .post("/settings/theme", koaBody(), async (ctx) => {
     const theme = String(ctx.request.body.theme || "").trim(), cfg = getConfig();
     cfg.themes.current = theme || "Dark-SNH";
     fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2));
     ctx.cookies.set("theme", cfg.themes.current, { httpOnly: true, sameSite: 'strict', secure: ctx.secure });
-    ctx.redirect("/settings");
+    ctx.redirect("/settings#theme");
   })
   .post("/language", koaBody(), async (ctx) => {
     const lang = String(ctx.request.body.language || "en");
@@ -11106,7 +11420,7 @@ router
       config.ssbLogStream = { ...(config.ssbLogStream || {}), limit: logLimit };
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     }
-    ctx.redirect("/settings");
+    ctx.redirect("/settings#logstream");
   })
   .post("/settings/replication", koaBody(), async (ctx) => {
     const hops = parseInt(ctx.request.body.hops, 10);
@@ -11118,13 +11432,13 @@ router
         fs.writeFileSync(serverConfigPath, JSON.stringify(cfg, null, 2));
       } catch (_) {}
     }
-    ctx.redirect("/settings");
+    ctx.redirect("/settings#replication");
   })
   .post("/settings/home-page", koaBody(), async (ctx) => {
     const cfg = getConfig();
     cfg.homePage = String(ctx.request.body.homePage || "").trim() || "activity";
     saveConfig(cfg);
-    ctx.redirect("/settings");
+    ctx.redirect("/settings#home-page");
   })
   .post("/settings/ux", koaBody(), async (ctx) => {
     const cfg = getConfig();
@@ -11148,7 +11462,7 @@ router
         if (!enabled && typeof ssb.lan.stop === 'function') { try { ssb.lan.stop(); } catch (_) {} }
       }
     } catch (_) {}
-    ctx.redirect("/settings");
+    ctx.redirect("/settings#lan");
   })
   .post("/inhabitants/follow/accept", koaBody(), async (ctx) => {
     const b = ctx.request.body || {};
@@ -11172,7 +11486,7 @@ router
     const v = String(ctx.request.body.wish || '').trim();
     cfg.wish = ['mutuals', 'only-lan'].includes(v) ? v : 'whole';
     saveConfig(cfg);
-    ctx.redirect("/settings");
+    ctx.redirect("/settings#wish");
   })
   .post("/settings/pm-visibility", koaBody(), async (ctx) => {
     const cfg = getConfig();
@@ -11182,24 +11496,20 @@ router
     const returnTo = String((ctx.query && ctx.query.returnTo) || (ctx.request.body && ctx.request.body.returnTo) || '');
     ctx.redirect(['/settings', '/inbox'].includes(returnTo) ? returnTo : '/settings');
   })
-  .post("/settings/rebuild", async ctx => { meta.rebuild(); ctx.redirect("/settings"); })
+  .post("/settings/rebuild", async ctx => {
+    try { settingsReports.rebuild = await backupModel.rebuildIndexes(); }
+    catch (e) { settingsReports.rebuild = { checkedAt: new Date().toISOString(), tookMs: 0, ok: false, error: e.message || String(e), totalMessages: 0, indexes: {} }; }
+    ctx.redirect("/settings#indexes");
+  })
   .post("/settings/verify", koaBody(), async (ctx) => {
-    const cfg = getConfig();
-    let verification = null;
-    try { verification = await backupModel.verify(); } catch (e) { verification = { error: e.message || String(e) }; }
-    const theme = cfg.themes.current || "Dark-SNH";
-    ctx.body = await settingsView({ theme, version: version.toString(), aiPrompt: cfg.ai?.prompt || "", fediverseAccount: fediverseModel.getAccount(), fediverseError: "", telegramAccount: fediverseModel.telegram.getAccount(), telegramLogin: fediverseModel.telegram.loginState(), telegramError: "", verification });
+    try { settingsReports.verification = await backupModel.verify(); }
+    catch (e) { settingsReports.verification = { error: e.message || String(e) }; }
+    ctx.redirect("/settings#verification");
   })
   .post("/modules/preset", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
     const ALL_MODULES = workflowsModel.ALL_MODULES;
-    const PRESETS = {
-      minimal: ['feed', 'forum', 'games', 'images', 'videos', 'audios', 'bookmarks', 'tags', 'trending', 'blogs', 'polls', 'opinions', 'cipher', 'backup'],
-      social: ['agenda', 'emergencies', 'audios', 'bookmarks', 'calendars', 'campaigns', 'chats', 'cipher', 'courts', 'docs', 'events', 'favorites', 'fediverse', 'feed', 'forum', 'games', 'images', 'invites', 'larp', 'backup', 'logs', 'mailing', 'maps', 'blogs', 'polls', 'opinions', 'pads', 'wiki', 'parliament', 'pixelia', 'podcasts', 'melody', 'projects', 'reports', 'school', 'tags', 'tasks', 'trending', 'tribes', 'videos', 'votes'],
-      economy: ['agenda', 'emergencies', 'audios', 'bookmarks', 'calendars', 'campaigns', 'chats', 'cipher', 'courts', 'docs', 'events', 'favorites', 'fediverse', 'feed', 'forum', 'games', 'images', 'invites', 'larp', 'backup', 'logs', 'mailing', 'maps', 'blogs', 'polls', 'opinions', 'pads', 'wiki', 'parliament', 'pixelia', 'podcasts', 'melody', 'projects', 'reports', 'tags', 'tasks', 'trending', 'tribes', 'videos', 'votes', 'banking', 'wallet', 'transfers', 'market', 'housing', 'jobs', 'shops', 'industry', 'school', 'logistics', 'podcasts', 'campaigns'],
-      mobile: workflowsModel.MOBILE_MODULES,
-      full: ALL_MODULES
-    };
+    const PRESETS = workflowsModel.PRESETS;
     const preset = String(ctx.request.body.preset || '');
     const enabledMods = PRESETS[preset];
     if (!enabledMods) { ctx.redirect('/modules'); return; }
@@ -11222,7 +11532,7 @@ router
     const cfg = getConfig();
     cfg.ai = { ...(cfg.ai || {}), prompt: aiPrompt, suggestions: ctx.request.body.ai_suggestions === 'on' };
     saveConfig(cfg);
-    ctx.redirect("/settings");
+    ctx.redirect("/settings#ai");
   })
   .post('/transfers/create', koaBody(), async ctx => {
     if (!checkMod(ctx, 'transfersMod')) { ctx.redirect('/modules'); return; }
@@ -11285,6 +11595,10 @@ const middleware = [
     await next();
   },
   async (ctx, next) => { setLanguage(ctx.cookies.get("language") || getConfig().language || "en"); await next(); },
+  async (ctx, next) => {
+    try { require('../views/comments_view').setCommentsOpen(ctx.method === 'GET' && String(ctx.query.comments || '') === 'open'); } catch (_) {}
+    await next();
+  },
   async (ctx, next) => {
     await next();
     const flash = ctx.method === 'GET' ? String(ctx.query.error || '').trim() : '';
@@ -11679,21 +11993,8 @@ async function logClearnetStatus() {
     const ssbClient = await cooler.open();
     if (!ssbClient || !ssbClient.id) return;
     const prefs = await about.visibilityPrefs(ssbClient.id).catch(() => null);
-    const modules = [
-      ['Shops',     'clearnetShops'],
-      ['School',    'clearnetSchool'],
-      ['Jobs',      'clearnetJobs'],
-      ['Events',    'clearnetEvents'],
-      ['Projects',  'clearnetProjects'],
-      ['Blogs',     'clearnetPosts'],
-      ['Audios',    'clearnetAudios'],
-      ['Videos',    'clearnetVideos'],
-      ['Images',    'clearnetImages'],
-      ['Documents', 'clearnetDocuments'],
-      ['Torrents',  'clearnetTorrents'],
-      ['Podcasts',  'clearnetPodcasts']
-    ];
-    const active = prefs ? modules.filter(([_, k]) => prefs[k] === true).map(([label]) => label) : [];
+    const { CLEARNET_MODULES } = require('../views/main_views');
+    const active = prefs ? CLEARNET_MODULES.filter(m => prefs[m.prefKey] === true).map(m => m.label) : [];
     try {
       const { setClearnetModules } = require('../server/ssb_metadata');
       setClearnetModules(active);

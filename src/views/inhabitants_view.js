@@ -1,8 +1,9 @@
 const { div, h2, p, section, button, form, img, a, textarea, input, span, strong } = require("../server/node_modules/hyperaxe");
+const moment = require("../server/node_modules/moment");
 const { template, i18n, userLink, renderUserSensors, renderContentActions, renderRelationshipBlock, renderModuleStats } = require('./main_views');
 const { renderZoomableImage } = require('./gallery_view');
 const { renderContentStats } = require('./clearnet_view');
-const { renderUrl } = require('../backend/renderUrl');
+const { renderStyledText } = require('../backend/renderStyledText');
 const { getConfig } = require('../configs/config-manager');
 
 const DEFAULT_HASH_ENC = "%260000000000000000000000000000000000000000000%3D.sha256";
@@ -130,7 +131,7 @@ const renderCvFields = (user) => {
     cvField(i18n.skillsLabel, skills.length ? skills.join(', ') : ''),
     cvField(i18n.statusLabel || 'Status', user.status),
     cvField(i18n.preferencesLabel || 'Preferences', user.preferences),
-    cvField(i18n.createdAtLabel || 'Created at', user.createdAt ? new Date(user.createdAt).toLocaleString() : ''),
+    cvField(i18n.createdAtLabel || 'Created at', user.createdAt ? moment(user.createdAt).format("YYYY/MM/DD HH:mm") : ''),
     user.pdf
       ? div({ class: 'card-field' }, a({ href: `/blob/${encodeURIComponent(user.pdf)}`, target: '_blank', rel: 'noopener', class: 'filter-btn' }, '📄 ' + i18n.cvPdfLabel))
       : null
@@ -201,7 +202,7 @@ const renderInhabitantCard = (user, filter, currentUserId, fediverseConfigured) 
     ),
     (() => {
       const detailNodes = [
-        user.description ? p(...renderUrl(user.description)) : null,
+        user.description ? p(...renderStyledText(user.description)) : null,
         filter === 'CVs' ? renderCvFields(user) : null,
         filter === 'SUGGESTED' && user.commonSkills?.length
           ? div({ class: 'suggested-meta' },
@@ -354,7 +355,7 @@ exports.inhabitantsProfileView = (payload, currentUserId, fediverseConfigured) =
   ];
   const status = (cv && cv.status) || '';
   const preferences = (cv && cv.preferences) || '';
-  const createdAt = (cv && cv.createdAt) ? new Date(cv.createdAt).toLocaleString() : '';
+  const createdAt = (cv && cv.createdAt) ? moment(cv.createdAt).format("YYYY/MM/DD HH:mm") : '';
   const isMe = id && id === currentUserId;
   const title = i18n.inhabitantProfileTitle || i18n.inhabitantviewDetails;
   const karmaScore = typeof safe.karmaScore === 'number' ? safe.karmaScore : 0;
@@ -394,7 +395,7 @@ exports.inhabitantsProfileView = (payload, currentUserId, fediverseConfigured) =
   ].filter(Boolean);
 
   const detailNodes = [
-    description ? p(...renderUrl(description)) : null,
+    description ? p(...renderStyledText(description)) : null,
     fieldNodes.length ? div({ class: 'cv-card-fields' }, ...fieldNodes) : null
   ].filter(Boolean);
 
@@ -445,7 +446,7 @@ exports.inhabitantsProfileView = (payload, currentUserId, fediverseConfigured) =
                       : null;
                     return div({ class: 'post' },
                       visitBtn,
-                      parts.clean && parts.clean.trim() ? p(...renderUrl(parts.clean)) : null,
+                      parts.clean && parts.clean.trim() ? p(...renderStyledText(parts.clean)) : null,
                       ...(parts.imgs || []).map(src => renderZoomableImage(src, { imgClass: 'post-image', alt: 'image' }))
                     );
                   })

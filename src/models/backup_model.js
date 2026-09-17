@@ -145,6 +145,7 @@ const writeChunk = (stream, chunk) => new Promise((resolve, reject) => {
 
 module.exports = ({ cooler }) => {
   let ssb;
+  let restoreJob = null;
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb; };
 
   const readLog = async (ssbClient) => new Promise((resolve, reject) => {
@@ -168,10 +169,10 @@ module.exports = ({ cooler }) => {
   };
 
   const readBlob = (ssbClient, id) => new Promise((resolve) => {
-    ssbClient.blobs.has(id, (err, has) => {
-      if (err || !has) return resolve(null);
-      pull(ssbClient.blobs.get(id), pull.collect((e, chunks) => resolve(e ? null : Buffer.concat(chunks.map(c => Buffer.isBuffer(c) ? c : Buffer.from(c))))));
-    });
+    pull(ssbClient.blobs.get(id), pull.collect((e, chunks) => {
+      if (e || !chunks || !chunks.length) return resolve(null);
+      resolve(Buffer.concat(chunks.map(c => Buffer.isBuffer(c) ? c : Buffer.from(c))));
+    }));
   });
 
   const normalizeOptions = (opts = {}) => {
@@ -234,7 +235,9 @@ module.exports = ({ cooler }) => {
       fs.writeFileSync(tmpPath, decrypted, { mode: 0o600 });
       fs.renameSync(tmpPath, secretPath);
       try { fs.unlinkSync(filePath); } catch (_) {}
-      return secretPath;
+      let id = '';
+      try { id = JSON.parse(decrypted.toString('utf8').split('\n').filter(l => !l.trim().startsWith('#')).join('\n')).id || ''; } catch (_) {}
+      return { path: secretPath, id };
     },
 
     recoveryKit() {
@@ -320,46 +323,75 @@ module.exports = ({ cooler }) => {
       const decipher = crypto.createDecipheriv('aes-256-gcm', deriveKey(pw, salt), iv);
       decipher.setAuthTag(tag);
       const gunzip = zlib.createGunzip();
-      let buf = Buffer.alloc(0);
+      const total = size - headLen - TAG_LEN;
+      const source = fs.createReadStream(filePath, { start: headLen, end: size - TAG_LEN - 1 });
+      let streamError = null;
+      pipeline(source, decipher, gunzip, (err) => { if (err) streamError = err; });
+      const chunks = [];
+      let pendingLen = 0;
       let meta = null;
-      let error = null;
-      let chain = Promise.resolve();
-      const enqueue = (rec) => { chain = chain.then(() => onRecord(rec)); };
-      gunzip.on('data', (chunk) => {
-        buf = Buffer.concat([buf, chunk]);
-        while (buf.length >= 5) {
-          const type = buf.readUInt8(0);
-          const len = buf.readUInt32BE(1);
-          if (buf.length < 5 + len) break;
-          const payload = buf.slice(5, 5 + len);
-          buf = buf.slice(5 + len);
-          try {
-            if (type === REC_META) { meta = JSON.parse(payload.toString('utf8')); enqueue({ type: 'meta', meta }); }
-            else if (type === REC_MSG) enqueue({ type: 'msg', msg: JSON.parse(payload.toString('utf8')) });
-            else if (type === REC_BLOB) {
-              const hl = payload.readUInt32BE(0);
-              const header = JSON.parse(payload.slice(4, 4 + hl).toString('utf8'));
-              enqueue({ type: 'blob', id: header.id, data: payload.slice(4 + hl) });
-            }
-          } catch (e) { error = e; }
+      const compact = () => {
+        if (chunks.length < 2) return;
+        const all = Buffer.concat(chunks, pendingLen);
+        chunks.length = 0;
+        chunks.push(all);
+      };
+      const nextRecord = () => {
+        if (pendingLen < 5) return null;
+        if (chunks[0].length < 5) compact();
+        const type = chunks[0].readUInt8(0);
+        const len = chunks[0].readUInt32BE(1);
+        if (pendingLen < 5 + len) return null;
+        compact();
+        const all = chunks[0];
+        chunks.length = 0;
+        pendingLen = all.length - 5 - len;
+        if (pendingLen) chunks.push(all.slice(5 + len));
+        return { type, payload: all.slice(5, 5 + len) };
+      };
+      const handle = async (type, payload) => {
+        const read = Math.min(total, source.bytesRead || 0);
+        if (type === REC_META) { meta = JSON.parse(payload.toString('utf8')); await onRecord({ type: 'meta', meta, read, total }); }
+        else if (type === REC_MSG) await onRecord({ type: 'msg', msg: JSON.parse(payload.toString('utf8')), read, total });
+        else if (type === REC_BLOB) {
+          const hl = payload.readUInt32BE(0);
+          const header = JSON.parse(payload.slice(4, 4 + hl).toString('utf8'));
+          await onRecord({ type: 'blob', id: header.id, data: payload.slice(4 + hl), read, total });
         }
-      });
-      await new Promise((resolve, reject) => {
-        pipeline(fs.createReadStream(filePath, { start: headLen, end: size - TAG_LEN - 1 }), decipher, gunzip, (err) => err ? reject(new Error('Wrong password or corrupt backup file.')) : resolve());
-      });
-      await chain;
-      if (error) throw error;
+      };
+      try {
+        for await (const chunk of gunzip) {
+          chunks.push(chunk);
+          pendingLen += chunk.length;
+          let rec;
+          while ((rec = nextRecord())) await handle(rec.type, rec.payload);
+        }
+      } catch (e) {
+        source.destroy();
+        if (streamError || /unsupported state|auth|bad decrypt|incorrect header|invalid/i.test(String(e && e.message))) throw new Error('Wrong password or corrupt backup file.');
+        throw e;
+      }
+      if (streamError) throw new Error('Wrong password or corrupt backup file.');
       return meta;
     },
 
-    async restoreBackup({ filePath, password }) {
+    async restoreBackup({ filePath, password, onProgress }) {
       const ssbClient = await openSsb();
+      let validate = null;
+      try { validate = require('../server/node_modules/ssb-validate'); } catch (_) {}
       const seqKey = (v) => `${v.author}::${v.sequence}`;
-      const existing = new Set((await readLog(ssbClient)).filter(m => m && m.value).map(m => seqKey(m.value)));
-      const stats = { messages: 0, skipped: 0, failed: 0, blobs: 0, blobsSkipped: 0, meta: null };
+      const existing = new Map();
+      for (const m of await readLog(ssbClient)) if (m && m.value) existing.set(seqKey(m.value), m.key);
+      const stats = { messages: 0, skipped: 0, failed: 0, forked: 0, blobs: 0, blobsSkipped: 0, percent: 0, forks: [], errors: [], meta: null };
+      const forkAuthors = new Map();
+      const errorCounts = new Map();
+      const noteError = (err) => {
+        const reason = String(err && err.message ? err.message : err || 'unknown error').replace(/, on feed:@[^\s]+/g, '').replace(/in state:\{.*?\}/g, '').trim();
+        errorCounts.set(reason, (errorCounts.get(reason) || 0) + 1);
+      };
       const addMsg = (value) => new Promise((resolve) => {
-        if (typeof ssbClient.add !== 'function') return resolve(false);
-        ssbClient.add(value, (err) => resolve(!err));
+        if (typeof ssbClient.add !== 'function') return resolve(new Error('add is not available'));
+        ssbClient.add(value, (err) => resolve(err || null));
       });
       const addBlob = (data) => new Promise((resolve) => {
         pull(pull.values([data]), ssbClient.blobs.add((err, ref) => resolve(err ? null : ref)));
@@ -367,22 +399,79 @@ module.exports = ({ cooler }) => {
       const supportsLs = !!(ssbClient.blobs && typeof ssbClient.blobs.ls === 'function');
       const present = supportsLs ? await listBlobs(ssbClient) : new Map();
       const hasBlob = (id) => supportsLs ? Promise.resolve(present.has(id)) : new Promise((resolve) => ssbClient.blobs.has(id, (err, has) => resolve(!err && !!has)));
+      const deferred = [];
+      const report = () => { if (typeof onProgress === 'function') onProgress({ ...stats }); };
+      const sameMessage = (storedKey, msg) => {
+        if (storedKey === msg.key) return true;
+        try { return storedKey === validate.id(msg.value); } catch (_) { return false; }
+      };
+      const tryAdd = async (msg) => {
+        const k = seqKey(msg.value);
+        if (existing.has(k)) {
+          if (sameMessage(existing.get(k), msg)) { stats.skipped += 1; return true; }
+          stats.forked += 1;
+          forkAuthors.set(msg.value.author, (forkAuthors.get(msg.value.author) || 0) + 1);
+          return true;
+        }
+        const err = await addMsg(msg.value);
+        if (err) return err;
+        stats.messages += 1;
+        existing.set(k, msg.key);
+        return true;
+      };
       const meta = await this.readBackup(filePath, password, async (rec) => {
+        if (rec.total) stats.percent = Math.min(100, (rec.read / rec.total) * 100);
         if (rec.type === 'meta') { stats.meta = rec.meta; return; }
         if (rec.type === 'msg') {
-          if (!rec.msg || !rec.msg.value) { stats.failed += 1; return; }
-          if (existing.has(seqKey(rec.msg.value))) { stats.skipped += 1; return; }
-          if (await addMsg(rec.msg.value)) { stats.messages += 1; existing.add(seqKey(rec.msg.value)); } else stats.failed += 1;
+          if (!rec.msg || !rec.msg.value || !rec.msg.value.author) { stats.failed += 1; noteError('malformed message'); report(); return; }
+          const res = await tryAdd(rec.msg);
+          if (res !== true) deferred.push({ msg: rec.msg, err: res });
+          report();
           return;
         }
         if (rec.type === 'blob') {
-          if (await hasBlob(rec.id)) { stats.blobsSkipped += 1; return; }
+          if (await hasBlob(rec.id)) { stats.blobsSkipped += 1; report(); return; }
           const ref = await addBlob(rec.data);
-          if (ref) { stats.blobs += 1; present.set(ref, rec.data.length); } else stats.failed += 1;
+          if (ref) { stats.blobs += 1; present.set(ref, rec.data.length); } else { stats.failed += 1; noteError('blob could not be stored'); }
+          report();
         }
       });
+      deferred.sort((a, b) => a.msg.value.author === b.msg.value.author ? (a.msg.value.sequence || 0) - (b.msg.value.sequence || 0) : String(a.msg.value.author).localeCompare(String(b.msg.value.author)));
+      let pending = deferred;
+      while (pending.length) {
+        const next = [];
+        for (const item of pending) {
+          const res = await tryAdd(item.msg);
+          if (res !== true) next.push({ msg: item.msg, err: res });
+        }
+        report();
+        if (next.length === pending.length) { pending = next; break; }
+        pending = next;
+      }
+      for (const item of pending) { stats.failed += 1; noteError(item.err); }
+      stats.percent = 100;
+      stats.forks = Array.from(forkAuthors.entries()).map(([author, count]) => ({ author, count, mine: author === ssbClient.id }));
+      stats.errors = Array.from(errorCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([reason, count]) => ({ reason, count }));
       try { fs.unlinkSync(filePath); } catch (_) {}
+      report();
       return { ...stats, meta: stats.meta || meta };
+    },
+
+    startRestore({ filePath, password }) {
+      if (restoreJob && restoreJob.running) return restoreJob;
+      const job = { running: true, startedAt: new Date().toISOString(), finishedAt: null, progress: { messages: 0, skipped: 0, failed: 0, forked: 0, blobs: 0, blobsSkipped: 0, percent: 0 }, result: null, error: null };
+      restoreJob = job;
+      job.promise = this.restoreBackup({ filePath, password, onProgress: (p) => { job.progress = p; } })
+        .then((res) => { job.result = res; return res; })
+        .catch((err) => { job.error = err && err.message ? err.message : String(err); try { fs.unlinkSync(filePath); } catch (_) {} return null; })
+        .finally(() => { job.running = false; job.finishedAt = new Date().toISOString(); });
+      return job;
+    },
+
+    restoreStatus() {
+      if (!restoreJob) return null;
+      const { promise, ...rest } = restoreJob;
+      return rest;
     },
 
     reminderState() { return reminderState(); },
@@ -391,6 +480,43 @@ module.exports = ({ cooler }) => {
 
     markBackup() { return markBackup(); },
 
+    async rebuildIndexes() {
+      const started = Date.now();
+      const ssbClient = await openSsb();
+      const indexDir = path.join(os.homedir(), '.ssb', 'flume');
+      const measure = (dir) => {
+        let files = 0, bytes = 0;
+        const walk = (d) => {
+          let entries = [];
+          try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch (_) { return; }
+          for (const entry of entries) {
+            const full = path.join(d, entry.name);
+            if (entry.isDirectory()) { walk(full); continue; }
+            try { bytes += fs.statSync(full).size; files += 1; } catch (_) {}
+          }
+        };
+        walk(dir);
+        return { files, bytes };
+      };
+      const before = measure(indexDir);
+      let error = null;
+      try {
+        await new Promise((resolve, reject) => {
+          try { ssbClient.rebuild((err) => err ? reject(err) : resolve()); } catch (e) { reject(e); }
+        });
+      } catch (e) { error = e && e.message ? e.message : String(e); }
+      const after = measure(indexDir);
+      let totalMessages = 0;
+      try { totalMessages = (await readLog(ssbClient)).length; } catch (_) {}
+      return {
+        checkedAt: new Date().toISOString(),
+        tookMs: Date.now() - started,
+        ok: !error,
+        error,
+        totalMessages,
+        indexes: { path: indexDir, files: after.files, bytes: after.bytes, deltaBytes: after.bytes - before.bytes }
+      };
+    },
     async verify({ author = null } = {}) {
       const started = Date.now();
       const ssbClient = await openSsb();
@@ -433,17 +559,29 @@ module.exports = ({ cooler }) => {
       }
       const forks = Array.from(forkMap.entries()).map(([feedId, points]) => ({ author: feedId, mine: feedId === me, points: points.sort((a, b) => a.sequence - b.sequence) }));
       const referenced = new Set();
-      for (const m of all) if (m && m.value) for (const ref of blobRefsOf(m.value.content)) referenced.add(ref);
+      const referencedOwn = new Set();
+      for (const m of all) {
+        if (!m || !m.value) continue;
+        for (const ref of blobRefsOf(m.value.content)) {
+          referenced.add(ref);
+          if (m.value.author === me) referencedOwn.add(ref);
+        }
+      }
       const present = await listBlobs(ssbClient);
       const orphan = [];
       let orphanBytes = 0;
       for (const [id, size] of present) if (!referenced.has(id)) { orphan.push(id); orphanBytes += size || 0; }
       const missing = [];
-      for (const id of referenced) if (present.size && !present.has(id)) missing.push(id);
+      const missingOwn = [];
+      for (const id of referenced) {
+        if (!present.size || present.has(id)) continue;
+        missing.push(id);
+        if (referencedOwn.has(id)) missingOwn.push(id);
+      }
       return {
         author: me, checkedAt: new Date().toISOString(), tookMs: Date.now() - started, totalMessages: all.length,
         feed, forks, forkCount: forks.length,
-        blobs: { present: present.size, referenced: referenced.size, orphan: orphan.length, orphanBytes, missing: missing.length, orphanIds: orphan.slice(0, 50), missingIds: missing.slice(0, 50), listed: present.size > 0 || referenced.size === 0 }
+        blobs: { present: present.size, referenced: referenced.size, orphan: orphan.length, orphanBytes, missing: missing.length, missingOwn: missingOwn.length, orphanIds: orphan.slice(0, 50), missingIds: missing.slice(0, 50), missingOwnIds: missingOwn.slice(0, 50), listed: present.size > 0 || referenced.size === 0 }
       };
     }
   };

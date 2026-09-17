@@ -5,7 +5,7 @@ const { renderPhotoGallery, renderGalleryFields } = require("./gallery_view");
 const { renderIntervalBlock } = require("./calendars_view");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
-const { renderUrl } = require("../backend/renderUrl");
+const { renderStyledText, safeExternalHref } = require("../backend/renderStyledText");
 const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel } = require("./maps_view");
 
 const userId = config.keys.id;
@@ -32,12 +32,6 @@ const normalizePrivacy = (v) => {
 
 const privacyLabel = (v) => (normalizePrivacy(v) === "private" ? i18n.eventPrivate : i18n.eventPublic);
 
-const safeExternalHref = (url) => {
-  const s = String(url || "").trim();
-  const lower = s.toLowerCase();
-  if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("mailto:")) return s;
-  return "";
-};
 
 const normalizeEventStatus = (v) => {
   const up = String(v || "").toUpperCase();
@@ -156,12 +150,12 @@ const renderEventItem = exports.renderEventItem = (e, filter, spreadInfo) => {
         )
       ),
       chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-      dateText ? p({ class: "card-date-highlight" }, dateText) : null,
+      dateText ? p({ class: "time-chip" }, dateText) : null,
       e.location && String(e.location).trim()
         ? p({ class: "job-meta-line" }, String(e.location))
         : null,
       price > 0
-        ? div({ class: "job-price-line card-salary" }, `${price.toFixed(6)} ECO`)
+        ? div({ class: "price-chip" }, `${price.toFixed(6)} ECO`)
         : null,
       div({ class: "tribe-card-members" },
         span({ class: "tribe-members-count" }, `${i18n.eventAttendees}: ${attendees.length}`)
@@ -538,12 +532,12 @@ exports.singleEventView = async (event, filter, comments = [], params = {}) => {
     event.description
       ? div({ class: "job-section" },
           h2({ class: "job-section-title" }, i18n.eventDescriptionLabel),
-          p({ class: "tribe-side-description" }, ...renderUrl(event.description))
+          p({ class: "tribe-side-description" }, ...renderStyledText(event.description))
         )
       : null,
     event.mapUrl ? div({ class: "job-section" }, renderMapEmbed(params.mapData, event.mapUrl)) : null,
     p({ class: "card-footer" },
-      span({ class: "date-link" }, `${moment(event.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+      span({ class: "date-link" }, `${moment(event.createdAt).format("YYYY/MM/DD HH:mm")}`),
       userLink(event.organizer)
     ),
     renderEngagement(event.id, opinionsBar, renderEventCommentsSection(event.id, comments, currentFilter))
@@ -589,7 +583,7 @@ exports.clearnetEventView = async (event) => {
   ${urlHref ? `<a class="cn-event-link" href="${esc(urlHref)}" target="_blank" rel="noopener noreferrer">More info →</a>` : ''}
 `;
   return renderClearnetPage({
-    title: `${event.title || 'Event'} — Oasis`,
+    title: `${event.title || 'Event'} | Oasis`,
     ogTitle: event.title || 'Event',
     ogDescription: event.description || '',
     extraCss,

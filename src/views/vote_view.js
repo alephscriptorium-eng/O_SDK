@@ -3,7 +3,6 @@ const { renderCommentsSection: renderSharedCommentsSection } = require("./commen
 const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderOpenClosedChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderDocumentActions, renderModuleStatsBy, moduleIsEmpty } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
-const { renderUrl } = require("../backend/renderUrl");
 
 const userId = config.keys.id;
 const VOTE_QUORUM = 2;
@@ -120,7 +119,7 @@ const renderVoteListItem = (v, voteOptionsDefault, activeFilter, spreadInfo) => 
         )
       ),
       chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-      v.deadline ? p({ class: "card-date-highlight" }, moment(v.deadline).format("YYYY/MM/DD HH:mm")) : null,
+      v.deadline ? p({ class: "time-chip" }, moment(v.deadline).format("YYYY/MM/DD HH:mm")) : null,
       div({ class: "tribe-card-members" },
         span({ class: "tribe-members-count" }, `${i18n.eventAttendees}: ${totalVotesNum}`)
       ),
@@ -204,7 +203,7 @@ const renderVoteDetail = (v, voteOptionsDefault, firstRow, secondRow, mode, acti
       )
     ),
     p({ class: "card-footer" },
-      span({ class: "date-link" }, `${moment(v.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+      span({ class: "date-link" }, `${moment(v.createdAt).format("YYYY/MM/DD HH:mm")}`),
       userLink(v.createdBy)
     ),
     renderEngagement(v.id, renderOpinionsBar(v, returnTo),

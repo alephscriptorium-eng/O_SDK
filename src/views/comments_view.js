@@ -1,9 +1,12 @@
 const { div, p, h2, span, a, form, input, textarea, button, label, br, details, summary } = require("../server/node_modules/hyperaxe");
 const moment = require("../server/node_modules/moment");
 const { i18n, userLink } = require("./main_views");
-const { renderUrl } = require("../backend/renderUrl");
+const { renderStyledText } = require("../backend/renderStyledText");
 
 const COMMENT_ICON = "✑";
+
+let commentsOpenByDefault = false;
+exports.setCommentsOpen = (value) => { commentsOpenByDefault = !!value; };
 
 const visibleComments = (comments) => (Array.isArray(comments) ? comments : []).filter(c => {
   const t = c && c.value && c.value.content && c.value.content.text;
@@ -27,14 +30,14 @@ const renderCommentCard = (c, extra = null) => {
       relDate ? span({ class: "votations-comment-date" }, " | ", i18n.sendTime) : "",
       relDate && rootId ? a({ href: `/thread/${encodeURIComponent(rootId)}#${encodeURIComponent(c.key)}` }, relDate) : ""
     ),
-    p({ class: "votations-comment-text" }, ...renderUrl(String(text))),
+    p({ class: "votations-comment-text" }, ...renderStyledText(String(text), { zoomImages: true })),
     extra
   );
 };
 
 const renderCommentsSection = ({ action, comments = [], returnTo = null, closedNote = null, extraClass = "", open = false, commentExtra = null } = {}) => {
   const list = visibleComments(comments);
-  return details({ class: "comments-collapse" + (extraClass ? ` ${extraClass}` : ""), ...(open ? { open: true } : {}) },
+  return details({ class: "comments-collapse" + (extraClass ? ` ${extraClass}` : ""), ...((open || commentsOpenByDefault) ? { open: true } : {}) },
     summary({ class: list.length > 0 ? "comments-summary engage-on" : "comments-summary" },
       span({ class: "comments-summary-icon" }, COMMENT_ICON),
       span({ class: "comments-summary-count" }, `(${list.length})`)
@@ -46,14 +49,17 @@ const renderCommentsSection = ({ action, comments = [], returnTo = null, closedN
             h2({ class: "comment-form-title" }, i18n.voteNewCommentLabel),
             form({ method: "POST", action, class: "comment-form", enctype: "multipart/form-data" },
               returnTo ? input({ type: "hidden", name: "returnTo", value: returnTo }) : null,
-              textarea({ name: "text", rows: 4, maxlength: "4000", class: "comment-textarea", placeholder: i18n.voteNewCommentPlaceholder }),
+              textarea({ name: "text", rows: 4, maxlength: "4000", class: "comment-textarea", placeholder: i18n.voteNewCommentPlaceholder, required: true }),
               div({ class: "comment-file-upload" }, label(i18n.uploadMedia), input({ type: "file", name: "blob" })),
               br(),
               button({ type: "submit", class: "comment-submit-btn" }, i18n.voteNewCommentButton)
             )
           ),
       list.length
-        ? div({ class: "comments-list" }, ...list.map(c => renderCommentCard(c, typeof commentExtra === "function" ? commentExtra(c) : null)))
+        ? div({ class: "comments-list" }, ...list.map((c, i) => {
+            const card = renderCommentCard(c, typeof commentExtra === "function" ? commentExtra(c) : null);
+            return i === list.length - 1 ? div({ id: "comments-latest", class: "comments-latest-anchor" }, card) : card;
+          }))
         : (closedNote ? null : p({ class: "votations-no-comments" }, i18n.voteNoCommentsYet))
     )
   );

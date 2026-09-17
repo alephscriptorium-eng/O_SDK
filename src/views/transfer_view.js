@@ -185,10 +185,10 @@ const generateTransferCard = (transfer, filter, params = {}) => {
       ),
       chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
       !isUbi && dl && dl.isValid()
-        ? p({ class: "card-date-highlight" }, dl.format("YYYY/MM/DD HH:mm"))
+        ? p({ class: "time-chip" }, dl.format("YYYY/MM/DD HH:mm"))
         : null,
       cat !== "TRUST"
-        ? div({ class: "job-price-line card-salary transfer-amount-centered" }, fmtAmountWithUnit(transfer))
+        ? div({ class: "price-chip transfer-amount-centered" }, fmtAmountWithUnit(transfer))
         : null,
       div({ class: "tribe-card-members" },
         span({ class: "tribe-members-count" }, `${i18n.transfersConfirmations}: ${confirmedCount}/${required}`)
@@ -522,7 +522,7 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
         : null
     ),
     p({ class: "card-footer" },
-      span({ class: "date-link" }, `${moment(transfer.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+      span({ class: "date-link" }, `${moment(transfer.createdAt).format("YYYY/MM/DD HH:mm")}`),
       userLink(transfer.from),
       renderUpdatedLabel(transfer.createdAt, transfer.updatedAt)
     ),

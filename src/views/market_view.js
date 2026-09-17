@@ -4,7 +4,7 @@ const { template, i18n, userLink, renderStateChip, renderVisibilityChip, renderL
 const opinionCategories = require("../backend/opinion_categories")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
-const { renderUrl } = require("../backend/renderUrl")
+const { renderStyledText } = require("../backend/renderStyledText")
 const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel, renderMapEmbedWithZoom } = require("./maps_view")
 
 const renderMediaBlob = (value, fallbackSrc = null, attrs = {}) => {
@@ -109,7 +109,7 @@ const renderStarRating = (opinions, voterCount) => {
 }
 
 const renderCardField = (labelText, value = "") =>
-  div({ class: "card-field" }, span({ class: "card-label" }, labelText), span({ class: "card-value" }, ...renderUrl(String(value))))
+  div({ class: "card-field" }, span({ class: "card-label" }, labelText), span({ class: "card-value" }, ...renderStyledText(String(value))))
 
 const renderCardFieldRich = (labelText, parts) =>
   div({ class: "card-field" }, span({ class: "card-label" }, labelText), span({ class: "card-value" }, ...(Array.isArray(parts) ? parts : [parts])))
@@ -158,7 +158,7 @@ const auctionCountdownParts = (deadline) => {
 const renderCountdownField = (item) => {
   const cd = item && (item.item_type === "auction" || item.item_type === "exchange") ? auctionCountdownParts(item.deadline) : null
   if (!cd) return null
-  return renderCardFieldRich(`${cd.label}:`, [span({ class: "countdown-strong" }, cd.rel)])
+  return renderCardFieldRich(`${cd.label}:`, [span({ class: "time-chip" }, cd.rel)])
 }
 
 const normStatus = (s) => String(s || "").toUpperCase().replace(/_/g, " ").replace(/\s+/g, " ").trim()
@@ -308,7 +308,7 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
   return template(
     title,
     section(
-      div({ class: "tags-header module-header-line" }, h2(i18n.marketTitle), p(i18n.marketDescription)),
+      div({ class: "tags-header module-header-line" }, h2(i18n.marketTitle), p(i18n.marketDescription), (() => { const { renderReachChip } = require('./clearnet_view'); return params && params.viewerPrefs ? renderReachChip(params.viewerPrefs.clearnetMarket === true, i18n, `/c/inhabitant/${encodeURIComponent((params && params.viewerId) || '')}`) : null; })()),
       div(
         { class: "filters" },
         form(
@@ -525,7 +525,7 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
                         item.industry ? a({ href: `/industry/${encodeURIComponent(item.industry)}` }, renderStateChip("whole", "🏭", String(i18n.industryTitle || "Industry").toUpperCase())) : null,
                         renderLifespanChip(item.lifetime, i18n)
                       ),
-                      div({ class: "market-card-price card-date-highlight" }, `${item.price} ECO`)
+                      div({ class: "price-chip" }, `${item.price} ECO`)
                     )
                   )
                 })
@@ -639,7 +639,7 @@ exports.singleMarketView = async (item, filter, comments = [], params = {}) => {
           renderStarRating(item.opinions, Array.isArray(item.opinions_inhabitants) ? item.opinions_inhabitants.length : 0),
           chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
           renderMediaBlob(item.image, "/assets/images/default-market.png"),
-          div({ class: "card-date-highlight" }, `${item.price} ECO`),
+          div({ class: "price-chip" }, `${item.price} ECO`),
           renderStockBar(item.stock, maxStock),
           table({ class: "tribe-info-table jobs-info-table" }, ...infoRows),
           tagsNode,
@@ -651,7 +651,7 @@ exports.singleMarketView = async (item, filter, comments = [], params = {}) => {
           item.description
             ? div({ class: "job-section" },
                 h2({ class: "job-section-title" }, i18n.marketItemDescription),
-                p({ class: "tribe-side-description" }, ...renderUrl(item.description))
+                p({ class: "tribe-side-description" }, ...renderStyledText(item.description))
               )
             : null,
           renderCountdownField(item),
