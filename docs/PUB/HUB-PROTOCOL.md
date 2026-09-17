@@ -11,6 +11,9 @@
 > + `dosier/`; reporte `plan/REPORTES/WP-O46-hub-nodo-soporte.md` (asientos D-O13/D-O14).
 > Pendientes: ajuste de memoria a las 24 h (§7), caché a los 7 días (§6), rollback nivel 1
 > no ensayado (decisión del custodio: deja `/c` sin servicio ~1 min).
+> **Upgrade 1.0.8 → 1.1.2 desplegado 2026-09-17 11:47 UTC** (WP-O97, rama `upgrade/oasis-1.1.2`):
+> pub y HUB en la imagen `b6181cb7`, ambos feed id sin cambios, `/c/assets/*` cacheado (§5.5),
+> Sala 04 con 16 tipos. Reporte `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md`.
 
 Checklist operativo para **activar, operar, mantener en disco y llevar a través de
 los upgrades** el HUB web de solo lectura de Oasis (`/c`, 16 tipos de contenido desde 1.1.2; 12 en 1.0.8,
