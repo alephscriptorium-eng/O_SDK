@@ -5,6 +5,24 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Protocolo del cliente: alta fresca e importación de identidad (WP-O98, 2026-09-17)
+
+- `docs/CLIENT-PROTOCOL.md` (nuevo): estado y convivencia con el pub local, alta fresca,
+  importación de identidad sin bifurcar el feed, sincronización con sbot puro, upgrade,
+  healthcheck, rollback y retirada de instalaciones antiguas.
+- `client/scripts/import-identity.sh` (secret + `flume/log.offset` + `gossip.json` + `keys/`
+  [+ blobs]; verificación por frames, backup verificado en `devops/backups/client/`, flag
+  `oasis-first-contact` con `welcome=done`), `client/scripts/sync-only.sh`
+  (`start|status|invite|stop`, gate de identidad, veredictos SYNC-OK/AHEAD/BEHIND/PUB-UNKNOWN),
+  `client/scripts/lib/inspect-log-offset.js`, `pub/tools/ssb-probe.js` (sonda por stdin, sin
+  rebuild) y `devops/scripts/pub-feed-seq.sh`. Scripts npm `client:import-identity`,
+  `client:sync-only[:status]`, `client:inspect-log`, `devops:pub-feed-seq`.
+- Correcciones: `setup.sh` crea `ecoin-data` y no `configs` (muerto); `test-ai-service.sh`
+  prueba `POST /ai` dentro del contenedor (no había `/health` ni `:4001` publicado); Quickstart
+  con `npm run setup`; `.gitignore` cubre `.env.*` (antes `pub/.env.prod` era commiteable);
+  `UPGRADE-PROTOCOL.md` cliente (rollback = imagen anterior), `RECOVERY-PROTOCOL.md` §4
+  (en 1.1.2 el vector de fork es el PM de bienvenida), `pub/README.md` HUB activo.
+
 ### Changed — Upgrade Oasis 1.0.8 → 1.1.2 con el HUB activo (WP-O97, 2026-09-17)
 
 - Rama `upgrade/oasis-1.1.2`: overlay limpio de `src/` desde upstream

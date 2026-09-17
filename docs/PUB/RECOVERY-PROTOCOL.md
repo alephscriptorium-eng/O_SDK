@@ -100,24 +100,30 @@ docker compose up -d oasis-client
 al historial que guarda el pub → la replicación del propio feed queda bloqueada para siempre
 (EBT no puede reconciliar) y la identidad puede quedar marcada como bifurcada en la red.
 
+> **Actualización 1.1.2 (2026-09-17).** El `oasisVersion` del arranque ya está guardado en upstream
+> (`if (!latestSeq) return`), pero la regla sigue en pie porque el **PM de bienvenida** de la GUI
+> (`backend.js`, a los 3 s) **no** lo está: se publica si no existe `~/.ssb/oasis-first-contact` o si
+> el flag es de otra identidad (lo borra y publica). Mitigación: pre-crear el flag con el feed y
+> `welcome=done`. Todo el flujo está empaquetado en `client/scripts/import-identity.sh` +
+> `client/scripts/sync-only.sh` (`../CLIENT-PROTOCOL.md` §2-§3); lo de abajo es el mecanismo.
+
 Secuencia correcta:
 
 ```bash
 # 1) Preservar: secret, config, gossip.json, blobs/. Apartar: flume/, ebt/ (derivados),
 #    y borrar socket y manifest.json residuales.
 
-# 2) Arrancar sbot PURO (sin GUI → nada puede publicar):
-docker compose run -d --rm --no-deps --entrypoint "" --name oasis-sync-only oasis-client \
-  sh -c 'export HOME=/home/oasis SSB_PATH=/home/oasis/.ssb; cd /app/src/server && node SSB_server.js start'
+# 2) Arrancar sbot PURO (sin GUI → nada puede publicar). Hoy: bash client/scripts/sync-only.sh start
+#    (= modo `server` del entrypoint: chown, parches de runtime y `exec node SSB_server.js start`; nunca backend.js)
+docker compose run -d --rm --no-deps --name oasis-sync-only -e OASIS_SKIP_AI_MODEL=true oasis-client server
 
 # 3) Vigilar la re-replicación (termómetro = log.offset creciendo):
 watch stat -c%s volumes-dev/ssb-data/flume/log.offset
 
 # 4) Preguntar al pub qué tiene de tu feed (respuesta definitiva, no adivinar):
-#    dentro del contenedor, con NODE_PATH=/app/src/server/node_modules:
-#    ssb-client → createHistoryStream({id: <tu-feed>}) contra
-#    net:<pub>:8008~shs:<pub-key>  → nº mensajes y último seq
-#    Cuando el log local alcance ese seq: sincronización COMPLETA.
+bash devops/scripts/pub-feed-seq.sh '<tu-feed>'            # seq_pub · pub_follows_feed (pub/tools/ssb-probe.js por stdin)
+bash client/scripts/sync-only.sh status --pub              # compara fichero / sbot / pub → SYNC-OK | AHEAD | BEHIND | PUB-UNKNOWN
+#    Cuando el log local alcance ese seq (y esté estable): sincronización COMPLETA.
 
 # 5) Solo entonces: parar el sbot puro y arrancar la GUI normal.
 #    Su auto-publish caerá en seq N+1 = continuación legítima, sin fork.

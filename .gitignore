@@ -39,9 +39,11 @@ Thumbs.db
 *.swp
 *.swo
 
-# Configuraciones locales
+# Configuraciones locales (todo .env* salvo las plantillas *.example)
 .env
-.env.local
+.env.*
+!.env.example
+!.env.*.example
 config.local.json
 .update_required
 packages/

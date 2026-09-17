@@ -125,7 +125,9 @@ sbot) · `backend` (HUB clearnet: `backend.js --public` con sbot embebido e iden
 **Preservar siempre** (bind mounts): el dir `.ssb` (`secret`=identidad, `flume`, `blobs`, `gossip.json`)
 y `ai-models`. Con el HUB activo, también `/srv/oasis/oasis-hub/ssb-data` (su `secret` y `conn.json`).
 
-- **Cliente** (`docker-compose.yml`, modo `full`): `docker compose build && docker compose up -d`.
+- **Cliente** (`docker-compose.yml`, modo `full`): `docker tag o-sdk-oasis-client o-sdk-oasis-client:<ver-vieja>`
+  (rollback) → `npm run build && docker compose up -d oasis-client`. Binds `volumes-dev/{ssb-data,ai-models}`
+  intactos. Detalle, importación de identidad y sbot puro: `../CLIENT-PROTOCOL.md` §4.
 - **Pub** (VPS `/opt/oasis-scriptorium`): **no es un checkout git**. `deploy.sh` solo hace
   `compose up --build` sobre lo que ya hay en disco. Orden: backup → liberar disco → etiquetar imagen
   de rollback → actualizar **`src/`** (tar/rsync; no el repo o-sdk entero) → `build` → `up --no-deps`
@@ -170,8 +172,9 @@ y `ai-models`. Con el HUB activo, también `/srv/oasis/oasis-hub/ssb-data` (su `
 
 ## 6. Healthcheck post-upgrade + rollback
 
-- **Cliente**: `docker ps` healthy; `/settings` muestra la versión nueva; AI `:4001` responde;
-  enviar+descargar un fileShare por `/pm/file`; `whoami` = mismo feed id.
+- **Cliente**: `docker ps` healthy; `/settings` muestra la versión nueva; AI `:4001` responde
+  (`npm run client:test-ai`); enviar+descargar un fileShare por `/pm/file`; `whoami` = mismo feed id;
+  `POST /settings/verify` sin forks propios. Matriz completa: `../CLIENT-PROTOCOL.md` §5.
 - **Pub**: `bash devops/scripts/deploy-status.sh` → contenedor healthy, `caps.shs` OK, feed id sin cambios;
   `pub:invite` funciona (canario del override `OASIS_SERVER_CONFIG_OVERRIDE`).
 - **HUB** (si activo): `oasis-pub-hub` healthy con la imagen nueva, feed id del HUB sin cambios, `/c`
@@ -184,7 +187,8 @@ y `ai-models`. Con el HUB activo, también `/srv/oasis/oasis-hub/ssb-data` (su `
   + `docker compose --env-file .env.prod -f docker-compose.pub.yml up -d --no-deps --no-build oasis-pub`
   (añade `oasis-hub` al `up` si el HUB está activo);
   restaurar `src/` desde `src.old` o el tgz. `.ssb` intacto ⇒ sin pérdida de identidad. Backup de
-  `ssb-data` disponible. Cliente: `git switch` a la rama previa + rebuild.
+  `ssb-data` disponible. Cliente: retag de la imagen anterior + `up -d --no-build` (`../CLIENT-PROTOCOL.md` §6);
+  el `git switch` solo sirve para reconstruir, no para volver atrás.
 
 ## 7. Cierre — registrar
 

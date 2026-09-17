@@ -511,6 +511,28 @@ preparado antes del build · journal.
 vhost nunca llegan al HUB · `/c/qr/x` sin `X-Cache-Status: HIT` (`no-store`).
 Dep: WP-O46. Relación: WP-O80, WP-O77.
 
+| **WP-O98** | **P1** | Cliente fresco en o-sdk + importación de identidad |
+
+**BRIEF** · El cliente personal nunca se inicializó desde este repo (vivía en
+un checkout antiguo, Oasis 0.8.8). Probar el protocolo de alta fresca del
+cliente en esta misma carpeta, sin solaparse con el pub/HUB local, y añadir
+el paso «importar identidad» (secret + log + gossip) sin bifurcar el feed:
+sbot puro hasta sincronizar con el pub, GUI al final. Lo antiguo deja de
+usarse; solo importa la identidad. Doc viva: `docs/CLIENT-PROTOCOL.md`.
+**CA** · alta fresca reproducible con los comandos del protocolo (`setup` →
+`build` → `up`; healthy; versión) · `import-identity.sh` verifica origen
+(frames del log, id = public, sin NUL), deja backup verificado y flag
+`oasis-first-contact` · `sync-only start` rehúsa con GUI viva y se para si
+el sbot no es el feed del secret · `status --pub` llega a SYNC-OK (seq local
+= seq pub, log estable) · tras arrancar la GUI: `whoami` = feed importado,
+`POST /settings/verify` sin forks propios, `seq_pub` = seq importado +
+`oasisVersion` · `volumes-dev/` del cliente y del pub disjuntos ·
+`git check-ignore pub/.env.prod` ignorado.
+**Hostil-omite** · destino no vacío sin `--force` → rechazo · origen sin
+`log.offset` íntegro o con `id ≠ public` → rechazo · sbot con otra identidad
+→ parada automática · nunca GUI sobre log importado sin flag.
+Dep: WP-O97. Relación: WP-O77, WP-O80, WP-O46 (§3 invite desde sbot puro).
+
 ---
 
 ## L5 · Pub / L1 permanente
@@ -868,6 +890,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 
 (2026-09-13: +WP-O46 P1, +WP-O47 P2 en L4, asiento D-O13.)
 (2026-09-17: +WP-O97 P1 en L4 — upgrade 1.1.2 con HUB.)
+(2026-09-17: +WP-O98 P1 en L4 — cliente fresco + importación de identidad.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11
