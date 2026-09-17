@@ -6,9 +6,13 @@
 > entorno scriptorium viven en `pub/` (proyecto `oasis-pub-scriptorium`) y **no comparten** puertos,
 > nombres, redes ni directorios de `volumes-dev/` con el cliente (ver §0).
 
-> **Estado · <pendiente de la primera ejecución (WP-O98)>**. Se rellena al cerrar §2/§3: feed,
-> versión, origen de la identidad, fecha de importación, seq al importar / al arrancar la GUI,
-> ruta del manifiesto `volumes-dev/ssb-data/.import-<ts>.txt`.
+> **Estado · ACTIVO 2026-09-17 13:37 UTC** (WP-O98). Oasis **1.1.2**, feed
+> `@tMJzSfcZSNCsFRF3pl3rMoFDatz6VjDCjQ8/TpjYIRY=.ed25519` («Alephillo»), importado desde el
+> cliente 0.8.8 de `BlockchainComPort\volumes-dev\ssb-data` (seq 44 al importar; 45 = `oasisVersion`
+> del sbot puro; 46 = `karmaScore` de la GUI; `seq_pub` = 46; `Verification`: forks 0). Manifiesto
+> `volumes-dev/ssb-data/.import-20260917-153020.txt`; backup `devops/backups/client/20260917-153020/`.
+> Blobs del origen descartados (todos dañados por NUL): 4 propios pendientes de la red. Reporte
+> `plan/REPORTES/WP-O98-cliente-fresco-identidad.md`. Instalación antigua **sin retirar** (§7).
 
 Checklist operativo para **dar de alta un cliente fresco, traer una identidad SSB existente sin
 bifurcar su feed, sincronizarlo con el pub, subirlo de versión, verificarlo y volver atrás**.
@@ -111,7 +115,8 @@ npm run client:sync-only -- start              # modo `server` del entrypoint: s
 docker logs -f oasis-sync-only                 # CONNECTED net:pub.escrivivir.co:8008 · sin "Another Oasis"/"corrupt"
 npm run client:sync-only -- status --pub --watch   # cada 30 s hasta SYNC-OK
 npm run client:sync-only -- stop               # exige log.offset estable 60 s; verifica el frame final
-docker compose up -d oasis-client              # ahora sí: la GUI publica oasisVersion en seq N+1 (continuación legítima)
+docker compose up -d oasis-client              # ahora sí. (El propio sbot puro ya publicó `oasisVersion` en seq N+1 a los 7 s:
+                                               #  SSB_server.js solo lo hace si el log NO está vacío; el pub lo acepta como continuación)
 ```
 
 `start` tiene un **gate**: si el sbot no se identifica como el feed del `secret` (`ID-MISMATCH`), se
