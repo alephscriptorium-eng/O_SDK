@@ -1,11 +1,10 @@
 const { div, h2, p, section, button, form, a, span, textarea, br, input, h1, label, img } = require("../server/node_modules/hyperaxe");
 const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink } = require("./comments_view");
-const { template, i18n, renderOpinionsVoting, userLink, renderContentActions, renderEngagement, renderVotesSummary, renderModuleStats, moduleIsEmpty } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, userLink, renderContentActions, renderEngagement, renderModuleStats, moduleIsEmpty } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
-const { renderTextWithStyles } = require("../backend/renderTextWithStyles");
+const { renderStyledHtml } = require("../backend/renderStyledText");
 const moment = require("../server/node_modules/moment");
 const { sanitizeHtml } = require('../backend/sanitizeHtml');
-const { renderUrl } = require("../backend/renderUrl");
 
 const FEED_TEXT_MIN = Number(config?.feed?.minLength ?? 1);
 const FEED_TEXT_MAX = Number(config?.feed?.maxLength ?? 280);
@@ -23,7 +22,7 @@ const normalizeOptions = (opts) => {
 
 const formatDate = (feed) => {
   const ts = feed?.value?.timestamp || Date.parse(feed?.value?.content?.createdAt || "") || 0;
-  return ts ? new Date(ts).toLocaleString() : "";
+  return ts ? moment(ts).format("YYYY/MM/DD HH:mm") : "";
 };
 
 const extractTags = (text) => {
@@ -31,19 +30,6 @@ const extractTags = (text) => {
   return Array.from(new Set(list));
 };
 
-const rewriteHashtagLinks = (html) => {
-    return String(html || '').replace(
-        /href=(["'])\/hashtag\/([^"'?#\s<]+)\1/gi,
-        (m, q, rawTag) => {
-            let t = String(rawTag || '');
-            try { t = decodeURIComponent(t); } catch {}
-            t = t.replace(/[^A-Za-z0-9_]/g, '');
-            const tag = t.toLowerCase();
-            const query = encodeURIComponent(`#${tag}`);
-            return `href=${q}/search?query=${query}${q}`;
-        }
-    );
-};
 
 const generateFilterButtons = (filters, currentFilter, action, extra = {}) => {
   const cur = String(currentFilter || "").toUpperCase();
@@ -95,7 +81,7 @@ const renderFeedCard = (feed, spreadMap = null) => {
     const signerId = feed.value.author || "";
     const refeedsNum = Number(content.refeeds || 0) || 0;
     const commentCount = Number(content.commentCount || 0);
-    const styledHtml = rewriteHashtagLinks(renderTextWithStyles(safeText));
+    const styledHtml = renderStyledHtml(safeText);
 
     return div(
         { class: "trending-card feed-card" + (authorId && String(authorId) === String(me) ? " own-content" : "") },
@@ -126,10 +112,9 @@ const renderFeedCard = (feed, spreadMap = null) => {
             div(
                 { class: "feed-main" },
                 div({ class: "feed-text", innerHTML: sanitizeHtml(styledHtml) }),
-                renderVotesSummary(content.opinions),
                 p(
                     { class: "card-footer" },
-                    span({ class: "date-link" }, `${createdAt} ${i18n.performed} `),
+                    span({ class: "date-link" }, `${createdAt}`),
                     userLink(authorId),
                     content._textEdited ? span({ class: "edited-badge" }, ` · ${i18n.edited || "edited"}`) : null
                 )
@@ -198,7 +183,7 @@ exports.feedView = (feeds, opts = "ALL") => {
                 ? `${i18n.searchTitle || "Search"}: “${q}”`
                 : i18n.feedTitle;
 
-  const header = div({ class: "tags-header module-header-line" }, h2(title), p(i18n.FeedshareYourOpinions));
+  const header = div({ class: "tags-header module-header-line" }, h2(title), p(i18n.FeedshareYourOpinions), (() => { const { renderReachChip } = require('./clearnet_view'); const o = (opts && typeof opts === 'object') ? opts : {}; return o.viewerPrefs ? renderReachChip(o.viewerPrefs.clearnetFeed === true, i18n, `/c/inhabitant/${encodeURIComponent(o.viewerId || '')}`) : null; })());
   const successBanner = msg === 'feedPublished'
     ? div({ class: 'feed-success-msg' }, p('✓ ' + (i18n.feedPublishedSuccess || 'Feed published successfully!')))
     : null;
@@ -299,7 +284,7 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
   const authorId = content.author || feed.value?.author || "";
   const signerId = feed.value?.author || "";
   const createdAt = formatDate(feed);
-  const styledHtml = rewriteHashtagLinks(renderTextWithStyles(safeText));
+  const styledHtml = renderStyledHtml(safeText);
   const me = config?.keys?.id;
   const alreadyRefeeded = Array.isArray(content.refeeds_inhabitants) && me ? content.refeeds_inhabitants.includes(me) : false;
   const refeedsNum = Number(content.refeeds || 0) || 0;
@@ -356,7 +341,7 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
             br,
             p(
               { class: "card-footer" },
-              span({ class: "date-link" }, `${createdAt} ${i18n.performed} `),
+              span({ class: "date-link" }, `${createdAt}`),
               userLink(authorId),
               content._textEdited ? span({ class: "edited-badge" }, ` · ${i18n.edited || "edited"}`) : null
             )

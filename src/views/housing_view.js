@@ -4,7 +4,7 @@ const { template, i18n, userLink, renderOpenClosedChip, renderStateChip, renderV
 const { blobUrl, blobIdOf, isVideoEntry, imagesOf, renderMediaThumb, renderPhotoGallery, renderGalleryFields } = require("./gallery_view")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
-const { renderUrl } = require("../backend/renderUrl")
+const { renderStyledText } = require("../backend/renderStyledText")
 const opinionCategories = require("../backend/opinion_categories")
 const { renderMapEmbed, renderMapLocationVisitLabel } = require("./maps_view")
 
@@ -201,7 +201,7 @@ const renderHousingList = (items, filter, params = {}) => {
             ),
             chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
             renderStarRating(item.opinions, safeArr(item.opinions_inhabitants).length),
-            div({ class: "card-date-highlight" }, priceLabel(item)),
+            div({ class: "price-chip" }, priceLabel(item)),
             safeText(item.place)
               ? div({ class: "card-field" },
                   span({ class: "card-label" }, `${i18n.housingPlace}: `),
@@ -473,7 +473,7 @@ exports.singleHousingView = async (item, filter = "ALL", comments = [], params =
     safeText(bodyText)
       ? div({ class: "job-section" },
           h2({ class: "job-section-title" }, titleText),
-          p({ class: "tribe-side-description" }, ...renderUrl(bodyText))
+          p({ class: "tribe-side-description" }, ...renderStyledText(bodyText))
         )
       : null
 
@@ -483,7 +483,7 @@ exports.singleHousingView = async (item, filter = "ALL", comments = [], params =
     renderSection(i18n.housingRules, item.rules),
     item.mapUrl ? div({ class: "job-section" }, renderMapEmbed(params.mapData, item.mapUrl)) : null,
     p({ class: "card-footer" },
-      span({ class: "date-link" }, `${moment(item.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+      span({ class: "date-link" }, `${moment(item.createdAt).format("YYYY/MM/DD HH:mm")}`),
       userLink(item.author)
     ),
     renderEngagement(item.id,

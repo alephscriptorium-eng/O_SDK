@@ -18,7 +18,7 @@ function obfuscateClearnetHtml(html) {
   stash(/<textarea[\s\S]*?<\/textarea>/gi);
   stash(/<style[\s\S]*?<\/style>/gi);
   html = html.replace(/<!--[\s\S]*?-->/g, '');
-  html = html.replace(/>[\s\n\r\t]+</g, '><');
+  html = html.replace(/>[ \t]*[\r\n][\s]*</g, '><');
   html = html.replace(/[ \t]{2,}/g, ' ');
   html = html.replace(/[\r\n]+/g, '');
   html = html.replace(/(\d+)/g, (_, i) => preserve[Number(i)] || '');
@@ -98,6 +98,7 @@ module.exports = ({ host, port, middleware, allowHost }) => {
   });
 
   app.use(mount("/assets", assets));
+  app.use(mount("/c/assets", assets));
 
   const maptiles = new Koa();
   maptiles.use(koaStatic(join(__dirname, "..", "maps", "tiles")));

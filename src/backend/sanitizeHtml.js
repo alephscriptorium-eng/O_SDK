@@ -8,7 +8,6 @@ const purify = DOMPurify(window);
 const stripDangerousTags = (input) => {
   if (typeof input !== 'string') return '';
   return purify.sanitize(input, {
-    USE_PROFILES: { html: true },
     ALLOWED_TAGS: [
       'p', 'br',
       'b', 'strong', 'i', 'em', 'u',
@@ -25,7 +24,6 @@ const stripDangerousTags = (input) => {
 const sanitizeHtml = (input) => {
   if (typeof input !== 'string') return '';
   return purify.sanitize(input, {
-    USE_PROFILES: { html: true },
     ALLOWED_TAGS: [
       'p', 'br', 'hr',
       'b', 'strong', 'i', 'em', 'u', 's', 'del',

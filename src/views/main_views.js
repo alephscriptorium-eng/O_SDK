@@ -9,7 +9,7 @@ const highlightJs = require("../server/node_modules/highlight.js");
 const prettyMs = require("../server/node_modules/pretty-ms");
 const moment = require('../server/node_modules/moment');
 const QRCode = require('../server/node_modules/qrcode');
-const { renderUrl } = require('../backend/renderUrl');
+const { renderStyledText, renderStyledHtml, plainText, safeExternalHref } = require('../backend/renderStyledText');
 const ssbClientGUI = require("../client/gui");
 const config = require("../server/ssb_config");
 const cooler = ssbClientGUI({ offline: config.offline });
@@ -27,7 +27,6 @@ exports.getUserId = getUserId;
 const { a, article, br, body, button, details, div, em, footer, form, h1, h2, h3, head, header, hr, html, img, input, label, li, link, main, meta, nav, option, p, pre, section, select, span, summary, table, td, textarea, title, tr, ul, strong, video: videoHyperaxe, audio: audioHyperaxe } = require("../server/node_modules/hyperaxe");
 
 const lodash = require("../server/node_modules/lodash");
-const markdown = require("./markdown");
 const { sanitizeHtml } = require('../backend/sanitizeHtml');
 const nameCache = require('../backend/nameCache');
 
@@ -53,12 +52,13 @@ const renderInviteQrCard = ({ qrDataUrl }) =>
   qrDataUrl ? div({ class: 'invite-qr-card' }, img({ src: qrDataUrl, alt: 'QR', class: 'invite-qr-img' })) : null;
 exports.renderInviteQrCard = renderInviteQrCard;
 
-const renderSubscriptionBox = ({ target, scope, subscribed, count, isOwner, returnTo, canWrite }) => {
+const renderSubscriptionBox = ({ target, scope, subscribed, count, isOwner, returnTo, canWrite, inline }) => {
   if (!target) return null;
   if (isOwner && (Number(count) || 0) <= 1) return null;
   const showPm = canWrite !== undefined ? canWrite : (isOwner || subscribed);
-  return div({ class: 'tribe-side-actions shop-visibility-row stacked-action-row subscription-box-block' },
-    span({ class: 'card-label' }, `${i18n.subscriptionTitle} (${Number(count) || 0})${isOwner ? '' : ':'}`),
+  const total = Number(count) || 0;
+  const parts = [
+    total ? span({ class: 'card-label' }, `${i18n.subscriptionTitle} (${total})${isOwner ? '' : ':'}`) : null,
     span({ class: 'subscription-actions' },
       isOwner
         ? null
@@ -67,13 +67,15 @@ const renderSubscriptionBox = ({ target, scope, subscribed, count, isOwner, retu
             input({ type: 'hidden', name: 'scope', value: String(scope || '') }),
             input({ type: 'hidden', name: 'on', value: subscribed ? '0' : '1' }),
             returnTo ? input({ type: 'hidden', name: 'returnTo', value: returnTo }) : null,
-            button({ type: 'submit', class: subscribed ? 'tribe-action-btn danger-btn' : 'tribe-action-btn' }, String(subscribed ? i18n.subscriptionUnsubscribe : i18n.subscriptionSubscribe).toUpperCase())
+            button({ type: 'submit', class: subscribed ? 'tribe-action-btn danger-btn' : 'tribe-action-btn' }, `${subscribed ? '🔕' : '🔔'} ${String(subscribed ? i18n.subscriptionUnsubscribe : i18n.subscriptionSubscribe).toUpperCase()}`)
           ),
-      showPm
+      showPm && total
         ? a({ href: `/pm?list=${encodeURIComponent(target)}`, class: 'btn-singleview btn-pm', title: i18n.pmCreateButton || 'Write a PM' }, '✉')
         : null
     )
-  );
+  ];
+  const nodes = parts.filter(Boolean);
+  return inline ? nodes : div({ class: 'tribe-side-actions shop-visibility-row stacked-action-row subscription-box-block' }, ...nodes);
 };
 exports.renderSubscriptionBox = renderSubscriptionBox;
 
@@ -291,12 +293,12 @@ const errorView = ({ title, message, backHref }) => {
 };
 exports.errorView = errorView;
 
-exports.renderInlineError = (message, dismissHref) => String(section({ class: 'inline-error' },
+exports.renderInlineError = (message, dismissHref) => section({ class: 'inline-error' },
   div({ class: 'tags-header inline-error-box' },
     p({ class: 'error-page-message' }, String(message || '')),
     dismissHref ? a({ href: dismissHref, class: 'filter-btn' }, i18n.errorDismiss || 'OK') : null
   )
-));
+).outerHTML;
 
 const renderVotesSummary = (opinions = {}) => {
   const entries = Object.entries(opinions).filter(([, v]) => Number(v) > 0);
@@ -1640,12 +1642,12 @@ const template = (titlePrefix, ...elements) => {
                   emoji: "ꖘ",
                   text: i18n.inhabitantsLabel
                 }),
-                renderTribesLink(),
-                renderLarpLink(),
+                renderEmergenciesLink(),
                 renderSchoolLink(),
                 renderParliamentLink(),
                 renderCourtsLink(),
-                renderEmergenciesLink()
+                renderLarpLink(),
+                renderTribesLink()
               ),
               navGroup(
                 {
@@ -1653,15 +1655,15 @@ const template = (titlePrefix, ...elements) => {
                   emoji: "¤",
                   title: i18n.menuEconomy
                 },
-                renderBankingLink(),
                 renderWalletLink(),
+                renderBankingLink(),
                 renderMarketLink(),
-                renderLogisticsLink(),
-                renderHousingLink(),
-                renderProjectsLink(),
-                renderIndustryLink(),
-                renderJobsLink(),
                 renderShopsLink(),
+                renderIndustryLink(),
+                renderLogisticsLink(),
+                renderProjectsLink(),
+                renderJobsLink(),
+                renderHousingLink(),
                 renderTransfersLink()
               ),
               navGroup(
@@ -2185,7 +2187,7 @@ const post = ({ msg, aside = false, preview = false, spreadInfo = null }) => {
             const u = safeStr(c.url);
             if (u) {
                 nodes.push(
-                    renderField((i18n.url || 'URL') + ':', a({ href: u, target: '_blank', rel: 'noopener noreferrer' }, u))
+                    renderField((i18n.url || 'URL') + ':', a({ href: safeExternalHref(u), target: '_blank', rel: 'noopener noreferrer' }, u))
                 );
             }
         } else if (t === 'image') {
@@ -2299,7 +2301,7 @@ const post = ({ msg, aside = false, preview = false, spreadInfo = null }) => {
     } else {
         articleElement = article(
             { class: "content" },
-            p({ class: "post-text" }, ...renderUrl(rawText))
+            p({ class: "post-text" }, ...renderStyledText(rawText))
         );
     }
 
@@ -2451,6 +2453,9 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
     clearnetTorrents:  visibilityPrefs.clearnetTorrents  === true,
     clearnetBookmarks: visibilityPrefs.clearnetBookmarks === true,
     clearnetPodcasts:  visibilityPrefs.clearnetPodcasts  === true,
+    clearnetMarket:    visibilityPrefs.clearnetMarket    === true,
+    clearnetFeed:      visibilityPrefs.clearnetFeed      === true,
+    clearnetWiki:      visibilityPrefs.clearnetWiki      === true,
     profileShops:      visibilityPrefs.profileShops      === true,
     profileJobs:       visibilityPrefs.profileJobs       === true,
     profileEvents:     visibilityPrefs.profileEvents     === true,
@@ -2464,13 +2469,19 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
     profileBookmarks:  visibilityPrefs.profileBookmarks  === true,
     profilePodcasts:   visibilityPrefs.profilePodcasts   === true,
     profileSchool:     visibilityPrefs.profileSchool     === true,
+    profileMarket:     visibilityPrefs.profileMarket     === true,
+    profileFeed:       visibilityPrefs.profileFeed       === true,
+    profileWiki:       visibilityPrefs.profileWiki       === true,
     ecoTax:            visibilityPrefs.ecoTax            !== false,
     larpSign:          visibilityPrefs.larpSign          === true,
     fediverse:         visibilityPrefs.fediverse         === true,
     gpg:               visibilityPrefs.gpg               === true
   };
   const fediverseHandleValue = typeof visibilityPrefs.fediverseHandle === 'string' ? visibilityPrefs.fediverseHandle : '';
-  prefs.clearnet = prefs.clearnetShops || prefs.clearnetSchool || prefs.clearnetJobs || prefs.clearnetEvents || prefs.clearnetProjects || prefs.clearnetPosts || prefs.clearnetAudios || prefs.clearnetVideos || prefs.clearnetImages || prefs.clearnetDocuments || prefs.clearnetTorrents || prefs.clearnetBookmarks || prefs.clearnetPodcasts;
+  prefs.clearnet = prefs.clearnetShops || prefs.clearnetSchool || prefs.clearnetJobs || prefs.clearnetEvents || prefs.clearnetProjects || prefs.clearnetPosts || prefs.clearnetAudios || prefs.clearnetVideos || prefs.clearnetImages || prefs.clearnetDocuments || prefs.clearnetTorrents || prefs.clearnetBookmarks || prefs.clearnetPodcasts || prefs.clearnetMarket || prefs.clearnetFeed || prefs.clearnetWiki;
+  const pillRows = (entries) => div({ class: "pref-pill-row" },
+    ...entries.slice().sort((a, b) => String(a[1]).localeCompare(String(b[1]))).map(([key, labelText]) => togglePill(key, labelText))
+  );
   const togglePill = (key, labelText, forced = false) => label(
     { class: forced ? "pref-pill pref-pill-forced" : "pref-pill", for: forced ? undefined : `vis_${key}`, title: forced ? (i18n.profileDeviceLockedHint || 'On mobile devices this sensor is mandatory and cannot be disabled.') : undefined },
     forced ? input({ type: "hidden", name: `vis_${key}`, value: "1" }) : null,
@@ -2529,21 +2540,24 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
             h2(i18n.profileContentSectionTitle || 'Avatar Content'),
             p({ class: "prefs-help" }, i18n.profileContentHelp || 'Choose which of your modules will be displayed on your profile.')
           ),
-          div({ class: "pref-pill-row" },
-            togglePill('profileShops',     i18n.profileClearnetShopsLabel     || 'Shops'),
-            togglePill('profileSchool',    i18n.profileClearnetSchoolLabel    || 'School'),
-            togglePill('profileJobs',      i18n.profileClearnetJobsLabel      || 'Jobs'),
-            togglePill('profileEvents',    i18n.profileClearnetEventsLabel    || 'Events'),
-            togglePill('profileProjects',  i18n.profileClearnetProjectsLabel  || 'Projects'),
-            togglePill('profilePosts',     i18n.profileClearnetPostsLabel     || 'Blogs'),
-            togglePill('profileAudios',    i18n.profileClearnetAudiosLabel    || 'Audios'),
-            togglePill('profileVideos',    i18n.profileClearnetVideosLabel    || 'Videos'),
-            togglePill('profileImages',    i18n.profileClearnetImagesLabel    || 'Images'),
-            togglePill('profileDocuments', i18n.profileClearnetDocumentsLabel || 'Documents'),
-            togglePill('profileTorrents',  i18n.profileClearnetTorrentsLabel  || 'Torrents'),
-            togglePill('profileBookmarks', i18n.profileClearnetBookmarksLabel || 'Bookmarks'),
-            togglePill('profilePodcasts',  i18n.profileClearnetPodcastsLabel  || 'Podcasts')
-          )
+          pillRows([
+              ['profileAudios',    i18n.profileClearnetAudiosLabel    || 'Audios'],
+              ['profilePosts',     i18n.profileClearnetPostsLabel     || 'Blogs'],
+              ['profileBookmarks', i18n.profileClearnetBookmarksLabel || 'Bookmarks'],
+              ['profileDocuments', i18n.profileClearnetDocumentsLabel || 'Documents'],
+              ['profileEvents',    i18n.profileClearnetEventsLabel    || 'Events'],
+              ['profileFeed',      i18n.profileClearnetFeedLabel      || 'Feed'],
+              ['profileImages',    i18n.profileClearnetImagesLabel    || 'Images'],
+              ['profileJobs',      i18n.profileClearnetJobsLabel      || 'Jobs'],
+              ['profileMarket',    i18n.profileClearnetMarketLabel    || 'Market'],
+              ['profilePodcasts',  i18n.profileClearnetPodcastsLabel  || 'Podcasts'],
+              ['profileProjects',  i18n.profileClearnetProjectsLabel  || 'Projects'],
+              ['profileSchool',    i18n.profileClearnetSchoolLabel    || 'School'],
+              ['profileShops',     i18n.profileClearnetShopsLabel     || 'Shops'],
+              ['profileTorrents',  i18n.profileClearnetTorrentsLabel  || 'Torrents'],
+              ['profileVideos',    i18n.profileClearnetVideosLabel    || 'Videos'],
+              ['profileWiki',      i18n.profileClearnetWikiLabel      || 'Wikis']
+          ])
         ),
         br(),
         div({ class: "prefs-card" },
@@ -2551,16 +2565,16 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
             h2(i18n.profileSensorsSectionTitle || 'Sensors'),
             p({ class: "prefs-help" }, i18n.profileSensorsHelp || 'Optional metrics shown on your profile.')
           ),
-          div({ class: "pref-pill-row" },
-            togglePill('karma',    i18n.profileVisibilityKarma    || 'KARMA Scoring'),
-            togglePill('activity', i18n.profileVisibilityActivity || 'Activity Level'),
-            togglePill('fediverse', i18n.profileVisibilityFediverse || 'Multiverse'),
-            togglePill('larpSign', i18n.profileVisibilityLarpSign || 'L.A.R.P. Sign'),
-            togglePill('gpg',      i18n.profileVisibilityGpg      || 'GPG Key'),
-            togglePill('wallet',   i18n.profileVisibilityWallet   || 'ECOIN Wallet'),
-            togglePill('ubi',      i18n.profileVisibilityUbi      || 'UBI'),
-            togglePill('ecoTax',   i18n.profileVisibilityEcoTax   || 'ECO Tax')
-          ),
+          pillRows([
+            ['activity',  i18n.profileVisibilityActivity  || 'Activity Level'],
+            ['ecoTax',    i18n.profileVisibilityEcoTax    || 'ECO Tax'],
+            ['wallet',    i18n.profileVisibilityWallet    || 'ECOIN Wallet'],
+            ['gpg',       i18n.profileVisibilityGpg       || 'GPG Key'],
+            ['karma',     i18n.profileVisibilityKarma     || 'KARMA Scoring'],
+            ['larpSign',  i18n.profileVisibilityLarpSign  || 'L.A.R.P. Sign'],
+            ['fediverse', i18n.profileVisibilityFediverse || 'Multiverse'],
+            ['ubi',       i18n.profileVisibilityUbi       || 'UBI']
+          ]),
           input({ type: "hidden", name: "fediverseHandle", value: fediverseHandleValue })
         ),
         br(),
@@ -2569,21 +2583,24 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
             h2(i18n.clearnetSectionTitle || 'Clearnet'),
             p({ class: "prefs-help" }, i18n.profileClearnetHelp || 'Modules that can be accessed from outside Oasis.')
           ),
-          div({ class: "pref-pill-row" },
-            togglePill('clearnetShops',     i18n.profileClearnetShopsLabel     || 'Shops'),
-            togglePill('clearnetSchool',    i18n.profileClearnetSchoolLabel    || 'School'),
-            togglePill('clearnetJobs',      i18n.profileClearnetJobsLabel      || 'Jobs'),
-            togglePill('clearnetEvents',    i18n.profileClearnetEventsLabel    || 'Events'),
-            togglePill('clearnetProjects',  i18n.profileClearnetProjectsLabel  || 'Projects'),
-            togglePill('clearnetPosts',     i18n.profileClearnetPostsLabel     || 'Blogs'),
-            togglePill('clearnetAudios',    i18n.profileClearnetAudiosLabel    || 'Audios'),
-            togglePill('clearnetVideos',    i18n.profileClearnetVideosLabel    || 'Videos'),
-            togglePill('clearnetImages',    i18n.profileClearnetImagesLabel    || 'Images'),
-            togglePill('clearnetDocuments', i18n.profileClearnetDocumentsLabel || 'Documents'),
-            togglePill('clearnetTorrents',  i18n.profileClearnetTorrentsLabel  || 'Torrents'),
-            togglePill('clearnetBookmarks', i18n.profileClearnetBookmarksLabel || 'Bookmarks'),
-            togglePill('clearnetPodcasts',  i18n.profileClearnetPodcastsLabel  || 'Podcasts')
-          )
+          pillRows([
+              ['clearnetAudios',    i18n.profileClearnetAudiosLabel    || 'Audios'],
+              ['clearnetPosts',     i18n.profileClearnetPostsLabel     || 'Blogs'],
+              ['clearnetBookmarks', i18n.profileClearnetBookmarksLabel || 'Bookmarks'],
+              ['clearnetDocuments', i18n.profileClearnetDocumentsLabel || 'Documents'],
+              ['clearnetEvents',    i18n.profileClearnetEventsLabel    || 'Events'],
+              ['clearnetFeed',      i18n.profileClearnetFeedLabel      || 'Feed'],
+              ['clearnetImages',    i18n.profileClearnetImagesLabel    || 'Images'],
+              ['clearnetJobs',      i18n.profileClearnetJobsLabel      || 'Jobs'],
+              ['clearnetMarket',    i18n.profileClearnetMarketLabel    || 'Market'],
+              ['clearnetPodcasts',  i18n.profileClearnetPodcastsLabel  || 'Podcasts'],
+              ['clearnetProjects',  i18n.profileClearnetProjectsLabel  || 'Projects'],
+              ['clearnetSchool',    i18n.profileClearnetSchoolLabel    || 'School'],
+              ['clearnetShops',     i18n.profileClearnetShopsLabel     || 'Shops'],
+              ['clearnetTorrents',  i18n.profileClearnetTorrentsLabel  || 'Torrents'],
+              ['clearnetVideos',    i18n.profileClearnetVideosLabel    || 'Videos'],
+              ['clearnetWiki',      i18n.profileClearnetWikiLabel      || 'Wikis']
+          ])
         ),
         br(),
         button(
@@ -2598,10 +2615,9 @@ exports.editProfileView = ({ name, description, visibilityPrefs = {}, feedId = '
 };
 
 exports.clearnetBlogView = async ({ msgKey, text, author, authorName, contentWarning, sentAt }) => {
-  const { escapeHtml: esc, renderKindTag, renderClearnetPage } = require('./clearnet_view');
+  const { escapeHtml: esc, renderKindTag, renderClearnetPage, renderRichText } = require('./clearnet_view');
   const rawText = String(text || '');
-  const renderedHtml = sanitizeHtml(markdown(rawText))
-    .replace(/(["'])\/blob\//g, '$1/c/blob/');
+  const renderedHtml = sanitizeHtml(renderRichText(rawText));
   const plainPreview = rawText.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/<[^>]+>/g, '').slice(0, 200);
   const authorEsc = esc(authorName || (author || '').slice(1, 9));
   const dateStr = sentAt ? esc(new Date(sentAt).toISOString().slice(0, 10)) : '';
@@ -2612,15 +2628,13 @@ exports.clearnetBlogView = async ({ msgKey, text, author, authorName, contentWar
 .cn-blog-meta{color:var(--fg-dim);font-size:13px;margin-bottom:16px;display:flex;gap:14px;flex-wrap:wrap}
 .cn-blog-cw{background:#663d00;color:#ffd700;border:1px solid #ff7300;padding:8px 14px;border-radius:6px;margin-bottom:16px;font-weight:600}
 .cn-blog-body{color:var(--fg-soft);line-height:1.7;font-size:16px;margin:0;word-wrap:break-word}
-.cn-blog-body p{margin:0 0 14px 0}
 .cn-blog-body img{max-width:100%;height:auto;border-radius:6px;border:1px solid var(--border);display:block;margin:10px 0}
 .cn-blog-body a{color:var(--fg);text-decoration:underline}
 .cn-blog-body a:hover{color:var(--accent)}
-.cn-blog-body pre,.cn-blog-body code{background:var(--bg-sub);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:monospace;font-size:13px}
-.cn-blog-body pre{padding:10px 14px;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
-.cn-blog-body blockquote{margin:10px 0;padding:6px 14px;border-left:3px solid var(--fg);color:var(--fg-soft);background:var(--bg-sub);border-radius:0 4px 4px 0}
-.cn-blog-body h1,.cn-blog-body h2,.cn-blog-body h3{color:var(--fg);margin:18px 0 10px 0}
-.cn-blog-body ul,.cn-blog-body ol{padding-left:24px;margin:8px 0}
+.cn-blog-body .rt-code{background:var(--bg-sub);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:monospace;font-size:13px}
+.cn-blog-body .rt-code-block{background:var(--bg-sub);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:10px 14px;font-family:monospace;font-size:13px}
+.cn-blog-body .rt-quote{padding:6px 14px;border-left:3px solid var(--fg);color:var(--fg-soft);background:var(--bg-sub);border-radius:0 4px 4px 0}
+.cn-blog-body .rt-header{color:var(--fg);margin:18px 0 10px 0}
 .cn-blog-body video,.cn-blog-body audio{max-width:100%;display:block;margin:10px 0}
 `;
   const body = `
@@ -2633,7 +2647,7 @@ exports.clearnetBlogView = async ({ msgKey, text, author, authorName, contentWar
   <article class="cn-blog-body">${renderedHtml}</article>
 `;
   return renderClearnetPage({
-    title: `${esc(titleText)} — Oasis`,
+    title: `${titleText} | Oasis`,
     ogTitle: titleText,
     ogDescription: plainPreview,
     extraCss,
@@ -2643,20 +2657,25 @@ exports.clearnetBlogView = async ({ msgKey, text, author, authorName, contentWar
 };
 
 const CLEARNET_MODULES = [
-  { key: 'shops',     label: 'Shops',     kind: 'Shop',     prefKey: 'clearnetShops' },
-  { key: 'school',    label: 'School',    kind: 'Course',   prefKey: 'clearnetSchool' },
-  { key: 'jobs',      label: 'Jobs',      kind: 'Job',      prefKey: 'clearnetJobs' },
-  { key: 'events',    label: 'Events',    kind: 'Event',    prefKey: 'clearnetEvents' },
-  { key: 'projects',  label: 'Projects',  kind: 'Project',  prefKey: 'clearnetProjects' },
-  { key: 'posts',     label: 'Blogs',     kind: 'Blog',     prefKey: 'clearnetPosts',     modulePath: 'blog' },
   { key: 'audios',    label: 'Audios',    kind: 'Audio',    prefKey: 'clearnetAudios' },
-  { key: 'videos',    label: 'Videos',    kind: 'Video',    prefKey: 'clearnetVideos' },
-  { key: 'images',    label: 'Images',    kind: 'Image',    prefKey: 'clearnetImages' },
-  { key: 'documents', label: 'Documents', kind: 'Document', prefKey: 'clearnetDocuments' },
-  { key: 'torrents',  label: 'Torrents',  kind: 'Torrent',  prefKey: 'clearnetTorrents' },
+  { key: 'posts',     label: 'Blogs',     kind: 'Blog',     prefKey: 'clearnetPosts',     modulePath: 'blog' },
   { key: 'bookmarks', label: 'Bookmarks', kind: 'Bookmark', prefKey: 'clearnetBookmarks' },
-  { key: 'podcasts',  label: 'Podcasts',  kind: 'Podcast',  prefKey: 'clearnetPodcasts' }
+  { key: 'documents', label: 'Documents', kind: 'Document', prefKey: 'clearnetDocuments' },
+  { key: 'events',    label: 'Events',    kind: 'Event',    prefKey: 'clearnetEvents' },
+  { key: 'feed',      label: 'Feed',      kind: 'Feed',     prefKey: 'clearnetFeed' },
+  { key: 'images',    label: 'Images',    kind: 'Image',    prefKey: 'clearnetImages' },
+  { key: 'jobs',      label: 'Jobs',      kind: 'Job',      prefKey: 'clearnetJobs' },
+  { key: 'market',    label: 'Market',    kind: 'Market',   prefKey: 'clearnetMarket' },
+  { key: 'podcasts',  label: 'Podcasts',  kind: 'Podcast',  prefKey: 'clearnetPodcasts' },
+  { key: 'projects',  label: 'Projects',  kind: 'Project',  prefKey: 'clearnetProjects' },
+  { key: 'school',    label: 'School',    kind: 'Course',   prefKey: 'clearnetSchool' },
+  { key: 'shops',     label: 'Shops',     kind: 'Shop',     prefKey: 'clearnetShops' },
+  { key: 'torrents',  label: 'Torrents',  kind: 'Torrent',  prefKey: 'clearnetTorrents' },
+  { key: 'videos',    label: 'Videos',    kind: 'Video',    prefKey: 'clearnetVideos' },
+  { key: 'wiki',      label: 'Wikis',     kind: 'Wiki',     prefKey: 'clearnetWiki' }
 ];
+
+exports.CLEARNET_MODULES = CLEARNET_MODULES;
 
 const CLEARNET_HUB_CSS = `
 .cn-filter-row{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0 12px 0}
@@ -2667,38 +2686,63 @@ const CLEARNET_HUB_CSS = `
 .cn-hub-kind{color:var(--fg-dim);font-size:10px;text-transform:uppercase;letter-spacing:2px;font-weight:600}
 .cn-hub-card{display:flex;flex-direction:column;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .15s ease;color:var(--fg);text-decoration:none}
 .cn-hub-card:hover{border-color:var(--fg);text-decoration:none}
+.cn-hub-card a{color:var(--fg);text-decoration:none}
+.cn-hub-card a:hover{text-decoration:underline}
+.cn-hub-player{width:100%;display:block;margin:6px 0;border-radius:6px;background:#000}
+video.cn-hub-player{max-height:160px;object-fit:cover}
+img.cn-hub-player{max-height:200px;object-fit:cover}
+audio.cn-hub-player{background:transparent;height:36px}
 .cn-hub-thumb{width:100%;height:140px;object-fit:cover;background:#000;border-bottom:1px solid var(--border)}
 .cn-hub-body{padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .cn-hub-title{color:var(--fg);font-weight:600;font-size:15px;word-break:break-word}
 .cn-hub-snippet{color:var(--fg-soft);font-size:13px;line-height:1.4;word-break:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .cn-hub-snippet .cn-url{text-decoration:underline}
+.cn-hub-card{position:relative}
+.cn-hub-cover{position:absolute;inset:0;z-index:1}
+.cn-hub-player,.cn-hub-card a:not(.cn-hub-cover){position:relative;z-index:2}
 .cn-hub-meta{color:var(--fg-dim);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-top:auto}
 .cn-hub-author{color:var(--fg-dim);font-size:11px;word-break:break-all}
 .cn-empty-content{background:var(--bg-elev);border:1px dashed var(--border);border-radius:8px;padding:24px;text-align:center;color:var(--fg-dim);font-size:14px}
 `;
 
 const buildClearnetHub = ({ items = {}, prefs = null, filterBase, filterType = '', query = '', showAuthor = false }) => {
-  const { blobUrl: cnBlob, escapeHtml: esc, renderRichText } = require('./clearnet_view');
+  const { blobUrl: cnBlob, escapeHtml: esc, renderRichText, renderTagChips } = require('./clearnet_view');
   const renderHubItem = (modulePath, it) => {
     const blob = cnBlob(it.image);
+    const href = `/c/${modulePath}/${encodeURIComponent(it.id)}`;
     const title = esc(it.title || 'Untitled');
-    const snippet = renderRichText((it.snippet || '').slice(0, 160), { links: false });
+    const raw = String(it.snippet || '');
+    const snippet = renderRichText(raw.slice(0, 300));
     const meta = esc(it.meta || '');
     const kind = esc(it.kind || '');
-    const authorLine = showAuthor && it.author ? `<div class="cn-hub-author">${esc(it.authorName || it.author)}</div>` : '';
-    return `<a class="cn-hub-card" href="/c/${modulePath}/${encodeURIComponent(it.id)}">
+    const mediaSrc = it.media && it.media.blobId ? cnBlob(it.media.blobId) : null;
+    const player = mediaSrc
+      ? (it.media.kind === 'video'
+          ? `<video class="cn-hub-player" controls preload="metadata" src="${mediaSrc}"></video>`
+          : it.media.kind === 'image'
+            ? `<a href="${href}"><img class="cn-hub-player" src="${mediaSrc}" alt="" loading="lazy"/></a>`
+            : `<audio class="cn-hub-player" controls preload="metadata" src="${mediaSrc}"></audio>`)
+      : '';
+    const chipRow = [
+      meta ? `<span class="cn-detail">📅 ${meta}</span>` : '',
+      ...(Array.isArray(it.details) ? it.details : []).map(d => `<span class="cn-detail">${esc(String(d))}</span>`),
+      it.price ? `<span class="cn-price">${esc(String(it.price))} ECO</span>` : ''
+    ].filter(Boolean).join('');
+    return `<div class="cn-hub-card">
+      <a class="cn-hub-cover" href="${href}" aria-label="${it.title ? title : kind}"></a>
       ${blob ? `<img class="cn-hub-thumb" src="${blob}" alt="" loading="lazy"/>` : ''}
       <div class="cn-hub-body">
         ${kind ? `<div class="cn-hub-kind">${kind}</div>` : ''}
-        <div class="cn-hub-title">${title}</div>
-        ${snippet ? `<div class="cn-hub-snippet">${snippet}${(it.snippet || '').length > 160 ? '…' : ''}</div>` : ''}
-        ${authorLine}
-        ${meta ? `<div class="cn-hub-meta">${meta}</div>` : ''}
+        ${it.title ? `<div class="cn-hub-title">${title}</div>` : ''}
+        ${player}
+        ${snippet ? `<div class="cn-hub-snippet">${snippet}${raw.length > 300 ? '…' : ''}</div>` : ''}
+        ${chipRow ? `<div class="cn-hub-details">${chipRow}</div>` : ''}
+        ${renderTagChips(it.tags)}
       </div>
-    </a>`;
+    </div>`;
   };
   const q = String(query || '').trim().toLowerCase();
-  const matches = (it) => !q || [it.title, it.snippet, it.meta, it.authorName].some(v => String(v || '').toLowerCase().includes(q));
+  const matches = (it) => !q || [it.title, it.snippet, it.meta, ...(Array.isArray(it.tags) ? it.tags.map(t => `#${t}`) : [])].some(v => String(v || '').toLowerCase().includes(q));
   const allItems = [];
   for (const m of CLEARNET_MODULES) {
     if (prefs && !prefs[m.prefKey]) continue;
@@ -2707,6 +2751,7 @@ const buildClearnetHub = ({ items = {}, prefs = null, filterBase, filterType = '
       allItems.push({ ...it, modulePath: m.modulePath || m.key, kind: m.kind, _moduleKey: m.key });
     }
   }
+  allItems.sort((a, b) => (Number(b.ts) || 0) - (Number(a.ts) || 0));
   const activeFilter = String(filterType || '').toLowerCase();
   const visibleItems = activeFilter ? allItems.filter(it => it._moduleKey === activeFilter) : allItems;
   const qs = q ? `&q=${encodeURIComponent(query)}` : '';
@@ -2732,8 +2777,8 @@ exports.clearnetHubView = async ({ authors = [], items = {}, filterType = '', qu
   ${hub.total ? hub.sections : '<div class="cn-empty-content">No public content has been shared to Clearnet yet.</div>'}
 `;
   return renderClearnetPage({
-    title: 'Oasis HUB',
-    ogTitle: 'Oasis HUB',
+    title: 'Clearnet HUB | Oasis',
+    ogTitle: 'Clearnet HUB | Oasis',
     ogDescription: 'Public content shared by the inhabitants of this Oasis network.',
     extraCss,
     body,
@@ -2742,49 +2787,50 @@ exports.clearnetHubView = async ({ authors = [], items = {}, filterType = '', qu
 };
 
 exports.clearnetInhabitantView = async ({ feedId, name, description, image, prefs, items = {}, query = '', filterType = '' }) => {
-  const { blobUrl: cnBlob, escapeHtml: esc, renderRichText, renderClearnetPage } = require('./clearnet_view');
+  const { blobUrl: cnBlob, escapeHtml: esc, renderRichText, renderTagChips, renderClearnetPage } = require('./clearnet_view');
   const blobAvatarUrl = cnBlob(image);
   const avatarSrc = blobAvatarUrl || '/assets/images/default-avatar.png';
-  const qrSrc = feedId ? `/qr/${encodeURIComponent(feedId)}` : null;
-  const displayName = esc(name || 'Anonymous');
-  const desc = renderRichText(description || '');
+  const qrSrc = feedId ? `/c/qr/${encodeURIComponent(feedId)}` : null;
+  const displayName = esc(name && name !== 'Redacted' ? name : feedId);
+  const desc = renderRichText(description && description !== 'Redacted' ? description : '');
   const renderHubItem = (modulePath, it) => {
     const blob = cnBlob(it.image);
     const title = esc(it.title || 'Untitled');
-    const snippet = renderRichText((it.snippet || '').slice(0, 160), { links: false });
+    const raw = String(it.snippet || '');
+    const snippet = renderRichText(raw.slice(0, 300));
     const meta = esc(it.meta || '');
     const kind = esc(it.kind || '');
-    return `<a class="cn-hub-card" href="/c/${modulePath}/${encodeURIComponent(it.id)}">
+    const mediaSrc = it.media && it.media.blobId ? cnBlob(it.media.blobId) : null;
+    const preview = mediaSrc && it.media.kind === 'image'
+      ? `<img class="cn-hub-player" src="${mediaSrc}" alt="" loading="lazy"/>`
+      : '';
+    const href = `/c/${modulePath}/${encodeURIComponent(it.id)}`;
+    const chipRow = [
+      meta ? `<span class="cn-detail">📅 ${meta}</span>` : '',
+      ...(Array.isArray(it.details) ? it.details : []).map(d => `<span class="cn-detail">${esc(String(d))}</span>`),
+      it.price ? `<span class="cn-price">${esc(String(it.price))} ECO</span>` : ''
+    ].filter(Boolean).join('');
+    return `<div class="cn-hub-card">
+      <a class="cn-hub-cover" href="${href}" aria-label="${it.title ? title : kind}"></a>
       ${blob ? `<img class="cn-hub-thumb" src="${blob}" alt="" loading="lazy"/>` : ''}
       <div class="cn-hub-body">
         ${kind ? `<div class="cn-hub-kind">${kind}</div>` : ''}
-        <div class="cn-hub-title">${title}</div>
-        ${snippet ? `<div class="cn-hub-snippet">${snippet}${(it.snippet || '').length > 160 ? '…' : ''}</div>` : ''}
-        ${meta ? `<div class="cn-hub-meta">${meta}</div>` : ''}
+        ${it.title ? `<div class="cn-hub-title">${title}</div>` : ''}
+        ${preview}
+        ${snippet ? `<div class="cn-hub-snippet">${snippet}${raw.length > 300 ? '…' : ''}</div>` : ''}
+        ${chipRow ? `<div class="cn-hub-details">${chipRow}</div>` : ''}
+        ${renderTagChips(it.tags)}
       </div>
-    </a>`;
+    </div>`;
   };
-  const moduleDef = [
-    { key: 'shops',     label: 'Shops',     kind: 'Shop',     prefKey: 'clearnetShops' },
-    { key: 'school',    label: 'School',    kind: 'Course',   prefKey: 'clearnetSchool' },
-    { key: 'jobs',      label: 'Jobs',      kind: 'Job',      prefKey: 'clearnetJobs' },
-    { key: 'events',    label: 'Events',    kind: 'Event',    prefKey: 'clearnetEvents' },
-    { key: 'projects',  label: 'Projects',  kind: 'Project',  prefKey: 'clearnetProjects' },
-    { key: 'posts',     label: 'Blogs',     kind: 'Blog',     prefKey: 'clearnetPosts',     modulePath: 'blog' },
-    { key: 'audios',    label: 'Audios',    kind: 'Audio',    prefKey: 'clearnetAudios' },
-    { key: 'videos',    label: 'Videos',    kind: 'Video',    prefKey: 'clearnetVideos' },
-    { key: 'images',    label: 'Images',    kind: 'Image',    prefKey: 'clearnetImages' },
-    { key: 'documents', label: 'Documents', kind: 'Document', prefKey: 'clearnetDocuments' },
-    { key: 'torrents',  label: 'Torrents',  kind: 'Torrent',  prefKey: 'clearnetTorrents' },
-    { key: 'bookmarks', label: 'Bookmarks', kind: 'Bookmark', prefKey: 'clearnetBookmarks' },
-    { key: 'podcasts',  label: 'Podcasts',  kind: 'Podcast',  prefKey: 'clearnetPodcasts' }
-  ];
+  const moduleDef = CLEARNET_MODULES;
   const allItems = [];
   for (const m of moduleDef) {
     for (const it of (items[m.key] || [])) {
       allItems.push({ ...it, modulePath: m.modulePath || m.key, kind: m.kind, _moduleKey: m.key });
     }
   }
+  allItems.sort((a, b) => (Number(b.ts) || 0) - (Number(a.ts) || 0));
   const activeFilter = (filterType || '').toLowerCase();
   const visibleItems = activeFilter
     ? allItems.filter(it => it._moduleKey === activeFilter)
@@ -2820,17 +2866,26 @@ exports.clearnetInhabitantView = async ({ feedId, name, description, image, pref
 .cn-hub-kind{color:var(--fg-dim);font-size:10px;text-transform:uppercase;letter-spacing:2px;font-weight:600}
 .cn-hub-card{display:flex;flex-direction:column;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .15s ease;color:var(--fg);text-decoration:none}
 .cn-hub-card:hover{border-color:var(--fg);text-decoration:none}
+.cn-hub-card a{color:var(--fg);text-decoration:none}
+.cn-hub-card a:hover{text-decoration:underline}
+.cn-hub-player{width:100%;display:block;margin:6px 0;border-radius:6px;background:#000}
+video.cn-hub-player{max-height:160px;object-fit:cover}
+img.cn-hub-player{max-height:200px;object-fit:cover}
+audio.cn-hub-player{background:transparent;height:36px}
 .cn-hub-thumb{width:100%;height:140px;object-fit:cover;background:#000;border-bottom:1px solid var(--border)}
 .cn-hub-body{padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .cn-hub-title{color:var(--fg);font-weight:600;font-size:15px;word-break:break-word}
 .cn-hub-snippet{color:var(--fg-soft);font-size:13px;line-height:1.4;word-break:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .cn-hub-snippet .cn-url{text-decoration:underline}
+.cn-hub-card{position:relative}
+.cn-hub-cover{position:absolute;inset:0;z-index:1}
+.cn-hub-player,.cn-hub-card a:not(.cn-hub-cover){position:relative;z-index:2}
 .cn-hub-meta{color:var(--fg-dim);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-top:auto}
 .cn-empty-content{background:var(--bg-elev);border:1px dashed var(--border);border-radius:8px;padding:24px;text-align:center;color:var(--fg-dim);font-size:14px}
 `;
   const body = `
   <div class="cn-profile">
-    <img class="cn-avatar" src="${avatarSrc}" alt="${displayName}"/>
+    <a href="/c/inhabitant/${encodeURIComponent(feedId)}"><img class="cn-avatar" src="${avatarSrc}" alt="${displayName}"/></a>
     <div class="cn-profile-body">
       <h1 class="cn-name">${displayName}</h1>
       <div class="cn-id">${esc(feedId)}</div>
@@ -2841,7 +2896,7 @@ exports.clearnetInhabitantView = async ({ feedId, name, description, image, pref
   ${totalCount > 0 ? sections : noResults}
 `;
   return renderClearnetPage({
-    title: `${name || 'Inhabitant'} — Oasis`,
+    title: `${name || 'Inhabitant'} | Oasis`,
     ogTitle: name || 'Oasis',
     ogDescription: description || '',
     ogImage: blobAvatarUrl,
@@ -2902,7 +2957,7 @@ const renderUserSensors = (u, opts = {}) => {
   }
   if (show('ubi')) {
     items.push(span({ class: 'ubi-line' }, `${i18n.bankUbiThisMonth || 'UBI'}: `, strong(`${Number(u.estimatedUBI || 0).toFixed(6)} ECO`)));
-    items.push(span({ class: 'ubi-line' }, `${i18n.bankUbiLastClaimed || 'Last claimed'}: `, u.lastClaimedDate ? a({ href: '/transfers?filter=ubi', class: 'user-link' }, new Date(u.lastClaimedDate).toLocaleDateString()) : strong(i18n.bankUbiNeverClaimed || 'Never claimed')));
+    items.push(span({ class: 'ubi-line' }, `${i18n.bankUbiLastClaimed || 'Last claimed'}: `, u.lastClaimedDate ? a({ href: '/transfers?filter=ubi', class: 'user-link' }, moment(u.lastClaimedDate).format("YYYY/MM/DD")) : strong(i18n.bankUbiNeverClaimed || 'Never claimed')));
     items.push(span({ class: 'ubi-line' }, `${i18n.bankUbiTotalClaimed || 'Total claimed'}: `, strong(`${Number(u.totalClaimed || 0).toFixed(6)} ECO`)));
   }
   const sensorsBox = items.length ? div({ class: 'profile-sensors-box' }, ...items) : null;
@@ -2914,8 +2969,7 @@ const renderUserSensors = (u, opts = {}) => {
         const path = `/c/inhabitant/${encodeURIComponent(u.id)}`;
         return div({ class: 'profile-reach' },
           renderReachChip(true, i18n, path),
-          renderInviteQrCard({ qrDataUrl: `/qr-clearnet/${encodeURIComponent(u.id)}` }),
-          isMe ? form({ method: 'POST', action: '/profile/clearnet-toggle', class: 'profile-reach-toggle' }, button({ type: 'submit', class: 'btn' }, i18n.profileSwitchToOasis || 'Return to Oasis')) : null
+          renderInviteQrCard({ qrDataUrl: `/qr-clearnet/${encodeURIComponent(u.id)}` })
         );
       })()
     : null;
@@ -2969,7 +3023,7 @@ exports.authorView = async ({
     fediverseHandle: typeof rawPrefs.fediverseHandle === 'string' ? rawPrefs.fediverseHandle : '',
     gpg:      rawPrefs.gpg      === true
   };
-  const clearnetSubKeys = ['clearnetShops','clearnetSchool','clearnetJobs','clearnetEvents','clearnetProjects','clearnetPosts','clearnetAudios','clearnetVideos','clearnetImages','clearnetDocuments','clearnetTorrents','clearnetBookmarks','clearnetPodcasts'];
+  const clearnetSubKeys = CLEARNET_MODULES.map(m => m.prefKey);
   const anySubClearnet = clearnetSubKeys.some(k => rawPrefs[k] === true);
   prefs.clearnet = prefs.clearnet || anySubClearnet;
   const showField = (key) => prefs[key];
@@ -3000,7 +3054,7 @@ exports.authorView = async ({
     ) : null,
     feedId ? renderInviteQrCard({ qrDataUrl: `/qr/${encodeURIComponent(feedId)}` }) : null,
     description !== ""
-      ? div({ class: "profile-side-description", innerHTML: sanitizeHtml(markdown(description)) })
+      ? div({ class: "profile-side-description", innerHTML: sanitizeHtml(renderStyledHtml(description)) })
       : null,
     ...userSensors,
     div({ class: "profile-side-actions" },
@@ -3024,22 +3078,30 @@ exports.authorView = async ({
       images:    new Set(['image']),
       documents: new Set(['document']),
       torrents:  new Set(['torrent']),
+      bookmarks: new Set(['bookmark']),
       podcasts:  new Set(['podcast']),
-      school:    new Set(['schoolCourse'])
+      school:    new Set(['schoolCourse']),
+      market:    new Set(['market']),
+      feed:      new Set(['feed']),
+      wiki:      new Set(['wikiPage'])
     };
     const moduleDef = [
-      { key: 'shops',     label: i18n.profileClearnetShopsLabel     || 'Shops' },
-      { key: 'school',    label: i18n.profileClearnetSchoolLabel    || 'School' },
-      { key: 'jobs',      label: i18n.profileClearnetJobsLabel      || 'Jobs' },
-      { key: 'events',    label: i18n.profileClearnetEventsLabel    || 'Events' },
-      { key: 'projects',  label: i18n.profileClearnetProjectsLabel  || 'Projects' },
-      { key: 'posts',     label: i18n.profileClearnetPostsLabel     || 'Blogs' },
       { key: 'audios',    label: i18n.profileClearnetAudiosLabel    || 'Audios' },
-      { key: 'videos',    label: i18n.profileClearnetVideosLabel    || 'Videos' },
-      { key: 'images',    label: i18n.profileClearnetImagesLabel    || 'Images' },
+      { key: 'posts',     label: i18n.profileClearnetPostsLabel     || 'Blogs' },
+      { key: 'bookmarks', label: i18n.profileClearnetBookmarksLabel || 'Bookmarks' },
       { key: 'documents', label: i18n.profileClearnetDocumentsLabel || 'Documents' },
+      { key: 'events',    label: i18n.profileClearnetEventsLabel    || 'Events' },
+      { key: 'feed',      label: i18n.profileClearnetFeedLabel      || 'Feed' },
+      { key: 'images',    label: i18n.profileClearnetImagesLabel    || 'Images' },
+      { key: 'jobs',      label: i18n.profileClearnetJobsLabel      || 'Jobs' },
+      { key: 'market',    label: i18n.profileClearnetMarketLabel    || 'Market' },
+      { key: 'podcasts',  label: i18n.profileClearnetPodcastsLabel  || 'Podcasts' },
+      { key: 'projects',  label: i18n.profileClearnetProjectsLabel  || 'Projects' },
+      { key: 'school',    label: i18n.profileClearnetSchoolLabel    || 'School' },
+      { key: 'shops',     label: i18n.profileClearnetShopsLabel     || 'Shops' },
       { key: 'torrents',  label: i18n.profileClearnetTorrentsLabel  || 'Torrents' },
-      { key: 'podcasts',  label: i18n.profileClearnetPodcastsLabel  || 'Podcasts' }
+      { key: 'videos',    label: i18n.profileClearnetVideosLabel    || 'Videos' },
+      { key: 'wiki',      label: i18n.profileClearnetWikiLabel      || 'Wikis' }
     ];
     const enabledKeys = moduleDef.filter(m => rawPrefs[`profile${m.key.charAt(0).toUpperCase() + m.key.slice(1)}`] === true).map(m => m.key);
     if (enabledKeys.length > 0) {
@@ -3238,7 +3300,7 @@ exports.commentView = async (
 const renderMessage = (msg) => {
   const content = lodash.get(msg, "value.content", {});
   const authorId = msg.value.author || "Anonymous";
-  const createdAt = new Date(msg.value.timestamp).toLocaleString();
+  const createdAt = moment(msg.value.timestamp).format("YYYY/MM/DD HH:mm");
   const mentionsText = content.text || '';
   const isTribe = content.type === 'tribe-content';
   const visitUrl = isTribe
@@ -3265,11 +3327,11 @@ const renderMessage = (msg) => {
     div({ class: 'card-body' },
       div({ class: 'card-section' },
         badge,
-        p({ class: 'post-text' }, ...renderUrl(mentionsText || '[No content]'))
+        p({ class: 'post-text' }, ...renderStyledText(mentionsText || '[No content]'))
       )
     ),
     p({ class: 'card-footer' },
-      span({ class: 'date-link' }, `${createdAt} ${i18n.performed || ''} `),
+      span({ class: 'date-link' }, `${createdAt}`),
       userLink(authorId)
     )
   );
@@ -3476,7 +3538,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
         return `\u0000MD${idx}\u0000`
       })
     return masked
-      .replace(/(@[a-zA-Z0-9/+._=-]+\.ed25519)/g, (match, id) => `<a class="user-link" href="/author/${encodeURIComponent(id)}">${userLinkLabel(id)}</a>`)
+      .replace(/(@[a-zA-Z0-9/+._=-]+\.ed25519)/g, (match, id) => `<a class="user-link" href="/author/${encodeURIComponent(id)}">${escapeHtml(userLinkLabel(id))}</a>`)
       .replace(/\/jobs\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="job-link" href="${hrefFor.job(id)}">${match}</a>`)
       .replace(/\/projects\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="project-link" href="${hrefFor.project(id)}">${match}</a>`)
       .replace(/\/market\/([%A-Za-z0-9/+._=-]+\.sha256)/g, (match, id) => `<a class="market-link" href="${hrefFor.market(id)}">${match}</a>`)
@@ -4177,51 +4239,6 @@ const injectResolvedMentions = (text, mentions) => {
   return out
 }
 
-const markdownMentionsToHtml = (markdownText) => {
-  const escaped = escapeHtml(String(markdownText || ""))
-  const withBr = escaped.replace(/\r\n|\r|\n/g, "<br>")
-
-  const unescapeBlob = (b) => b.replace(/&amp;/g, '&')
-
-  const escAttr = (s) => String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-
-  const withImages = withBr.replace(
-    /!\[([^\]]*)\]\(\s*(&amp;[^)\s]+\.sha256)\s*\)/g,
-    (_m, alt, blob) => `<img src="/blob/${encodeURIComponent(unescapeBlob(blob))}" alt="${escAttr(alt)}" class="post-image">`
-  )
-
-  const withVideos = withImages.replace(
-    /\[video:([^\]]*)\]\(\s*(&amp;[^)\s]+\.sha256)\s*\)/g,
-    (_m, _name, blob) => `<video controls class="post-video" src="/blob/${encodeURIComponent(unescapeBlob(blob))}"></video>`
-  )
-
-  const withAudios = withVideos.replace(
-    /\[audio:([^\]]*)\]\(\s*(&amp;[^)\s]+\.sha256)\s*\)/g,
-    (_m, _name, blob) => `<audio controls class="post-audio" src="/blob/${encodeURIComponent(unescapeBlob(blob))}"></audio>`
-  )
-
-  const withPdfs = withAudios.replace(
-    /\[pdf:([^\]]*)\]\(\s*(&amp;[^)\s]+\.sha256)\s*\)/g,
-    (_m, name, blob) => `<a class="post-pdf" href="/blob/${encodeURIComponent(unescapeBlob(blob))}" target="_blank">${escapeHtml(name || i18n.pdfFallbackLabel || 'PDF')}</a>`
-  )
-
-  const withMentions = withPdfs.replace(
-    /\[@([^\]]+)\]\(\s*@?([^) \t\r\n]+\.ed25519)\s*\)/g,
-    (_m, label, feed) => {
-      const href = authorHref(feed)
-      const shown = `@${String(label || "").replace(/^@+/, "")}`
-      return `<a class="mention" href="${escAttr(href)}">${escapeHtml(shown)}</a>`
-    }
-  )
-
-  const withLinks = withMentions.replace(
-    /(https?:\/\/[^\s"'<>]+)/g,
-    (u) => `<a href="${escAttr(u)}" target="_blank" rel="noopener noreferrer">${escAttr(u)}</a>`
-  )
-
-  return withLinks
-}
-
 const generatePreview = ({ previewData, contentWarning, action }) => {
   const mentions =
     previewData && previewData.mentions && typeof previewData.mentions === "object"
@@ -4233,7 +4250,7 @@ const generatePreview = ({ previewData, contentWarning, action }) => {
   const injected = injectResolvedMentions(normalized, mentions)
   const publishText = normalizeMentionLinks(injected)
 
-  const previewHtml = markdownMentionsToHtml(publishText)
+  const previewHtml = renderStyledHtml(publishText)
 
   const mentionCards = Object.entries(mentions)
     .map(([_token, matches]) => {

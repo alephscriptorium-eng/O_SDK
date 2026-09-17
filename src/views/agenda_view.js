@@ -1,4 +1,5 @@
 const { div, h2, p, section, button, form, img, input, textarea, a, br, h1, span } = require("../server/node_modules/hyperaxe");
+const { safeExternalHref } = require("../backend/renderStyledText");
 const { template, i18n, userLink, renderContentActions, renderModuleStats } = require('./main_views');
 const moment = require('../server/node_modules/moment');
 const { config } = require('../server/SSB_server.js');
@@ -40,7 +41,7 @@ const renderAgendaItem = (item, userId, filter) => {
 
   const commonFields = [
     p({ class: 'card-footer' },
-      span({ class: 'date-link' }, `${item.createdAt ? moment(item.createdAt).format('YYYY/MM/DD HH:mm:ss') : ''} ${i18n.performed} `),
+      span({ class: 'date-link' }, `${item.createdAt ? moment(item.createdAt).format('YYYY/MM/DD HH:mm') : ''}`),
       author ? userLink(author) : ''
     )
   ];
@@ -63,9 +64,9 @@ const renderAgendaItem = (item, userId, filter) => {
       renderCardField(i18n.marketItemType + ":", String(item.item_type || '').toUpperCase()),
       renderCardField(i18n.marketItemStatus + ":", item.status),
       renderCardField(i18n.marketItemStock + ":", item.stock),
-      renderCardField(i18n.marketItemPrice + ":", `${item.price} ECO`),
+      div({ class: "price-chip" }, `${item.price} ECO`),
       renderCardField(i18n.marketItemIncludesShipping + ":", item.includesShipping ? i18n.agendaYes : i18n.agendaNo),
-      renderCardField(i18n.deadline + ":", item.deadline ? new Date(item.deadline).toLocaleString() : '')
+      renderCardField(i18n.deadline + ":", item.deadline ? moment(item.deadline).format("YYYY/MM/DD HH:mm") : '')
     ];
     if (String(item.item_type || '').toLowerCase() === 'auction') {
       const bids = Array.isArray(item.auctions_poll) ? item.auctions_poll.map(bid => parseFloat(String(bid).split(':')[1])).filter(n => !isNaN(n)) : [];
@@ -103,7 +104,7 @@ const renderAgendaItem = (item, userId, filter) => {
       renderCardField(i18n.eventPriceLabel + ":", `${item.price} ECO`),
       renderCardField(
         i18n.eventUrlLabel + ":",
-        item.url ? p(a({ href: item.url, target: "_blank" }, item.url)) : p(i18n.noUrl)
+        item.url ? p(a({ href: safeExternalHref(item.url), target: "_blank" }, item.url)) : p(i18n.noUrl)
       )
     ];
     actionButton = actionButton || form({ method: 'POST', action: `/events/attend/${encodeURIComponent(item.id)}` },
@@ -115,8 +116,8 @@ const renderAgendaItem = (item, userId, filter) => {
     details = [
       renderCardField(i18n.taskStatus + ":", item.status),
       renderCardField(i18n.taskPriorityLabel + ":", item.priority),
-      renderCardField(i18n.taskStartTimeLabel + ":", item.startTime ? new Date(item.startTime).toLocaleString() : ''),
-      renderCardField(i18n.taskEndTimeLabel + ":", item.endTime ? new Date(item.endTime).toLocaleString() : ''),
+      renderCardField(i18n.taskStartTimeLabel + ":", item.startTime ? moment(item.startTime).format("YYYY/MM/DD HH:mm") : ''),
+      renderCardField(i18n.taskEndTimeLabel + ":", item.endTime ? moment(item.endTime).format("YYYY/MM/DD HH:mm") : ''),
       renderCardField(i18n.taskLocationLabel + ":", item.location || '')
     ];
     const assigned = Array.isArray(item.assignees) && item.assignees.includes(userId);
@@ -142,7 +143,7 @@ const renderAgendaItem = (item, userId, filter) => {
       renderCardField(i18n.projectProgress + ":", `${item.progress || 0}%`),
       renderCardField(i18n.projectGoal + ":", `${item.goal} ECO`),
       renderCardField(i18n.projectPledged + ":", `${item.pledged || 0} ECO`),
-      renderCardField(i18n.projectDeadline + ":", item.deadline ? new Date(item.deadline).toLocaleString() : i18n.noDeadline)
+      renderCardField(i18n.projectDeadline + ":", item.deadline ? moment(item.deadline).format("YYYY/MM/DD HH:mm") : i18n.noDeadline)
     ];
   }
 

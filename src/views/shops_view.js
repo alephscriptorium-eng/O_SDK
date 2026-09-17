@@ -3,7 +3,7 @@ const { renderCommentsSection: renderSharedCommentsSection } = require("./commen
 const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton, renderOpinionsVoting, renderEngagement, renderInviteQrCard , renderSpreadEditWarning, renderContentActions, renderSubscriptionBox, renderModuleStats, renderModuleStatsBy, moduleIsEmpty } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
-const { renderUrl } = require("../backend/renderUrl")
+const { renderStyledText } = require("../backend/renderStyledText")
 const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel } = require("./maps_view")
 const opinionCategories = require("../backend/opinion_categories")
 const { renderReachChip, renderClearnetUrlBlock, renderClearnetPage, renderClearnetSearchForm, renderEncryptedChip, blobUrl: cnBlobUrl, escapeHtml: cnEscapeHtml, renderRichText: cnRichText, renderKindTag: cnKindTag } = require("./clearnet_view")
@@ -108,8 +108,8 @@ const renderProductCard = (product, shopId, returnTo) => {
       product.shopTitle ? p(a({ href: `/shops/${encodeURIComponent(shopId)}`, class: "user-link" }, product.shopTitle)) : null,
       h2(a({ href: productUrl }, product.title || i18n.shopProductUntitled)),
       renderStarRating(product.opinions, voterCount),
-      product.description ? p(...renderUrl(product.description)) : null,
-      div({ class: "shop-product-price" }, `${Number(product.price || 0).toFixed(6)} ECO`),
+      product.description ? p(...renderStyledText(product.description)) : null,
+      div({ class: "price-chip" }, `${Number(product.price || 0).toFixed(6)} ECO`),
       div({ class: "confirmations-block stock-block" },
         div({ class: "card-field" },
           span({ class: "card-label" }, `${i18n.shopProductStock}: `),
@@ -285,15 +285,15 @@ exports.singleShopView = async (shop, filter, products = [], comments = [], para
         : null
     ),
     renderMediaBlob(shop.image, '/assets/images/default-avatar.png', { class: 'tribe-detail-image' }),
-    shop.description ? p({ class: "tribe-side-description" }, ...renderUrl(shop.description)) : null,
+    shop.description ? p({ class: "tribe-side-description" }, ...renderStyledText(shop.description)) : null,
     table({ class: "tribe-info-table" },
       tr(
         td({ class: "tribe-info-label" }, i18n.shopCreatedAt || "CREATED"),
-        td({ class: "tribe-info-value", colspan: "3" }, new Date(shop.createdAt).toLocaleString())
+        td({ class: "tribe-info-value", colspan: "3" }, moment(shop.createdAt).format("YYYY/MM/DD HH:mm"))
       ),
       shop.location ? tr(
         td({ class: "tribe-info-label" }, i18n.shopLocation),
-        td({ class: "tribe-info-value", colspan: "3" }, ...renderUrl(shop.location))
+        td({ class: "tribe-info-value", colspan: "3" }, ...renderStyledText(shop.location))
       ) : null,
       tr(
         td({ class: "tribe-info-label" }, i18n.shopStatus || "STATUS"),
@@ -301,7 +301,7 @@ exports.singleShopView = async (shop, filter, products = [], comments = [], para
       ),
       shop.url ? tr(
         td({ class: "tribe-info-label" }, i18n.shopUrl),
-        td({ class: "tribe-info-value", colspan: "3" }, ...renderUrl(shop.url))
+        td({ class: "tribe-info-value", colspan: "3" }, ...renderStyledText(shop.url))
       ) : null,
       tr(
         td({ class: "tribe-info-value", colspan: "4" }, userLink(shop.author))
@@ -420,7 +420,7 @@ exports.singleProductView = async (product, shop, comments = [], params = {}) =>
     ),
     renderStarRating(product.opinions, safeArr(product.opinions_inhabitants).length),
     product.image ? renderMediaBlob(product.image, null, { class: "tribe-detail-image" }) : null,
-    div({ class: "card-date-highlight" }, `${Number(product.price || 0).toFixed(6)} ECO`),
+    div({ class: "price-chip" }, `${Number(product.price || 0).toFixed(6)} ECO`),
     div({ class: "confirmations-block stock-block" },
       div({ class: "card-field" },
         span({ class: "card-label" }, `${i18n.shopProductStock}: `),
@@ -461,7 +461,7 @@ exports.singleProductView = async (product, shop, comments = [], params = {}) =>
     product.description
       ? div({ class: "job-section" },
           h2({ class: "job-section-title" }, i18n.marketItemDescription || i18n.shopDescription),
-          p({ class: "tribe-side-description" }, ...renderUrl(product.description))
+          p({ class: "tribe-side-description" }, ...renderStyledText(product.description))
         )
       : null,
     !isAuthor && stock > 0
@@ -628,7 +628,6 @@ exports.clearnetShopView = async (shop, products = []) => {
       <h3 class="cn-product-title">${cnEscapeHtml(prod.title || '')}</h3>
       ${prod.description ? `<p class="cn-product-desc">${cnRichText(prod.description)}</p>` : ''}
       <p class="cn-product-price">${fmtPrice(prod.price)} ECO</p>
-      ${Number(prod.stock) > 0 ? `<p class="cn-product-stock">Stock: ${prod.stock}</p>` : ''}
     </article>`;
   }).join('\n');
   const shopBlobUrl = cnBlobUrl(shop.image);
@@ -661,7 +660,6 @@ exports.clearnetShopView = async (shop, products = []) => {
       <div class="cn-shop-meta">
         <span class="cn-shop-meta-item">${cnKindTag('shop')}</span>
         ${shop.createdAt ? `<span class="cn-shop-meta-item">📅 ${new Date(shop.createdAt).toISOString().slice(0,10)}</span>` : ''}
-        ${shop.location ? `<span class="cn-shop-meta-item">📍 ${cnEscapeHtml(shop.location)}</span>` : ''}
       </div>
     </div>
   </div>
@@ -670,7 +668,7 @@ exports.clearnetShopView = async (shop, products = []) => {
   ${productCards ? `<div class="cn-products">${productCards}</div>` : '<div class="cn-empty">No products available.</div>'}
 `;
   return renderClearnetPage({
-    title: `${shop.title || 'Shop'} — Oasis`,
+    title: `${shop.title || 'Shop'} | Oasis`,
     ogTitle: shop.title || 'Oasis',
     ogDescription: shop.shortDescription || shop.description || '',
     ogImage: shopBlobUrl,

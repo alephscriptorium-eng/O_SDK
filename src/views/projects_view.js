@@ -3,7 +3,7 @@ const { renderCommentsSection: renderSharedCommentsSection } = require("./commen
 const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
-const { renderUrl } = require("../backend/renderUrl")
+const { renderStyledText } = require("../backend/renderStyledText")
 const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel, renderMapEmbedWithZoom } = require("./maps_view")
 
 const renderMediaBlob = (value, attrs = {}) => {
@@ -260,7 +260,7 @@ const renderMilestonesAndBounties = (project, filter, editable) => {
         { class: "milestone-head" },
         span({ class: "milestone-title" }, m.title),
         m.dueDate ? span({ class: "chip chip-due" }, `${i18n.projectMilestoneDue}: ${moment(m.dueDate).format("YYYY/MM/DD HH:mm")}`) : null,
-        safeText(m.description) ? p(...renderUrl(m.description)) : null,
+        safeText(m.description) ? p(...renderStyledText(m.description)) : null,
         editable && !m.done
           ? form(
               { method: "POST", action: `/projects/milestones/complete/${encodeURIComponent(project.id)}/${idx}` },
@@ -284,7 +284,7 @@ const renderMilestonesAndBounties = (project, filter, editable) => {
                   span({ class: "bounty-title" }, b.title),
                   span({ class: "bounty-amount" }, `${b.amount} ECO`)
                 ),
-                safeText(b.description) ? p(...renderUrl(b.description)) : null,
+                safeText(b.description) ? p(...renderStyledText(b.description)) : null,
                 renderCardField(i18n.projectBountyStatus + ":", statusText),
                 b.claimedBy ? renderCardField(i18n.projectBountyClaimedBy + ":", userLink(b.claimedBy)) : null,
                 !editable && !b.done && !b.claimedBy && project.author !== userId
@@ -343,7 +343,7 @@ const renderMilestonesAndBounties = (project, filter, editable) => {
                 span({ class: "bounty-title" }, b.title),
                 span({ class: "bounty-amount" }, `${b.amount} ECO`)
               ),
-              safeText(b.description) ? p(...renderUrl(b.description)) : null,
+              safeText(b.description) ? p(...renderStyledText(b.description)) : null,
               renderCardField(i18n.projectBountyStatus + ":", statusText),
               b.claimedBy ? renderCardField(i18n.projectBountyClaimedBy + ":", userLink(b.claimedBy)) : null,
               !editable && !b.done && !b.claimedBy && project.author !== userId
@@ -423,7 +423,7 @@ const renderProjectList = exports.renderProjectList = (projects, filter, spreadM
           ),
           chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
           goal > 0
-            ? div({ class: "card-date-highlight" }, `${pr.goal} ECO`)
+            ? div({ class: "price-chip" }, `${pr.goal} ECO`)
             : null,
           goal > 0
             ? renderProgressBlock(i18n.projectFunding + ":", `${fundingPct}%`, fundingPct, 100)
@@ -654,7 +654,7 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
     ),
     chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
     pr.image ? renderMediaBlob(pr.image, { class: "tribe-detail-image" }) : null,
-    div({ class: "job-price-line card-salary" }, `${pr.goal || 0} ECO`),
+    div({ class: "price-chip" }, `${pr.goal || 0} ECO`),
     div({ class: "job-price-line card-salary" }, `${i18n.projectFollowers}: ${followersCount(pr)}`),
     renderProgressBlock(i18n.projectProgress + ":", `${pct}%`, pct, 100),
     goal > 0 ? renderProgressBlock(i18n.projectFunding + ":", `${fundingPct}%`, fundingPct, 100) : null,
@@ -677,7 +677,7 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
     safeText(pr.description)
       ? div({ class: "job-section" },
           h2({ class: "job-section-title" }, i18n.projectDescription),
-          p({ class: "tribe-side-description" }, ...renderUrl(pr.description))
+          p({ class: "tribe-side-description" }, ...renderStyledText(pr.description))
         )
       : null,
     pr.mapUrl ? div({ class: "job-section" }, renderMapEmbedWithZoom(params.mapData, pr.mapUrl, `/projects/${encodeURIComponent(pr.id || pr.key)}`, params.zoom)) : null,
@@ -687,7 +687,7 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
     renderFollowers(pr),
     renderPledgeBox(pr, f, isAuthor),
     div({ class: "card-footer" },
-      span({ class: "date-link" }, `${moment(pr.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+      span({ class: "date-link" }, `${moment(pr.createdAt).format("YYYY/MM/DD HH:mm")}`),
       userLink(pr.author)
     ),
     renderEngagement(pr.id || pr.key,
@@ -734,7 +734,7 @@ exports.clearnetProjectView = async (project) => {
     : '';
   const extraCss = `
 .cn-prj-title{color:var(--fg);margin:0 0 12px 0;font-size:32px;font-weight:700}
-.cn-prj-status{display:inline-block;background:var(--bg-sub);border:1px solid var(--fg);color:var(--fg);padding:6px 12px;border-radius:6px;font-weight:600;text-transform:uppercase;letter-spacing:1px;font-size:12px;margin-bottom:16px}
+.cn-prj-status{display:inline-flex;align-items:center;background:var(--bg-sub);border:1px solid var(--fg);color:var(--fg);padding:6px 12px;border-radius:6px;font-weight:600;text-transform:uppercase;letter-spacing:1px;font-size:12px;margin:0}
 .cn-prj-img{display:block;max-width:100%;border:1px solid var(--border);border-radius:8px;margin-bottom:20px}
 .cn-prj-funding{background:var(--bg-sub);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:20px}
 .cn-prj-funding-label{color:var(--fg-dim);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
@@ -772,7 +772,7 @@ ${Array.from({ length: 21 }, (_, i) => `.cn-prj-bar-fill-${i * 5}{width:${i * 5}
   ${milestonesBlock}
 `;
   return renderClearnetPage({
-    title: `${pr.title || 'Project'} — Oasis`,
+    title: `${pr.title || 'Project'} | Oasis`,
     ogTitle: pr.title || 'Project',
     ogDescription: pr.description || '',
     ogImage: projectImg,

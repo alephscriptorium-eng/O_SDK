@@ -1,4 +1,4 @@
-const { div, h2, h3, p, section, button, form, a, span, br, hr, input, label, select, option, pre, img, ul, li, strong } = require("../server/node_modules/hyperaxe");
+const { div, h2, h3, p, section, button, form, a, span, br, hr, input, label, select, option, pre, img, ul, li, strong, progress } = require("../server/node_modules/hyperaxe");
 const { template, i18n } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const crypto = require("crypto");
@@ -13,7 +13,7 @@ const humanBytes = (n) => {
   return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 };
 
-const BACKUP_TYPES = ["RECOVERY", "KEYS", "FULL", "RESTORE"];
+const BACKUP_TYPES = ["RECOVERY", "KEYS", "INSTANT", "FULL", "RESTORE"];
 const typeLabel = (t) => String(i18n[`backupType${t.charAt(0) + t.slice(1).toLowerCase()}`] || t).toUpperCase();
 const normalizeType = (t) => (BACKUP_TYPES.includes(String(t || "").toUpperCase()) ? String(t).toUpperCase() : "RECOVERY");
 
@@ -77,14 +77,36 @@ const renderFullBackup = (options) => {
   );
 };
 
-const renderRestore = (restored) =>
+const restoreSummary = (r) =>
+  `${i18n.backupRestoredMessages}: ${r.messages} · ${i18n.backupRestoredSkipped}: ${r.skipped} · ${i18n.backupRestoredBlobs}: ${r.blobs}${r.forked ? ` · ${i18n.backupRestoredForked}: ${r.forked}` : ""}${r.failed ? ` · ${i18n.backupRestoredFailed}: ${r.failed}` : ""}`;
+
+const renderRestoreStatus = (job) => {
+  if (!job) return null;
+  if (job.running) {
+    const elapsed = Math.max(0, Math.round((Date.now() - Date.parse(job.startedAt)) / 1000));
+    const pct = Math.max(0, Math.min(100, Number((job.progress || {}).percent) || 0));
+    return div({ class: "backup-restored" },
+      p({ class: "backup-warning" }, `⏳ ${i18n.backupRestoreRunning}`),
+      div({ class: "indexing-progress-block" },
+        progress({ value: String(pct), max: "100", class: "indexing-progress" }),
+        p({ class: "indexing-percent" }, strong(`${pct.toFixed(1)} %`))
+      ),
+      p(`${restoreSummary(job.progress || {})} · ${i18n.backupRestoreElapsed}: ${elapsed}s`)
+    );
+  }
+  if (job.error) return div({ class: "backup-restored" }, p({ class: "backup-warning" }, `✗ ${i18n.backupRestoreFailedLine} ${job.error}`));
+  const r = job.result || {};
+  const mine = (r.forks || []).some(f => f.mine);
+  return div({ class: "backup-restored" },
+    p(`✓ ${i18n.backupRestoredLine} ${restoreSummary(r)}`),
+    mine ? p({ class: "backup-warning" }, `⚠ ${i18n.backupRestoreForkMine}`) : null
+  );
+};
+
+const renderRestore = (job) =>
   div({ class: "backup-section" },
-    restored
-      ? div({ class: "backup-restored" },
-          p(`✓ ${i18n.backupRestoredLine} ${i18n.backupRestoredMessages}: ${restored.messages} · ${i18n.backupRestoredSkipped}: ${restored.skipped} · ${i18n.backupRestoredBlobs}: ${restored.blobs}${restored.failed ? ` · ${i18n.backupRestoredFailed}: ${restored.failed}` : ""}`)
-        )
-      : null,
-    form({ method: "POST", action: "/backup/import", enctype: "multipart/form-data" },
+    renderRestoreStatus(job),
+    job && job.running ? null : form({ method: "POST", action: "/backup/import", enctype: "multipart/form-data" },
       input({ type: "file", name: "uploadedFile", required: true, accept: ".oasisbk" }), br(), br(),
       p(i18n.backupRestorePassword),
       input({ type: "password", name: "importPassword", required: true, placeholder: i18n.importPasswordPlaceholder, minlength: 32 }), br(),
@@ -100,13 +122,23 @@ const renderRestore = (restored) =>
     )
   );
 
-exports.backupView = async ({ type = "RECOVERY", options = null, restored = null, kit = null } = {}) => {
+const renderInstantBackup = () =>
+  div({ class: "backup-form" },
+    p({ class: "backup-warning" }, `⚠ ${i18n.backupInstantWarning}`),
+    p({ class: "backup-hint" }, i18n.backupInstantDescription),
+    form({ action: "/export/create", method: "POST" },
+      button({ type: "submit" }, i18n.exportDataButton)
+    )
+  );
+
+exports.backupView = async ({ type = "RECOVERY", options = null, restoreJob = null, kit = null } = {}) => {
   const t = normalizeType(type);
   const body = t === "RECOVERY" ? renderRecovery(kit)
     : t === "KEYS" ? renderKeysExport()
     : t === "FULL" ? renderFullBackup(options)
-    : renderRestore(restored);
-  return template(
+    : t === "INSTANT" ? renderInstantBackup()
+    : renderRestore(restoreJob);
+  const html = template(
     i18n.backupTitle,
     section(
       div({ class: "tags-header module-header-line" }, h2(i18n.backupTitle), p(i18n.backupDescription)),
@@ -116,9 +148,25 @@ exports.backupView = async ({ type = "RECOVERY", options = null, restored = null
       div({ class: "div-center backup-wrap" }, body)
     )
   );
+  return restoreJob && restoreJob.running ? html.replace('</head>', '<meta http-equiv="refresh" content="5"></head>') : html;
 };
 
 exports.recoveryKitView = async (kit) => exports.backupView({ type: "RECOVERY", kit });
+
+exports.renderRebuildReport = (report) => {
+  if (!report) return null;
+  const idx = report.indexes || {};
+  const line = (ok, text) => li({ class: ok ? "backup-check-ok" : "backup-check-bad" }, `${ok ? "✓" : "✗"} ${text}`);
+  return div({ class: "backup-verification" },
+    p({ class: "backup-hint" }, `${fmt(report.checkedAt)} · ${report.tookMs} ms · ${i18n.verificationTotalMessages}: ${report.totalMessages}`),
+    ul(
+      report.ok
+        ? line(true, `${i18n.indexesRebuilt}`)
+        : line(false, `${i18n.indexesRebuildFailed}: ${report.error || ''}`),
+      li({ class: "backup-check-ok" }, `· ${i18n.indexesFiles}: ${idx.files || 0} (${humanBytes(idx.bytes || 0)})`)
+    )
+  );
+};
 
 exports.renderVerificationReport = (report) => {
   if (!report) return null;
@@ -137,8 +185,14 @@ exports.renderVerificationReport = (report) => {
       line(!report.forkCount, `${i18n.verificationForks}: ${report.forkCount}`),
       ...(report.forks || []).map(f => li({ class: "backup-check-bad backup-fork" }, `${f.mine ? "⚠ " : ""}${f.author} · ${f.points.map(pt => `#${pt.sequence} (${pt.keys.length})`).join(", ")}`)),
       blobs.listed
-        ? line(!blobs.missing, `${i18n.verificationBlobs}: ${blobs.present} ${i18n.verificationBlobsPresent}, ${blobs.referenced} ${i18n.verificationBlobsReferenced}, ${blobs.orphan} ${i18n.verificationBlobsOrphan} (${humanBytes(blobs.orphanBytes)}), ${blobs.missing} ${i18n.verificationBlobsMissing}`)
-        : li(`· ${i18n.verificationBlobsUnavailable}`)
+        ? line(!blobs.missingOwn, `${i18n.verificationBlobs}: ${blobs.present} ${i18n.verificationBlobsPresent}, ${blobs.referenced} ${i18n.verificationBlobsReferenced}, ${blobs.orphan} ${i18n.verificationBlobsOrphan} (${humanBytes(blobs.orphanBytes)})`)
+        : li(`· ${i18n.verificationBlobsUnavailable}`),
+      blobs.listed && blobs.missingOwn
+        ? li({ class: "backup-check-bad" }, `✗ ${i18n.verificationBlobsMissingOwn}: ${blobs.missingOwn}`)
+        : null,
+      blobs.listed && (blobs.missing - (blobs.missingOwn || 0)) > 0
+        ? li({ class: "backup-check-warn" }, `⚠ ${i18n.verificationBlobsMissingOthers}: ${blobs.missing - (blobs.missingOwn || 0)}`)
+        : null
     )
   );
 };

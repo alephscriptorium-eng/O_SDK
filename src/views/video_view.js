@@ -20,7 +20,7 @@ const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink }
 const moment = require("../server/node_modules/moment");
 const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
-const { renderUrl } = require("../backend/renderUrl")
+const { renderStyledText } = require("../backend/renderStyledText")
 const { renderMapLocationVisitLabel } = require("./maps_view");
 
 const userId = config.keys.id;
@@ -130,7 +130,7 @@ const renderVideoList = exports.renderVideoList = (videos, filter, params = {}) 
 
               return p(
                 { class: "card-footer" },
-                span({ class: "date-link" }, `${moment(videoObj.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+                span({ class: "date-link" }, `${moment(videoObj.createdAt).format("YYYY/MM/DD HH:mm")}`),
                 userLink(videoObj.author),
                 showUpdated
                   ? span(
@@ -322,7 +322,7 @@ exports.singleVideoView = async (videoObj, filter = "all", comments = [], params
     ),
     chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
     safeText(videoObj.description)
-      ? p({ class: "tribe-side-description" }, ...renderUrl(videoObj.description))
+      ? p({ class: "tribe-side-description" }, ...renderStyledText(videoObj.description))
       : null,
     tagsNode,
     renderMapLocationVisitLabel(videoObj.mapUrl),
@@ -339,7 +339,7 @@ exports.singleVideoView = async (videoObj, filter = "all", comments = [], params
 
       return p(
         { class: "card-footer" },
-        span({ class: "date-link" }, `${moment(videoObj.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+        span({ class: "date-link" }, `${moment(videoObj.createdAt).format("YYYY/MM/DD HH:mm")}`),
         userLink(videoObj.author),
         showUpdated
           ? span(

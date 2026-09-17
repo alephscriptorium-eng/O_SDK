@@ -492,6 +492,25 @@ del HUB puede empujarlo al OOM-killer).
 `hub-disk.sh --json`.
 Dep: WP-O46.
 
+| **WP-O97** | **P1** | Upgrade Oasis 1.0.8 → 1.1.2 con el HUB activo |
+
+**BRIEF** · Primer upgrade del fork con el nodo de soporte en producción.
+Seguir `UPGRADE-PROTOCOL.md` + `HUB-PROTOCOL.md` §5: overlay limpio,
+4 guards, greps de invariantes del HUB sobre el árbol nuevo, adaptar lo
+que upstream cambió del visor (`/c/assets/*`, rutas de detalle nuevas),
+deploy pub-primero/HUB-después con rollback preparado, journal
+`--mode server+hub`.
+**CA** · `git diff oasis-upstream/main --stat -- src/` = 4 guards +
+`blockchain-cycle.json` · greps §5.1 ≥ 1 · pub y HUB healthy con la imagen
+nueva, ambos feed id sin cambios · `pub:invite` funciona · `/c`,
+`/c/inhabitant/%40%2F…`, `/c/assets/images/snh-oasis.jpg` 200 y MISS→HIT ·
+landing, `/assets/fanzine.css`, `/public/status` intactos · directorio
+verde en ciclo 6 · rollback (retag + `up --no-build oasis-pub oasis-hub`)
+preparado antes del build · journal.
+**Hostil-omite** · `POST /c` → 405 · `/settings`, `/update`, `/qr/x` desde el
+vhost nunca llegan al HUB · `/c/qr/x` sin `X-Cache-Status: HIT` (`no-store`).
+Dep: WP-O46. Relación: WP-O80, WP-O77.
+
 ---
 
 ## L5 · Pub / L1 permanente
@@ -848,6 +867,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 | **total** | **77** |
 
 (2026-09-13: +WP-O46 P1, +WP-O47 P2 en L4, asiento D-O13.)
+(2026-09-17: +WP-O97 P1 en L4 — upgrade 1.1.2 con HUB.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11

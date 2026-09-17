@@ -1,16 +1,13 @@
 const { form, button, div, h2, p, section, input, label, select, option, img, audio: audioHyperaxe, video: videoHyperaxe, table, hr, hd, br, td, tr, th, a, span } = require("../server/node_modules/hyperaxe");
 const { template, i18n, userLink, renderContentActions } = require('./main_views');
 const moment = require("../server/node_modules/moment");
-const { renderTextWithStyles } = require('../backend/renderTextWithStyles');
-const { renderUrl } = require('../backend/renderUrl');
+const { renderStyledHtml, safeExternalHref } = require('../backend/renderStyledText');
+const { renderStyledText } = require('../backend/renderStyledText');
 const { sanitizeHtml } = require('../backend/sanitizeHtml');
 const { renderZoomableImage } = require('./gallery_view');
 const { config } = require("../server/SSB_server.js");
 const userId = config.keys.id;
 
-const decodeMaybe = (s) => {
-  try { return decodeURIComponent(String(s || '')); } catch { return String(s || ''); }
-};
 
 const industryStatusLabel = (status) => {
   const s = String(status || 'ACTIVE').toUpperCase();
@@ -19,14 +16,6 @@ const industryStatusLabel = (status) => {
   return i18n.industryStatusActive || 'WORKING';
 };
 
-const rewriteHashtagLinks = (html) => {
-  const s = String(html || '');
-  return s.replace(/href=(["'])(?:https?:\/\/[^"']+)?\/hashtag\/([^"'?#]+)([^"']*)\1/g, (m, q, tag, rest) => {
-    const t = decodeMaybe(tag).replace(/^#/, '').trim().toLowerCase();
-    const href = `/search?query=%23${encodeURIComponent(t)}`;
-    return `href=${q}${href}${q}`;
-  });
-};
 
 const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = [], hashtag = null, results = {}, resultCount = "10" }) => {
   const searchInput = input({
@@ -133,7 +122,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
       case 'post':
         return div({ class: 'search-post' },
           content.contentWarning ? h2({ class: 'card-field' }, span({ class: 'card-value' }, content.contentWarning)) : null,
-          content.text ? div({ class: 'card-field' }, span({ class: 'card-value', innerHTML: sanitizeHtml(rewriteHashtagLinks(renderTextWithStyles(content.text))) })) : null
+          content.text ? div({ class: 'card-field' }, span({ class: 'card-value', innerHTML: sanitizeHtml(renderStyledHtml(content.text)) })) : null
         );
       case 'about':
         return div({ class: 'search-about' },
@@ -143,7 +132,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         );
       case 'feed': {
         const rawText = typeof content.text === 'string' ? content.text.trim() : '';
-        const htmlText = rawText ? rewriteHashtagLinks(renderTextWithStyles(rawText)) : '';
+        const htmlText = rawText ? renderStyledHtml(rawText) : '';
         const refeedsNum = Number(content.refeeds || 0) || 0;
         return div({ class: 'search-feed' },
           rawText ? div({ class: 'card-field' }, span({ class: 'card-value', innerHTML: sanitizeHtml(htmlText) })) : null,
@@ -163,11 +152,11 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventTitleLabel + ':'), span({ class: 'card-value' }, content.title)) : null,
           cleanEvDesc ? div({ class: 'card-field' }, span({ class: 'card-value' }, cleanEvDesc)) : null,
           blobImg(content.image || blobInEvDesc),
-          content.date ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventDate + ':'), span({ class: 'card-value' }, new Date(content.date).toLocaleString())) : null,
+          content.date ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventDate + ':'), span({ class: 'card-value' }, moment(content.date).format("YYYY/MM/DD HH:mm"))) : null,
           content.location ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventLocation + ':'), span({ class: 'card-value' }, content.location)) : null,
           content.isPublic ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventPrivacyLabel + ':'), span({ class: 'card-value' }, content.isPublic)) : null,
           content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventStatus + ':'), span({ class: 'card-value' }, content.status)) : null,
-          content.eventUrl ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventUrlLabel + ':'), span({ class: 'card-value' }, a({ href: content.eventUrl, target: '_blank' }, content.eventUrl))) : null,
+          content.eventUrl ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventUrlLabel + ':'), span({ class: 'card-value' }, a({ href: safeExternalHref(content.eventUrl), target: '_blank' }, content.eventUrl))) : null,
           content.price ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventPrice + ':'), span({ class: 'card-value' }, content.price)) : null,
           content.tags && content.tags.length
             ? div({ class: 'card-tags' }, content.tags.map(tag =>
@@ -192,7 +181,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           ) : null,
           content.deadline ? div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.voteDeadline + ':' ),
-            span({ class: 'card-value' }, content.deadline ? new Date(content.deadline).toLocaleString() : '')
+            span({ class: 'card-value' }, content.deadline ? moment(content.deadline).format("YYYY/MM/DD HH:mm") : '')
           ) : null,
           div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.voteTotalVotes + ':' ),
@@ -210,8 +199,8 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
       return div({ class: 'search-tribe' },
         content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.title + ':'), span({ class: 'card-value' }, content.title)) : null,
         (() => { const s = String(content.image || '').trim().replace(/&amp;/g, '&'); const m = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/); const src = m ? m[1] : s; return src.startsWith('&') ? img({ src: `/blob/${encodeURIComponent(src)}`, class: 'feed-image' }) : img({ src: '/assets/images/default-tribe.png', class: 'feed-image' }); })(),
-        content.description ? div({ class: 'card-field card-field-stacked' }, span({ class: 'card-value' }, ...renderUrl(content.description))) : null,
-        content.location ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.tribeLocationLabel + ':'), span({ class: 'card-value' }, ...renderUrl(content.location))) : null,
+        content.description ? div({ class: 'card-field card-field-stacked' }, span({ class: 'card-value' }, ...renderStyledText(content.description))) : null,
+        content.location ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.tribeLocationLabel + ':'), span({ class: 'card-value' }, ...renderStyledText(content.location))) : null,
         div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.tribeIsAnonymousLabel + ':'), span({ class: 'card-value' }, content.isAnonymous ? i18n.tribePrivate : i18n.tribePublic)),
         content.inviteMode ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.tribeModeLabel + ':'), span({ class: 'card-value' }, String(content.inviteMode).toUpperCase())) : null,
         Array.isArray(content.members)
@@ -297,13 +286,13 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.description ? div({ class: 'card-field' }, span({ class: 'card-value' }, content.description)) : null,
           content.item_type ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemType + ':'), span({ class: 'card-value' }, content.item_type.toUpperCase())) : null,
           content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemCondition + ':'), span({ class: 'card-value' }, content.status)) : null,
-          content.deadline ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemDeadline + ':'), span({ class: 'card-value' }, new Date(content.deadline).toLocaleString())) : null,
+          content.deadline ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemDeadline + ':'), span({ class: 'card-value' }, moment(content.deadline).format("YYYY/MM/DD HH:mm"))) : null,
           br(),
           blobImg(content.image),
           br(),
           content.seller ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemSeller + ':'), span({ class: 'card-value' }, userLink(content.seller))) : null,
           content.stock ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemStock + ':'), span({ class: 'card-value' }, content.stock || 'N/A')) : null,
-          content.price ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchPriceLabel + ':'), span({ class: 'card-value' }, `${content.price} ECO`)) : null,
+          content.price ? div({ class: 'price-chip' }, `${content.price} ECO`) : null,
           content.condition ? div({ class: 'card-field' }, span({ class: 'card-value' }, content.condition)) : null,
           content.includesShipping ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemIncludesShipping + ':'), span({ class: 'card-value' }, `${content.includesShipping ? i18n.YESLabel : i18n.NOLabel}`)) : null,
           content.auctions_poll && content.auctions_poll.length > 0
@@ -334,9 +323,9 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         );
       case 'bookmark':
         return div({ class: 'search-bookmark' },
-          content.url ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.bookmarkUrlLabel + ':'), span({ class: 'card-value' }, a({ href: content.url, target: '_blank' }, content.url))) : null,
+          content.url ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.bookmarkUrlLabel + ':'), span({ class: 'card-value' }, a({ href: safeExternalHref(content.url), target: '_blank' }, content.url))) : null,
           content.description ? div({ class: 'card-field' }, span({ class: 'card-value' }, content.description)) : null,
-          content.lastVisit ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.bookmarkLastVisit + ':'), span({ class: 'card-value' }, new Date(content.lastVisit).toLocaleString())) : null,
+          content.lastVisit ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.bookmarkLastVisit + ':'), span({ class: 'card-value' }, moment(content.lastVisit).format("YYYY/MM/DD HH:mm"))) : null,
           content.tags && content.tags.length
             ? div({ class: 'card-tags' }, content.tags.map(tag =>
               a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`)
@@ -351,8 +340,8 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchStatusLabel + ':'), span({ class: 'card-value' }, content.status)) : null,
           content.priority ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchPriorityLabel + ':'), span({ class: 'card-value' }, content.priority)) : null,
           typeof content.isPublic === 'boolean' ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.searchIsPublicLabel + ':'), span({ class: 'card-value' }, content.isPublic ? i18n.YESLabel : i18n.NOLabel)) : null,
-          content.startTime ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.taskStartTimeLabel + ':'), span({ class: 'card-value' }, new Date(content.startTime).toLocaleString())) : null,
-          content.endTime ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.taskEndTimeLabel + ':'), span({ class: 'card-value' }, new Date(content.endTime).toLocaleString())) : null,
+          content.startTime ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.taskStartTimeLabel + ':'), span({ class: 'card-value' }, moment(content.startTime).format("YYYY/MM/DD HH:mm"))) : null,
+          content.endTime ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.taskEndTimeLabel + ':'), span({ class: 'card-value' }, moment(content.endTime).format("YYYY/MM/DD HH:mm"))) : null,
           Array.isArray(content.assignees) ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.taskAssignees + ':'), span({ class: 'card-value' }, content.assignees.length)) : null,
           content.tags && content.tags.length
             ? div({ class: 'card-tags' }, content.tags.map(tag =>
@@ -458,7 +447,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.title + ':'), span({ class: 'card-value' }, content.title)) : null,
           div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.schoolCourseType || 'Course type') + ':'), span({ class: 'card-value' }, String(content.visibility || '').toUpperCase() === 'INVITE' ? 'INVITE-ONLY' : (Number(content.price) > 0 ? 'PAID' : 'OPEN'))),
           Number(content.price) > 0 ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.schoolPrice || 'Price (ECO)') + ':'), span({ class: 'card-value' }, `${Number(content.price).toFixed(2)} ECO`)) : null,
-          content.startDate ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.schoolStartDate || 'Start date') + ':'), span({ class: 'card-value' }, new Date(content.startDate).toLocaleDateString())) : null,
+          content.startDate ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.schoolStartDate || 'Start date') + ':'), span({ class: 'card-value' }, moment(content.startDate).format("YYYY/MM/DD HH:mm"))) : null,
           content.description ? div({ class: 'card-field card-field-stacked' }, span({ class: 'card-value' }, String(content.description).length > 220 ? String(content.description).slice(0, 220) + '…' : content.description)) : null,
           Array.isArray(content.tags) && content.tags.length ? div({ class: 'card-tags' },
             content.tags.map(tag => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: 'tag-link' }, `#${tag}`))
@@ -529,7 +518,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.title ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.title + ':'), span({ class: 'card-value' }, content.title)) : null,
           blobImg(content.image),
           content.description ? div({ class: 'card-field' }, span({ class: 'card-value' }, content.description)) : null,
-          content.price ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.searchPriceLabel || 'PRICE') + ':'), span({ class: 'card-value' }, `${content.price} ECO`)) : null,
+          content.price ? div({ class: 'price-chip' }, `${content.price} ECO`) : null,
           content.stock !== undefined ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemStock + ':'), span({ class: 'card-value' }, content.stock)) : null
         );
       case 'chat': {
@@ -581,7 +570,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
             : null
         );
       default:
-        return div({ class: 'styled-text', innerHTML: sanitizeHtml(renderTextWithStyles(content.text || content.description || content.title || '[no content]')) });
+        return div({ class: 'styled-text', innerHTML: sanitizeHtml(renderStyledHtml(content.text || content.description || content.title || '[no content]')) });
     }
   };
 
@@ -591,7 +580,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         { class: "search-result-group" },
         ...msgs.map((msg) => {
           const content = msg.value.content || {};
-          const created = new Date(msg.timestamp).toLocaleString();
+          const created = moment(msg.timestamp).format("YYYY/MM/DD HH:mm");
           if (content.type === 'document') hasDocument = true;
           const contentHtml = renderContentHtml(content);
           let author;
@@ -638,7 +627,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
               contentHtml,
               author
                 ? p({ class: 'card-footer' },
-                 span({ class: 'date-link' }, `${created} ${i18n.performed} `),
+                 span({ class: 'date-link' }, `${created}`),
                  (authorUrl && authorUrl !== '#' && authorUrl.startsWith('/author/'))
                    ? userLink(decodeURIComponent(authorUrl.replace(/^\/author\//, '')))
                    : a({ href: authorUrl, class: 'user-link' }, `${author}`)

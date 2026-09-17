@@ -5,7 +5,7 @@ const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink }
 const moment = require("../server/node_modules/moment");
 const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderStateChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
-const { renderUrl } = require("../backend/renderUrl")
+const { renderStyledText } = require("../backend/renderStyledText")
 const { renderMapLocationVisitLabel } = require("./maps_view");
 const { renderZoomableImage } = require("./gallery_view");
 
@@ -108,7 +108,7 @@ const renderImageList = exports.renderImageList = (images, filter, params = {}) 
 
               return p(
                 { class: "card-footer" },
-                span({ class: "date-link" }, `${moment(imgObj.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+                span({ class: "date-link" }, `${moment(imgObj.createdAt).format("YYYY/MM/DD HH:mm")}`),
                 userLink(imgObj.author),
                 showUpdated
                   ? span(
@@ -339,7 +339,7 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
     ),
     chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
     safeText(imageObj.description)
-      ? p({ class: "tribe-side-description" }, ...renderUrl(imageObj.description))
+      ? p({ class: "tribe-side-description" }, ...renderStyledText(imageObj.description))
       : null,
     tagsNode,
     renderMapLocationVisitLabel(imageObj.mapUrl),
@@ -366,7 +366,7 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
 
       return p(
         { class: "card-footer" },
-        span({ class: "date-link" }, `${moment(imageObj.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+        span({ class: "date-link" }, `${moment(imageObj.createdAt).format("YYYY/MM/DD HH:mm")}`),
         userLink(imageObj.author),
         showUpdated
           ? span(

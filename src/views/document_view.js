@@ -5,7 +5,7 @@ const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink }
 const moment = require("../server/node_modules/moment");
 const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
-const { renderUrl } = require("../backend/renderUrl");
+const { renderStyledText } = require("../backend/renderStyledText");
 
 const userId = config.keys.id;
 
@@ -102,7 +102,7 @@ const renderDocumentList = exports.renderDocumentList = (documents, filter, para
 
               return p(
                 { class: "card-footer" },
-                span({ class: "date-link" }, `${moment(doc.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+                span({ class: "date-link" }, `${moment(doc.createdAt).format("YYYY/MM/DD HH:mm")}`),
                 userLink(doc.author),
                 showUpdated
                   ? span(
@@ -294,7 +294,7 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
     title ? h2({ class: "tribe-card-title" }, title) : null,
     div({ class: "card-chips-row" }, renderReachChip(isClearnet, i18n, `/c/documents/${encodeURIComponent(doc.key)}`), ...chips),
     safeText(doc.description)
-      ? p({ class: "tribe-side-description" }, ...renderUrl(doc.description))
+      ? p({ class: "tribe-side-description" }, ...renderStyledText(doc.description))
       : null,
     tagsNode,
     sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
@@ -312,7 +312,7 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
 
       return p(
         { class: "card-footer" },
-        span({ class: "date-link" }, `${moment(doc.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+        span({ class: "date-link" }, `${moment(doc.createdAt).format("YYYY/MM/DD HH:mm")}`),
         userLink(doc.author),
         showUpdated
           ? span(

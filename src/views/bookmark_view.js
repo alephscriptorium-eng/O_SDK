@@ -5,7 +5,7 @@ const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink }
 const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions, renderSpreadEditWarning, renderModuleStats, moduleIsEmpty } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
-const { renderUrl } = require("../backend/renderUrl");
+const { renderStyledText, safeExternalHref } = require("../backend/renderStyledText");
 
 const userId = config.keys.id;
 
@@ -85,7 +85,7 @@ const renderBookmarkList = (filteredBookmarks, filter, params = {}) => {
             : i18n.noLastVisit;
 
         const urlLink = bookmark.url
-          ? a({ href: bookmark.url, target: "_blank", rel: "noreferrer noopener", class: "bookmark-url" }, bookmark.url)
+          ? a({ href: safeExternalHref(bookmark.url), target: "_blank", rel: "noreferrer noopener", class: "bookmark-url" }, bookmark.url)
           : i18n.noUrl;
 
         const isOwn = bookmark.author && String(bookmark.author) === String(userId);
@@ -114,7 +114,7 @@ const renderBookmarkList = (filteredBookmarks, filter, params = {}) => {
 
               return p(
                 { class: "card-footer" },
-                span({ class: "date-link" }, `${moment(bookmark.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+                span({ class: "date-link" }, `${moment(bookmark.createdAt).format("YYYY/MM/DD HH:mm")}`),
                 userLink(bookmark.author),
                 showUpdated
                   ? span(
@@ -290,7 +290,7 @@ exports.singleBookmarkView = async (bookmark, filter = "all", comments = [], par
       : i18n.noLastVisit;
 
   const urlLink = bookmark.url
-    ? a({ href: bookmark.url, target: "_blank", rel: "noreferrer noopener", class: "bookmark-url" }, bookmark.url)
+    ? a({ href: safeExternalHref(bookmark.url), target: "_blank", rel: "noreferrer noopener", class: "bookmark-url" }, bookmark.url)
     : i18n.noUrl;
 
   const chips = [
@@ -335,7 +335,7 @@ exports.singleBookmarkView = async (bookmark, filter = "all", comments = [], par
     bookmark.title && bookmark.url ? p({ class: "bookmark-subtitle" }, bookmark.title) : null,
     chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
     safeText(bookmark.description)
-      ? p({ class: "tribe-side-description" }, ...renderUrl(bookmark.description))
+      ? p({ class: "tribe-side-description" }, ...renderStyledText(bookmark.description))
       : null,
     tagsNode,
     sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
@@ -350,7 +350,7 @@ exports.singleBookmarkView = async (bookmark, filter = "all", comments = [], par
       const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
       return p(
         { class: "card-footer" },
-        span({ class: "date-link" }, `${moment(bookmark.createdAt).format("YYYY/MM/DD HH:mm")} ${i18n.performed} `),
+        span({ class: "date-link" }, `${moment(bookmark.createdAt).format("YYYY/MM/DD HH:mm")}`),
         userLink(bookmark.author),
         showUpdated
           ? span(
