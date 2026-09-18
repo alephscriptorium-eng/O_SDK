@@ -1,0 +1,71 @@
+# =============================================================================
+# docker-compose.drill.yml — DRILL del cliente con identidad DESECHABLE (WP-O103).
+# Override del compose raíz: mismo código y mismo entrypoint, pero otro proyecto, otros
+# contenedores, otros puertos, otros datos y otra cartera. No toca NADA del cliente real
+# (volumes-dev/ssb-data, volumes-dev/client-state, o-sdk-client-ecoin-data, .env raíz).
+#
+# Uso (SIEMPRE desde la raíz del repo y SIEMPRE con los dos -f y el --env-file):
+#   export MSYS_NO_PATHCONV=1
+#   D="docker compose -p o-sdk-drill -f docker-compose.yml -f client/docker-compose.drill.yml --env-file client/.env.drill"
+#
+#   # 1. preparar (env y volumen desechables; identidad nueva, sin pubs ni invite)
+#   mkdir -p volumes-dev/drill/{ssb-data,ai-models,logs,client-state/banking}
+#   [ -f volumes-dev/drill/ssb-data/gossip.json ] || echo '[]' > volumes-dev/drill/ssb-data/gossip.json
+#   ECOIN_ENV_FILE=client/.env.drill ECOIN_VOLUME=o-sdk-drill-ecoin-data \
+#     ECOIN_STATE_DIR=volumes-dev/drill/client-state bash client/scripts/ecoin-init.sh --mode own
+#   # 2. arrancar / verificar / backup
+#   $D up -d --build
+#   CLIENT_CONTAINER=oasis-client-drill ECOIN_CONTAINER=ecoin-wallet-drill HOST_GUI_PORT=3100 \
+#     bash client/scripts/ecoin-verify.sh
+#   ECOIN_CONTAINER=ecoin-wallet-drill bash client/scripts/backup-wallet.sh
+#   # 3. desmontar (la cartera del drill sobrevive a «down -v»: es un volumen externo)
+#   ECOIN_VOLUME=o-sdk-drill-ecoin-data ECOIN_CONTAINER=ecoin-wallet-drill GUARD_DATA_DIR=volumes-dev/drill \
+#     bash client/scripts/guard-destroy.sh && $D down -v
+#   docker volume rm o-sdk-drill-ecoin-data && rm -rf volumes-dev/drill client/.env.drill   # solo el drill
+#
+# El --env-file sustituye al .env raíz (Compose no lee los dos): client/.env.drill lleva SUS
+# credenciales y SU modo. No está versionado (client/.gitignore es deny-by-default).
+# GUI del drill: http://localhost:3100  ·  sbot: 8108. Sin GPU y sin modelo de IA.
+# OJO: abrir la GUI con ECOIN_RPC_URL cableada puede publicar la dirección en el feed del drill;
+# es una identidad desechable y sin pubs, así que no sale de esta máquina.
+# =============================================================================
+
+# Red de seguridad: aunque se olvide «-p o-sdk-drill», este fichero nunca opera sobre el proyecto o-sdk.
+name: o-sdk-drill
+
+services:
+  oasis-client:
+    container_name: oasis-client-drill
+    ports: !override
+      - "3100:3000"   # GUI
+      - "8108:8008"   # sbot
+    environment:
+      - OASIS_SKIP_AI_MODEL=true
+      - GPU_ENABLED=false
+      - GPU_LAYERS=0
+      - NVIDIA_VISIBLE_DEVICES=void
+    # Sin GPU: se anulan el runtime nvidia y la reserva de dispositivos del compose raíz.
+    runtime: !reset null
+    deploy: !reset null
+    restart: "no"
+
+  ecoin-wallet:
+    container_name: ecoin-wallet-drill
+    restart: "no"
+
+volumes:
+  oasis-ssb-data-dev:
+    driver_opts:
+      device: ./volumes-dev/drill/ssb-data
+  oasis-ai-models-dev:
+    driver_opts:
+      device: ./volumes-dev/drill/ai-models
+  oasis-logs-dev:
+    driver_opts:
+      device: ./volumes-dev/drill/logs
+  oasis-client-state-dev:
+    driver_opts:
+      device: ./volumes-dev/drill/client-state
+  ecoin-data:
+    external: true
+    name: o-sdk-drill-ecoin-data
