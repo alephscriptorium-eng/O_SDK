@@ -621,6 +621,42 @@ verde · 0 rutas `C:\S…`, 0 `fonts.googleapis`, 0 `claude.ai/code/artifact` y
 origen de los dosieres no se modifica · reimportar es idempotente.
 Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertura).
 
+| **WP-O103** | **P1** | Cliente · ECOin en la app (dirección o cartera propia) |
+
+**BRIEF** · El cliente también necesita ECOin, en **dos niveles**: (i) *solo
+dirección* — aparecer, recibir y reclamar RBU (el claim es un mensaje SSB;
+paga el `ecoind` del banco); (ii) *cartera propia* — saldo, envíos e
+historial exigen `ecoind` propio con `wallet.dat` propia. El cliente **nunca**
+apunta al `ecoind` del VPS (HTTP plano, monedero único) y la identidad
+importada no trae dirección. `docker-compose.yml` raíz: `ecoin-wallet` sin
+`ports`, credenciales del `.env` raíz, healthcheck, `mem_limit`, `logging`,
+`stop_grace_period`, `wallet.dat` en **volumen nombrado `external`**
+(`o-sdk-client-ecoin-data`); `oasis-client` con `depends_on … required:
+false`, `ECOIN_RPC_URL` vacía por defecto, `OASIS_WALLET_PUB_ID`,
+`OASIS_BANKING_DIR=/app/state/banking`. `docker-entrypoint.sh` (zona
+wholesale; `src/` sigue con 4 guards): `persist_client_state()` y
+`wire_wallet_config()` con **guarda anti-remoto** (host ∈ {`ecoin-wallet`,
+`localhost`}) y `pubId` validado; solo se activan con
+`OASIS_CLIENT_STATE_DIR` → pub, HUB y bot sin regresión. Scripts
+`client/scripts/` (`ecoin-init.sh`, `backup-wallet.sh`, `guard-destroy.sh`,
+`ecoin-verify.sh`) y npm `ecoin:*` sin credenciales en claro. Sección ECOin
+en `docs/CLIENT-PROTOCOL.md`.
+**CA** · ensayo completo con **identidad desechable**
+(`client/docker-compose.drill.yml`, proyecto `o-sdk-drill`, sin conectar al
+pub), D1-D9: RPC por DNS de servicio y **no** desde el host · exactamente 1
+mensaje `wallet` tras N recreates · config y `banking/` sobreviven · `down -v`
+no borra la cartera · backup/restore con sha256 · guarda anti-remoto · pub,
+HUB y bot arrancan igual sin `OASIS_CLIENT_STATE_DIR` · `npm run docs:build`
++ `verificar-sitio.mjs`. **Puerta**: confirmación expresa del custodio antes
+de publicar su dirección en el feed real (mensaje permanente); después
+`OASIS_WALLET_PUB_ID` = feed de bot-2.
+**Hostil-omite** · `wallet.url` a un host remoto → rechazo · `pubId` mal
+formado → rechazo · `downDELETEVOLS`/`cleanDELETEVOLS` sin pasar por
+`guard-destroy.sh` → no borra la cartera · `.env` sin credenciales → el
+compose falla (`${…:?}`), nunca arranca con `ecoinrpc` · `setup.sh` e
+`import-identity.sh` no tocan `ecoin-data`.
+Dep: WP-O102. Relación: WP-O98 (cliente fresco), WP-O97.
+
 ---
 
 ## L5 · Pub / L1 permanente
@@ -682,6 +718,51 @@ de la máquina autora.
 memoria y conexiones conocidos **antes** de que se crucen.
 **CA** · SLO escritos por servicio · alerta dispara antes del límite, con
 evidencia · capacidad medida en el molde real, no estimada.
+
+| **WP-O102** | **P1** | hub-wallet del pub: `ecoind` + `azofaifo-scriptorium-wallet-bot-2` |
+
+**BRIEF** · Oasis 1.1.2 trae Wallet, Banking y RBU, y upstream pide a los
+operadores de pub un `ecoind` 0.0.4 junto al pub (la 1.1.3, sin fuente aún,
+promete autodetectarlo). El motor de RBU vive solo en `backend.js` y exige
+`walletPub.pubId` = feed del proceso: el pub (solo sbot) no puede ejecutarlo.
+Se monta un **hub-wallet** con el método de WP-O46: imagen `ecoin/`
+endurecida y compartida con el cliente (`.deb` con sha256 versionado y build
+que falla si no casa, conf sin credenciales en git, fail-closed ante
+`ecoinrpc`, puerto P2P 7408) · servicio `ecoin` en contenedor propio, **sin
+`ports`**, con límites y cierre limpio de BDB · servicio `oasis-wallet-bot`
+(misma imagen, `command: ["backend"]`, hops 3, `OASIS_BANKING_DIR`
+persistente) con la config **renderizada fuera de git** · ambos bajo el
+perfil compose `wallet` · backup de `wallet.dat`, control de disco y
+presupuesto de memoria (HUB 1536m→768m). El motor nace **armado y apagado**:
+`OASIS_WALLET_BOT_PUB_ID` vacío hasta la dote. Caddy no cambia; el pub no se
+reinicia. Doc viva: `docs/PUB/ECOIN-PROTOCOL.md`. Asiento D-O19.
+**CA** · gates locales: G1 sintaxis + build con hash bueno y **build que
+falla** con hash alterado; `pub:local:up` sin perfil intacto · G2 ecoind
+healthy, RPC 200 desde la red, nada publicado al host, `ecoinrpc` → 401, sin
+credenciales → exit 1 · G3 bootstrap del bot, motor apagado (cero
+`pubAvailability`), dirección publicada **una** vez, `up --force-recreate`
+conserva `banking/` y no genera otra dirección, ensayo del interruptor
+(encender → 1 tick → apagar) · G4 aislamiento (stop ecoin / stop bot → pub y
+HUB intactos) · G5 backup y restore de `wallet.dat` (misma dirección,
+`ismine:true`) · G6 CPU/memoria durante el sync con `cpus 0.75`.
+Invariantes en el VPS: `docker port oasis-pub-ecoin` vacío y
+`curl 127.0.0.1:7474` rechazado desde el host · `getinfo` con
+`connections ≥ 1` · feed de bot-2 solo con los tipos permitidos · `StartedAt`
+del pub sin cambios, +1 `contact`, HUB, Caddy y los 6 vhosts intactos ·
+backup de `wallet.dat` verificado **antes** de comunicar la dirección ·
+`ecoin-disk.sh check` = 0 · `npm run docs:build` + `verificar-sitio.mjs` ·
+delta en `src/` = cero.
+**Hostil-omite** · `.deb` con un byte alterado → el build falla · arranque
+con `ecoinrpc` o sin credenciales → exit 1 · `up` sin `--profile wallet` no
+levanta ni exige nada nuevo · motor apagado → cero `pubAvailability`,
+`ubiAllocation` y pagos · ningún script borra `wallet.dat` (restore = apartar
+a `.bak-<fecha>`) · render con credencial no hex, feed mal formado o destino
+directorio → aborta · nunca `private` ni `post` en el feed de bot-2.
+Dep: WP-O46, WP-O97. Relación: WP-O47 (memoria del pub, disco), WP-O55
+(backup), WP-O103 (cliente).
+Anotado, sin numerar: WP futuro **«presentación comunitaria de los bots
+oficiales»** (quiénes son los bots Azofaifo, qué firma cada uno y por qué la
+RBU llega de bot-2).
 
 ---
 
@@ -982,6 +1063,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-18: +WP-O99 P1 en L4 — Teatro: sidecar de RRSS, asiento D-O16.)
 (2026-09-18: +WP-O100 P1 en L4 — Teatro: puerta semántica, asiento D-O17.)
 (2026-09-18: +WP-O101 P2 en L4 — Roadmap: dosieres de trabajo en docs/ROADMAP, asiento D-O18.)
+(2026-09-18: +WP-O102 P1 en L5 — hub-wallet del pub (ecoind + wallet-bot-2), +WP-O103 P1 en L4 — ECOin en el cliente, asiento D-O19.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11

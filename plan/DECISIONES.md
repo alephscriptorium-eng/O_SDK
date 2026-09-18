@@ -202,6 +202,30 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   vive en el dosier aleph-net. (5) Criterio editorial, tamaño y curaduría de
   una obra acogida no se regulan aquí: sobre Oasis y Scriptorium, con m-sdk y
   n-sdk encima, los resuelve la propia red.
+- **D-O19 · 2026-09-18 · El ECOin del pub lo provee un hub-wallet: `ecoind`
+  en contenedor propio y un bot de la serie que firma la RBU, armado y
+  apagado hasta la dote.** Decidido con el custodio al planificar WP-O102,
+  tras la nota de upstream que pide a los operadores de pub un `ecoind`
+  0.0.4 junto al pub (la 1.1.3, sin fuente todavía, promete autodetectarlo).
+  Hechos que lo gobiernan: Oasis 1.1.2 se conecta a ecoind **solo** por
+  `oasis-config.json`; el motor de RBU vive solo en `backend.js` y exige
+  `walletPub.pubId` = feed del proceso, así que el pub (solo sbot) no puede
+  ejecutarlo. (1) `ecoind` va en **contenedor propio**, para no penalizar ni
+  al pub ni al HUB; su RPC nunca sale de la red Docker. (2) Bot nuevo
+  **`azofaifo-scriptorium-wallet-bot-2`** = hub-wallet: proveedor funcional
+  de ECOin del pub, **sin ruta pública** (Caddy no cambia). (3) Los bots
+  Azofaifo **son** la representación oficial de `pub.escrivivir.co`: que la
+  RBU la firme el feed del bot es lo querido; la maquetación para la
+  comunidad es un WP posterior. (4) Cableado **genérico ya sobre 1.1.2**; la
+  1.1.3 se analiza al salir (tabla de contingencia en
+  `docs/PUB/ECOIN-PROTOCOL.md` §5.3). (5) Motor **armado y apagado** hasta
+  que llegue la dote: el interruptor es `OASIS_WALLET_BOT_PUB_ID` vacío.
+  (6) Bot a **hops 3**, política asumida: el motor paga cualquier `ubiClaim`
+  visible → cartera caliente, sin cifrar y pequeña; `wallet.dat` nunca se
+  borra. (7) Orden: imagen compartida + VPS (**WP-O102**), después el
+  cliente (**WP-O103**). No supera ningún asiento; convive con **D-O13** (el
+  nodo de soporte en contenedor propio, el pub no se toca), **D-O14** (serie
+  de bots: toma el cardinal 2) y **D-O15** (hops 3). Delta en `src/` = cero.
 
 ## Índice de dependencias externas vivas
 

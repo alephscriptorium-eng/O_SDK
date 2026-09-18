@@ -133,6 +133,75 @@ services:
       retries: 3
     networks: [oasis_pub_net]
 
+  ecoin:                          # hub-wallet (WP-O102, docs/PUB/ECOIN-PROTOCOL.md): ecoind del pub
+    profiles: ["wallet"]                     # pub:local:up / deploy.sh no lo arrastran ni exigen el .deb
+    build:
+      context: ../ecoin                      # exige ecoin/ecoin_0.0.4-1_amd64.deb (npm run pub:ecoin:fetch-deb); sha256 verificado en el build
+      dockerfile: Dockerfile
+    image: oasis-pub-ecoin:0.0.4-1
+    container_name: oasis-pub-ecoin
+    command: ["ecoind", "-printtoconsole", "-logtimestamps", "-maxconnections=${OASIS_ECOIN_MAXCONNECTIONS:-16}"]
+    restart: unless-stopped
+    environment:
+      RPC_USER: ${OASIS_ECOIN_RPC_USER:-}    # hex (openssl rand -hex 32); vacío -> el entrypoint sale con 1
+      RPC_PASS: ${OASIS_ECOIN_RPC_PASS:-}
+      ECOIN_REQUIRE_CREDS: "1"               # fail-closed: sin credenciales o con «ecoinrpc» no arranca
+    volumes:
+      - "${OASIS_ECOIN_DATA_DIR:-../volumes-dev/ecoin}:/home/ecoin/.ecoin"   # cadena + wallet.dat (uid 1000, 700)
+    # sin ports y sin depends_on: el RPC (7474) nunca sale de oasis_pub_net y el P2P (7408) es
+    # solo saliente en fase 1; no depende de ningún otro servicio ni nadie arranca por él.
+    mem_limit: ${OASIS_ECOIN_MEM_LIMIT:-512m}
+    cpus: ${OASIS_ECOIN_CPUS:-0.75}
+    stop_grace_period: 60s                   # cierre limpio de Berkeley DB (wallet.dat)
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    healthcheck:   # getinfo por RPC con las credenciales del contenedor ($$ = las expande el shell del contenedor)
+      test: ["CMD-SHELL", "curl -sf -o /dev/null --user \"$$RPC_USER:$$RPC_PASS\" -H 'content-type: text/plain;' --data-binary '{\"jsonrpc\":\"1.0\",\"id\":\"health\",\"method\":\"getinfo\",\"params\":[]}' http://127.0.0.1:7474/ || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 600s                     # carga de bootstrap/índice en el primer arranque
+    networks: [oasis_pub_net]
+
+  oasis-wallet-bot:               # azofaifo-scriptorium-wallet-bot-2: backend con sbot embebido, cartera del pub (patrón oasis-hub)
+    profiles: ["wallet"]
+    image: oasis-pub-scriptorium:latest      # misma imagen que el pub, sin build
+    container_name: oasis-pub-wallet-bot
+    command: ["backend"]
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      OASIS_SKIP_AI_MODEL: "true"
+      OASIS_SERVER_CONFIG_OVERRIDE: /home/oasis/.ssb/config
+      HOME: /home/oasis
+      SSB_PATH: /home/oasis/.ssb
+      OASIS_PUBLIC: ${OASIS_WALLET_BOT_PUBLIC:-true}   # false SOLO durante el bootstrap del invite
+      OASIS_OPEN: "false"
+      OASIS_ALLOW_HOST: localhost
+      OASIS_BANKING_DIR: /app/banking
+      NODE_OPTIONS: ${OASIS_WALLET_BOT_NODE_OPTIONS:---max-old-space-size=512}
+    volumes:
+      - "${OASIS_WALLET_BOT_SSB_DATA_DIR:-../volumes-dev/oasis-wallet-bot/ssb-data}:/home/oasis/.ssb"
+      - "${OASIS_WALLET_BOT_LOGS_DIR:-../volumes-dev/oasis-wallet-bot/logs}:/app/logs"
+      - "${OASIS_WALLET_BOT_BANKING_DIR:-../volumes-dev/oasis-wallet-bot/banking}:/app/banking"
+      - "${OASIS_WALLET_BOT_SSB_CONFIG_FILE:-./config/wallet-bot/ssb-config}:/home/oasis/.ssb/config:ro"
+      - "${OASIS_WALLET_BOT_OASIS_CONFIG_FILE:-../volumes-dev/oasis-wallet-bot/config/oasis-config.json}:/app/src/configs/oasis-config.json:ro"
+    # sin ports y sin ruta en Caddy: 3000 y 8008 solo en oasis_pub_net. El interruptor del motor
+    # de RBU es OASIS_WALLET_BOT_PUB_ID (vacío = apagado) vía pub/scripts/render-wallet-bot-config.sh.
+    mem_limit: ${OASIS_WALLET_BOT_MEM_LIMIT:-768m}
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+    healthcheck:   # feed inexistente pero válido: una consulta backlinks, 200; NO /c (O(N·k), F11)
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1:3000/c/inhabitant/@AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=.ed25519"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks: [oasis_pub_net]
+
   pub-frontend:
     profiles: ["frontend"]
     build:
