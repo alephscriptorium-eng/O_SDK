@@ -7,8 +7,9 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ### Added — hub-wallet del pub: `ecoind` + `azofaifo-scriptorium-wallet-bot-2` (WP-O102, 2026-09-18)
 
-Estado: **implementado en la rama `wp/O102-hub-wallet`, NO desplegado** en el
-VPS. Asiento D-O19; doc viva `docs/PUB/ECOIN-PROTOCOL.md`.
+Estado: **desplegado el 2026-09-18 (18:06 UTC)** con el motor de RBU APAGADO: bot-2 =
+`@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519`, cartera `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`,
+`ecoind` sincronizado, el pub sin reiniciar. Reporte `plan/REPORTES/WP-O102-hub-wallet.md`. Asiento D-O19; doc viva `docs/PUB/ECOIN-PROTOCOL.md`.
 
 - **Imagen `ecoin/` endurecida** (compartida con el cliente): sha256 del
   `.deb` versionado (`ecoin_0.0.4-1_amd64.deb.sha256`) y `fetch-deb.sh`; el

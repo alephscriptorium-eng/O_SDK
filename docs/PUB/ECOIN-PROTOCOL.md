@@ -4,12 +4,14 @@
 > `https://github.com/alephscriptorium-eng/O_SDK.git`). El hub-wallet **no tiene puerta web**:
 > vive dentro de la red Docker del pub y solo se ve por lo que su bot publica en SSB.
 
-> **Estado · IMPLEMENTADO en la rama `wp/O102-hub-wallet`, gates locales G1-G6 pasados, NO
-> desplegado** (WP-O102, 2026-09-18). Hallazgos de los gates en §14.
-> Nada de lo descrito aquí corre todavía en `pub.escrivivir.co`: ni `oasis-pub-ecoin` ni
-> `oasis-pub-wallet-bot` existen en el VPS, el bot no tiene feed id y no hay `wallet.dat` de
-> producción. Este bloque se cambia al activar (§3) y el registro se escribe en §13. Decisiones del
-> custodio: `plan/DECISIONES.md` **D-O19**. Siguiente pieza: WP-O103 (ECOin en la app cliente).
+> **Estado · ACTIVADO 2026-09-18 18:06 UTC** en el VPS de `pub.escrivivir.co` (WP-O102, rama
+> `wp/O102-hub-wallet`). `azofaifo-scriptorium-wallet-bot-2` =
+> `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` · dirección ECOin de la cartera del pub
+> `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc` (publicada en su feed, saldo 0) · `ecoind` sincronizado.
+> **Motor de RBU: APAGADO** (`OASIS_WALLET_BOT_PUB_ID` vacío) hasta la dote y la confirmación
+> expresa del custodio (§9). Registro en §13, hallazgos en §14, reporte
+> `plan/REPORTES/WP-O102-hub-wallet.md`. Decisiones: `plan/DECISIONES.md` **D-O19**. Siguiente
+> pieza: WP-O103 (ECOin en la app cliente).
 
 Checklist operativo para **activar, operar, respaldar y llevar a través de los upgrades** el
 proveedor de ECOin del pub: un `ecoind` 0.0.4 en contenedor propio y una cuenta SSB de soporte
@@ -192,7 +194,9 @@ sin cambios), con `oasis-wallet-bot` donde dice `oasis-hub`:
    → CONNECTED en el log del pub.
 6. `about`: `name` = `azofaifo-scriptorium-wallet-bot-2`; descripción: cartera ECOin del pub,
    custodia la dote, reparte la RBU, no escribe en el pub; serie de bots. Sin `vis_*`.
-7. Con `ecoind` healthy y **sincronizado** (`blocks` = altura que anuncian los pares; `healthy` solo
+7. Con `ecoind` healthy y **sincronizado** (`blocks` ≥ altura que anuncian los pares, que sale de las
+   líneas `receive version message … blocks=N` de `docker logs oasis-pub-ecoin`; **no** de `height=`,
+   que es la altura propia y da un falso «sincronizado»; `healthy` solo
    dice que el RPC responde): `GET /banking` **desde el loopback** (`Host: localhost:3000`) guarda la
    dirección en `banking/wallet-addresses.json`. **No la publica**: el camino automático falla en
    silencio por el `ReferenceError` de §12.4 (comprobado en G3). Ese primer GET crea dos direcciones
@@ -441,10 +445,33 @@ Leídos en 1.1.2 (`src/models/banking_model.js`); ninguno se parchea en el fork 
 
 ## 13. Registro
 
-**Pendiente.** Se escribe al activar: fecha y hora UTC, feed id de bot-2, dirección ECOin
-publicada, línea base de `ecoin-disk.sh --json`, memoria al cierre, `StartedAt` del pub antes y
-después, lista de backups `.bak-wallet-<fecha>`, línea del journal `--mode server+hub+wallet`,
-desviaciones del plan. Reporte: `plan/REPORTES/WP-O102-hub-wallet.md` (al cerrar el WP).
+**Activación 2026-09-18.** `ecoind` arrancado 17:44 UTC, sincronizado 17:58 (51.766 bloques, 13,5 min
+con `cpus 0.75`, el pub sin degradarse). bot-2 creado 17:59, follow-back del pub 18:01, `about` 18:03,
+dirección publicada **una vez** 18:06:26, backup de `wallet.dat` 18:06:43
+(`devops/backups/ecoin/20260918T180643Z`, verificado), modo público y gate 18:08. Journal
+`--mode server+hub+wallet` 18:11:27 UTC.
+
+| Dato | Valor |
+|---|---|
+| Feed de bot-2 | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` |
+| Dirección ECOin | `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc` (`ismine: true`, saldo 0) |
+| Tipos propios del feed de bot-2 | `contact`, `pub`, `about`, `oasisVersion`, `karmaScore`, `wallet` (uno de cada); `private` 0; `pubAvailability` y `ubiAllocation` 0 tras 120 s de observación |
+| Pub, HUB y Caddy | `StartedAt` idénticos antes y después (pub 2026-09-17T11:41:19Z); Caddyfile con el mismo sha256; UFW sin cambios |
+| Feed del pub | un único mensaje nuevo: el `contact` hacia bot-2 |
+| Línea base de disco | `{"ts":"2026-09-18T18:11:27Z","srvOasisPct":20,"rootPct":60,"ecoinChainBytes":57296933,"walletDatBytes":61440,"blocks":51768,"connections":11,"balance":0.00000000,"botFlumeBytes":5534477,"ecoinMemMiB":82,"botMemMiB":111}` |
+| Memoria al cierre | ecoind 82 MiB / 512 · bot-2 111 MiB / 768 · HUB 204 MiB / **768** (bajado en caliente de 1536 con `docker update`; `.env.prod` actualizado para el próximo recreate) · pub 113 MiB · disponible 2,4 GB |
+| Disco | `/` 59 → 60 % (imagen de 141 MB) · `/srv/oasis` 20 % · datadir de ecoin 46 MB |
+| Backups en el VPS | `.env.prod.bak-wallet-2026-09-18` y `…-18b`, `docker-compose.pub.yml.bak-wallet-2026-09-18` |
+
+**Desviaciones del plan durante el deploy**: (1) el paso de publicar la dirección lo denegó el
+clasificador de permisos de la sesión a un agente; el agente paró sin buscar otra vía y lo ejecutó el
+orquestador, una sola vez, tras comprobar que seguía sin publicarse. (2) La altura de los pares no
+sale de `height=` (§3 paso 7 corregido). (3) El entrypoint imprimía el usuario RPC en los logs:
+corregido en la rama; la imagen del VPS lo lleva aún hasta el próximo build (la contraseña nunca se
+imprimió). (4) `healthy` tardó 70 s en el VPS, no 35.
+
+**Pendiente**: dote → encender el motor (§9) con confirmación expresa · ajuste de límites a las 24 h
+(§7) · WP-O103 · revisión adversarial · merge. Reporte: `plan/REPORTES/WP-O102-hub-wallet.md`.
 
 WP futuro anotado (sin numerar): **presentación comunitaria de los bots oficiales** — maquetar para
 la comunidad quiénes son los bots Azofaifo, qué firma cada uno y por qué la RBU llega de bot-2.

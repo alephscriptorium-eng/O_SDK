@@ -382,7 +382,7 @@ contenedor propio + estado en el volumen de datos.
 | # | `name` (about) | Tipo | Qué sirve | Contenedor · estado | Feed id | Alta |
 |---|---|---|---|---|---|---|
 | 1 | `azofaifo-scriptorium-skin-bot-1` | `scriptorium-skin` | HUB clearnet `/c` (Sala 04) | `oasis-pub-hub` · `/srv/oasis/oasis-hub` | `@KM+ZBipR18VSyjNTFjAOnsmz6EiobGYHb3ZCZ4ZxQYI=.ed25519` | 2026-09-13 (WP-O46) |
-| 2 | `azofaifo-scriptorium-wallet-bot-2` | `scriptorium-wallet` | hub-wallet: cartera ECOin del pub (custodia la dote, reparte la RBU); **sin ruta pública** | `oasis-pub-wallet-bot` (+ `oasis-pub-ecoin`) · `/srv/oasis/oasis-wallet-bot` y `/srv/oasis/ecoin` | pendiente (nace en el bootstrap) | implementado, **no desplegado** (WP-O102, D-O19) |
+| 2 | `azofaifo-scriptorium-wallet-bot-2` | `scriptorium-wallet` | hub-wallet: cartera ECOin del pub (custodia la dote, reparte la RBU); **sin ruta pública** | `oasis-pub-wallet-bot` (+ `oasis-pub-ecoin`) · `/srv/oasis/oasis-wallet-bot` y `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102, D-O19); motor de RBU apagado |
 | 3… | `azofaifo-<tipo>-bot-<n>` | hackería · parlamento · teatro… | la vista que conecte | uno por servicio | | por decidir |
 
 El bot 2 no sirve ninguna vista web: su protocolo propio es `ECOIN-PROTOCOL.md` (misma carpeta),
