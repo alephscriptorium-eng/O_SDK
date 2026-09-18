@@ -65,7 +65,23 @@ rpcuser=CHANGE_ME_VIA_RPC_USER
 rpcpassword=CHANGE_ME_VIA_RPC_PASS
 rpcport=7474
 rpcallowip=127.0.0.1
-rpcallowip=172.16.0.0/12
+rpcallowip=172.16.*
+rpcallowip=172.17.*
+rpcallowip=172.18.*
+rpcallowip=172.19.*
+rpcallowip=172.20.*
+rpcallowip=172.21.*
+rpcallowip=172.22.*
+rpcallowip=172.23.*
+rpcallowip=172.24.*
+rpcallowip=172.25.*
+rpcallowip=172.26.*
+rpcallowip=172.27.*
+rpcallowip=172.28.*
+rpcallowip=172.29.*
+rpcallowip=172.30.*
+rpcallowip=172.31.*
+rpcallowip=192.168.*
 server=1
 daemon=0
 listen=1
@@ -137,11 +153,14 @@ fi
 # -----------------------------------------------------------------------------
 # Verificar blockchain data
 # -----------------------------------------------------------------------------
-if [ -f "${ECOIN_DIR}/blkindex.dat" ]; then
+# Esta build (v0.7.5.7) guarda la cadena en blk0001.dat + txleveldb/, NO en blkindex.dat, y
+# tras importar bootstrap.dat lo renombra a bootstrap.dat.old. Mirar solo blkindex.dat hacía
+# que se recopiara y reimportara en CADA arranque (~1600 líneas «already have block» en el log).
+if [ -f "${ECOIN_DIR}/blkindex.dat" ] || [ -f "${ECOIN_DIR}/blk0001.dat" ] || [ -d "${ECOIN_DIR}/txleveldb" ]; then
     echo "⛓️  Blockchain data encontrada"
 else
     echo "⛓️  Primera ejecución - sincronización inicial puede tardar"
-    if [ ! -f "${ECOIN_DIR}/bootstrap.dat" ] && [ -f "${PACKAGE_BOOTSTRAP}" ]; then
+    if [ ! -f "${ECOIN_DIR}/bootstrap.dat" ] && [ ! -f "${ECOIN_DIR}/bootstrap.dat.old" ] && [ -f "${PACKAGE_BOOTSTRAP}" ]; then
         echo "📦 Copiando bootstrap.dat incluido en el paquete ECOin..."
         cp "${PACKAGE_BOOTSTRAP}" "${ECOIN_DIR}/bootstrap.dat"
     fi
