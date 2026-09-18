@@ -138,7 +138,7 @@ casa. Cada elemento es un texto o `{ "text", "url" }` (solo `https://` o rutas `
 ```json
 "imprint": {
   "header": ["Animus Iocandi", "Hipernivola transmedia", {"text": "Scriptorium Skins", "url": "https://…"}],
-  "footer": [{"text": "Escrivivir", "url": "https://escrivivir.co"}, "Animus Iocandi", "GPL-3.0",
+  "footer": [{"text": "Escrivivir", "url": "https://escrivivir.co"}, "Animus Iocandi", "AIGPL",
              {"text": "Repositorio", "url": "https://github.com/…"}]
 }
 ```
