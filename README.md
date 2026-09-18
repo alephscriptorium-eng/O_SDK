@@ -85,6 +85,19 @@ operativos, reutilizables y verificados en producción:
 | [Protocolo de recuperación](docs/PUB/RECOVERY-PROTOCOL.md) | Recuperar repo, imagen e identidad SSB tras un fallo de disco |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
 
+### 🧭 Roadmap futuro
+
+Hacia dónde va esto está escrito en **dosieres de trabajo**, publicados tal cual (con fecha y estado;
+varios, «sin decisión»): **<https://o-sdk.escrivivir.co/ROADMAP/>** · en el repo, [docs/ROADMAP/](docs/ROADMAP/index.md).
+
+| Dosier | De qué va |
+|--------|-----------|
+| [Aleph net](docs/ROADMAP/aleph-net/00-indice.md) | La red de la casa como datos: modelador, pub, mundo N, vista global |
+| [Relacional](docs/ROADMAP/relacional/00-dictamen.md) | El modelo que la red quiere encarnar (ensayo registrado en Oasis) |
+| [Colectivizaciones](docs/ROADMAP/colectivizaciones/00-dictamen.md) · [Res publica](docs/ROADMAP/res-publica/00-dictamen.md) | Dos modelos políticos llevados al editor |
+| [Oasis · FairCoin](docs/ROADMAP/oasis-faircoin/00-informe.md) | Informe aguas arriba |
+| [Publicidad y redes](docs/ROADMAP/publicidad-rrss/00-indice.md) | Cómo se anuncia una obra del Teatro · call4obras |
+
 ---
 
 ## 🗂 Estructura
@@ -100,7 +113,8 @@ Una carpeta por responsabilidad — misma imagen, dos roles (cliente y pub):
 | [ecoin/](ecoin/) | Sub-proyecto: wallet ECOin dockerizada (opcional, profile `ecoin`) |
 | [docs/](docs/) | Portal VitePress + protocolos de operación |
 | [scripts/](scripts/) | Tooling transversal del repo (skills, parches, packaging) |
-| [archive/](archive/) | Histórico: bitácoras de sesión y transcripts (rutas pre-2026-07) |
+| [archive/](archive/) | Histórico **congelado**: bitácoras de sesión y transcripts (rutas pre-2026-07) |
+| [ARCHIVO/](ARCHIVO/) | Territorios **vivos** (convención Scriptorium): `DISCO/` = plan + evidencia de un WP (en git) · `LORE/` = datos del usuario (fuera de git). No es `archive/` |
 
 La imagen Docker se define en la raíz (`Dockerfile` + `docker-entrypoint.sh`)
 y el compose raíz levanta el rol cliente.

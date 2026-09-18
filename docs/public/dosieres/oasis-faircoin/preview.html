@@ -1,0 +1,279 @@
+<title>Aguas Arriba</title>
+<style>
+  :root {
+    --papel: #f7f8f6;
+    --panel: #eef1ee;
+    --tinta: #242a2b;
+    --tinta-2: #5a6b66;
+    --linea: #ccd6cf;
+    --verde: #2c8c6a;
+    --verde-suave: #dcebe3;
+    --ambar: #a8730a;
+    --ambar-suave: #f3e8d2;
+    --code-bg: #e7ece8;
+    --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel: #1b201e;
+      --panel: #232927;
+      --tinta: #dee5df;
+      --tinta-2: #93a29a;
+      --linea: #3a453f;
+      --verde: #5fbf98;
+      --verde-suave: #24352d;
+      --ambar: #d9a44a;
+      --ambar-suave: #38301d;
+      --code-bg: #2a322e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel: #1b201e;
+    --panel: #232927;
+    --tinta: #dee5df;
+    --tinta-2: #93a29a;
+    --linea: #3a453f;
+    --verde: #5fbf98;
+    --verde-suave: #24352d;
+    --ambar: #d9a44a;
+    --ambar-suave: #38301d;
+    --code-bg: #2a322e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--papel); color: var(--tinta);
+    font-family: var(--sans); font-size: 16px; line-height: 1.6;
+  }
+  .doc { max-width: 880px; margin: 0 auto; padding: 52px 26px 80px; }
+
+  .cab {
+    display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline;
+    font-family: var(--mono); font-size: 12px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--tinta-2);
+    border-bottom: 2px solid var(--verde); padding-bottom: 12px;
+  }
+  .cab b { color: var(--verde); font-weight: 600; }
+  h1 {
+    font-weight: 600; font-size: clamp(30px, 5vw, 44px); margin: 26px 0 8px;
+    letter-spacing: -.01em; text-wrap: balance;
+  }
+  .baja { color: var(--tinta-2); max-width: 66ch; margin: 0 0 6px; }
+  .baja b { color: var(--tinta); font-weight: 600; }
+
+  h2 {
+    font-weight: 600; font-size: 21px; margin: 56px 0 4px; text-wrap: balance;
+  }
+  .ojal {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--verde); display: block; margin-top: 56px;
+  }
+  .ojal + h2 { margin-top: 2px; }
+  .intro { color: var(--tinta-2); font-size: 14.5px; max-width: 70ch; margin: 6px 0 20px; }
+
+  code, .mono { font-family: var(--mono); font-size: .88em; background: var(--code-bg); padding: 1px 6px; border-radius: 3px; }
+
+  /* vías */
+  .vias { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 780px) { .vias { grid-template-columns: 1fr; } }
+  .via { border: 1px solid var(--linea); border-top: 3px solid var(--verde); background: var(--panel); padding: 14px 16px; border-radius: 4px; }
+  .via .estado { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--verde); }
+  .via.plan .estado { color: var(--ambar); }
+  .via h3 { font-size: 15.5px; margin: 4px 0 6px; font-weight: 600; }
+  .via p { font-size: 13.5px; color: var(--tinta-2); margin: 0; }
+  .via.plan { border-top-color: var(--ambar); }
+
+  /* tablas */
+  .tw { overflow-x: auto; border: 1px solid var(--linea); border-radius: 4px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14px; }
+  th {
+    text-align: left; font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--tinta-2); font-weight: 600;
+    padding: 10px 14px; border-bottom: 1px solid var(--linea);
+  }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* garantías */
+  .garantias { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .garantias { grid-template-columns: 1fr; } }
+  .g { display: flex; gap: 10px; align-items: flex-start; background: var(--verde-suave); border-radius: 4px; padding: 11px 14px; font-size: 14px; }
+  .g::before { content: '✓'; color: var(--verde); font-weight: 600; font-family: var(--mono); }
+
+  /* hallazgos */
+  .hallazgo { border-left: 3px solid var(--linea); padding: 4px 0 4px 16px; margin-bottom: 16px; }
+  .hallazgo h3 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
+  .hallazgo p { margin: 0; font-size: 14px; color: var(--tinta-2); max-width: 74ch; }
+  .hallazgo p b { color: var(--tinta); font-weight: 600; }
+
+  .aviso {
+    background: var(--ambar-suave); border-left: 3px solid var(--ambar);
+    border-radius: 0 4px 4px 0; padding: 12px 16px; font-size: 14.5px; max-width: 76ch;
+  }
+  .aviso b { color: var(--ambar); }
+
+  .no-lista { columns: 2; column-gap: 34px; padding-left: 20px; margin: 0; font-size: 14.5px; }
+  @media (max-width: 700px) { .no-lista { columns: 1; } }
+  .no-lista li { margin-bottom: 8px; break-inside: avoid; }
+  .no-lista li::marker { color: var(--tinta-2); }
+
+  .pie {
+    margin-top: 64px; border-top: 1px solid var(--linea); padding-top: 16px;
+    font-family: var(--mono); font-size: 12px; color: var(--tinta-2);
+    display: flex; flex-wrap: wrap; gap: 6px 24px;
+  }
+</style>
+
+<div class="doc">
+
+  <header>
+    <div class="cab">
+      <span>informe <b>aguas arriba</b></span>
+      <span>audiencia: Oasis · FairCoin/FairCoop</span>
+      <span>catálogo modelador-redes v0.2→0.3</span>
+      <span>2026-09-10</span>
+    </div>
+    <h1>Qué hacemos con vuestro código</h1>
+    <p class="baja"><b>modelador-redes</b> es un catálogo de documentación que audita software de
+    redes distribuidas desde doctrinas políticas. <b>No implementa producto, no hace fork, no
+    relanza cadenas.</b> Clona vuestros repositorios a commits fijos, los lee y los cita
+    fichero:línea. Este informe cuenta exactamente eso: qué piezas vuestras usamos, con qué
+    reglas, qué encontramos leyéndolas, dónde entran en el roadmap y qué no os pedimos.</p>
+  </header>
+
+  <span class="ojal">§ 1</span>
+  <h2>Las tres vías en que aparece vuestro código</h2>
+  <div class="vias">
+    <div class="via">
+      <span class="estado">hecho / en ejecución</span>
+      <h3>Catálogo (rama main)</h3>
+      <p>12 repositorios clonados a SHA fijo (<code>vendor.json</code>), solo lectura, enlaces
+      reescritos a <code>blob/&lt;sha&gt;</code>. Un clon que se desvía del SHA es un error de
+      build, nunca se «actualiza» solo.</p>
+    </div>
+    <div class="via plan">
+      <span class="estado">backlog · sin implementar</span>
+      <h3>Modelo «res_publica»</h3>
+      <p>Roadmap de una cadena <em>nueva</em> con génesis propio (herramienta
+      <code>fairchains-tool</code>) y banca multi-moneda sobre Oasis. Todo son tareas con camino
+      por defecto: ni una línea ejecutada.</p>
+    </div>
+    <div class="via plan">
+      <span class="estado">proyección · dosier</span>
+      <h3>Modelo «colectivizaciones»</h3>
+      <p>Un derivado de divulgación dramatizada cita piezas vuestras como utilería documental
+      (ver §6). Vuestro código aparece <em>citado</em>, jamás ejecutado dentro del derivado.</p>
+    </div>
+  </div>
+
+  <span class="ojal">§ 2</span>
+  <h2>Inventario: qué está clonado y para qué</h2>
+  <p class="intro">SHA exactos y licencias en <code>vendor.json</code> (la licencia se lee del
+  fichero de cada clon, no de memoria). Uso = para qué lo citamos.</p>
+  <div class="tw">
+    <table>
+      <tr><th>Repo</th><th>Qué es</th><th>Uso en el catálogo</th></tr>
+      <tr><td>oasis</td><td>cliente SSB con módulos de gobernanza y banca (AGPL) — @ 9a657b7 (1.0.7)</td><td>el objeto auditado por todos los modelos</td></tr>
+      <tr><td>faircoin</td><td>daemon Proof-of-Cooperation, MIT — @ 8e9b8f5; sin commits desde 2022-02-05, código completo</td><td>citas de PoC, RPC admin, chainparams</td></tr>
+      <tr><td>fairchains</td><td>génesis de cadena nueva desde JSON, sin recompilar</td><td>camino por defecto para cualquier cadena futura</td></tr>
+      <tr><td>fasito</td><td>firmware de llave física para firmas CVN</td><td>estudio de custodia de claves</td></tr>
+      <tr><td>electrumfair / electrumfairx</td><td>monederos ligeros</td><td>cita de monedero personal</td></tr>
+      <tr><td>faircoin-exporter</td><td>exportador de métricas de la cadena</td><td>cita de transparencia (tablón público)</td></tr>
+      <tr><td>faircoin-nrp / valuenetwork</td><td>planificación cooperativa de recursos (contabilidad REA)</td><td>cita de compensación entre comunidades</td></tr>
+      <tr><td>faircoin2-cce</td><td>herramientas de la cadena anterior</td><td>referencia histórica</td></tr>
+      <tr><td>faircoin-seeder · coopshares</td><td><b>sin fichero de licencia</b></td><td>solo cita, ningún reuso</td></tr>
+    </table>
+  </div>
+  <p class="intro" style="margin-top:12px">Documentado pero <em>no</em> clonado: FairMarket/Odoo,
+  BotC sobre Cyclos, OCE, Komun, <code>visbtc/fair-coin</code>, <code>jaromil/faircoin2</code>.</p>
+
+  <span class="ojal">§ 3</span>
+  <h2>Reglas de la casa — vuestras garantías</h2>
+  <div class="garantias">
+    <div class="g">Solo lectura: vuestro código nunca se commitea en nuestro repositorio ni se incluye en los zips que publicamos.</div>
+    <div class="g">Commits fijos: <code>vendor.sh --check</code> falla si un clon se desvía del SHA declarado; el script jamás modifica un clon existente.</div>
+    <div class="g">Hechos sin adjetivo: escribimos «sin commits desde 2022-02-05, código completo, MIT, citable» — hemos borrado del catálogo los «muerto» y «no hay nada».</div>
+    <div class="g">Licencias respetadas: MIT y AGPL citadas conforme a sus términos; los repos sin licencia, solo referencia. Lo nuestro: GPL-3.0-or-later.</div>
+  </div>
+
+  <span class="ojal">§ 4</span>
+  <h2>Qué encontramos leyendo vuestro código</h2>
+  <p class="intro">Observaciones de la auditoría, por si os sirven. No constan reportadas
+  upstream; si alguna os interesa como issue, es vuestra.</p>
+  <div class="hallazgo">
+    <h3>Oasis — módulo Banking</h3>
+    <p>El timeout de 1500 ms puede producir <b>doble envío</b> · el <b>hash de época no se
+    publica</b> (dificulta verificación externa) · <code>POST /update</code> borra
+    <code>src/configs/*.json</code> trackeados · el dinero solo sale por
+    <code>sendtoaddress</code> (banking_model.js:1004, :1416) · validación de dirección por
+    regex <code>^E</code> repetida ×12.</p>
+  </div>
+  <div class="hallazgo">
+    <h3>FairCoin — daemon</h3>
+    <p>Claves de chain-admin y CVN <b>hardcodeadas</b> en <code>chainparams.cpp</code> (génesis
+    nuevo exige recompilar… o usar fairchains) · modo <code>-cvn=file</code> como alternativa a
+    la llave física · juego completo de RPC admin
+    (<code>addcvn / removecvn / bancvn / setchainparameters / addcoinsupply</code>).</p>
+  </div>
+  <div class="hallazgo">
+    <h3>Red (hechos, sin adjetivo)</h3>
+    <p>fair-coin.org publica «Cooling down FairCoin» (2024-06-17) · DNS de FairCoop caídos ·
+    explorador offline · <code>seed1:40404</code> responde.</p>
+  </div>
+
+  <span class="ojal">§ 5</span>
+  <h2>Roadmap: dónde entran vuestras piezas</h2>
+  <p class="intro">Todo esto es backlog del modelo res_publica — tareas con camino por defecto,
+  <b>nada implementado</b>. Si algún día se ejecuta, así os toca:</p>
+  <div class="tw">
+    <table>
+      <tr><th>Fase</th><th>Qué se haría</th><th>Pieza vuestra implicada</th></tr>
+      <tr><td class="num">0 · rescate</td><td>citas fichero:línea, decisión de nombre</td><td>todo el inventario §2 (hecho al vendorizar)</td></tr>
+      <tr><td class="num">1–2 · banca</td><td>banca multi-moneda sobre el seam de 14 métodos RPC de Oasis</td><td>oasis (Banking)</td></tr>
+      <tr><td class="num">3 · testnet</td><td>cadena NUEVA con génesis desde JSON — no relanza la vuestra</td><td>fairchains-tool, faircoin (daemon)</td></tr>
+      <tr><td class="num">4 · federación</td><td>certificación de operadores con criterios socio-políticos escritos</td><td>guía CVN §4.1 (alta) y §4.5 (baja); fasito o -cvn=file para custodia</td></tr>
+      <tr><td class="num">5–6 · economía y constitución</td><td>emisión solo a tesoro multifirma y mediante ley promulgada</td><td>addcoinsupply, faircoin-nrp/valuenetwork, faircoin-exporter</td></tr>
+    </table>
+  </div>
+  <p class="aviso" style="margin-top:14px"><b>La única petición real hoy:</b> el nombre. El plan
+  propone «Faircoin3» solo si rasos / fair-coin.org no objeta en 30 días desde el contacto —
+  y con aviso interno de que <b>FairCoinOfficial es otra moneda</b>, activa, con la que no hay
+  relación. Si el nombre molesta, se elige ticker nuevo y no se insiste.</p>
+
+  <span class="ojal">§ 6</span>
+  <h2>El derivado de divulgación, en una tabla</h2>
+  <p class="intro">Existe un derivado que dramatiza los modelos como teatro documental. No
+  ejecuta nada vuestro: vuestras piezas aparecen como utilería citada, con su fichero y línea
+  en el letrero. Por si os cruzáis con él:</p>
+  <div class="tw">
+    <table>
+      <tr><th>Pieza</th><th>Cómo aparece</th></tr>
+      <tr><td>electrumfair</td><td>el monedero personal de un personaje (el vecino no colectivizado de 1936)</td></tr>
+      <tr><td>fairchains-tool</td><td>una «imprenta de moneda local» que la asamblea vota no encender</td></tr>
+      <tr><td>valuenetwork / nrp</td><td>la caja de compensación entre pueblos (contabilidad cooperativa)</td></tr>
+      <tr><td>faircoin-exporter</td><td>el tablón público de cuentas del tesoro</td></tr>
+      <tr><td>guía CVN §4.1/§4.5</td><td>los criterios con que una federación certifica y remueve operadores</td></tr>
+    </table>
+  </div>
+
+  <span class="ojal">§ 7</span>
+  <h2>Qué no hacemos y qué no os pedimos</h2>
+  <ul class="no-lista">
+    <li>No hay fork ejecutado ni cadena lanzada.</li>
+    <li>No relanzamos ni tocamos vuestra cadena: el camino por defecto es génesis nuevo.</li>
+    <li>No hay snapshot de vuestro UTXO por defecto (figura solo como alternativa descartable).</li>
+    <li>No usamos marcas ni nombres sin hablar antes (§5).</li>
+    <li>No mandamos PRs no solicitados; los hallazgos de §4 quedan a vuestra disposición.</li>
+    <li>Nuestro propio remoto canónico migrará de GitHub a Radicle (git P2P); no os afecta.</li>
+  </ul>
+
+  <div class="pie">
+    <span>catálogo: alephscriptorium-eng.github.io/modelador-redes</span>
+    <span>manifiesto de clones: vendor.json · verificación: scripts/vendor.sh --check</span>
+    <span>GPL-3.0-or-later</span>
+    <span>lado técnico (costuras fichero:línea): Costuras</span>
+  </div>
+
+</div>

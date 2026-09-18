@@ -599,6 +599,28 @@ enlazan · el JSON y los dosieres de `editorial/` no se publican.
 (enlace de Perplexity, copia de backups fuera de la máquina).
 Dep: WP-O99.
 
+| **WP-O101** | **P2** | Roadmap · los dosieres de trabajo publicados en `docs/ROADMAP/` |
+
+**BRIEF** · El material prospectivo de la casa (seis dosieres de trabajo:
+aleph-net, relacional, colectivizaciones, res-publica, oasis-faircoin,
+publicidad-rrss) vivía fuera del repo. Publicarlo como **«Roadmap futuro»**
+en la web (`docs/ROADMAP/`, con anexos en `docs/public/dosieres/`) y
+enlazarlo desde README, portada, menú y barra lateral. Se publica la **copia
+saneada** que produce `scripts/roadmap-import.py` (rutas de disco → nombres
+de repo; sin Google Fonts; sin enlaces a artifacts privados; la fila del panel
+remite a WP-O52; los datos de conexión del pub **no se duplican**: se enlaza
+`/public/status`). `modelador-redes` se enlaza (proyecto propio);
+`oasis-clearweb` no entra: ya es `ARCHIVO/DISCO/` + `HUB-PROTOCOL`. De paso
+se declara la diferencia `archive/` vs `ARCHIVO/` (`ARCHIVO/README.md`,
+README, MAPA).
+**CA** · `npm run docs:build` sin enlaces muertos · gate `verificar-sitio.mjs`
+verde · 0 rutas `C:\S…`, 0 `fonts.googleapis`, 0 `claude.ai/code/artifact` y
+0 copias de `connect`/`caps` en lo publicado · `/ROADMAP/` responde en la web.
+**Hostil-omite** · páginas y anexos no comparten nombre salvo mayúsculas
+(`ROADMAP/` vs `roadmap/` colisiona en Windows → anexos en `dosieres/`) · el
+origen de los dosieres no se modifica · reimportar es idempotente.
+Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertura).
+
 ---
 
 ## L5 · Pub / L1 permanente
@@ -959,6 +981,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-17: +WP-O98 P1 en L4 — cliente fresco + importación de identidad.)
 (2026-09-18: +WP-O99 P1 en L4 — Teatro: sidecar de RRSS, asiento D-O16.)
 (2026-09-18: +WP-O100 P1 en L4 — Teatro: puerta semántica, asiento D-O17.)
+(2026-09-18: +WP-O101 P2 en L4 — Roadmap: dosieres de trabajo en docs/ROADMAP, asiento D-O18.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11

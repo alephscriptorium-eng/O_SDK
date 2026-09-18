@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 330" role="img" aria-label="Cuatro registros en cadena, ontológico, conceptual, metodológico y empírico, con una flecha de retorno desde el informe en primera persona hacia el registro conceptual, cerrando un bucle">
+<style>
+.n-fill{fill:#f1f2ee;stroke:#1c1f22;stroke-width:1.4}
+.n-hollow{fill:#f1f2ee;stroke:#5b6166;stroke-width:1.2;stroke-dasharray:3 3}
+.n-esc{fill:#efdcb4;stroke:#a86b0f;stroke-width:2.4}
+.n-tesis{fill:#dde1d8;stroke:#1c1f22;stroke-width:1.2}
+.n-centro{fill:#e6e9e2;stroke:#1c1f22;stroke-width:1.6}
+.e-r{stroke:#9b1d3a;fill:none;stroke-linecap:round}
+.e-c{stroke:#2f6f5e;fill:none;stroke-linecap:round}
+.e-d{stroke-dasharray:4 5}
+.e-esc{stroke:#a86b0f;fill:none;stroke-width:2.2}
+.t{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:12.5px;fill:#1c1f22}
+.t-s{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;fill:#5b6166}
+.t-cat{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;fill:#5b6166}
+.t-serif{font-family:"Cormorant Garamond",Georgia,serif;font-size:20px;font-weight:600;fill:#1c1f22}
+.t-serif-s{font-family:"Cormorant Garamond",Georgia,serif;font-size:14px;font-style:italic;fill:#5b6166}
+.t-esc{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.1em;fill:#a86b0f}
+.t-r{fill:#9b1d3a}
+.box{fill:#e6e9e2;stroke:#1c1f22;stroke-width:1.2}
+.box-esc{fill:#efdcb4;stroke:#a86b0f;stroke-width:1.6}
+.box-l1{fill:#c9e0d7;stroke:#2f6f5e;stroke-width:1.2}
+.arrow{stroke:#1c1f22;fill:none;stroke-width:1.3}
+.arrow-r{stroke:#9b1d3a;fill:none;stroke-width:1.3;stroke-dasharray:5 4}
+.brace{stroke:#5b6166;fill:none;stroke-width:1}
+svg{color:#1c1f22;background:#f1f2ee}
+</style>
+<rect width="560" height="330" fill="#f1f2ee"/>
+
+        <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+        <g class="arrow" marker-end="url(#ah2)">
+          <line x1="128" y1="70" x2="152" y2="70"/><line x1="268" y1="70" x2="292" y2="70"/><line x1="408" y1="70" x2="432" y2="70"/>
+        </g>
+        <rect class="box" x="20" y="48" width="108" height="44" rx="2"/><text class="t" x="74" y="74" text-anchor="middle">ontológico</text>
+        <rect class="box" x="160" y="48" width="108" height="44" rx="2"/><text class="t" x="214" y="74" text-anchor="middle">conceptual</text>
+        <rect class="box" x="300" y="48" width="108" height="44" rx="2"/><text class="t" x="354" y="74" text-anchor="middle">metodológico</text>
+        <rect class="box-esc" x="440" y="48" width="108" height="44" rx="2"/><text class="t" x="494" y="74" text-anchor="middle">empírico</text>
+        <text class="t-s" x="74" y="112" text-anchor="middle">falta un puente</text>
+        <text class="t-s" x="214" y="112" text-anchor="middle">falta vocabulario</text>
+        <text class="t-s" x="354" y="112" text-anchor="middle">faltan prácticas</text>
+        <text class="t-s" x="494" y="112" text-anchor="middle">falta un testbed</text>
+        <!-- return loop -->
+        <path class="arrow-r" d="M494 92 L494 200 L214 200 L214 96" marker-end="url(#ah2)"/>
+        <text class="t t-r" x="354" y="192" text-anchor="middle">el resultado es un informe en primera persona</text>
+        <!-- anchor -->
+        <rect class="box-l1" x="120" y="240" width="320" height="60" rx="2"/>
+        <text class="t" x="280" y="262" text-anchor="middle">donde la casa lo sujeta</text>
+        <text class="t-s" x="280" y="282" text-anchor="middle">certeza A/B/C · penumbra declarada · prosa ∥ geometría (R15, R17)</text>
+        <line class="brace" x1="214" y1="200" x2="214" y2="240" stroke-dasharray="2 3"/>
+      </svg>

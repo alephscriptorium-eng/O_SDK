@@ -1,0 +1,364 @@
+<title>La República Pura</title>
+<style>
+  :root {
+    --pizarra: #282c30;
+    --suelo: #2e3138;
+    --penumbra-bg: #22252a;
+    --tiza: #e9e5d8;
+    --tiza-tenue: #a9a698;
+    --tiza-apagada: #7c7970;
+    --morada: #b6a1d8;
+    --verde: #a3c692;
+    --roja: #cf8a7a;
+    --marco: #4a4f55;
+    --display: 'Special Elite', 'Courier New', monospace;
+    --mono: 'Courier Prime', 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--pizarra);
+    color: var(--tiza);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  .hoja { max-width: 940px; margin: 0 auto; padding: 48px 28px 72px; }
+
+  /* ---- portada ---- */
+  .sello {
+    display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline;
+    font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--tiza-tenue); border-bottom: 1px dashed var(--marco); padding-bottom: 14px;
+  }
+  .sello b { color: var(--morada); font-weight: 400; }
+  h1 {
+    font-family: var(--display); font-weight: 400; text-wrap: balance;
+    font-size: clamp(34px, 6vw, 56px); margin: 30px 0 6px; color: var(--tiza);
+  }
+  .pregunta { font-size: 18px; color: var(--morada); margin: 0 0 10px; font-style: italic; }
+  .contexto { max-width: 62ch; color: var(--tiza-tenue); margin: 0; }
+  .contexto em { color: var(--tiza); font-style: normal; }
+
+  h2 {
+    font-family: var(--display); font-weight: 400; font-size: 24px;
+    margin: 64px 0 6px; color: var(--tiza);
+  }
+  h2::before { content: '§ '; color: var(--morada); }
+  .nota-seccion { color: var(--tiza-tenue); font-size: 14px; margin: 0 0 22px; max-width: 70ch; }
+
+  .grado {
+    display: inline-block; font-size: 10.5px; border: 1px solid var(--tiza-apagada);
+    color: var(--tiza-tenue); padding: 0 5px; border-radius: 2px;
+    vertical-align: super; letter-spacing: .06em; margin-left: 4px;
+  }
+
+  /* ---- veredicto ---- */
+  .veredicto { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 700px) { .veredicto { grid-template-columns: 1fr; } }
+  .mano { border: 1px solid var(--marco); background: var(--suelo); padding: 20px 22px; }
+  .mano h3 { font-family: var(--display); font-weight: 400; font-size: 19px; margin: 0 0 12px; letter-spacing: .04em; }
+  .mano.si h3 { color: var(--verde); }
+  .mano.no h3 { color: var(--roja); }
+  .mano ul { margin: 0; padding-left: 20px; }
+  .mano li { margin-bottom: 10px; font-size: 14.5px; }
+  .mano li::marker { color: var(--tiza-tenue); }
+  .mano .clave { color: var(--tiza); font-weight: 700; }
+  .dictamen {
+    margin-top: 18px; border-left: 3px solid var(--morada); padding: 12px 18px;
+    background: var(--suelo); font-size: 15px; max-width: 78ch;
+  }
+  .dictamen b { color: var(--morada); font-weight: 700; }
+
+  /* ---- croquis: ciudad de poderes ---- */
+  .ciudad { border: 2px solid var(--marco); background: var(--suelo); padding: 26px 24px 18px; position: relative; }
+  .ciudad-titulo {
+    position: absolute; top: -11px; left: 18px; background: var(--pizarra);
+    padding: 0 10px; font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--tiza-tenue);
+  }
+  .constituyente {
+    border: 1.5px solid var(--tiza-apagada); background: var(--penumbra-bg);
+    padding: 12px 16px 10px; margin-bottom: 14px; color: var(--tiza-apagada);
+    display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline;
+  }
+  .constituyente .nombre { font-family: var(--display); font-size: 16px; color: #948f82; }
+  .constituyente .mecanismo { font-size: 12.5px; flex: 1; min-width: 240px; }
+  .constituyente .estado { font-size: 12px; color: var(--roja); letter-spacing: .08em; }
+  .poderes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 820px) { .poderes { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 540px) { .poderes { grid-template-columns: 1fr; } }
+  .zona {
+    border: 1.5px dashed var(--tiza-tenue); padding: 12px 12px 10px;
+    background: var(--pizarra); min-height: 116px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .zona .nombre { font-family: var(--display); font-size: 16px; letter-spacing: .03em; }
+  .zona .mecanismo { font-size: 12.5px; color: var(--tiza-tenue); flex: 1; }
+  .zona .estado { font-size: 12px; letter-spacing: .08em; }
+  .zona.ok { border-color: var(--verde); }
+  .zona.ok .estado { color: var(--verde); }
+  .zona.media {
+    background: var(--penumbra-bg); border-style: solid; border-color: var(--tiza-apagada);
+  }
+  .zona.media .nombre { color: #948f82; }
+  .zona.media .mecanismo { color: var(--tiza-apagada); }
+  .zona.media .estado { color: var(--roja); }
+  .zona.nota { border-style: dotted; }
+  .zona.nota .estado { color: var(--morada); }
+  .orillas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 700px) { .orillas { grid-template-columns: 1fr; } }
+  .orilla { border-top: 1px solid var(--marco); padding: 10px 4px 0; font-size: 13px; color: var(--tiza-tenue); }
+  .orilla b { color: var(--tiza); font-weight: 700; }
+  .ciudad-pie { margin-top: 16px; font-size: 12.5px; color: var(--tiza-tenue); border-top: 1px dashed var(--marco); padding-top: 10px; }
+  .ciudad-pie b { color: var(--verde); font-weight: 400; }
+  .ciudad-pie i { color: var(--roja); font-style: normal; }
+
+  /* ---- storyboard ---- */
+  .actos { display: flex; flex-direction: column; gap: 14px; }
+  .acto { display: grid; grid-template-columns: 92px 1fr; border: 1px solid var(--marco); background: var(--suelo); }
+  @media (max-width: 600px) { .acto { grid-template-columns: 1fr; } }
+  .acto-num {
+    font-family: var(--display); font-size: 26px; color: var(--morada);
+    display: flex; align-items: center; justify-content: center;
+    border-right: 1px dashed var(--marco); padding: 14px 8px;
+  }
+  .acto-cuerpo { padding: 14px 18px 12px; }
+  .acto-cuerpo h3 { font-family: var(--display); font-weight: 400; font-size: 18px; margin: 0 0 4px; }
+  .acto-meta { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--tiza-tenue); margin-bottom: 8px; }
+  .acto-meta .v { color: var(--verde); }
+  .acto-meta .p { color: var(--roja); }
+  .acto-beat { font-size: 14.5px; margin: 0 0 8px; max-width: 72ch; }
+  .fila-things { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; border: 1px solid var(--marco); padding: 2px 9px; color: var(--tiza-tenue); background: var(--pizarra); border-radius: 2px; }
+  .chip.offer { color: var(--morada); border-color: var(--morada); }
+  .chip.una-vez { border-style: dashed; }
+  .acto.penumbra { background: var(--penumbra-bg); }
+  .acto.penumbra .acto-num { color: #948f82; }
+  .acto.penumbra .acto-cuerpo h3 { color: #b5b0a2; }
+  .acto.penumbra .acto-beat { color: var(--tiza-tenue); }
+
+  /* ---- reparto ---- */
+  .reparto { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 820px) { .reparto { grid-template-columns: repeat(2, 1fr); } }
+  .papel { border-top: 3px solid var(--morada); background: var(--suelo); padding: 12px 14px; }
+  .papel h3 { font-family: var(--display); font-weight: 400; font-size: 16px; margin: 0 0 4px; }
+  .papel p { font-size: 13px; color: var(--tiza-tenue); margin: 0; }
+  .papel .fuente { display: block; margin-top: 8px; font-size: 11.5px; font-style: italic; color: var(--tiza-tenue); }
+
+  /* ---- cierre ---- */
+  .cierre {
+    margin-top: 70px; border-top: 1px dashed var(--marco); padding-top: 18px;
+    display: flex; flex-wrap: wrap; gap: 8px 26px; font-size: 12.5px; color: var(--tiza-tenue);
+  }
+  .cierre code { font-family: var(--mono); color: var(--tiza); background: var(--suelo); padding: 1px 6px; }
+  .cierre .pendiente { color: var(--morada); }
+</style>
+
+<div class="hoja">
+
+  <header>
+    <div class="sello">
+      <span>Dosier <b>F4</b></span>
+      <span>modelador-redes · nodo <b>res_publica</b> (draftv2)</span>
+      <span>editor <b>Novelist</b> (m-sdk)</span>
+      <span>2026-09-10</span>
+    </div>
+    <h1>La República Pura</h1>
+    <p class="pregunta">¿Sale del tirón, o no es el editor correcto?</p>
+    <p class="contexto">La <em>Teoría pura de la República</em> de Trevijano (Libro III,
+    ocho capítulos) auditada sobre Oasis/SSB, montada como barrio-obra en Novelist.
+    Hermano del dosier <em>La Colectividad</em> — y su arista de contraste está en pausa.
+    Este preview existe para <em>decidir</em>: planificar o descartar.</p>
+  </header>
+
+  <h2>Veredicto a dos manos</h2>
+  <p class="nota-seccion">Proyección técnica, no decisión. Diferencia con colectivizaciones:
+  aquello era economía (el editor rotula, no simula); esto es forma institucional pura —
+  y la forma se escenifica de natural. La fricción se desplaza al tiempo y a la infraestructura.</p>
+  <div class="veredicto">
+    <div class="mano si">
+      <h3>✓ Del tirón (F1 montable)</h3>
+      <ul>
+        <li><span class="clave">El drama institucional es teatro nato</span>: tres consejos = tres edificios; la promulgación = pasillo de documentos con lawId y devolución motivada una sola vez.</li>
+        <li><span class="clave">«No disuelve sin dimitir» ya tiene mecánica</span>: la puerta que solo abre legalmente — el eco de Gödel y Cohen en el Trecho, vía actor_interact(OPEN).</li>
+        <li><span class="clave">La constituyente como zona que se abre por acción</span> (25 % del censo ó 2× ANARCHY), con las constantes provisionales grabadas: «nadie las constituyó».</li>
+        <li><span class="clave">La certeza como material escénico</span>: cada letrero lleva su grado <span class="grado">A</span><span class="grado">B</span><span class="grado">C</span> en tiza — la honestidad epistémica del modelo, en escena.</li>
+      </ul>
+    </div>
+    <div class="mano no">
+      <h3>✗ No del tirón (fricciones)</h3>
+      <ul>
+        <li><span class="clave">La mitad del backlog no es escena.</span> Carriles C/B/F/E (Faircoin3, banking, CVN, economía real) son infraestructura: fuera de la obra, atrezzo como mucho.</li>
+        <li><span class="clave">El tiempo no se simula.</span> Ciclos de 60 d, desfase de 30, plazos de 7 y 21: sin reloj en el editor, los ciclos son beats comprimidos.</li>
+        <li><span class="clave">«Solo la escala sigue intraducible»</span> — lo declara el propio modelo. Mónadas de ~100.000 por sinécdoque (M = 3 actores).</li>
+        <li><span class="clave">Verificación a medias</span>: fichas 01–04 con fuentes ✓; 05–08 pendientes → sus zonas van en penumbra, no a pleno.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="dictamen"><b>Dictamen:</b> editor correcto para el <b>drama institucional</b>
+  (carriles D + G, el corazón trevijanista); la infraestructura queda <b>fuera de escena</b>
+  (C/B/F/E viven en el backlog del repo). F1 del tirón: actos I–III sobre fichas verificadas;
+  IV–V en penumbra declarada.</p>
+
+  <h2>Croquis — la ciudad de poderes</h2>
+  <p class="nota-seccion">Escala catálogo: 1 barrio de los 10. Por dentro: la mónada abajo,
+  los poderes separados, la constituyente arriba — cerrada hasta que la acción la abra.</p>
+  <div class="ciudad">
+    <span class="ciudad-titulo">Ciudad Res_publica · layout-ciudad-multizona</span>
+    <div class="constituyente">
+      <span class="nombre">LA CONSTITUYENTE</span>
+      <span class="mecanismo">cerrada por defecto · se abre por acción (constituentCall 25 % ó 2× ANARCHY) · solo redacta · el referéndum ratifica · se disuelve al ratificar</span>
+      <span class="estado">◐ fichas 07-08 pendientes</span>
+    </div>
+    <div class="poderes">
+      <div class="zona ok">
+        <span class="nombre">C. DE LEGISLACIÓN</span>
+        <span class="mecanismo">promulga en ≤ 7 d · lawId · devuelve una sola vez · silencio = tácita</span>
+        <span class="estado">ficha 04 ✓ fuentes</span>
+      </div>
+      <div class="zona ok">
+        <span class="nombre">LA CÁMARA</span>
+        <span class="mecanismo">representantes monádicos · voto nominal cotejado contra mandato · revocación por deslealtad</span>
+        <span class="estado">ficha 03 ✓ fuentes</span>
+      </div>
+      <div class="zona media">
+        <span class="nombre">C. DE GOBIERNO</span>
+        <span class="mecanismo">presidencia directa desfasada 30 d · ejecuta solo con lawId y presupuesto · la puerta: disolver = dimitir</span>
+        <span class="estado">◐ ficha 06 pendiente</span>
+      </div>
+      <div class="zona media">
+        <span class="nombre">C. DE JUSTICIA</span>
+        <span class="mecanismo">jueces por mérito (School), no electos · jurado por sorteo verificable · anula leyes en 21 d</span>
+        <span class="estado">◐ ficha 05 pendiente</span>
+      </div>
+      <div class="zona ok">
+        <span class="nombre">LA MÓNADA</span>
+        <span class="mecanismo">colegio por hash determinista (igualdad sí, proximidad no) · mandato firmado · doble vuelta partida</span>
+        <span class="estado">fichas 01-02 ✓ fuentes</span>
+      </div>
+      <div class="zona nota">
+        <span class="nombre">LOS LETREROS</span>
+        <span class="mecanismo">nada cotejado aún con el libro: la certeza es del revisor — cada letrero lleva su grado en tiza</span>
+        <span class="estado">A / B / C visibles</span>
+      </div>
+    </div>
+    <div class="orillas">
+      <div class="orilla"><b>Orilla 1 — La tribu.</b> Asociación civil: apoya candidatos, no los presenta; sin financiación pública (D11).</div>
+      <div class="orilla"><b>Orilla 2 — La sala de máquinas.</b> Carriles C/B/F/E (Faircoin3, banking, CVN): fuera de escena; las llaves chain-admin, atrezzo en la mesa del presidente.</div>
+    </div>
+    <p class="ciudad-pie"><b>✓ verificado en fuentes</b> · <i>◐ penumbra</i>: fichas 05–08 sin
+    verificación — la penumbra no es castigo, es el estado declarado del conocimiento.</p>
+  </div>
+
+  <h2>Storyboard — cinco actos</h2>
+  <p class="nota-seccion">Un layout por acto (chalk primero). El tiempo del modelo se comprime
+  a beats: el ciclo de 60 días es un acto, no un timer. La numeración es el orden de la función.</p>
+  <div class="actos">
+    <div class="acto">
+      <div class="acto-num">I</div>
+      <div class="acto-cuerpo">
+        <h3>La mónada</h3>
+        <div class="acto-meta">Zona LA MÓNADA · <span class="v">fichas 01-02 ✓</span> · D01-D04, G01-G02</div>
+        <p class="acto-beat">El hash asigna el colegio: igualdad de tamaño, proximidad sacrificada
+        (la tensión de la ficha 02, en escena). El candidato publica su mandato firmado antes de la
+        primera vuelta. Doble vuelta partida: días 1-30 y 31-60.</p>
+        <div class="fila-things">
+          <span class="chip offer">PUBLICAR MANDATO</span><span class="chip offer">VOTAR 1ª</span><span class="chip offer">VOTAR 2ª</span>
+          <span class="chip">semilla/hash</span><span class="chip">mandato firmado</span><span class="chip">urna</span>
+        </div>
+      </div>
+    </div>
+    <div class="acto">
+      <div class="acto-num">II</div>
+      <div class="acto-cuerpo">
+        <h3>La cámara</h3>
+        <div class="acto-meta">Zona LA CÁMARA · <span class="v">ficha 03 ✓</span> · D02-D03-D08, G03-G04</div>
+        <p class="acto-beat">Voto nominal público, cotejado contra el mandato: la deslealtad es
+        medible en el log. La fidelidad a persona o tribu no computa — solo actos contra mandato.
+        Revocación por mayoría absoluta del censo de la mónada.</p>
+        <div class="fila-things">
+          <span class="chip offer">PROPONER</span><span class="chip offer">VOTAR NOMINAL</span><span class="chip offer">REVOCAR</span>
+          <span class="chip">acta de cotejo</span><span class="chip">letrero lealtad≠fidelidad</span>
+        </div>
+      </div>
+    </div>
+    <div class="acto">
+      <div class="acto-num">III</div>
+      <div class="acto-cuerpo">
+        <h3>La promulgación</h3>
+        <div class="acto-meta">Pasillo CÁMARA → C. LEGISLACIÓN · <span class="v">ficha 04 ✓</span> · D05, G05</div>
+        <p class="acto-beat">Fuerza directiva → fuerza coactiva: solo la ley promulgada produce
+        lawId, y solo un lawId mueve el mundo. El Consejo no enmienda: promulga o devuelve una
+        sola vez con motivación — y DEVOLVER desaparece del menú tras usarse. Silencio a 7 días:
+        promulgación tácita.</p>
+        <div class="fila-things">
+          <span class="chip offer">PROMULGAR</span><span class="chip offer una-vez">DEVOLVER (×1)</span>
+          <span class="chip">ley-con-lawId</span><span class="chip">índice consolidado</span><span class="chip">letrero 7 días</span>
+        </div>
+      </div>
+    </div>
+    <div class="acto penumbra">
+      <div class="acto-num">IV</div>
+      <div class="acto-cuerpo">
+        <h3>La puerta</h3>
+        <div class="acto-meta">Zona C. GOBIERNO · <span class="p">◐ ficha 06 pendiente</span> · D06, D18, G06, G10</div>
+        <p class="acto-beat">El presidente ejecuta — llaves de cadena, tesoro multisig — solo con
+        lawId y dentro del presupuesto. La Cámara interpela y reprueba sin derribar. Y la puerta
+        DISOLUCIÓN solo abre con la dimisión en la mano: mecánica exacta de las puertas Gödel y Cohen.</p>
+        <div class="fila-things">
+          <span class="chip offer">INTERPELAR</span><span class="chip offer">REPROBAR</span><span class="chip offer una-vez">DISOLVER-Y-DIMITIR</span>
+          <span class="chip">informe de ciclo</span><span class="chip">llaves (atrezzo)</span><span class="chip">presupuesto</span>
+        </div>
+      </div>
+    </div>
+    <div class="acto penumbra">
+      <div class="acto-num">V</div>
+      <div class="acto-cuerpo">
+        <h3>La constituyente</h3>
+        <div class="acto-meta">Zona CONSTITUYENTE · <span class="p">◐ fichas 07-08 pendientes</span> · D09, D12, TK-78, G11</div>
+        <p class="acto-beat">Cerrada al empezar la función. Se abre por acción: firmas hasta el
+        25 % del censo, o dos ciclos de ANARCHY. Dentro, las constantes heredadas grabadas como
+        provisionales — «TERM_DAYS 60: nadie las constituyó». La asamblea solo redacta; el
+        referéndum ratifica; al ratificar, se disuelve.</p>
+        <div class="fila-things">
+          <span class="chip offer">FIRMAR LLAMADA</span><span class="chip offer">REDACTAR (80 %)</span><span class="chip offer">RATIFICAR</span><span class="chip offer una-vez">DISOLVERSE</span>
+          <span class="chip">constantes provisionales</span><span class="chip">borrador</span><span class="chip">papeleta</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Reparto</h2>
+  <p class="nota-seccion">Figuras con fuente, al modo de CANTOR, GÖDEL y COHEN en el Trecho.
+  El narrador es quien reconstruyó el libro de memoria — y lo confiesa en cada letrero.</p>
+  <div class="reparto">
+    <div class="papel">
+      <h3>EL REVISOR</h3>
+      <p>Narrador. Escribe el grado A/B/C en cada letrero: su certeza, no la del libro.</p>
+      <span class="fuente">revision/00-indice.md</span>
+    </div>
+    <div class="papel">
+      <h3>LA REPRESENTANTE</h3>
+      <p>Mandato imperativo firmado; cada voto suyo se coteja en público.</p>
+      <span class="fuente">caps. I y III (340, 381)</span>
+    </div>
+    <div class="papel">
+      <h3>EL PRESIDENTE</h3>
+      <p>Del Consejo de Gobierno. Ejecuta con lawId. No disuelve sin dimitir.</p>
+      <span class="fuente">cap. VI (442)</span>
+    </div>
+    <div class="papel">
+      <h3>LA JUEZA</h3>
+      <p>Nombrada por mérito, no electa; el jurado sale por sorteo verificable.</p>
+      <span class="fuente">cap. V (421)</span>
+    </div>
+  </div>
+
+  <div class="cierre">
+    <span>Dosier: <code>F4/dosier-res-publica/</code></span>
+    <span><code>00-dictamen.md</code> · <code>01-croquis.md</code> · <code>02-storyboard.md</code></span>
+    <span class="pendiente">Decisión pendiente: planificar F1 · descartar · aparcar</span>
+  </div>
+
+</div>

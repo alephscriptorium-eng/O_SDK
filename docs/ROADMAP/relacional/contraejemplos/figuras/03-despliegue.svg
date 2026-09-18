@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 400" role="img" aria-label="Despliegue en siete estaciones: fuente, modelar, rotular, sesionar, cristalizar, pub L1 y observar, con las flechas etiquetadas y los huecos marcados debajo">
+<style>
+.n-fill{fill:#f1f2ee;stroke:#1c1f22;stroke-width:1.4}
+.n-hollow{fill:#f1f2ee;stroke:#5b6166;stroke-width:1.2;stroke-dasharray:3 3}
+.n-esc{fill:#efdcb4;stroke:#a86b0f;stroke-width:2.4}
+.n-tesis{fill:#dde1d8;stroke:#1c1f22;stroke-width:1.2}
+.n-centro{fill:#e6e9e2;stroke:#1c1f22;stroke-width:1.6}
+.e-r{stroke:#9b1d3a;fill:none;stroke-linecap:round}
+.e-c{stroke:#2f6f5e;fill:none;stroke-linecap:round}
+.e-d{stroke-dasharray:4 5}
+.e-esc{stroke:#a86b0f;fill:none;stroke-width:2.2}
+.t{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:12.5px;fill:#1c1f22}
+.t-s{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;fill:#5b6166}
+.t-cat{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;fill:#5b6166}
+.t-serif{font-family:"Cormorant Garamond",Georgia,serif;font-size:20px;font-weight:600;fill:#1c1f22}
+.t-serif-s{font-family:"Cormorant Garamond",Georgia,serif;font-size:14px;font-style:italic;fill:#5b6166}
+.t-esc{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.1em;fill:#a86b0f}
+.t-r{fill:#9b1d3a}
+.box{fill:#e6e9e2;stroke:#1c1f22;stroke-width:1.2}
+.box-esc{fill:#efdcb4;stroke:#a86b0f;stroke-width:1.6}
+.box-l1{fill:#c9e0d7;stroke:#2f6f5e;stroke-width:1.2}
+.arrow{stroke:#1c1f22;fill:none;stroke-width:1.3}
+.arrow-r{stroke:#9b1d3a;fill:none;stroke-width:1.3;stroke-dasharray:5 4}
+.brace{stroke:#5b6166;fill:none;stroke-width:1}
+svg{color:#1c1f22;background:#f1f2ee}
+</style>
+<rect width="1180" height="400" fill="#f1f2ee"/>
+
+      <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+      <!-- braces L2 / L1 -->
+      <path class="brace" d="M370 60 L370 50 L860 50 L860 60"/><text class="t-s" x="615" y="44" text-anchor="middle">L2 = sesión · nada escribe directo al pub</text>
+      <path class="brace" d="M880 60 L880 50 L1020 50 L1020 60"/><text class="t-s" x="950" y="44" text-anchor="middle">L1 = ∞</text>
+      <!-- boxes -->
+      <g>
+        <rect class="box" x="20" y="80" width="150" height="88" rx="2"/>
+        <text class="t" x="95" y="104" text-anchor="middle" font-weight="600">Fuente</text>
+        <text class="t-s" x="95" y="124" text-anchor="middle">RELACIONAL.pdf</text>
+        <text class="t-s" x="95" y="139" text-anchor="middle">extraer.py --check</text>
+        <text class="t-s" x="95" y="154" text-anchor="middle">01-relacional.md</text>
+
+        <rect class="box-esc" x="200" y="80" width="150" height="88" rx="2"/>
+        <text class="t" x="275" y="104" text-anchor="middle" font-weight="600">Modelar</text>
+        <text class="t-s" x="275" y="124" text-anchor="middle">dev/relacional</text>
+        <text class="t-s" x="275" y="139" text-anchor="middle">modelo.json · draftv0</text>
+        <text class="t-s" x="275" y="154" text-anchor="middle">revision/00-indice</text>
+
+        <rect class="box" x="380" y="80" width="150" height="88" rx="2"/>
+        <text class="t" x="455" y="104" text-anchor="middle" font-weight="600">Rotular</text>
+        <text class="t-s" x="455" y="124" text-anchor="middle">Novelist (m-sdk)</text>
+        <text class="t-s" x="455" y="139" text-anchor="middle">dictamen → croquis</text>
+        <text class="t-s" x="455" y="154" text-anchor="middle">→ storyboard</text>
+
+        <rect class="box" x="560" y="80" width="150" height="88" rx="2"/>
+        <text class="t" x="635" y="104" text-anchor="middle" font-weight="600">Sesionar</text>
+        <text class="t-s" x="635" y="124" text-anchor="middle">rooms · peercard</text>
+        <text class="t-s" x="635" y="139" text-anchor="middle">playground localhost</text>
+        <text class="t-s" x="635" y="154" text-anchor="middle">N iteraciones</text>
+
+        <rect class="box" x="740" y="80" width="120" height="88" rx="2"/>
+        <text class="t" x="800" y="104" text-anchor="middle" font-weight="600">Cristalizar</text>
+        <text class="t-s" x="800" y="124" text-anchor="middle">WP-O51</text>
+        <text class="t-s" x="800" y="139" text-anchor="middle">un solo verbo</text>
+        <text class="t-s" x="800" y="154" text-anchor="middle">el parte</text>
+
+        <rect class="box-l1" x="880" y="80" width="140" height="88" rx="2"/>
+        <text class="t" x="950" y="104" text-anchor="middle" font-weight="600">Pub L1</text>
+        <text class="t-s" x="950" y="124" text-anchor="middle">log SSB append-only</text>
+        <text class="t-s" x="950" y="139" text-anchor="middle">follows · about · recps</text>
+        <text class="t-s" x="950" y="154" text-anchor="middle">tombstone</text>
+
+        <rect class="box" x="1040" y="80" width="120" height="88" rx="2" stroke-dasharray="4 4"/>
+        <text class="t" x="1100" y="104" text-anchor="middle" font-weight="600">Observar</text>
+        <text class="t-s" x="1100" y="124" text-anchor="middle">vía C</text>
+        <text class="t-s" x="1100" y="139" text-anchor="middle">modelador observar</text>
+        <text class="t-s" x="1100" y="154" text-anchor="middle">propuesto</text>
+      </g>
+      <!-- arrows -->
+      <g class="arrow" marker-end="url(#ah3)">
+        <line x1="170" y1="124" x2="198" y2="124"/><line x1="350" y1="124" x2="378" y2="124"/><line x1="530" y1="124" x2="558" y2="124"/>
+        <line x1="710" y1="124" x2="738" y2="124"/><line x1="860" y1="124" x2="878" y2="124"/><line x1="1020" y1="124" x2="1038" y2="124"/>
+      </g>
+      <text class="t-s" x="184" y="190" text-anchor="middle">draft semilla</text>
+      <text class="t-s" x="364" y="190" text-anchor="middle">rotula, no simula</text>
+      <text class="t-s" x="544" y="190" text-anchor="middle">attach-only</text>
+      <text class="t-s" x="724" y="190" text-anchor="middle">G3</text>
+      <text class="t-s" x="869" y="190" text-anchor="middle">checkpoint</text>
+      <text class="t-s" x="1029" y="190" text-anchor="middle">lee el log</text>
+      <!-- feedback loop -->
+      <path class="arrow" d="M1100 168 L1100 250 L275 250 L275 172" marker-end="url(#ah3)" stroke-dasharray="6 4"/>
+      <text class="t-s" x="690" y="244" text-anchor="middle">paso 6 del método: revisión retroalimentada → draftv1</text>
+      <!-- gaps -->
+      <g class="t t-r">
+        <text x="275" y="300" text-anchor="middle">✗ n-arias (cardinalidad 2 en 3 sitios)</text>
+        <text x="635" y="300" text-anchor="middle">✗ modo card sin cablear · sala en stubs</text>
+        <text x="950" y="300" text-anchor="middle">✗ meta-grafo: ningún tipo registra el uso</text>
+        <text x="1100" y="322" text-anchor="middle">✗ API del grafo</text>
+        <text x="275" y="322" text-anchor="middle">✗ proyecciones re-derivables</text>
+        <text x="455" y="322" text-anchor="middle">✗ sin reloj · texto opaco</text>
+      </g>
+      <text class="t-s" x="20" y="372" text-anchor="start">Lo tachado es lo que el testbed necesita y no existe (07-ausencias). Lo punteado es propuesto, no implementado.</text>
+    </svg>

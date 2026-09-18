@@ -1,0 +1,216 @@
+<title>Costuras</title>
+<style>
+  /* mundo único: terminal oscuro, pintado explícito */
+  :root {
+    --fondo: #141816;
+    --panel: #1c2220;
+    --tinta: #d7e0da;
+    --tenue: #8ba396;
+    --apagada: #5d7066;
+    --linea: #2e3a34;
+    --verde: #58c896;
+    --ambar: #d9a44a;
+    --rojo: #d98676;
+    --chip: #232c28;
+    --mono: 'IBM Plex Mono', Consolas, monospace;
+    --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: var(--mono); font-size: 14.5px; line-height: 1.6; }
+  .doc { max-width: 960px; margin: 0 auto; padding: 46px 24px 80px; }
+
+  .cab {
+    display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline;
+    font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--tenue);
+    border-bottom: 1px solid var(--verde); padding-bottom: 12px;
+  }
+  .cab b { color: var(--verde); font-weight: 600; }
+  .cab a { color: var(--tenue); }
+  h1 { font-family: var(--mono); font-weight: 600; font-size: clamp(26px, 4.6vw, 38px); margin: 24px 0 8px; letter-spacing: -.01em; }
+  h1 .prompt { color: var(--verde); }
+  .baja { font-family: var(--sans); color: var(--tenue); max-width: 72ch; margin: 0; font-size: 15px; }
+  .baja b { color: var(--tinta); }
+
+  h2 { font-weight: 600; font-size: 15px; letter-spacing: .12em; text-transform: uppercase; margin: 54px 0 4px; color: var(--verde); }
+  h2::before { content: '## '; color: var(--apagada); }
+  .intro { font-family: var(--sans); color: var(--tenue); font-size: 14px; max-width: 74ch; margin: 4px 0 16px; }
+  .intro b { color: var(--tinta); }
+
+  code { background: var(--chip); padding: 1px 6px; border-radius: 3px; font-size: .93em; color: var(--tinta); }
+  .fl { color: var(--verde); }        /* fichero:línea */
+  .num { font-variant-numeric: tabular-nums; }
+
+  .aviso {
+    border: 1px solid var(--ambar); background: var(--panel); border-radius: 4px;
+    padding: 12px 16px; font-family: var(--sans); font-size: 14px; max-width: 78ch;
+  }
+  .aviso b { color: var(--ambar); }
+  .aviso code { color: var(--ambar); }
+
+  .tw { overflow-x: auto; border: 1px solid var(--linea); border-radius: 4px; background: var(--panel); margin-bottom: 12px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13px; }
+  th {
+    text-align: left; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--apagada); font-weight: 600; padding: 9px 13px; border-bottom: 1px solid var(--linea);
+  }
+  td { padding: 8px 13px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.sitio { white-space: nowrap; color: var(--verde); }
+  td .fs { font-family: var(--sans); color: var(--tenue); }
+  td .fs b { color: var(--tinta); font-weight: 600; }
+
+  pre {
+    background: var(--panel); border: 1px solid var(--linea); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.7; margin: 0 0 12px;
+  }
+  pre .c { color: var(--apagada); }
+  pre .ok { color: var(--verde); }
+
+  .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .dos { grid-template-columns: 1fr; } }
+  .caja { border: 1px solid var(--linea); background: var(--panel); border-radius: 4px; padding: 12px 15px; }
+  .caja h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta); font-weight: 600; }
+  .caja p, .caja li { font-family: var(--sans); font-size: 13.5px; color: var(--tenue); }
+  .caja p { margin: 0 0 6px; }
+  .caja ul { margin: 0; padding-left: 18px; }
+  .caja li { margin-bottom: 5px; }
+  .caja li::marker { color: var(--apagada); }
+
+  .pie {
+    margin-top: 60px; border-top: 1px solid var(--linea); padding-top: 14px;
+    font-size: 11.5px; color: var(--apagada); display: flex; flex-wrap: wrap; gap: 6px 24px;
+  }
+  .pie a { color: var(--tenue); }
+</style>
+
+<div class="doc">
+
+  <header>
+    <div class="cab">
+      <span>costuras · lado técnico de <b>aguas arriba</b></span>
+      <span>oasis @ <b>9a657b7</b> · faircoin @ <b>8e9b8f5</b></span>
+      <span>2026-09-10</span>
+      <span>← lado funcional</span>
+    </div>
+    <h1><span class="prompt">$</span> grep -n costuras vendor/</h1>
+    <p class="baja">Referencia de ingeniería del informe «Aguas Arriba»: los puntos exactos —
+    <b>fichero:línea sobre los commits fijados</b> — donde el catálogo modelador-redes lee
+    vuestro código, y las costuras (seams) que su backlog propone tocar si alguna vez se
+    implementa. Nada de esto está ejecutado.</p>
+  </header>
+
+  <h2>0 · Cómo leer los números de línea</h2>
+  <p class="aviso"><b>Advertencia de verificación:</b> las líneas citadas fueron localizadas
+  sobre los clones pineados al redactar el plan de vendorización, con la regla «releer cada
+  línea al escribir». Este documento las reproduce de esa fuente; <b>antes de citarlas en un
+  issue, contrastadlas contra el SHA</b> — el propio catálogo obliga a ello:
+  <code>scripts/vendor.sh --check</code> falla con <code>DERIVA</code> si un clon no está en su
+  commit.</p>
+
+  <h2>1 · El mecanismo de vendorización</h2>
+  <p class="intro">Una sola fuente de verdad y un script idempotente. Vuestro código queda en
+  <code>vendor/</code> (ignorado por git), jamás en nuestro árbol.</p>
+  <div class="dos">
+    <div class="caja">
+      <h3>vendor.json — manifiesto</h3>
+      <p>12 entradas <code>{id, repo, sha, fecha, licencia, por_defecto, proposito}</code>.
+      Validación en build: ids únicos <code>^[a-z0-9-]+$</code>, SHA de 40 hex, repo https,
+      la entrada <code>oasis</code> debe coincidir con el SHA auditado.</p>
+    </div>
+    <div class="caja">
+      <h3>scripts/vendor.sh — clonado</h3>
+      <ul>
+        <li><code>--check</code>: <code>rev-parse HEAD</code> == sha; si no, DERIVA y exit 1. Nunca toca un clon existente.</li>
+        <li>clon nuevo: <code>init + fetch --depth 1 origin &lt;sha&gt; + checkout FETCH_HEAD</code>.</li>
+        <li><code>--only id…</code> · <code>--all</code> · <code>--list</code>.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="caja" style="margin-top:14px">
+    <h3>Reescritura de enlaces al publicar</h3>
+    <p>En la web y el zip, toda ruta <code>vendor/&lt;id&gt;/ruta#Lx-Ly</code> se reescribe a
+    <code>github.com/&lt;repo&gt;/blob/&lt;sha&gt;/ruta#Lx-Ly</code> (directorios →
+    <code>tree/&lt;sha&gt;</code>): el lector siempre aterriza en el commit fijado, nunca en
+    vuestro HEAD. Ningún código de terceros viaja en los zips.</p>
+  </div>
+
+  <h2>2 · Mapa Oasis (@ 9a657b7, v1.0.7, AGPL)</h2>
+  <p class="intro">Lo que la auditoría lee y lo que observó. El «seam» de Banking son
+  <b>14 métodos RPC</b> hacia el daemon.</p>
+  <div class="tw">
+    <table>
+      <tr><th>Sitio</th><th>Hecho observado</th></tr>
+      <tr><td class="sitio">banking_model.js:1004, :1416</td><td><span class="fs">el dinero solo sale por <b>sendtoaddress</b>; no hay otra vía de gasto en el módulo</span></td></tr>
+      <tr><td class="sitio">banking_model.js (seam RPC)</td><td><span class="fs">timeout de <b>1500 ms</b> con reintento → posible <b>doble envío</b></span></td></tr>
+      <tr><td class="sitio">banking_model.js</td><td><span class="fs">validación de dirección por regex <code>^E</code> repetida ×12 · literal <code>coin:"ECO"</code> ×7 (multi-moneda exigiría parametrizar)</span></td></tr>
+      <tr><td class="sitio">banking_model.js</td><td><span class="fs"><code>processPendingClaims</code> ≠ <code>computeEpoch</code> · el <b>hash de época no se publica</b> (verificación externa imposible)</span></td></tr>
+      <tr><td class="sitio">POST /update</td><td><span class="fs">borra <code>src/configs/*.json</code> trackeados — actualizar pisa configuración local</span></td></tr>
+      <tr><td class="sitio">banking_model.js:832-840</td><td><span class="fs">el <b>karma</b> pesa en operaciones — el backlog lo saca de la política (RP-4/TK-32)</span></td></tr>
+      <tr><td class="sitio">transfers_model.js:25, :230-231, :233-234</td><td><span class="fs">categorías <code>ECONOMIC / TIME / TRUST</code> · importe positivo obligatorio · <code>deadline</code> obligatoria en <code>createTransfer</code></span></td></tr>
+      <tr><td class="sitio">parliament_model.js:17-26, :28</td><td><span class="fs">constantes de gobierno (TERM_DAYS 60, umbral 25 %) y ventana electoral <code>termWindowFor</code> / <code>resolveElectionImpl</code></span></td></tr>
+      <tr><td class="sitio">parliament_model.js:1102, :1145-1147, :1298</td><td><span class="fs"><code>enactApprovedChanges</code> promulga al morir el mandato · derogación sin memoria · <code>canPropose</code> abierto</span></td></tr>
+      <tr><td class="sitio">parliament_model.js:373-393</td><td><span class="fs"><code>virtualAnarchyTerm</code>: qué pasa cuando nadie gobierna</span></td></tr>
+      <tr><td class="sitio">courts_model.js:139-155, :368, :805</td><td><span class="fs"><code>nominateJudge</code>/<code>voteNomination</code> (jueces electos, modo DICTATOR presente) · el karma ordena candidaturas</span></td></tr>
+      <tr><td class="sitio">larp_model.js:576</td><td><span class="fs">transparencia del gobernante: dato existente, sin vista (RP-10/TK-36)</span></td></tr>
+    </table>
+  </div>
+
+  <h2>3 · Mapa FairCoin (@ 8e9b8f5, MIT)</h2>
+  <p class="intro">Hecho sin adjetivo: sin commits desde 2022-02-05, código completo, compila
+  con <code>depends/</code>, citable. Proof-of-Cooperation con firmas CVN.</p>
+  <div class="tw">
+    <table>
+      <tr><th>Sitio</th><th>Qué hay</th></tr>
+      <tr><td class="sitio">src/poc.cpp:944</td><td><span class="fs"><code>CheckProofOfCooperation</code> — validación del bloque PoC</span></td></tr>
+      <tr><td class="sitio">src/poc.cpp:1209</td><td><span class="fs"><code>CheckNextBlockCreator</code> — turno del CVN creador</span></td></tr>
+      <tr><td class="sitio">src/poc.cpp:525, :698</td><td><span class="fs"><code>CvnVerifyChainSignature</code> · <code>CheckAdminSignature(…, fCoinSupply)</code> — la emisión exige firma admin</span></td></tr>
+      <tr><td class="sitio">src/poc.cpp:882, :902, :915</td><td><span class="fs"><code>UpdateChainAdmins</code> · <code>SetCoinSupplyStatus</code> · <code>UpdateChainParameters</code></span></td></tr>
+      <tr><td class="sitio">src/chainparams.cpp:89-96, :109-110</td><td><span class="fs">dynParams y <code>vChainAdmins[0]</code> con pubkey <b>hardcodeada</b> (testnet :194-195, regtest :279-280; validación :351-387) — génesis nuevo = recompilar…</span></td></tr>
+      <tr><td class="sitio">fairchains/src/fairchains-tool.cpp:253-254, :308-313, :357</td><td><span class="fs">…o no: <code>CreateGenesisBlock</code> con <code>vCvns</code>/<code>vChainAdmins</code> <b>desde JSON</b>, sin recompilar</span></td></tr>
+      <tr><td class="sitio">src/init.cpp:1118-1131</td><td><span class="fs"><code>-cvn=fasito|file</code> — llave física o <code>cvn.pem</code> (usos en poc.cpp:67, :2030, :2302; firmware en <code>vendor/fasito</code>)</span></td></tr>
+      <tr><td class="sitio">src/rpc/cvn.cpp:59, :113, :820, :913, :1116, :1185, :1219</td><td><span class="fs"><code>getactivecvns · getactiveadmins · addcvn · removecvn · fasito · bancvn · setchainparameters</code></span></td></tr>
+      <tr><td class="sitio">src/rpc/client.cpp:100-105</td><td><span class="fs"><code>addcoinsupply</code> — la única puerta de emisión (nota: <code>getinfo.coinsupply</code>, no <code>moneysupply</code>; no existe <code>getmininginfo</code>)</span></td></tr>
+      <tr><td class="sitio">doc/on-proof-of-cooperation.md:19, :37 · doc/CVN-operators-guide.md:101, :128</td><td><span class="fs">doctrina original: «Who's next», Fasito, criterios socio-políticos de alta de CVN (§4.1) y remoción (§4.5)</span></td></tr>
+    </table>
+  </div>
+
+  <h2>4 · Costuras de integración propuestas (backlog, sin implementar)</h2>
+  <p class="intro">Cada RPC admin queda subordinado a una regla política del modelo: <b>ningún
+  acto de cadena sin ley promulgada</b> (<code>lawId</code>). Es la tesis técnica central del
+  roadmap.</p>
+  <div class="tw">
+    <table>
+      <tr><th>Tarea</th><th>Costura</th><th>Regla política que la gobierna</th></tr>
+      <tr><td class="sitio num">TK-C01</td><td><span class="fs"><code>addcvn / removecvn / bancvn</code></span></td><td><span class="fs">admisión de CVN por doble voto (tribu + general); admin = ejecutivo electo</span></td></tr>
+      <tr><td class="sitio num">TK-C02</td><td><span class="fs"><code>setchainparameters</code> ↔ <code>UpdateChainParameters</code></span></td><td><span class="fs">cambiar parámetros de cadena = ley promulgada, nunca decreto</span></td></tr>
+      <tr><td class="sitio num">TK-C03</td><td><span class="fs"><code>addcoinsupply</code> ↔ <code>CheckAdminSignature(fCoinSupply)</code></span></td><td><span class="fs">emisión solo a tesoro multifirma k-de-n, dentro del presupuesto del ciclo</span></td></tr>
+      <tr><td class="sitio num">TK-C04</td><td><span class="fs">génesis con <code>fairchains-tool</code> (JSON)</span></td><td><span class="fs">cadena nueva; no se recompila chainparams ni se toca la vuestra</span></td></tr>
+      <tr><td class="sitio num">TK-C05</td><td><span class="fs"><code>-cvn=file</code> vs Fasito</span></td><td><span class="fs">custodia de claves con topes y cargos revocables</span></td></tr>
+      <tr><td class="sitio num">TK-C06</td><td><span class="fs">guía CVN §4.1 / §4.5</span></td><td><span class="fs">certificación y remoción de operadores con criterios escritos</span></td></tr>
+      <tr><td class="sitio num">TK-84</td><td><span class="fs">CLI de admin</span></td><td><span class="fs">rechaza todo acto sin <code>lawId</code> — el mapa acción↔ley es ejecutable</span></td></tr>
+    </table>
+  </div>
+
+  <h2>5 · Verificación reproducible</h2>
+  <p class="intro">Lo que cualquiera puede correr sobre el catálogo para comprobar que esto es
+  verdad y sigue siéndolo:</p>
+  <pre><span class="c"># los 12 clones están exactamente en su commit (nunca en vuestro HEAD)</span>
+scripts/vendor.sh --check        <span class="ok"># → 12 OK, exit 0; deriva → exit 1</span>
+scripts/vendor.sh --list         <span class="c"># tabla id · repo · sha · licencia</span>
+
+<span class="c"># el manifiesto es coherente y la web no cita nada fuera de los SHA</span>
+.venv/bin/modelador check
+grep -r "base/teoria/vendor" public/        <span class="ok"># → vacío</span>
+git ls-files | grep vendor                  <span class="ok"># → vacío: nada vuestro en nuestro árbol</span>
+
+<span class="c"># las marcas de opinión están erradicadas del catálogo</span>
+grep -rniE "muert|cero líneas|no se vendoriza" README.md THIRD_PARTY.md llms.md
+                                            <span class="ok"># → sin resultados</span></pre>
+
+  <div class="pie">
+    <span>lado funcional: Aguas Arriba</span>
+    <span>catálogo: alephscriptorium-eng.github.io/modelador-redes</span>
+    <span>GPL-3.0-or-later · líneas citadas sobre los SHA fijados — contrastar antes de abrir issue</span>
+  </div>
+
+</div>
