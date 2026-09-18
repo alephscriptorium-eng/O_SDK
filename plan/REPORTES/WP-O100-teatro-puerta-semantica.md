@@ -64,6 +64,18 @@ portada con `<svg>` y sin `<script>`; catálogo con «Leer el sistema». Vecinos
 (npm y rooms 200, admin y scriptorium 404, mcp 502 preexistente). Caddy sin tocar.
 Backup: `devops/backups/teatro/aleph-cero/20260918T110213Z/` (incluye `lore-editorial.tgz`).
 
+## Revisión del custodio (2026-09-18, misma sesión) — aplicada y desplegada
+
+| Corrección | Qué se hizo |
+|---|---|
+| «No hay 12 letras: el texto aportado se reparte por las piezas de vídeo» | La letra pasa a ser del cantar entero (`album.lyrics`): se publica íntegra en `/cantar/#letra`; ningún corte dice ya «letra pendiente» y cada uno remite a ella. El álbum, no un corte, mapea a los constructos |
+| Portada y título con cabecera, pie y licencia como los medidores | `obra.json → imprint`: cabecera «Animus Iocandi · Hipernivola transmedia · Scriptorium Skins» sobre el título y colofón «Escrivivir · Scriptorium Skins · Animus Iocandi · Aleph Cero · F.A.R.O. · Material transmedia para agentes del juego ARG · GPL-3.0 · Repositorio» en **todas** las páginas (mismos enlaces que los medidores). Genérico y documentado |
+| Perplexity: se cancela el rescate | `link-mark --status link_only --waived-by custodio`: nueva vía de dispensa expresa para shares de agente, anotada en el store. Enlaces: 331 ok · 27 link_only · 6 gone · **0 pendientes** |
+| Alt del enlace que faltaba (foto del tuit de WikiLeaks) | `voice_notes` en la capa curada: va como `alt` de la foto y como «Descripción del custodio», en el sitio y en `corpus/external/…md`, rotulada para que no se confunda con texto de la voz |
+| «Lo que no afirmaste lo afirmas… nada de que se queda en el dosier privado» | Constructo nuevo en Teoría, **«Sacar la cabeza»** (22 en total): el mensaje que la obra repite —«sacar la cabeza equivale a soportar años de represión, como Mujica que llegó a ser presidente tras 12 años de luz»—, la última estrofa del cantar, El Silo T3×10, WikiLeaks y los drones, la historia del bereber como homeomorfía, *Black Mirror*, y los posts del archivo que lo sostienen (perfil bajo, preso político, calabozo, «sufrí while Assange no freed… But...», 😥 → 🫰). Enlazado desde «Arquetipos», el concepto y el cantar |
+
+151 citas literales verificadas; tests 9/9; guardas verdes.
+
 ## Pendiente para la sesión de revisión del custodio
 
 Seguir `docs/PUB/TEATRO-CURADURIA-PROTOCOL.md` §3:
@@ -71,10 +83,8 @@ Seguir `docs/PUB/TEATRO-CURADURIA-PROTOCOL.md` §3:
 1. Revisar territorios, constructos, selección y textos; mover, fusionar o renombrar; **firmar**
    (`curated_by`, `curated_at`). Hoy la firma dice «propuesta del editor (Claude), pendiente de
    revisión del custodio» y así se muestra en producción.
-2. Aportar las **12 letras** que faltan de «El cantar» y su mapeo a constructos.
-3. Decidir sobre la portada (sigilo v1) y el título de la puerta («El sistema»).
-4. No afirmado en la obra, por no verificable o por matiz: El Silo T3 y su final; «drones» frente a
-   la cámara de helicóptero de *Collateral Murder* (queda como licencia de la canción).
-5. Flecos de WP-O99: enlace de Perplexity (permiso de la extensión), enlace `t.co` del tuit de
-   WikiLeaks, el retuit llano posterior al export (entrará con la próxima generación) y **copiar los
-   backups fuera de la máquina**.
+2. Decidir sobre el sigilo de portada (v1) y, si se quiere, repartir la letra corte a corte
+   (`tracks[].lyrics`) cuando el custodio indique qué tramo va en cada vídeo.
+3. Confirmar la licencia del colofón (**GPL-3.0**, tomada de los medidores; el repo o-sdk usa AIPL v1.0).
+4. El retuit llano posterior al export entrará con la próxima generación. **Copiar los backups fuera
+   de la máquina.**
