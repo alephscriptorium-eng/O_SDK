@@ -359,3 +359,23 @@ blockquote.ctx .no-dispo { opacity: 0.6; font-style: italic; }
 .doc summary { cursor: pointer; font-weight: 700; }
 .doc a { border-bottom: 1px solid #000; text-decoration: none; word-break: break-all; }
 .doc table { font-size: 0.68rem; }
+
+/* ── capa curada: portada, sistema, cantar ── */
+.cover { margin: 18px auto 6px; max-width: 420px; text-align: center; }
+.cover svg { width: 100%; height: auto; display: block; }
+.cover figcaption { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; margin-top: 6px; }
+.concepto { border: 2px solid #000; background: #fff; padding: 6px 16px; }
+.curado { border: 1.5px dashed #000; padding: 6px 10px; font-size: 0.62rem; line-height: 1.5; margin: 10px 0 14px; }
+.puerta-curada { border-width: 3px; }
+.territorio { margin-bottom: 18px; }
+.constructos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.constructo { border: 2px solid #000; background: #fff; padding: 10px 12px; }
+.constructo .p-title { display: block; font-weight: 700; text-transform: uppercase; font-size: 0.74rem; letter-spacing: 0.04em; text-decoration: none; margin-bottom: 5px; }
+.constructo .p-title:hover { background: #000; color: #fff; }
+.constructo .p-copy { font-size: 0.64rem; line-height: 1.5; margin-bottom: 7px; }
+h3.sub-acto { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1.5px solid #000; padding-bottom: 3px; margin: 22px 0 10px; }
+.chips { margin-top: 8px; font-size: 0.62rem; }
+.chips a { display: inline-block; border: 1.5px solid #000; border-radius: 10px; padding: 1px 8px; margin: 2px 4px 2px 0; text-decoration: none; background: #fff; }
+.chips a:hover { background: #000; color: #fff; }
+.letra p { margin: 1.1em 0; line-height: 1.75; }
+.doc a[href*="/posts/"] { word-break: normal; white-space: nowrap; font-size: 0.9em; }

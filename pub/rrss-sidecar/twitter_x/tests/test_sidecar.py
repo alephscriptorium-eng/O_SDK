@@ -175,6 +175,77 @@ class SidecarCase(unittest.TestCase):
         self.assertIn("ip-audit.js", problems)
         self.assertIn("<script>", problems)
 
+    def write_editorial(self, **override):
+        ed = self.obra.editorial_dir
+        (ed / "constructos").mkdir(parents=True)
+        (ed / "concepto.md").write_text("<!-- nota privada -->\nLa obra dice «raíz del hilo» [[101]].", encoding="utf-8")
+        (ed / "constructos" / "idea.md").write_text("Nace con «segundo (…) hilo» [[102]] y <b>no es HTML</b>.", encoding="utf-8")
+        (ed / "letra.md").write_text("verso uno\nverso dos\n", encoding="utf-8")
+        (ed / "portada.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9"><circle cx="4" cy="4" r="3"/></svg>',
+                                        encoding="utf-8")
+        data = {"version": 1, "curated_by": "custodio", "curated_at": "2026-06-02", "concept": "concepto.md",
+                "cover": "portada.svg", "territories": [{"slug": "teoria", "title": "Teoría", "constructs": [
+                    {"slug": "idea", "title": "La idea", "text": "constructos/idea.md", "first_id": "101",
+                     "post_ids": ["105", "199", "7777"], "thread_roots": ["101"], "terms": ["réplica"]},
+                    {"slug": "otra", "title": "Otra", "post_ids": ["103"]}]}],
+                "album": {"title": "El cantar", "tracks": [{"n": 1, "title": "Corte", "lyrics": "letra.md",
+                                                            "video": "https://example.org/v", "constructs": ["idea"]}]}}
+        data.update(override)
+        (ed / "obra-semantica.json").write_text(json.dumps(data), encoding="utf-8")
+
+    def test_editorial_layer(self):
+        from lib import editorial, guards, normalize, store
+        from tools import build_corpus, build_site
+        store.ingest(self.obra)
+        out = self.obra.out
+        build_corpus.build(self.obra, out)
+        build_site.build(self.obra, out)
+        self.assertFalse((out / "sistema").exists(), "sin capa editorial no hay puerta curada")
+        self.assertFalse((out / "indexes" / "sistema.md").exists())
+        self.assertTrue((out / "conversaciones.html").is_file())
+        self.assertTrue((out / "interlocutores" / "index.html").is_file())
+
+        self.write_editorial()
+        records = normalize.records(self.obra)
+        ed = editorial.Editorial(self.obra, records, normalize.threads_of(records))
+        report = ed.check()
+        self.assertEqual(ed.problems, [])
+        self.assertEqual(report["quotes_checked"], 2)
+        self.assertEqual(ed.constructs["idea"]["curated"], {"101", "102", "105"})
+        self.assertEqual(ed.constructs["otra"]["mechanical"], [], "lo curado no se repite como mecánico")
+        self.assertEqual(ed.constructs["idea"]["mechanical"], ["103"])
+        warned = "\n".join(ed.warnings)
+        self.assertIn("199", warned, "un post borrado se avisa y se omite")
+        self.assertIn("7777", warned)
+
+        build_corpus.build(self.obra, out)
+        build_site.build(self.obra, out)
+        self.assertEqual(guards.check(out), [])
+        page = (out / "sistema" / "idea.html").read_text(encoding="utf-8")
+        self.assertIn("/teatro/prueba/posts/102.html", page)
+        self.assertIn("&lt;b&gt;no es HTML", page)
+        portada = (out / "index.html").read_text(encoding="utf-8")
+        self.assertIn("<svg", portada)
+        self.assertNotIn("nota privada", portada)
+        self.assertIn("Leer la obra", portada)
+        self.assertIn("Recorrer el archivo", portada)
+        self.assertIn("/teatro/prueba/sistema/idea.html", (out / "posts" / "105.html").read_text(encoding="utf-8"))
+        self.assertIn("verso uno", (out / "cantar" / "01.html").read_text(encoding="utf-8"))
+        self.assertIn("CAPA CURADA", (out / "indexes" / "sistema.md").read_text(encoding="utf-8"))
+
+        # hostil: cita inventada, portada activa y ruta que se escapa del lore
+        (self.obra.editorial_dir / "concepto.md").write_text("«esto no lo dijo» [[101]]", encoding="utf-8")
+        (self.obra.editorial_dir / "portada.svg").write_text('<svg onload="x()"></svg>', encoding="utf-8")
+        bad = editorial.Editorial(self.obra, records, normalize.threads_of(records))
+        bad.raw["album"]["text"] = "../obra.json"
+        bad.check()
+        problems = "\n".join(bad.problems)
+        self.assertIn("cita no literal", problems)
+        self.assertIn("portada no admitida", problems)
+        self.assertIn("fuera de editorial", problems)
+        (out / "suelto.svg").write_text('<svg><script>1</script></svg>', encoding="utf-8")
+        self.assertIn("SVG con contenido activo", "\n".join(guards.check(out)))
+
     def test_voices_plan_and_legacy_migration(self):
         from lib import store, voices
         store.ingest(self.obra)

@@ -18,6 +18,7 @@ from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from lib import editorial as editorial_lib  # noqa: E402
 from lib import links as links_lib  # noqa: E402
 from lib import normalize, voices, ytd  # noqa: E402
 from lib.guards import BRAIN_DATA  # noqa: E402
@@ -33,7 +34,7 @@ FAMILY_LABEL = {"agent": "Conversaciones con agentes", "github": "Código (GitHu
                 "video": "Vídeo", "generic": "Otras páginas"}
 STATUS_LABEL = {"link_only": "se queda como enlace", "gone": "ya no existe", "pending": "pendiente",
                 "pending_browser": "pendiente de navegador", "error": "no recuperado", "blocked": "no público"}
-INFRA_COPY = ("sidecar.py", "lib", "tools", "templates", "patches", "README.md")
+INFRA_COPY = ("sidecar.py", "lib", "tools", "templates", "patches", "editorial.example", "README.md")
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -215,6 +216,7 @@ class Site:
         self.threads = normalize.threads_of(self.records)
         self.tweets = voices.published(obra)
         self.links = links_lib.load(obra)
+        self.editorial = editorial_lib.Editorial(obra, self.records, self.threads, self.links)
         primary = obra.primary()
         self.primary_dir = primary["dir"]
         self.generation = primary["generation"]
@@ -227,6 +229,8 @@ class Site:
         b = self.base
         return (
             f'<div class="nav-top"><a href="/teatro/">← Teatro</a> · <a href="{b}/">{esc(self.title)}</a>'
+            + (f' · <a href="{b}/sistema/">Sistema</a>' if self.editorial.territories else "")
+            + (f' · <a href="{b}/cantar/">Cantar</a>' if self.editorial.tracks else "") +
             f' · <a href="{b}/cronologia/">Cronología</a> · <a href="{b}/hilos/">Hilos</a>'
             f' · <a href="{b}/hashtags/">Hashtags</a> · <a href="{b}/tipos.html">Tipos</a>'
             f' · <a href="{b}/externos.html">Externos</a> · <a href="{b}/enlaces/">Enlaces</a>'
@@ -348,6 +352,10 @@ class Site:
         if r["hashtags"]:
             tags = "".join(f'<a href="{b}/hashtags/{quote(self.tag_slugs[t])}.html">#{esc(t)}</a>' for t in r["hashtags"])
             parts.append(f'<div class="tags">{tags}</div>')
+        slugs = self.editorial.post_constructs.get(r["id"])
+        if slugs:
+            chips = "".join(f'<a href="{b}/sistema/{s}.html">{esc(self.editorial.constructs[s]["title"])}</a>' for s in slugs)
+            parts.append(f'<div class="chips"><span class="k">curado en</span> {chips}</div>')
         parts.append("</article>")
         return "\n".join(p for p in parts if p)
 
@@ -433,6 +441,10 @@ class Site:
 
         self.externos()
         n_link_pages = self.enlaces()
+        self.conversaciones()
+        n_people = self.interlocutores()
+        n_constructs = self.sistema()
+        n_tracks = self.cantar()
 
         # permalinks
         for r in records:
@@ -459,8 +471,11 @@ class Site:
         copied = self.payload()
         n_pages = sum(1 for _ in out.rglob("*.html"))
         stats = {"pages": n_pages, "posts": len(records), "months": len(months), "threads": len(threads),
-                 "tags": len(self.tag_slugs), "voices": len(self.tweets), "link_pages": n_link_pages, "copied": copied}
+                 "tags": len(self.tag_slugs), "voices": len(self.tweets), "link_pages": n_link_pages, "people": n_people,
+                 "constructs": n_constructs, "tracks": n_tracks, "copied": copied}
         print("site build ok ·", " · ".join(f"{k}: {v}" for k, v in stats.items()))
+        for line in self.editorial.problems + self.editorial.warnings:
+            print("   editorial ·", line)
         return stats
 
     def portada(self, months, tag_ids) -> None:
@@ -483,10 +498,21 @@ class Site:
             f'<div class="stat"><span class="val">{v}</span><span class="lbl">{lbl}</span></div>'
             for v, lbl in ((len(records), "posts"), (n_media, "media"), (len(self.threads), "hilos"),
                            (len(tag_ids), "hashtags"), (len(self.tweets), "voces ajenas"), (n_links, "enlaces")))
+        ed = self.editorial
+        leer = []
+        if ed.territories:
+            leer.append((ed.raw.get("title") or "El sistema", ed.raw.get("copy") or
+                         f"{len(ed.constructs)} constructos en {len(ed.territories)} territorios: qué explica la obra y dónde nace cada idea.",
+                         f"{b}/sistema/"))
+        if ed.tracks:
+            leer.append((ed.album.get("title") or "El cantar", ed.album.get("copy") or f"{len(ed.tracks)} cortes.", f"{b}/cantar/"))
+        n_people = len({m.lower() for r in records for m in (r["mentions"][:1] if r["kind"] == "retweet" else r["mentions"])})
         puertas = [
             ("Cronología", f"Los actos: la obra mes a mes, {span}, texto y media completos.", f"{b}/cronologia/"),
             ("Hilos", f"{len(self.threads)} escenas: cadenas de dos o más posts propios, en orden.", f"{b}/hilos/"),
             ("Enlaces", f"{n_links} páginas enlazadas traídas a Markdown; {n_conv} son conversaciones con agentes.", f"{b}/enlaces/"),
+            ("Conversaciones", f"{n_conv} conversaciones con agentes, íntegras y por agente, con los posts que las citan.", f"{b}/conversaciones.html"),
+            ("Interlocutores", f"{n_people} cuentas a las que la obra habla: réplicas, menciones y RT, por persona.", f"{b}/interlocutores/"),
             ("Externos", "Las voces ajenas: originales de RT, padres de réplicas y tuits citados, a dos niveles.", f"{b}/externos.html"),
             ("Hashtags", f"{len(tag_ids)} etiquetas del archivo. Solo estas; ninguna inferida.", f"{b}/hashtags/"),
             ("Tipos", "Partición mecánica: original, hilo, réplica, RT.", f"{b}/tipos.html"),
@@ -494,9 +520,25 @@ class Site:
         ]
         if self.obra.publish["viewer"]:
             puertas.append(("Navegador", "El visor del archivo, limpio y sin CDNs: línea de tiempo con búsqueda. Requiere JavaScript.", f"{b}/navegador.html"))
-        puertas_html = "".join(
-            f'<div class="puerta"><div class="p-title">{esc(t)}</div><div class="p-copy">{esc(c)}</div>'
-            f'<a class="door-link" href="{u}">Entrar →</a></div>' for t, c, u in puertas)
+        def doors(items, cls=""):
+            return "".join(
+                f'<div class="puerta{cls}"><div class="p-title">{esc(t)}</div><div class="p-copy">{esc(c)}</div>'
+                f'<a class="door-link" href="{u}">Entrar →</a></div>' for t, c, u in items)
+
+        puertas_html = ('<h2 class="acto">Recorrer el archivo</h2>'
+                        '<div class="acto-sub">Puertas mecánicas: salen de los campos del archivo, sin juicio.</div>'
+                        f'<div class="puertas">{doors(puertas)}</div>')
+        if leer:
+            firma = " · ".join(x for x in (ed.raw.get("curated_by"), ed.raw.get("curated_at")) if x)
+            puertas_html = (
+                '<h2 class="acto">Leer la obra</h2>'
+                f'<div class="acto-sub">Puertas curadas{": " + esc(firma) if firma else ""}. Una lectura, no un campo del archivo.</div>'
+                f'<div class="puertas">{doors(leer, " puerta-curada")}</div>' + puertas_html)
+        cover = ed.cover_svg()
+        cover_html = (f'<figure class="cover">{cover}<figcaption>{esc(ed.raw.get("cover_caption") or "")}</figcaption></figure>'
+                      if cover else "")
+        concept = ed.text(ed.raw.get("concept")) if ed.raw.get("concept") else ""
+        concept_html = f'<article class="doc concepto">{self.ed_html(concept)}</article>' if concept else ""
         z, c = self.zip_name, self.brain_zip
         descarga = (
             '<div class="descarga"><div class="descarga-main">'
@@ -518,6 +560,7 @@ class Site:
             '<div class="sub">Teatro del Scriptorium</div>'
             f'<div class="sub2">{esc(self.obra.cfg.get("tagline") or "El archivo de una cuenta como pieza en actos, escenas y apartes.")}</div>'
             f'<div class="issue">TEATRO · {self.generation[:4]}</div></header><div class="washi"></div>'
+            + cover_html
             + (f'<div class="banner"><img src="{b}/data/profile_media/{quote(banner.name)}" alt="Cabecera del perfil"></div>' if banner else "")
             + '<div class="perfil">'
             + (f'<img class="avatar" src="{b}/data/profile_media/{quote(avatar.name)}" alt="Avatar">' if avatar else "")
@@ -527,12 +570,211 @@ class Site:
             f'<div class="meta">{esc((profile.get("description") or {}).get("location") or "")}</div></div></div>'
             + f'<div class="stats-bar">{stats}</div>'
             + '<div class="callout">Texto verbatim · citar por id · nada inventado</div>'
+            + concept_html
+            + puertas_html
             + descarga
-            + f'<div class="puertas">{puertas_html}</div>'
         )
         write_text(self.out / "index.html", self.page(
             f"{self.title} · Teatro del Scriptorium", portada,
             f"{self.title}: el archivo de @{self.obra.handle} como obra estática. {len(records)} posts, hilos, voces ajenas, enlaces y media."))
+
+    # capa curada
+    def ed_html(self, markdown: str) -> str:
+        """Markdown editorial → HTML: sin comentarios, con `[[id]]` enlazado al permalink."""
+        clean = re.sub(r"<!--.*?-->", "", markdown, flags=re.S)
+        return md_to_html(editorial_lib.link_posts(
+            clean, lambda pid: f"{self.base}/posts/{pid}.html" if pid in self.by_id else None))
+
+    def curado(self) -> str:
+        raw = self.editorial.raw
+        firma = " · ".join(x for x in (raw.get("curated_by"), raw.get("curated_at")) if x)
+        return (f'<div class="curado">Capa curada{" por " + esc(firma) if firma else ""}. Es una lectura: '
+                "la selección y la glosa son del editor; las citas son literales y remiten al post por su id.</div>")
+
+    @staticmethod
+    def prune(directory: Path, keep: set[str]) -> None:
+        if directory.is_dir():
+            for stale in directory.glob("*.html"):
+                if stale.stem not in keep:
+                    stale.unlink()
+
+    def pn(self, folder: str, items: list[tuple[str, str]], i: int) -> str:
+        b = self.base
+        prev_ = f'<a href="{b}/{folder}/{items[i-1][0]}.html">← {esc(items[i-1][1])}</a>' if i else "<span></span>"
+        next_ = f'<a href="{b}/{folder}/{items[i+1][0]}.html">{esc(items[i+1][1])} →</a>' if i + 1 < len(items) else "<span></span>"
+        return f'<div class="pn">{prev_}{next_}</div>'
+
+    def sistema(self) -> int:
+        ed, b, out = self.editorial, self.base, self.out / "sistema"
+        if not ed.territories:
+            shutil.rmtree(out, ignore_errors=True)
+            return 0
+        title = ed.raw.get("title") or "El sistema"
+        blocks = []
+        for t in ed.territories:
+            cards = ""
+            for c in t["constructs"]:
+                born = f'nace {self.by_id[c["first_id"]]["created_at"][:10]} · ' if c["first_id"] else ""
+                cards += (f'<div class="constructo"><a class="p-title" href="{b}/sistema/{c["slug"]}.html">{esc(c["title"])}</a>'
+                          f'<div class="p-copy">{esc(c["copy"])}</div>'
+                          f'<div class="k">{born}{len(c["curated"])} curados · {len(c["mechanical"])} menciones</div></div>')
+            blocks.append(f'<section class="territorio"><h2 class="acto">{esc(t["title"])}</h2>'
+                          f'<div class="acto-sub">{esc(t["copy"])}</div><div class="constructos">{cards}</div></section>')
+        concept = ed.text(ed.raw.get("concept")) if ed.raw.get("concept") else ""
+        write_text(out / "index.html", self.page(
+            f"{title} · {self.title}",
+            f'<h2 class="acto">{esc(title)}</h2>' + self.curado()
+            + (f'<article class="doc concepto">{self.ed_html(concept)}</article>' if concept else "") + "".join(blocks),
+            ed.raw.get("copy") or ""))
+        order = [c for t in ed.territories for c in t["constructs"]]
+        steps = [(c["slug"], c["title"]) for c in order]
+        for i, c in enumerate(order):
+            territory = next(t for t in ed.territories if t["slug"] == c["territory"])
+            body = [f'<h2 class="acto">{esc(c["title"])}</h2>',
+                    f'<div class="acto-sub">{esc(territory["title"])} · <a href="{b}/sistema/">{esc(title)}</a></div>', self.curado()]
+            prose = ed.text(c["text"]) if c["text"] else ""
+            if prose:
+                body.append(f'<article class="doc">{self.ed_html(prose)}</article>')
+            if c["first_id"]:
+                body.append('<h3 class="sub-acto">Nace en</h3>' + self.post_html(self.by_id[c["first_id"]]))
+            chosen = sorted((self.by_id[i] for i in c["post_ids"] if i != c["first_id"]), key=lambda r: (r["created_at"], r["id"]))
+            if chosen:
+                body.append(f'<h3 class="sub-acto">Posts que lo explican ({len(chosen)})</h3>'
+                            + "\n".join(self.post_html(r) for r in chosen))
+            if c["thread_roots"]:
+                filas = "".join(
+                    f'<div class="fila"><time>{self.threads[root][0]["created_at"][:10]}</time> '
+                    f'<span class="k">{len(self.threads[root])} posts</span> '
+                    f'<a href="{b}/hilos/{root}.html">{esc(excerpt(self.by_id[root]["text"]) or root)}</a></div>'
+                    for root in c["thread_roots"])
+                body.append(f'<h3 class="sub-acto">Hilos</h3><div class="listado">{filas}</div>')
+            if c["link_hashes"]:
+                filas = ""
+                for key in c["link_hashes"]:
+                    entry = self.links[key]
+                    url = f"{b}/enlaces/{key}.html" if entry.get("status") == "ok" else esc(entry["url"])
+                    filas += (f'<div class="fila"><span class="k">{esc(entry.get("family", ""))}</span> '
+                              f'<a href="{url}">{esc(entry.get("title") or entry["url"])}</a></div>')
+                body.append(f'<h3 class="sub-acto">Enlaces</h3><div class="listado">{filas}</div>')
+            if c["mechanical"]:
+                terms = " · ".join(f"<code>{esc(t)}</code>" for t in c["terms"])
+                body.append(f'<h3 class="sub-acto">También lo mencionan ({len(c["mechanical"])})</h3>'
+                            f'<div class="acto-sub">Búsqueda mecánica, sin selección: {terms}</div>'
+                            f'<div class="listado">{"".join(self.fila(self.by_id[i]) for i in c["mechanical"])}</div>')
+            body.append(self.pn("sistema", steps, i))
+            write_text(out / f'{c["slug"]}.html', self.page(f'{c["title"]} · {self.title}', "\n".join(body), c["copy"]))
+        self.prune(out, {"index"} | set(ed.constructs))
+        return len(order)
+
+    def cantar(self) -> int:
+        ed, b, out = self.editorial, self.base, self.out / "cantar"
+        if not ed.tracks:
+            shutil.rmtree(out, ignore_errors=True)
+            return 0
+        album = ed.album
+        title = album.get("title") or "El cantar"
+        steps = [(f'{t["n"]:02d}', t["title"]) for t in ed.tracks]
+        rows = "".join(
+            f'<tr><td class="num">{num}</td><td>{esc(t["side"])}</td><td><a href="{b}/cantar/{num}.html">{esc(t["title"])}</a></td>'
+            f'<td class="num">{esc(t["duration"])}</td><td>{"letra" if t["lyrics"] else "—"}</td></tr>'
+            for (num, _), t in zip(steps, ed.tracks))
+        intro = ed.text(album.get("text")) if album.get("text") else ""
+        source = f' · <a href="{esc(album["url"])}">lista de reproducción</a>' if str(album.get("url") or "").startswith("https://") else ""
+        write_text(out / "index.html", self.page(
+            f"{title} · {self.title}",
+            f'<h2 class="acto">{esc(title)}</h2><div class="acto-sub">{esc(album.get("copy") or "")}{source}</div>' + self.curado()
+            + (f'<article class="doc">{self.ed_html(intro)}</article>' if intro else "")
+            + f'<table class="tbl"><tr><th>#</th><th>Cara</th><th>Corte</th><th>Dur.</th><th>Letra</th></tr>{rows}</table>',
+            album.get("copy") or ""))
+        for i, t in enumerate(ed.tracks):
+            num = steps[i][0]
+            meta = " · ".join(x for x in (esc(t["side"]), esc(t["duration"]),
+                                          f'<a href="{esc(t["video"])}">ver el vídeo</a>' if t["video"] else "") if x)
+            body = [f'<h2 class="acto">{num} · {esc(t["title"])}</h2>',
+                    f'<div class="acto-sub">{meta} · <a href="{b}/cantar/">{esc(title)}</a></div>']
+            if t["note"]:
+                body.append(f'<div class="ficha">{esc(t["note"])}</div>')
+            lyrics = ed.text(t["lyrics"]) if t["lyrics"] else ""
+            body.append(f'<article class="doc letra">{self.ed_html(lyrics)}</article>' if lyrics
+                        else '<p class="no-dispo">Letra pendiente de que la aporte el custodio.</p>')
+            if t["constructs"]:
+                chips = "".join(f'<a href="{b}/sistema/{s}.html">{esc(ed.constructs[s]["title"])}</a>' for s in t["constructs"])
+                body.append(f'<h3 class="sub-acto">Recapitula</h3><div class="chips">{chips}</div>')
+            if t["post_ids"]:
+                body.append(f'<div class="listado">{"".join(self.fila(self.by_id[i]) for i in t["post_ids"])}</div>')
+            body.append(self.pn("cantar", steps, i))
+            write_text(out / f"{num}.html", self.page(f'{t["title"]} · {title} · {self.title}', "\n".join(body)))
+        self.prune(out, {"index"} | {num for num, _ in steps})
+        return len(ed.tracks)
+
+    # puertas mecánicas
+    def conversaciones(self) -> None:
+        b = self.base
+        groups: dict[str, list[tuple[str, str, dict]]] = defaultdict(list)
+        for key, entry in self.links.items():
+            family = entry.get("family") or ""
+            if not family.startswith("agent:"):
+                continue
+            cited = [t for t in entry.get("cited_by") or [] if t in self.by_id]
+            first = min((self.by_id[t]["created_at"] for t in cited), default="")
+            groups[family.split(":", 1)[1]].append((first, key, entry))
+        secciones = []
+        for agent in sorted(groups, key=lambda a: (-len(groups[a]), a)):
+            filas = []
+            for first, key, entry in sorted(groups[agent], key=lambda item: item[:2]):
+                if entry.get("status") == "ok":
+                    title = f'<a href="{b}/enlaces/{key}.html">{esc(entry.get("title") or entry["url"])}</a>'
+                else:
+                    label = STATUS_LABEL.get(entry.get("status") or "pending", entry.get("status") or "pendiente")
+                    title = f'<a href="{esc(entry["url"])}">{esc(entry["url"])}</a> <span class="no-dispo">({esc(label)})</span>'
+                cited = " ".join(f'<a href="{b}/posts/{t}.html"><code>{t}</code></a>'
+                                 for t in entry.get("cited_by") or [] if t in self.by_id)
+                filas.append(f'<div class="fila"><time>{first[:10]}</time> {title} · citada en {cited}</div>')
+            secciones.append(f'<h2 class="acto">{esc(agent)} ({len(filas)})</h2><div class="listado">{"".join(filas)}</div>')
+        write_text(self.out / "conversaciones.html", self.page(
+            f"Conversaciones · {self.title}",
+            '<h2 class="acto">Conversaciones con agentes</h2>'
+            '<div class="acto-sub">Los shares públicos que la obra cita, íntegros y por agente, '
+            "ordenados por la fecha del post que los trae.</div>" + "".join(secciones)))
+
+    def interlocutores(self) -> int:
+        """Cuentas a las que la obra habla. Mecánico: réplicas, menciones y RT del archivo."""
+        b, out = self.base, self.out / "interlocutores"
+        people: dict[str, dict[str, list[dict]]] = {}
+        names: dict[str, str] = {}
+        for r in self.records:
+            if r["kind"] == "retweet":
+                pairs = [(m, "rt") for m in r["mentions"][:1]]
+            else:
+                target = (r["parent_user"] or "").lower() if r["kind"] == "reply_to_other" else ""
+                pairs = [(m, "replies" if m.lower() == target else "mentions") for m in r["mentions"]]
+            for handle, role in pairs:
+                names.setdefault(handle.lower(), handle)
+                people.setdefault(handle.lower(), {"replies": [], "mentions": [], "rt": []})[role].append(r)
+        total = {h: sum(len(v) for v in roles.values()) for h, roles in people.items()}
+        ranked = sorted(people, key=lambda h: (-total[h], h))
+        paged = {h for h in ranked if total[h] >= 2}
+        rows = "".join(
+            "<tr><td>" + (f'<a href="{b}/interlocutores/{h}.html">@{esc(names[h])}</a>' if h in paged else f"@{esc(names[h])}")
+            + f'</td><td class="num">{len(people[h]["replies"])}</td><td class="num">{len(people[h]["mentions"])}</td>'
+            f'<td class="num">{len(people[h]["rt"])}</td></tr>' for h in ranked)
+        write_text(out / "index.html", self.page(
+            f"Interlocutores · {self.title}",
+            '<h2 class="acto">Interlocutores</h2>'
+            f'<div class="acto-sub">{len(ranked)} cuentas a las que la obra responde, menciona o retuitea. '
+            "Recuento mecánico sobre el archivo.</div>"
+            f'<table class="tbl"><tr><th>Cuenta</th><th>Réplicas</th><th>Menciones</th><th>RT</th></tr>{rows}</table>'))
+        for h in paged:
+            secciones = "".join(
+                f'<h3 class="sub-acto">{label} ({len(people[h][role])})</h3>'
+                f'<div class="listado">{"".join(self.fila(r) for r in people[h][role])}</div>'
+                for role, label in (("replies", "Réplicas"), ("mentions", "Menciones"), ("rt", "RT")) if people[h][role])
+            write_text(out / f"{h}.html", self.page(
+                f"@{names[h]} · {self.title}",
+                f'<h2 class="acto">@{esc(names[h])}</h2><div class="acto-sub"><a href="https://x.com/{esc(names[h])}">en X</a>'
+                f' · <a href="{b}/interlocutores/">todos los interlocutores</a></div>' + secciones))
+        self.prune(out, {"index"} | paged)
+        return len(ranked)
 
     def externos(self) -> None:
         b = self.base

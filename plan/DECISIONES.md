@@ -168,6 +168,25 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   `navegador.html` (visor oficial de X) es la **excepción declarada** al
   invariante «cero JS», con CSP propia. (8) La reorganización **semántica**
   de la obra queda fuera: se hará en modo plan, leyendo el feed hacia atrás.
+- **D-O17 · 2026-09-18 · La puerta semántica del Teatro es una capa curada,
+  declarativa y separada de lo mecánico.** Decidido con el custodio al
+  planificar WP-O100: (1) las puertas son **vistas variables** sobre un
+  contenido que no cambia; las mecánicas (campos del archivo) se mantienen y
+  amplían, y las curadas (una lectura) se añaden al lado, rotuladas como
+  tales. (2) La capa curada vive en el **lore privado**
+  (`editorial/obra-semantica.json` + `.md` + SVG), firmada y fechada; el
+  sidecar es genérico y sin ella construye igual. (3) **Curado ≠ mecánico**:
+  la selección del custodio y la búsqueda por términos nunca se mezclan.
+  (4) **Nada inventado**: las citas `«…» [[id]]` se verifican literales y un
+  fallo detiene el build. (5) Criterio editorial de «Aleph Cero»: la obra es
+  una **visión del mundo expresada como sistema** (teoría, máquina, red,
+  juguetes, libro); sus protagonistas son los constructos del autor, y los
+  nombres propios (Assange, Snowden, Swartz, Stallman…) son **arquetipos de
+  un paradigma**, no protagonistas: el último post del archivo es un post
+  más. (6) El eje es doble: «El sistema» (genealógico: cada constructo abre
+  con el post en que nace) y «El cantar de Aleph» (el recap T1 como álbum).
+  (7) En esta vuelta la propuesta la firma el editor; el custodio la revisa
+  y la hace suya con `docs/PUB/TEATRO-CURADURIA-PROTOCOL.md`.
 
 ## Índice de dependencias externas vivas
 

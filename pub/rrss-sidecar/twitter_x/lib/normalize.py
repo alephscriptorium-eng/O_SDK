@@ -149,6 +149,11 @@ def records(obra: Obra) -> list[dict]:
             if text and text not in seen_tags:
                 seen_tags.add(text)
                 hashtags.append(text)
+        mentions = []
+        for obj in (tweet.get("entities") or {}).get("user_mentions") or []:
+            name = obj.get("screen_name")
+            if name and name.lower() != handle.lower() and name not in mentions:
+                mentions.append(name)
         parent_id = tweet.get("in_reply_to_status_id_str") or None
         out.append(
             {
@@ -168,6 +173,7 @@ def records(obra: Obra) -> list[dict]:
                 "self_links": selfs,
                 "links": links,
                 "hashtags": hashtags,
+                "mentions": mentions,
                 "media": [f"data/tweets_media/{p.name}" for p in media.get(tid, [])],
                 "media_src": [str(p) for p in media.get(tid, [])],
                 "generations": entry["generations"],
