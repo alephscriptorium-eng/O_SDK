@@ -13,6 +13,9 @@
 # Además crea `oasis-first-contact` con el feed importado y `welcome=done`: en Oasis 1.1.2 es lo que
 # impide que la GUI publique el PM de bienvenida a los 3 s (= seq 1 nuevo = FORK del feed).
 #
+# Con --force aparta también volumes-dev/client-state/banking/wallet-addresses.json (el mapa de
+# direcciones ECOin va por feed). La cartera ECOin (volumen docker externo) NUNCA se toca.
+#
 # Exit: 0 ok · 2 uso · 3 precondición · 4 origen inválido · 5 verificación post-copia · 6 sin docker
 # =============================================================================
 set -euo pipefail
@@ -43,7 +46,7 @@ while [ $# -gt 0 ]; do
     --with-blobs) WITH_BLOBS=1 ;;
     --force) FORCE=1 ;;
     --dry-run) DRY_RUN=1 ;;
-    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
     *) die 2 "argumento desconocido: $1 (ver --help)" ;;
   esac
   shift
@@ -110,7 +113,14 @@ if [ -d "$DST" ] && [ -n "$(ls -A "$DST" 2>/dev/null)" ]; then
   mv "$DST" "$DST.pre-import-$TS"
   info "destino anterior apartado en volumes-dev/ssb-data.pre-import-$TS"
 fi
-mkdir -p "$DST/flume" "$DST/keys" volumes-dev/ai-models volumes-dev/logs volumes-dev/ecoin-data
+mkdir -p "$DST/flume" "$DST/keys" volumes-dev/ai-models volumes-dev/logs volumes-dev/client-state/banking
+# El mapa de direcciones ECOin va POR FEED: con otra identidad, el de la anterior no vale y se aparta
+# (no se borra). La cartera (volumen docker o-sdk-client-ecoin-data) NO se toca: wallet.dat no depende del feed.
+WMAP="volumes-dev/client-state/banking/wallet-addresses.json"
+if [ $FORCE = 1 ] && [ -f "$WMAP" ]; then
+  mv "$WMAP" "$WMAP.pre-import-$TS"
+  info "mapa de direcciones ECOin apartado en $WMAP.pre-import-$TS (la cartera no se toca)"
+fi
 
 # ---------------------------------------------------------------- 3. backup previo verificado (identidad + log)
 BK="$BACKUP_ROOT/$TS"

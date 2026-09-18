@@ -11,7 +11,7 @@
 > **Motor de RBU: APAGADO** (`OASIS_WALLET_BOT_PUB_ID` vacío) hasta la dote y la confirmación
 > expresa del custodio (§9). Registro en §13, hallazgos en §14, reporte
 > `plan/REPORTES/WP-O102-hub-wallet.md`. Decisiones: `plan/DECISIONES.md` **D-O19**. Siguiente
-> pieza: WP-O103 (ECOin en la app cliente).
+> pieza: WP-O103 (ECOin en la app cliente; procedimiento en `../CLIENT-PROTOCOL.md` §8 «ECOin en el cliente»).
 
 Checklist operativo para **activar, operar, respaldar y llevar a través de los upgrades** el
 proveedor de ECOin del pub: un `ecoind` 0.0.4 en contenedor propio y una cuenta SSB de soporte
@@ -359,7 +359,7 @@ $C up -d --no-deps oasis-wallet-bot
 datadir 700, uid 1000 · el backup es material sensible: **fuera de git** y fuera de cualquier
 imagen · una sola `wallet.dat` por dirección publicada: si se pierde sin copia, la dirección del
 feed queda huérfana para siempre (el mensaje `wallet` es permanente) · el cliente **nunca** apunta
-a este `ecoind` (WP-O103).
+a este `ecoind` (WP-O103: guarda anti-remoto del entrypoint, `../CLIENT-PROTOCOL.md` §8).
 
 ## 9. El interruptor del motor
 

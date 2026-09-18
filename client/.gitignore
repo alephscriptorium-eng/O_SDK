@@ -8,6 +8,8 @@
 !identity/identity.env.example
 !scripts/
 !scripts/**
+# Override de Compose del drill con identidad desechable (WP-O103). Su env (client/.env.drill) NO se versiona.
+!docker-compose.drill.yml
 
 # Re-denegar material sensible dentro de las excepciones
 identity/.gpg/

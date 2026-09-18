@@ -133,3 +133,11 @@ echo ""
 
 # List backup contents
 ls -la "${BACKUP_PATH}/"
+
+# WP-O103: la cartera ECOin NO forma parte de este backup (vive en un volumen docker externo).
+ECOIN_VOLUME="${ECOIN_VOLUME:-o-sdk-client-ecoin-data}"
+if command -v docker >/dev/null 2>&1 && docker volume inspect "$ECOIN_VOLUME" >/dev/null 2>&1; then
+    echo ""
+    echo -e "${YELLOW}⚠️  ECOin: existe el volumen de la cartera (${ECOIN_VOLUME}). wallet.dat NO está en este backup.${NC}"
+    echo -e "${YELLOW}    Cópiala aparte con:  npm run client:wallet:backup  (devops/backups/client-wallet/<TS>/)${NC}"
+fi

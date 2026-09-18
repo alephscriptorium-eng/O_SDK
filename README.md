@@ -58,7 +58,7 @@ empaqueta en Docker para que la levantes en un comando.
 ```bash
 git clone https://github.com/alephscriptorium-eng/O_SDK.git
 cd O_SDK
-npm run setup                          # crea volumes-dev/{ssb-data,ai-models,logs,ecoin-data} (sin esto el bind falla)
+npm run setup                          # crea volumes-dev/{ssb-data,ai-models,logs,client-state} (sin esto el bind falla)
 docker compose up -d oasis-client      # cliente + SSB + IA  (o `npm run up`, que hace ambos)
 # GUI en http://localhost:3000
 ```
@@ -110,7 +110,7 @@ Una carpeta por responsabilidad — misma imagen, dos roles (cliente y pub):
 | [client/](client/) | Rol **cliente**: identidad del usuario (GPG/SSB) y entorno local |
 | [pub/](pub/) | Rol **pub**: compose, config SSB, panel, site y scripts del nodo de federación |
 | [devops/](devops/) | Operación remota por SSH del host que corre un pub (`devops/hosts/` = instancias) |
-| [ecoin/](ecoin/) | Sub-proyecto: wallet ECOin dockerizada (opcional, profile `ecoin`) |
+| [ecoin/](ecoin/) | Imagen de `ecoind` (ECOin) con el `.deb` verificado por sha256; la usan el cliente (perfil `ecoin`) y el hub-wallet del pub. **Sacarte tu cartera**: [docs/CLIENT-PROTOCOL.md §8](docs/CLIENT-PROTOCOL.md) · lado del pub: [docs/PUB/ECOIN-PROTOCOL.md](docs/PUB/ECOIN-PROTOCOL.md) |
 | [docs/](docs/) | Portal VitePress + protocolos de operación |
 | [scripts/](scripts/) | Tooling transversal del repo (skills, parches, packaging) |
 | [archive/](archive/) | Histórico **congelado**: bitácoras de sesión y transcripts (rutas pre-2026-07) |
