@@ -5,6 +5,12 @@
 #   - oasis-client: Red social descentralizada SSB (GUI :3000 + sbot :8008)
 #   - ecoin-wallet: Wallet cryptocurrency P2P ECOin (opcional, profile "ecoin")
 #
+# ECOin en el cliente (WP-O103, docs/CLIENT-PROTOCOL.md): dos modos, elegidos en el .env raíz
+# (plantilla: .env.example; lo genera «npm run client:ecoin:init»):
+#   (i)  solo dirección — sin perfil: ecoin-wallet no existe y ECOIN_RPC_URL va vacía.
+#   (ii) cartera propia — COMPOSE_PROFILES=ecoin y ECOIN_RPC_URL=http://ecoin-wallet:7474.
+# El cliente NUNCA apunta al ecoind del VPS.
+#
 # El rol PUB vive en pub/docker-compose.pub.yml (misma imagen, modo server).
 # =============================================================================
 
@@ -26,7 +32,9 @@ services:
       # Volumenes persistentes para datos críticos
       - oasis-ssb-data-dev:/home/oasis/.ssb
       - oasis-ai-models-dev:/app/src/AI/models
-      - oasis-logs-dev:/app/logs   
+      - oasis-logs-dev:/app/logs
+      # Estado persistente del cliente (WP-O103): oasis-config.json de la GUI y banking/
+      - oasis-client-state-dev:/app/state
 
     environment:
       - NODE_ENV=production
@@ -43,10 +51,18 @@ services:
       # NVIDIA GPU Configuration
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      # ECOin Wallet Integration (comunicación via docker network)
-      - ECOIN_RPC_URL=http://ecoin-wallet:7474
-      - ECOIN_RPC_USER=ecoinrpc
-      - ECOIN_RPC_PASS=ecoinrpc
+      # ECOin (WP-O103): el entrypoint cablea estas variables en oasis-config.json («env manda»).
+      # ECOIN_RPC_URL vacía (por defecto) = modo «solo dirección»: ningún RPC saliente.
+      # Solo se admite un ecoind local (ecoin-wallet, localhost…); nunca el del VPS.
+      - ECOIN_RPC_URL=${ECOIN_RPC_URL-}
+      - ECOIN_RPC_USER=${ECOIN_RPC_USER-}
+      - ECOIN_RPC_PASS=${ECOIN_RPC_PASS-}
+      - ECOIN_RPC_ALLOW_REMOTE=${ECOIN_RPC_ALLOW_REMOTE-}
+      - OASIS_WALLET_PUB_ID=${OASIS_WALLET_PUB_ID-}
+      - OASIS_WALLET_FEE=${OASIS_WALLET_FEE-}
+      - OASIS_WALLET_WIRING=${OASIS_WALLET_WIRING-}
+      - OASIS_BANKING_DIR=/app/state/banking
+      - OASIS_CLIENT_STATE_DIR=/app/state
     
     # ✅ GPU habilitada con runtime nvidia y configuración dual
     runtime: nvidia
@@ -67,10 +83,12 @@ services:
       start_period: 60s
     networks:
       - oasis-network
-    # Opcional: esperar a que ECOin esté listo
-    # depends_on:
-    #   ecoin-wallet:
-    #     condition: service_healthy
+    # Con el perfil "ecoin" activo, ecoin-wallet arranca antes; sin perfil, se ignora (required: false).
+    # service_started y no service_healthy: la sincronización inicial no debe bloquear la GUI.
+    depends_on:
+      ecoin-wallet:
+        condition: service_started
+        required: false
 
   # ===========================================================================
   # ECOIN WALLET - Cryptocurrency P2P
@@ -81,18 +99,31 @@ services:
       context: ./ecoin
       dockerfile: Dockerfile
     container_name: ecoin-wallet
-    ports:
-      - "7474:7474"     # RPC JSON-RPC (comunicación con Oasis + debug)
-      - "12000:12000"   # P2P ECOin network
+    # SIN ports (WP-O103): el RPC (7474) solo existe en oasis-network (oasis-client llega por DNS de
+    # servicio) y el P2P (7408) es solo saliente. Quien quiera P2P entrante puede añadirlo en un
+    # docker-compose.override.yml local (no versionado):
+    #   services:
+    #     ecoin-wallet:
+    #       ports: ["7408:7408"]
+    # El RPC no se publica nunca en el host.
     volumes:
-      - ecoin-data-dev:/home/ecoin/.ecoin
+      - ecoin-data:/home/ecoin/.ecoin
     environment:
-      - RPC_USER=ecoinrpc
-      - RPC_PASS=ecoinrpc
-      - RPC_PORT=7474
+      # Credenciales desde el .env raíz (npm run client:ecoin:init). Vacías o «ecoinrpc» -> el
+      # entrypoint de la imagen sale con 1 (fail-closed). Se usa «:-» y no «:?» porque Compose
+      # interpola también los servicios de perfiles inactivos: «:?» rompería el arranque sin perfil.
+      RPC_USER: ${ECOIN_RPC_USER:-}
+      RPC_PASS: ${ECOIN_RPC_PASS:-}
+      RPC_PORT: "7474"
+      ECOIN_REQUIRE_CREDS: "1"
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf --user ecoinrpc:ecoinrpc --data-binary '{\"jsonrpc\":\"1.0\",\"id\":\"health\",\"method\":\"getinfo\",\"params\":[]}' -H 'content-type: text/plain;' http://127.0.0.1:7474/ || exit 1"]
+    mem_limit: ${ECOIN_MEM_LIMIT:-512m}
+    stop_grace_period: 2m   # cierre limpio de Berkeley DB (wallet.dat)
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    healthcheck:   # $$ = lo expande el shell del contenedor: las credenciales no quedan en el compose resuelto
+      test: ["CMD-SHELL", "curl -sf -o /dev/null --user \"$$RPC_USER:$$RPC_PASS\" -H 'content-type: text/plain;' --data-binary '{\"jsonrpc\":\"1.0\",\"id\":\"health\",\"method\":\"getinfo\",\"params\":[]}' http://127.0.0.1:7474/ || exit 1"]
       interval: 60s
       timeout: 15s
       retries: 5
@@ -123,13 +154,19 @@ volumes:
       o: bind
       device: ./volumes-dev/logs
 
-  # ECOin wallet data (wallet.dat, blockchain, etc.)
-  ecoin-data-dev:
+  oasis-client-state-dev:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ./volumes-dev/ecoin-data
+      device: ./volumes-dev/client-state
+
+  # ECOin wallet data (wallet.dat, cadena). Volumen NOMBRADO y EXTERNO (WP-O103): BDB sobre un bind de
+  # Windows es frágil, y «down -v» no borra volúmenes externos. Lo crea «npm run client:ecoin:init»
+  # (docker volume create o-sdk-client-ecoin-data). Solo se exige con el perfil "ecoin" activo.
+  ecoin-data:
+    external: true
+    name: o-sdk-client-ecoin-data
 
 
 # Red compartida Oasis <-> ECOin
