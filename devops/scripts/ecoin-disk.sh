@@ -163,8 +163,9 @@ EC=oasis-pub-ecoin
 BOT=oasis-pub-wallet-bot
 pct(){ df -P "$1" 2>/dev/null | awk '"'"'NR==2{gsub("%","",$5); print $5}'"'"'; }
 bytes(){ if $SUDO test -e "$1" 2>/dev/null; then $SUDO du -sb "$1" 2>/dev/null | cut -f1; else echo 0; fi; }
-# cadena = blk*.dat + blkindex.dat + database/ (el glob lo expande quien puede leer el datadir 700)
-chain_bytes(){ v="$($SUDO sh -c '"'"'du -cb "$0"/blk*.dat "$0"/blkindex.dat "$0"/database 2>/dev/null | tail -n 1 | cut -f1'"'"' "$ECOIN_DATA" 2>/dev/null)"; echo "${v:-0}"; }
+# cadena = blk*.dat + txleveldb/ (índice de esta build) + blkindex.dat (builds viejas) + database/
+# (el glob lo expande quien puede leer el datadir 700)
+chain_bytes(){ v="$($SUDO sh -c '"'"'du -cb "$0"/blk*.dat "$0"/txleveldb "$0"/blkindex.dat "$0"/database 2>/dev/null | tail -n 1 | cut -f1'"'"' "$ECOIN_DATA" 2>/dev/null)"; echo "${v:-0}"; }
 wallet_stat(){ $SUDO stat -c "%a %u %s" "$ECOIN_DATA/wallet.dat" 2>/dev/null || true; }
 running(){ docker ps --format "{{.Names}}" 2>/dev/null | grep -qx "$1"; }
 getinfo(){ if running "$EC"; then docker exec "$EC" ecoind getinfo 2>/dev/null | tr -d "\r"; fi; }
@@ -187,10 +188,10 @@ echo
 echo "-- cadena (du; ecoind 0.7 no poda) --"
 if $SUDO test -d "$ECOIN_DATA" 2>/dev/null; then
   $SUDO sh -c 'du -ch "$0"/blk*.dat 2>/dev/null | tail -n 1 | sed "s/total\$/blk*.dat/"' "$ECOIN_DATA"
-  for d in "$ECOIN_DATA/blkindex.dat" "$ECOIN_DATA/database" "$ECOIN_DATA"; do
+  for d in "$ECOIN_DATA/txleveldb" "$ECOIN_DATA/database" "$ECOIN_DATA"; do
     if $SUDO test -e "$d" 2>/dev/null; then $SUDO du -sh "$d" 2>/dev/null || echo "?	$d"; else echo "0	$d (no existe)"; fi
   done
-  echo "cadena (blk*.dat + blkindex.dat + database/) = $(chain_bytes) bytes"
+  echo "cadena (blk*.dat + txleveldb/ + database/) = $(chain_bytes) bytes"
 else
   echo "0	$ECOIN_DATA (no existe)"
 fi

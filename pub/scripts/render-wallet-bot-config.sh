@@ -86,12 +86,14 @@ validate_pub_id() {
 json_str() { sed -n "s/^[[:space:]]*\"$2\":[[:space:]]*\"\\(.*\\)\",\\{0,1\\}[[:space:]]*\$/\\1/p" "$1" | head -n 1; }
 
 validate_json() {
-  local f="$1"
+  local f="$1" native="$1"
+  # Git Bash con MSYS_NO_PATHCONV=1 no convierte /c/... para node.exe (falso «no parsea», gate G3).
+  if command -v cygpath >/dev/null 2>&1; then native="$(cygpath -m "$f")"; fi
   if command -v node >/dev/null 2>&1; then
-    node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' "$f" 2>/dev/null \
+    node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' "$native" 2>/dev/null \
       || die "el resultado no parsea como JSON: $f"
   elif command -v python3 >/dev/null 2>&1; then
-    python3 -c 'import json,sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$f" 2>/dev/null \
+    python3 -c 'import json,sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$native" 2>/dev/null \
       || die "el resultado no parsea como JSON: $f"
   else
     echo "render-wallet-bot-config: AVISO: sin node ni python3; JSON no verificado con parser" >&2
