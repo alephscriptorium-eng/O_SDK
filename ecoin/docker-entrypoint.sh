@@ -175,7 +175,8 @@ fi
 echo ""
 echo "📋 Configuración actual:"
 echo "   • RPC Port: $(grep -oP 'rpcport=\K.*' ${ECOIN_CONF} || echo '7474')"
-echo "   • RPC User: $(grep -oP 'rpcuser=\K.*' ${ECOIN_CONF} || echo 'ecoinrpc')"
+# El usuario RPC es media credencial: no se imprime (los logs van al json de Docker).
+echo "   • RPC User: (configurado; no se muestra)"
 echo "   • Data Dir: ${ECOIN_DIR}"
 echo ""
 
