@@ -623,9 +623,11 @@ Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertur
 
 | **WP-O103** | **P1** | Cliente · ECOin en la app (dirección o cartera propia) |
 
-**Estado** · 🔶 en curso (2026-09-18): implementado en la rama
-`wp/O103-cliente-ecoin`, drill con identidad desechable pendiente. BRIEF de
-trabajo: `plan/BRIEFS/WP-O103-cliente-ecoin.md`.
+**Estado** · ✅ 2026-09-18: protocolo asentado en `main`; gate G1 y drill con
+identidad desechable pasados (`plan/REPORTES/WP-O103-cliente-ecoin.md`).
+BRIEF: `plan/BRIEFS/WP-O103-cliente-ecoin.md`. **Fuera de alcance por
+decisión del custodio**: aplicarlo a su identidad scriptorium; lo hará él
+cuando se publique Oasis 1.1.3.
 
 **BRIEF** · El cliente también necesita ECOin, en **dos niveles**: (i) *solo
 dirección* — aparecer, recibir y reclamar RBU (el claim es un mensaje SSB;

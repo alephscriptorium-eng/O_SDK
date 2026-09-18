@@ -7,9 +7,11 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ### Added — ECOin en la app cliente (WP-O103, 2026-09-18)
 
-Estado: **implementado en la rama `wp/O103-cliente-ecoin`, drill pendiente**. Nada se ha ejecutado
-sobre la identidad real: publicar la dirección en el feed del custodio es una puerta con confirmación
-expresa. BRIEF `plan/BRIEFS/WP-O103-cliente-ecoin.md`; doc viva `docs/CLIENT-PROTOCOL.md` §8; asiento D-O19.
+Estado: **en `main`; gate G1 y drill con identidad desechable pasados** (montaje, publicación única,
+recreate, rebuild, `down -v`, backup y restore, arranque sin perfil, guarda anti-remoto). Es el
+protocolo para que cualquier habitante se saque su cartera; no se ha aplicado a ninguna identidad
+real (el custodio lo hará con su cliente cuando salga Oasis 1.1.3). Reporte
+`plan/REPORTES/WP-O103-cliente-ecoin.md`. BRIEF `plan/BRIEFS/WP-O103-cliente-ecoin.md`; doc viva `docs/CLIENT-PROTOCOL.md` §8; asiento D-O19.
 
 - **Dos niveles, independientes del VPS**: (i) *solo dirección* (aparecer, recibir y reclamar RBU
   con una dirección de una `wallet.dat` propia) y (ii) *cartera propia* (`ecoind` propio para saldo,

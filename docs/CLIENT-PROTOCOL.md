@@ -200,10 +200,13 @@ sus `*.nul-damaged-bak` (5,7 GB) son los primeros candidatos a borrar.
 
 ## 8. ECOin en el cliente
 
-> **Estado · implementado en la rama `wp/O103-cliente-ecoin` (WP-O103, 2026-09-18); drill con
-> identidad desechable pendiente (§8.9).** Nada de esta sección se ha ejecutado aún sobre la identidad
-> real: la publicación de la dirección en el feed del custodio es una **puerta con confirmación
-> expresa**. Doc hermana (el lado del banco): `PUB/ECOIN-PROTOCOL.md`. Asiento: D-O19.
+> **Estado · en `main` desde el 2026-09-18 (WP-O103).** Ensayado de punta a punta con una identidad
+> desechable (§8.9): montaje, publicación única, recreate, rebuild, `down -v`, backup y restore.
+> Es un **protocolo para cualquier habitante** que quiera su cartera: no depende de ninguna identidad
+> concreta. Publicar la dirección es siempre un acto **manual, único y tuyo**: nada de esta sección lo
+> hace por ti. Doc hermana (el lado del banco): `PUB/ECOIN-PROTOCOL.md`. Asiento: D-O19.
+> Se escribió sobre Oasis 1.1.2; upstream anuncia cambios en la 1.1.3 (autodetección de `ecoind`):
+> al hacer ese upgrade, releer §8.2 y el preflight de `PUB/ECOIN-PROTOCOL.md` §5.
 
 > **Modelo mental.** Oasis 1.1.2 lee la cartera **solo** de `src/configs/oasis-config.json`
 > (`wallet.{url,user,pass,fee}` y `walletPub.pubId`); las variables `ECOIN_RPC_*` no las lee nadie
@@ -358,9 +361,13 @@ Docker. El restore exige que el contenedor exista (`npm run ecoin:up` al menos u
 - Cuándo: antes de publicar la dirección, antes de un upgrade, antes de cualquier `down`.
 - `npm run client:backup-keys` respalda la identidad **SSB**, no la cartera (avisa si el volumen existe).
 
-### 8.7 El banco del cliente: bot-2
+### 8.7 Tu banco: el bot wallet de tu pub
 
-La RBU de esta red la paga **`azofaifo-scriptorium-wallet-bot-2`**, feed
+En Oasis cada habitante declara **quién es su banco** en `walletPub.pubId`: el feed cuyo motor de RBU
+le asigna y le paga. Sin ese valor no aparece el botón de reclamar. El banco no es el feed del pub
+sino la cuenta que corre el motor junto a él; pregunta a quien opera tu pub cuál es.
+
+En **`pub.escrivivir.co`** es **`azofaifo-scriptorium-wallet-bot-2`**, feed
 `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` (`PUB/ECOIN-PROTOCOL.md`). Se fija con:
 
 ```bash
