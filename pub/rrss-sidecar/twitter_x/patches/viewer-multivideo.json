@@ -1,0 +1,9 @@
+{
+ "name": "viewer-multivideo",
+ "why": "El visor oficial de X solo pinta el primer vídeo de un tuit con varios. El parche hace que recorra todos los elementos de extended_entities.media.",
+ "file_glob": "ondemand.App.*.js",
+ "stock_sha256": "d171272ad65e0a7c9e7f93eafe5be3f4c1c82efd8f906ae9575e49d2cad1c162",
+ "patched_sha256": "e119522ca8765820526e077d1272f1a277a62da740312cc2975a7b7c82b5873a",
+ "find": " null;var t=e.extended_entities.media.find(function(e){var t;return(null===(t=e.video_info)||void 0===t?void 0:t.variants)&&[\"animated_gif\",\"video\"].includes(e.type)});if(!t)return null;var a=t.video_info.variants.filter(function(e){return e.bitrate&&e.url}).sort(function(e,t){return parseInt(e.bitrate)-parseInt(t.bitrate)}).pop();return a?{fileName:a.url.split(\"/\").pop(),type:t.type}:null}(t);if(!n)return null;var l=\"\".concat(mr(a),\"/\").concat(t.id,\"-\").concat(n.fileName),o=\"animated_gif\"===n.type?Hn:Gn;return r.a.createElement(p.a,{style:hr.videoWrapper},r.a.createElement(o,{filePath:l",
+ "replace": "[];return e.extended_entities.media.filter(function(e){var t;return(null===(t=e.video_info)||void 0===t?void 0:t.variants)&&[\"animated_gif\",\"video\"].includes(e.type)}).map(function(e){var t=e.video_info.variants.filter(function(e){return e.bitrate&&e.url}).sort(function(e,t){return parseInt(e.bitrate)-parseInt(t.bitrate)}).pop();return t?{fileName:t.url.split(\"/\").pop(),type:e.type}:null}).filter(function(e){return!!e})}(t);if(!n.length)return null;return r.a.createElement(r.a.Fragment,null,n.map(function(n,l){var o=\"\".concat(mr(a),\"/\").concat(t.id,\"-\").concat(n.fileName),i=\"animated_gif\"===n.type?Hn:Gn;return r.a.createElement(p.a,{key:l,style:hr.videoWrapper},r.a.createElement(i,{filePath:o}))"
+}

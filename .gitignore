@@ -79,3 +79,9 @@ docs/.vitepress/dist/
 
 # Python bytecode
 __pycache__/
+
+# Python (pub/rrss-sidecar): bytecode, y red de seguridad contra datos dentro del sidecar
+__pycache__/
+*.pyc
+pub/rrss-sidecar/**/store/
+pub/rrss-sidecar/**/obra.json

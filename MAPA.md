@@ -25,6 +25,8 @@ o-sdk aporta al pack: el **rol pub**, el **edge TLS compartido** y el
 | Cliente | `docker-compose.yml` → `oasis-client` | ✅ funcional (GUI :3000, SSB :8008) · alta, importación de identidad, upgrade y rollback en `docs/CLIENT-PROTOCOL.md` |
 | Pub | `pub/docker-compose.pub.yml` → `oasis-pub` + `pub-panel-api` + `pub-web` | ✅ desplegado en VPS |
 | Wallet | `ecoin/` (profile `ecoin`) | ✅ opcional, desacoplado |
+| Teatro (Sala 03) | `pub/site-templates/teatro/` (catálogo) + mount `OASIS_PUB_TEATRO_DIR → /srv/site/teatro:ro` + bloque `@teatro` de Caddy | ✅ en producción; obras en el **volumen de datos** `/srv/oasis/teatro` · `docs/PUB/TEATRO-PROTOCOL.md` |
+| Sidecar RRSS | `pub/rrss-sidecar/twitter_x/` (generador, Python stdlib) · lore en `ARCHIVO/LORE/` (fuera de git) · salida `volumes-dev/teatro/` | ✅ autocontenido · costura B.O.E. en `pub/rrss-sidecar/CORPUS-SCHEMA.md` · `docs/PUB/RRSS-SIDECAR-PROTOCOL.md` |
 | Sidecar blobs | `pub/blobstore-sidecar/` | ⚠️ **huérfano**: no está en ningún compose vivo |
 | Frontend pub | `pub-frontend` (profile `frontend`) | ❌ **superficie muerta**: `PUB_FRONTEND_DIR=./frontend` no existe |
 

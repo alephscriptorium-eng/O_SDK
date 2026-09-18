@@ -533,6 +533,42 @@ el sbot no es el feed del secret · `status --pub` llega a SYNC-OK (seq local
 → parada automática · nunca GUI sobre log importado sin flag.
 Dep: WP-O97. Relación: WP-O77, WP-O80, WP-O46 (§3 invite desde sbot puro).
 
+| **WP-O99** | **P1** | Teatro · sidecar de RRSS con fuente en exports de x.com |
+
+**BRIEF** · El Teatro (Sala 03) estaba en producción sin gobierno: el generador
+de la Obra Nº 1 solo existía fuera del repo, el deploy tenía la obra
+hardcodeada y no había WP, asiento ni changelog. Traer **toda la infra a
+git** (`pub/rrss-sidecar/twitter_x/`, Python stdlib), con el **lore del
+usuario dentro de o-sdk pero fuera de git** (`ARCHIVO/LORE/`) para que el
+protocolo sea autocontenido y la obra del custodio un caso contingente.
+Store aditivo multi-generación; protocolo (a) voces ajenas a 1-2 niveles
+(incluidas las **citas**, que el export no trae); protocolo (b) cada enlace
+externo a Markdown íntegro, con cola de navegador y **regla PARAR** para
+shares de agente no públicos; deploy por obra con verificación; higiene del
+VPS (permisos, 404 real, CSP, backup de lo no regenerable). Costura
+`fuente → corpus normalizado → visor` lista para un adaptador B.O.E.
+(Arrakis). Docs vivas: `docs/PUB/RRSS-SIDECAR-PROTOCOL.md`,
+`docs/PUB/TEATRO-PROTOCOL.md`.
+**CA** · `npm run teatro:test` verde sobre un export sintético (multi-parte,
+store aditivo, contrato del corpus, guardas que fallan con `ip-audit.js`
+sembrado) · `lore-import + init + ingest + build` sin editar código ·
+`git ls-files ARCHIVO/LORE` = 2 ficheros y `obra.json` sin rutas fuera del
+repo · obra regenerada con la generación 2026-09-18 (1940 posts visibles;
+los borrados solo en el store) · worklist de voces 100 % en estado terminal,
+0 `error` · todos los enlaces en el store, `links_blocked.json` vacío o con
+dispensa del custodio, ninguno `pending_browser` · `teatro:check` verde ·
+deploy con verificación automática verde · permisos 755/644 · 404 real bajo
+`/teatro/` · `data/ip-audit.js` → 404 · resto de vhosts intactos.
+**Hostil-omite** · el parche multi-vídeo del visor solo se aplica si el
+sha256 del bundle stock coincide · la migración del store antiguo no pierde
+texto ya recuperado · un share privado **para** la tanda (exit 3), nunca se
+salta · la denylist se aplica también dentro de los zips · `.dockerignore`
+excluye lore y sidecar · el Caddyfile vivo se valida antes del reload y
+nunca se reinicia `pub-web` · ningún proceso escribe en el origen de un export.
+**Fuera de alcance (punto final anotado)** · reorganización **semántica** de
+«Aleph Cero»: se decide en modo plan, leyendo el feed hacia atrás.
+Dep: WP-O46 (volumen y layout del VPS). Relación: WP-O47 (disco), WP-O55 (backup).
+
 ---
 
 ## L5 · Pub / L1 permanente
@@ -891,6 +927,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-13: +WP-O46 P1, +WP-O47 P2 en L4, asiento D-O13.)
 (2026-09-17: +WP-O97 P1 en L4 — upgrade 1.1.2 con HUB.)
 (2026-09-17: +WP-O98 P1 en L4 — cliente fresco + importación de identidad.)
+(2026-09-18: +WP-O99 P1 en L4 — Teatro: sidecar de RRSS, asiento D-O16.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11

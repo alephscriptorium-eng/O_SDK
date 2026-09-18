@@ -4,141 +4,139 @@
 > `https://github.com/alephscriptorium-eng/O_SDK.git`). La sala vive en
 > `https://pub.escrivivir.co/teatro/` como Sala 03 del Scriptorium.
 
-Checklist operativo para publicar una **obra** nueva en el Teatro. Deriva de la
-Obra Nº 1 ("Aleph Cero", 2026-08-26): el archivo X de `@_dev_aleph_1` como sitio
-estático de 1495 páginas con 719 MB de media.
+> **Estado · WP-O99 (2026-09-18).** El Teatro es ya **autocontenido en o-sdk**: el generador está en
+> git (`pub/rrss-sidecar/`), el lore del usuario vive en `ARCHIVO/LORE/` (ignorado por git) y la
+> obra se genera en `volumes-dev/teatro/<obra>/`. Obra Nº 1 «Aleph Cero»: generación 2026-09-18,
+> 1940 posts. Cómo se hace una obra desde un export de X: [`RRSS-SIDECAR-PROTOCOL.md`](./RRSS-SIDECAR-PROTOCOL.md).
 
-> **Modelo mental.** El Teatro separa **catálogo** de **contenido**: la portada
-> (`/teatro/`) es una plantilla versionada en `pub/site-templates/teatro/`; las
-> obras son árboles pesados que NO viajan en git — viven en el volumen de datos
-> Gandi (`/srv/oasis/teatro/<obra>/`) y `pub-web` (Caddy) los monta read-only en
-> `/srv/site/teatro` sobre el mountpoint vacío `pub/site/teatro/`. Publicar una
-> obra = generar árbol → rsync al volumen → zip + certificado en el VPS. No se
-> toca Caddyfile, DNS ni UFW.
+Checklist operativo para **publicar** una obra en el Teatro: invariantes, alta en el catálogo,
+deploy, certificación, verificación y realidad del VPS.
+
+> **Modelo mental.** El Teatro separa **catálogo** de **contenido**. La portada (`/teatro/`) es una
+> plantilla versionada en `pub/site-templates/teatro/`. Las obras son árboles pesados que NO viajan
+> en git: se **generan** desde un lore con un sidecar, viven en el **volumen de datos** del VPS
+> (`/srv/oasis/teatro/<obra>/`) y `pub-web` (Caddy) los monta read-only en `/srv/site/teatro`
+> sobre el mountpoint vacío `pub/site/teatro/` (**el visor**).
+>
+> ```
+> ARCHIVO/LORE/<fuente>/<obra>/ → pub/rrss-sidecar/<fuente>/ → volumes-dev/teatro/<obra>/ → /srv/oasis/teatro/<obra>/
+>      lore (privado)               sidecar (git)               visor local (:8088)         visor en producción
+> ```
 
 ## 0. Invariantes de una obra
 
-Toda obra del Teatro cumple:
+Toda obra del Teatro cumple (la definición ejecutable es `pub/rrss-sidecar/twitter_x/lib/guards.py`;
+la corre el build, `npm run teatro:check` y el pre-vuelo del deploy):
 
-- **Cero JavaScript.** HTML + un CSS propio, autocontenido. El vídeo se sirve con
-  `<video controls preload="metadata">` (nativo, sin JS). `grep -r "<script" → 0`.
-- **Cero recursos externos.** Ni CDNs, ni fuentes remotas, ni imágenes de
-  terceros. Todo asset se sirve desde el propio árbol de la obra.
-- **Texto verbatim, citado por id.** Nada se resume en lugar de la fuente; el
-  texto ajeno no recuperado no se completa ni se inventa (protocolo del corpus,
-  `AGENTS.md` de la obra).
-- **Nada sensible.** Si la fuente es un archivo de plataforma (X u otra), quedan
-  fuera IPs, teléfonos, device tokens, DMs, bloqueos/mutes, likes/follows, chats
-  de IA y contenido borrado. La obra publica solo: media propia, HTML generado,
-  corpus Markdown y el zip.
-- **Zip certificado con letrero.** El corpus descargable lleva SHA-256 visible en
-  la página y firma ed25519 (ver §4).
-- Las páginas que muestran el hash usan el placeholder literal `__ZIP_SHA256__`;
-  el deploy lo estampa (§3).
+- **Cero JavaScript** en las páginas generadas: HTML + un CSS propio. El vídeo se sirve con
+  `<video controls preload="metadata">`.
+  **Excepción declarada:** `navegador.html`, el visor oficial del export de X, limpiado (whitelist de
+  datos, manifest podado, sin CDNs). Es la única página con `<script>` y los únicos `.js` están en
+  `assets/js/` y en la whitelist de `data/`. Se desactiva con `publish.viewer: false`.
+- **Cero recursos externos cargados.** Ni CDNs, ni fuentes remotas, ni imágenes de terceros en
+  caliente: la foto de un tuit ajeno se descarga a `data/external_media/` o no se muestra. Los
+  enlaces `<a href>` externos sí están permitidos.
+- **Texto verbatim, citado por id.** Nada se resume en lugar de la fuente; el texto ajeno no
+  recuperado no se completa ni se inventa (`AGENTS.md` de la obra).
+- **Nada sensible.** Fuera IPs, teléfonos, device tokens, DMs, bloqueos/mutes, likes/follows, chats
+  de IA del export y **posts borrados por el autor** (se conservan solo en el lore). La obra publica:
+  media propia de los posts visibles, HTML generado, corpus Markdown, stores públicos y los zips.
+- **Descarga certificada con letrero.** SHA-256 visible en la página y firma ed25519 (§4). Las
+  páginas que muestran el hash usan el placeholder literal `__ZIP_SHA256__`; el deploy lo estampa.
 
 ## 1. Generar el árbol de la obra
 
-Cada obra tiene su generador; el contrato es el árbol staged:
-
-```
-C:\S_META\LORE\deploy\teatro\           ← raíz local que se sube tal cual
-  index.html                            ← portada Teatro (la copia el deploy desde el repo)
-  <obra>/
-    index.html                          ← portada de la obra (con __ZIP_SHA256__)
-    ... páginas, assets/, media ...
-    corpus fuente (verbatim, si aplica)
+```bash
+npm run teatro:build -- --obra <obra>       # → volumes-dev/teatro/<obra>/  (+ volumes-dev/teatro/index.html)
+npm run teatro:check -- --obra <obra>       # invariantes
+npm run pub:local:up                        # vista previa: http://localhost:8088/teatro/<obra>/
 ```
 
-Referencia (Obra Nº 1): `tools/build_site.py` del segundo cerebro TWITTER_FILM
-(`C:\S_META\LORE\TWITTER_FILM\TWITTER_FILM`). Ejecuta `python tools/build_site.py`
-y valida en el mismo build: whitelist de `data/` (aborta si se cuela un `.js` del
-archivo crudo), cero `<script>`, y conviene pasarle después un link-checker a los
-`href/src` internos. Vista previa local con las mismas rutas absolutas:
-`python -m http.server 8137 --directory C:\S_META\LORE\deploy` →
-`http://localhost:8137/teatro/<obra>/`.
+El árbol lo produce un sidecar (`RRSS-SIDECAR-PROTOCOL.md`). El contrato con el Teatro es solo el
+árbol: `index.html` con `__ZIP_SHA256__`, páginas, `assets/`, `data/` (whitelist), `corpus/`,
+`indexes/`, `tools/`, `AGENTS.md`. El pub local ya monta `volumes-dev/teatro` en `/teatro/`
+(`OASIS_PUB_TEATRO_DIR`, default `../volumes-dev/teatro`).
 
 ## 2. Alta en el catálogo
 
-- Añadir la tarjeta de la obra en `pub/site-templates/teatro/index.html`
-  (título, copy, meta con cifras, `door-link` a `/teatro/<obra>/` y al zip, y el
-  bloque `SHA-256 DEL ZIP: __ZIP_SHA256__` con enlaces a `.sha256` y `.sig`).
-- Commit en `main`. El deploy copia esta portada al árbol staged antes de subir.
+- Añadir o actualizar la tarjeta de la obra en `pub/site-templates/teatro/index.html` (título,
+  copy, cifras, `door-link` a `/teatro/<obra>/`). **El zip completo es la descarga destacada**; el
+  zip ligero y el manifiesto se rotulan «para inspección». Bloque `SHA-256 DEL ZIP: __ZIP_SHA256__`
+  con enlaces a `.sha256` y `.sig`.
+- Commit en `main`. El build y el deploy copian esta portada al árbol antes de subir.
 
-## 3. Deploy (subida + zip + checksum + firma)
+## 3. Deploy (subida + zips + checksums + firma + verificación)
 
 ```bash
-# Desde Windows (rsync no viene en Git Bash; el script corre en WSL):
-wsl -d Ubuntu -- bash /mnt/c/S_LAB/o-sdk/devops/scripts/deploy-teatro.sh
+TEATRO_OBRA=<obra> TEATRO_DRY_RUN=1 npm run devops:teatro:deploy   # qué subiría (y qué borraría)
+TEATRO_OBRA=<obra> npm run devops:teatro:deploy                    # en Windows corre dentro de WSL (rsync, python3)
 ```
 
-Qué hace, en orden:
+Qué hace `devops/scripts/deploy-teatro.sh`, en orden:
 
-1. Copia la portada del Teatro del repo al árbol staged.
-2. `rsync -a --partial --info=progress2` (sin `-z`, la media ya está comprimida)
-   → `debian@92.243.24.163:/srv/oasis/teatro/`. **Reanudable**: si se corta,
-   relanzar. (Referencia: 754 MB subieron en ~50 s a 14 MB/s.)
-3. Genera `<obra>.zip` **en el VPS** (evita subir el peso dos veces): `zip -rq` o
-   fallback `python3 -m zipfile`. El zip contiene el corpus verbatim, no el HTML.
-4. `sha256sum` → `<obra>.zip.sha256`, y `sed` estampa el hash en los dos
-   letreros (`__ZIP_SHA256__` en `/teatro/index.html` y `/teatro/<obra>/index.html`).
-5. Firma **en local** el `.sha256` con la clave de acceso al VPS
-   (`ssh-keygen -Y sign -n file` con `devops/.ssh/gandi_pub_ed25519` — la
-   privada nunca viaja) y sube `<obra>.zip.sha256.sig` + `allowed_signers`.
+1. **Pre-vuelo local**: `sidecar.py check` (invariantes) y `sidecar.py manifest` → `MANIFEST.sha256`
+   (hash de cada fichero servido; excluye la portada, que se estampa después, y los artefactos).
+2. Copia la portada del Teatro del repo al árbol.
+3. `rsync -a --partial --chmod=D755,F644` de **solo esa obra** y de `index.html` →
+   `/srv/oasis/teatro/`. Reanudable. `TEATRO_DELETE=1` hace espejo **dentro de `<obra>/`**, nunca
+   fuera (así desaparecen del servidor las páginas de posts borrados).
+4. **Integridad**: `sha256sum -c MANIFEST.sha256` en el VPS, antes de estampar nada.
+5. **Dos zips en el VPS** (evita subir el peso dos veces):
+   `<obra>.zip` = **todo** el árbol con la media, sin comprimir (`zip -0`), la descarga principal; y
+   `<obra>-cerebro.zip` = corpus, índices, herramientas y stores, para inspección o gestión.
+6. `sha256sum` de ambos y `sed` del hash del zip completo en los dos letreros.
+7. Firma **en local** de `<obra>.zip.sha256`, `<obra>-cerebro.zip.sha256` y `MANIFEST.sha256`
+   (`ssh-keygen -Y sign -n file` con la clave de acceso al VPS; la privada nunca viaja) y sube las
+   `.sig` + `allowed_signers`.
+8. **Verificación automática** (§5). Un fallo termina con código ≠ 0.
 
-Variables: `LOCAL_TEATRO_DIR`, `REMOTE_TEATRO_DIR`, `TEATRO_DELETE=1` (espejo
-con `--delete`, cuidado), `TEATRO_SKIP_ZIP=1` (no regenerar zip).
+Variables: `TEATRO_OBRA` (obligatoria), `LOCAL_TEATRO_DIR`, `REMOTE_TEATRO_DIR`, `TEATRO_DRY_RUN`,
+`TEATRO_DELETE`, `TEATRO_SKIP_ZIP`, `TEATRO_SKIP_VERIFY`.
 
-> **TODO segunda obra:** la lista de contenidos del zip y las rutas `<obra>`
-> están fijadas a `aleph-cero` dentro de `deploy-teatro.sh` — parametrizarlas
-> cuando entre la Obra Nº 2.
+## 4. Qué se certifica (y cómo lo comprueba un visitante)
 
-## 4. Qué certifica el zip (y cómo lo comprueba un visitante)
-
-- **Integridad**: `aleph-cero.zip.sha256` (SHA-256 del zip, visible además en el
-  letrero de la página). Detecta zip corrupto o manipulado.
-- **Procedencia**: `aleph-cero.zip.sha256.sig`, firma ssh-ed25519 del fichero
-  `.sha256` hecha con la misma clave que abre el VPS. Publicamos la pública en
-  `allowed_signers` (principal `teatro@escrivivir.co`, namespace `file`).
-
-Verificación (los mismos comandos están en el letrero de la obra):
+- **Integridad**: `<obra>.zip.sha256` (visible además en el letrero), `<obra>-cerebro.zip.sha256` y
+  `MANIFEST.sha256` (un hash por fichero servido: permite verificar un mirror sin bajar el zip).
+- **Procedencia**: las tres `.sig`, firma ssh-ed25519 con la misma clave que abre el VPS. La pública
+  está en `allowed_signers` (principal `teatro@escrivivir.co`, namespace `file`).
 
 ```bash
-sha256sum -c aleph-cero.zip.sha256
-ssh-keygen -Y verify -f allowed_signers -I teatro@escrivivir.co \
-  -n file -s aleph-cero.zip.sha256.sig < aleph-cero.zip.sha256
-# → Good "file" signature for teatro@escrivivir.co with ED25519 key SHA256:YGHof3kw…
+sha256sum -c <obra>.zip.sha256
+ssh-keygen -Y verify -f allowed_signers -I teatro@escrivivir.co -n file -s <obra>.zip.sha256.sig < <obra>.zip.sha256
+# mirror + verificación fichero a fichero:
+wget -r -np -nH --cut-dirs=2 https://pub.escrivivir.co/teatro/<obra>/ && sha256sum -c MANIFEST.sha256
 ```
 
 ## 5. Verificación post-deploy
 
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://pub.escrivivir.co/teatro/            # 200
-curl -s -o /dev/null -w '%{http_code}\n' https://pub.escrivivir.co/teatro/<obra>/     # 200
-curl -s -o /dev/null -w '%{http_code}\n' -r 0-1023 https://pub.escrivivir.co/teatro/<obra>/<un-mp4>  # 206
-curl -sI https://pub.escrivivir.co/teatro/<obra>/<obra>.zip | grep -i content-length  # tamaño esperado
-curl -s https://pub.escrivivir.co/teatro/<obra>/ | grep -c "<script"                  # 0
-curl -s https://pub.escrivivir.co/teatro/<obra>/ | grep <hash-esperado>               # letrero estampado
-```
+La ejecuta el propio deploy. Manualmente: `TEATRO_OBRA=<obra> npm run devops:teatro:verify`
+(árbol remoto contra el manifiesto local, recuento, tamaño, permisos). Comprueba: `/teatro/`,
+`/teatro/<obra>/`, `/enlaces/`, checksums y manifiesto → 200; un `.mp4` con `Range` → 206;
+`data/ip-audit.js` y `data/direct-messages.js` → **404**; hash estampado; portada sin `<script>`;
+nada world-writable; `/` y `/public/status` vivos; y avisa si `/teatro/no-existe/` no da 404 (§6).
 
-Y la verificación de firma "en frío" del §4 descargando los tres artefactos.
-Comprobar también que el resto de vhosts siguen vivos (`/`, `/public/status`,
-`scriptorium.escrivivir.co/healthz`).
+Respaldo de lo no regenerable: `TEATRO_OBRA=<obra> npm run devops:teatro:backup` (portada estampada,
+firmas, manifiesto y los **stores de voces y enlaces** del lore). El árbol servido no se respalda: se
+regenera. Los exports son responsabilidad del usuario (`ARCHIVO/LORE/README.md`).
 
-## 6. Realidad del VPS (2026-08-26) — leer antes de tocar
+## 6. Realidad del VPS — leer antes de tocar
 
-- El stack vivo corre desde **`/opt/oasis-scriptorium/OASIS_PUB`** (layout
-  antiguo, **sin git**), no desde el checkout `pub/` que describe
-  `devops/MIGRATION-2026-07.md`. La migración sigue pendiente.
-- El mount del Teatro se añadió al compose **vivo** a mano, con backup:
-  `docker-compose.pub.yml.bak-teatro`. `OASIS_PUB_TEATRO_DIR=/srv/oasis/teatro`
-  quedó añadida a `.env` y `.env.prod` de ese directorio.
-- `pub/site/scriptorium/index.html` del repo y el vivo **divergen a propósito**:
-  el vivo publica el token de PUBLIC_ROOM (aparece en la web, no es secreto) y la
-  etiqueta del diagrama dice `BlockchainComPort/OASIS_PUB`. Al desplegar el
-  vestíbulo hay que **fusionar**, no pisar (hay backups `*.bak-teatro` en
-  `site/`).
-- Recrear solo el edge: `cd /opt/oasis-scriptorium/OASIS_PUB &&
-  docker compose --env-file .env.prod -f docker-compose.pub.yml up -d pub-web`.
-  El project name (`oasis-pub-scriptorium`) coincide con el del compose del repo,
-  así que el día de la migración Docker **adopta** los contenedores y la red al
-  levantar desde el checkout nuevo — no hay que destruir nada.
+- El stack vivo corre desde **`/opt/oasis-scriptorium/OASIS_PUB`** (layout antiguo, **sin git**), no
+  desde el checkout `pub/` que describe `devops/MIGRATION-2026-07.md`. La migración sigue pendiente;
+  los ficheros se suben **in place** (`cat >`), nunca reemplazando el inode de un bind de fichero.
+- El mount del Teatro se añadió al compose **vivo** a mano (backup `docker-compose.pub.yml.bak-teatro`);
+  `OASIS_PUB_TEATRO_DIR=/srv/oasis/teatro` está en `.env` y `.env.prod` de ese directorio.
+- **La obra vive en el volumen de datos** (`/dev/xvdb`, `/srv/oasis/teatro`), no en el disco de
+  sistema. `verify-debian13-base.sh` lo comprueba (existe, permisos, nada world-writable) y
+  `hub-disk.sh status` lo mide.
+- **Bloque `@teatro` del Caddyfile** (`pub/caddy/Caddyfile`): 404 real bajo `/teatro/` (sin el
+  fallback a la landing del `handle` genérico), `Cache-Control`, CSP estricta para las páginas
+  generadas y CSP propia para `navegador.html`. El Caddyfile vivo es **compartido por más vhosts**:
+  backup → subir → `docker exec oasis-pub-web caddy validate --config /etc/caddy/Caddyfile` →
+  `caddy reload`. **Nunca `restart pub-web`.**
+- `pub/site/scriptorium/index.html` del repo y el vivo **divergen a propósito** (token público de
+  PUBLIC_ROOM). Al desplegar el vestíbulo hay que **fusionar**, no pisar. `deploy-site.sh` usa
+  `rsync --delete` sin exclusiones: no apuntarlo a `OASIS_PUB/site` sin revisar los `*.bak-*`.
+- Recrear solo el edge: `cd /opt/oasis-scriptorium/OASIS_PUB && docker compose --env-file .env.prod
+  -f docker-compose.pub.yml up -d pub-web`. El project name coincide con el del repo: el día de la
+  migración Docker **adopta** contenedores y red.

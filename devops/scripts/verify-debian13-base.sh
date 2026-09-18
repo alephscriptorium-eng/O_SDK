@@ -170,9 +170,11 @@ check_mount() {
 }
 
 check_layout() {
-  local dir hub_root
+  local dir hub_root teatro_root
   # HUB clearnet (WP-O46): estado del nodo de soporte, hermano de DATA_ROOT en el volumen de datos.
   hub_root="$(dirname "$DATA_ROOT")/oasis-hub"
+  # Teatro (WP-O99): obras estáticas; también en el volumen de datos, nunca en el disco de sistema.
+  teatro_root="$(dirname "$DATA_ROOT")/teatro"
   local dirs=(
     "$REPO_DIR"
     "$DATA_ROOT"
@@ -184,6 +186,7 @@ check_layout() {
     "$hub_root/ssb-data"
     "$hub_root/logs"
     "$hub_root/http-cache"
+    "$teatro_root"
   )
 
   for dir in "${dirs[@]}"; do
@@ -193,6 +196,19 @@ check_layout() {
       fail "Missing directory: $dir"
     fi
   done
+
+  if [[ -d "$teatro_root" ]]; then
+    if [[ "$(df -P "$teatro_root" | awk 'NR==2{print $1}')" == "$(df -P / | awk 'NR==2{print $1}')" ]]; then
+      fail "Teatro en el disco de sistema: $teatro_root debe vivir en el volumen de datos"
+    else
+      pass "Teatro en el volumen de datos: $teatro_root"
+    fi
+    if [[ -n "$(find "$teatro_root" -perm -o+w -print -quit 2>/dev/null)" ]]; then
+      fail "Teatro con ficheros world-writable (esperado 755/644): $teatro_root"
+    else
+      pass "Teatro sin ficheros world-writable"
+    fi
+  fi
 }
 
 check_ownership() {

@@ -5,6 +5,49 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Teatro: sidecar de RRSS con fuente en exports de x.com (WP-O99, 2026-09-18)
+
+- `pub/rrss-sidecar/twitter_x/`: el generador de obras del Teatro, en git y
+  parametrizado por obra (Python ≥ 3.10, solo stdlib). `sidecar.py`
+  (`lore-import | init | ingest | fetch-voices | fetch-links | browser-* |
+  build | check | manifest | pack`), `lib/` (obra, ytd multi-parte, store
+  aditivo multi-generación, **normalize = la costura**, voices, links,
+  html2md, guards), builders sobre el corpus normalizado, parche multi-vídeo
+  del visor como JSON declarativo con sha256 verificado, tests sobre export
+  sintético. `CORPUS-SCHEMA.md`: contrato para un futuro adaptador B.O.E.
+- `ARCHIVO/LORE/`: casa del lore del usuario **dentro del repo y fuera de
+  git** (deny-by-default; excluido de la imagen Docker). El protocolo es
+  autocontenido; el lore del custodio se copió verificado (3 generaciones).
+- Protocolo (a) voces ajenas a 1-2 niveles, incluidas las **citas** (el
+  export no trae `quoted_status`); protocolo (b) enlaces externos a Markdown
+  íntegro, con cola de navegador y **regla PARAR**. Puerta nueva «Enlaces».
+- `docs/PUB/RRSS-SIDECAR-PROTOCOL.md` (nuevo) y `TEATRO-PROTOCOL.md`
+  reescrito; scripts npm `teatro:*` y `devops:teatro:*`; asiento D-O16.
+
+### Changed — Teatro: deploy por obra e higiene del VPS (WP-O99)
+
+- `devops/scripts/deploy-teatro.sh`: `TEATRO_OBRA` obligatorio (adiós a
+  `aleph-cero` hardcodeado), origen `volumes-dev/teatro`, pre-vuelo de
+  invariantes + `MANIFEST.sha256`, `rsync --chmod=D755,F644` acotado a la
+  obra, **dos zips** (completo como descarga principal; ligero para
+  inspección), tres firmas ed25519 y **verificación post-deploy automática**
+  (incl. `data/ip-audit.js` → 404). Nuevos `teatro-wsl.sh` y
+  `backup-teatro.sh` (`--verify`; backup de firmas y stores del lore).
+- `pub/caddy/Caddyfile`: bloque `@teatro` — 404 real (sin fallback a la
+  landing), whitelist de `data/*.js`, CSP estricta para páginas y propia para
+  el visor, caché larga de media.
+- `verify-debian13-base.sh` comprueba `/srv/oasis/teatro` (volumen de datos,
+  nada world-writable); `hub-disk.sh status` lo mide;
+  `OASIS_PUB_TEATRO_DIR` en `pub/.env.example` y `.env.local.example`.
+
+### Security — (WP-O99)
+
+- `.dockerignore` no excluía `ARCHIVO/`: añadidos `ARCHIVO/LORE/**` y
+  `pub/rrss-sidecar/**` (un lore de varios GB con datos personales habría
+  entrado en el contexto de build). Guardas de publicación como única fuente
+  de verdad (`lib/guards.py`): denylist de nombres sensibles en árbol y zips,
+  email/teléfono del export, recursos externos, `<script>` fuera del visor.
+
 ### Added — Protocolo del cliente: alta fresca e importación de identidad (WP-O98, 2026-09-17)
 
 - `docs/CLIENT-PROTOCOL.md` (nuevo): estado y convivencia con el pub local, alta fresca,

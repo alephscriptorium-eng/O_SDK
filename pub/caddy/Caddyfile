@@ -25,6 +25,33 @@
     }
   }
 
+  # Teatro (Sala 03): obras estáticas servidas desde el volumen de datos (/srv/site/teatro, :ro).
+  # 404 REAL (sin el fallback a la landing del handle genérico), caché larga para media y dos CSP:
+  # estricta sin scripts para las páginas generadas; propia para el visor anexo (navegador.html),
+  # que es la única excepción declarada al «cero JS» (docs/PUB/TEATRO-PROTOCOL.md §0).
+  @teatro path /teatro /teatro/*
+  handle @teatro {
+    root * /srv/site
+
+    # De data/ solo sale la whitelist del visor, pase lo que pase en el árbol (lib/guards.py).
+    @teatro_raw_js {
+      path_regexp ^/teatro/[^/]+/data/[^/]+\.js$
+      not path_regexp ^/teatro/[^/]+/data/(manifest|tweets|tweet-headers|account|profile|verified|verified-organization|screen-name-change)\.js$
+    }
+    respond @teatro_raw_js 404
+
+    @teatro_viewer path_regexp ^/teatro/[^/]+/(navegador\.html|assets/js/.*)$
+    @teatro_pages not path_regexp ^/teatro/[^/]+/(navegador\.html|assets/js/.*)$
+    header @teatro_pages Content-Security-Policy "default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    header @teatro_viewer Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'"
+
+    @teatro_media path *.mp4 *.jpg *.jpeg *.png *.gif *.webp *.woff *.woff2 *.ttf
+    header @teatro_media Cache-Control "public, max-age=2592000"
+
+    try_files {path} {path}/index.html
+    file_server
+  }
+
   handle {
     root * /srv/site
     try_files {path} {path}/index.html /index.html
