@@ -115,6 +115,7 @@ ls src/configs/blockchain-cycle.json              # preservado
   arranque** que no quedan no-op.
 - Contrato AI: `ai_service.mjs` espera modelo `oasis-42-1-chat.Q4_K_M.gguf` en `:4001`. Revisar si
   upstream lo cambió.
+- Cliente con ECOin (WP-O103): `persist_client_state`, `wire_wallet_config` y `setup_oasis_config` (ahora en node, sin `sed`) viven en `docker-entrypoint.sh` (zona *wholesale*) y solo actúan con `OASIS_CLIENT_STATE_DIR` definido y modo distinto de `server`; **`src/` sigue con exactamente 4 guards** — tras el overlay, confirmar que `src/configs/oasis-config.json` conserva `wallet.{url,user,pass,fee}` y `walletPub.pubId` (`CLIENT-PROTOCOL.md` §8).
 
 ## 4. Deploy por rol (misma imagen, tres modos)
 

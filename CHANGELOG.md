@@ -5,6 +5,42 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — ECOin en la app cliente (WP-O103, 2026-09-18)
+
+Estado: **implementado en la rama `wp/O103-cliente-ecoin`, drill pendiente**. Nada se ha ejecutado
+sobre la identidad real: publicar la dirección en el feed del custodio es una puerta con confirmación
+expresa. BRIEF `plan/BRIEFS/WP-O103-cliente-ecoin.md`; doc viva `docs/CLIENT-PROTOCOL.md` §8; asiento D-O19.
+
+- **Dos niveles, independientes del VPS**: (i) *solo dirección* (aparecer, recibir y reclamar RBU
+  con una dirección de una `wallet.dat` propia) y (ii) *cartera propia* (`ecoind` propio para saldo,
+  envíos e historial). Por defecto `wallet.url = ""`: ningún RPC saliente y `/banking` sin latencia.
+- **`docker-entrypoint.sh`** (zona *wholesale*; delta en `src/` = cero, siguen exactamente 4 guards):
+  `persist_client_state` (config de la GUI y mapa de direcciones persistidos por symlink),
+  `wire_wallet_config` (`ECOIN_RPC_URL|USER|PASS`, `OASIS_WALLET_FEE`, `OASIS_WALLET_PUB_ID` →
+  `oasis-config.json`; **env manda**, escape `OASIS_WALLET_WIRING=manual`; **guarda anti-remoto**
+  salvo `ECOIN_RPC_ALLOW_REMOTE=i-know`; nunca imprime credenciales) y `setup_oasis_config` reescrito
+  en node. Solo actúan con `OASIS_CLIENT_STATE_DIR` y modo distinto de `server`: pub, HUB y bot-2 sin regresión.
+- **`docker-compose.yml` raíz**: `ecoin-wallet` **sin `ports`** (RPC 7474 y P2P 7408 solo en la red
+  del compose; el 12000 desaparece), credenciales del `.env` raíz con `ECOIN_REQUIRE_CREDS=1`,
+  healthcheck, `mem_limit` (`ECOIN_MEM_LIMIT`, 512m), `logging`, `stop_grace_period 2m`;
+  `wallet.dat` en el **volumen externo `o-sdk-client-ecoin-data`** (sustituye a
+  `volumes-dev/ecoin-data`; `down -v` no lo borra). `oasis-client`: bind
+  `./volumes-dev/client-state` → `/app/state`, `OASIS_BANKING_DIR=/app/state/banking`,
+  `depends_on` opcional. `.env.example` raíz con los dos modos.
+- **`client/scripts/`**: `ecoin-init.sh` (credenciales generadas, volumen, `--mode address|own`,
+  `--pub-id`, `--ensure`), `backup-wallet.sh` (caliente, `--cold`, `--restore` que nunca sobrescribe;
+  sha256; `devops/backups/client-wallet/<TS>/`), `guard-destroy.sh` (exige `BORRAR` y backup de menos
+  de 24 h), `ecoin-verify.sh`; `setup.sh` e `import-identity.sh` dejan de tocar `ecoin-data`;
+  `client/docker-compose.drill.yml` (proyecto `o-sdk-drill`, identidad desechable, 3100/8108).
+- **npm**: `client:ecoin:init`, `client:wallet:backup`, `client:wallet:restore`,
+  `client:ecoin:verify`; `ecoin:info|balance|address` sin credenciales en la línea de comandos,
+  `ecoin:system` sin volcar `rpcpassword`, `ecoin:build` antepone `ecoin:fetch-deb`, `ecoin:up` espera
+  a `healthy`; `downDELETEVOLS` y `cleanDELETEVOLS` pasan por la guarda.
+- Docs y gobierno: `docs/CLIENT-PROTOCOL.md` §8 «ECOin en el cliente» (procedimientos, tabla
+  variable → entrypoint → config, backup/restore, banco = bot-2, avisos, drill) y corrección de
+  puertos y `volumes-dev/`; `client/README.md`; `UPGRADE-PROTOCOL.md` §3; referencia cruzada en
+  `docs/PUB/ECOIN-PROTOCOL.md`; WP-O103 🔶 en `plan/BACKLOG.md`.
+
 ### Added — hub-wallet del pub: `ecoind` + `azofaifo-scriptorium-wallet-bot-2` (WP-O102, 2026-09-18)
 
 Estado: **desplegado el 2026-09-18 (18:06 UTC)** con el motor de RBU APAGADO: bot-2 =
