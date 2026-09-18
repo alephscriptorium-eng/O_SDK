@@ -45,6 +45,7 @@ FAMILIES: list[tuple[str, re.Pattern]] = [
     ("github:gist", re.compile(r"^gist\.github\.com/[^/]+/[0-9a-f]+", re.I)),
     ("github:blob", re.compile(r"^github\.com/[^/]+/[^/]+/blob/", re.I)),
     ("github:issue", re.compile(r"^github\.com/[^/]+/[^/]+/(issues|pull|discussions)/\d+", re.I)),
+    ("github:commits", re.compile(r"^github\.com/[^/]+/[^/]+/commits(/|$)", re.I)),
     ("github:repo", re.compile(r"^github\.com/[^/]+/[^/]+(/(tree/.*)?)?/?$", re.I)),
     ("video:youtube", re.compile(r"^(m\.)?(youtube\.com/(watch|live|shorts|playlist)|youtu\.be/)", re.I)),
     ("video:other", re.compile(r"^(twitch\.tv|kick\.com|vimeo\.com|tiktok\.com|dailymotion\.com)/", re.I)),
@@ -102,6 +103,7 @@ def md_path(obra: Obra, key: str) -> Path:
 
 def plan(obra: Obra) -> dict:
     own_hosts = obra.cfg.get("own_hosts") or []
+    link_only = {h.lower().removeprefix("www.") for h in obra.cfg.get("link_only_hosts") or []}
     data = load(obra)
     cited: dict[str, list[str]] = {}
     first_url: dict[str, str] = {}
@@ -114,6 +116,12 @@ def plan(obra: Obra) -> dict:
         entry = data.setdefault(key, {"url": url, "status": "pending", "attempts": 0})
         entry["family"] = classify(url, own_hosts)
         entry["cited_by"] = sorted(set(cited[key]))
+        # `link_only_hosts` (obra.json): dominios cuyo contenido NO se descarga; se quedan como enlace.
+        # Coincidencia exacta de host. Lo ya recuperado (`ok`) no se toca.
+        host = (urlsplit(url).hostname or "").lower().removeprefix("www.")
+        if host in link_only and entry["status"] != "ok":
+            entry["status"] = "link_only"
+            entry.pop("error", None)
     write_json_atomic(store_path(obra), data)
     by_family: dict[str, dict[str, int]] = {}
     for entry in data.values():
@@ -257,6 +265,30 @@ def fetch_github(url: str, family: str):
         name = seg[-1]
         markdown = text if name.lower().endswith((".md", ".markdown")) else f"```{Path(name).suffix.lstrip('.')}\n{text}\n```"
         return f"{owner}/{repo}: {'/'.join(seg[4:])}", markdown.rstrip() + "\n", "api", url
+    if family == "github:commits":
+        # /commits/<ref>/<path>: el nombre de rama puede llevar «/»; se prueba cada corte posible.
+        tail = seg[3:]
+        code, body, ref, sub = 0, b"", "", ""
+        for cut in (range(1, len(tail) + 1) if tail else [0]):
+            ref, sub = "/".join(tail[:cut]), "/".join(tail[cut:])
+            query = "per_page=50" + (f"&sha={ref}" if ref else "") + (f"&path={sub}" if sub else "")
+            code, _h, body, _f = http_get(f"{api}/repos/{owner}/{repo}/commits?{query}", "application/vnd.github+json", headers)
+            if code == 200 and json.loads(body):
+                break
+        if code != 200:
+            return None
+        rows = [f"# Historial de {owner}/{repo}" + (f" · {ref}" if ref else "") + (f" · {sub}" if sub else ""), "",
+                "*Últimos commits tal como los devuelve la API de GitHub el día de la recuperación.*", ""]
+        for item in json.loads(body):
+            commit = item.get("commit") or {}
+            author = (commit.get("author") or {})
+            message = (commit.get("message") or "").strip()
+            lines = message.splitlines() or [""]
+            rows.append(f"- `{(item.get('sha') or '')[:7]}` · {author.get('date', '')[:10]} · {author.get('name', '')} — **{lines[0]}**")
+            rest = [ln for ln in lines[1:] if ln.strip()]
+            if rest:
+                rows += [""] + ["  " + ln for ln in rest] + [""]
+        return f"{owner}/{repo}: commits", chr(10).join(rows) + chr(10), "api", url
     if family == "github:issue":
         kind = "issues" if seg[2] in ("issues", "pull") else None
         if kind:
@@ -348,7 +380,13 @@ def fetch(url: str, family: str):
         return fetch_github(url, family) or fetch_html(url)
     if family == "video:youtube":
         return fetch_youtube(url)
-    return fetch_html(url)
+    result = fetch_html(url)
+    if result is None:  # sin respuesta útil en directo (anti-bot, TLS, 5xx): segunda vía por el proxy de lectura
+        try:
+            return fetch_jina(url)
+        except NeedsBrowser:
+            return None
+    return result
 
 
 # ── tanda ────────────────────────────────────────────────────────────────────
@@ -461,16 +499,41 @@ def browser_next(obra: Obra) -> dict | None:
     return None
 
 
-def browser_save(obra: Obra, key: str, title: str, md_file: Path, final_url: str | None) -> None:
+def browser_save(obra: Obra, key: str, title: str, md_file: Path, final_url: str | None, meta: bool = False) -> None:
+    """`meta=True`: páginas de vídeo u otras de las que solo se guardan metadatos (pueden ser breves)."""
     data = load(obra)
     entry = data.get(key)
     if not entry:
         raise SystemExit(f"hash desconocido: {key}")
     markdown = md_file.read_text(encoding="utf-8")
-    if len(markdown.strip()) < 200 or WALL.search(markdown[:600]):
+    if not meta and (len(markdown.strip()) < 200 or WALL.search(markdown[:600])):
         raise SystemExit("el markdown parece un muro de login o está vacío: no se guarda (REGLA PARAR)")
+    if meta and entry["family"].startswith("agent:"):
+        raise SystemExit("una conversación con agente no se guarda como solo-metadatos (REGLA PARAR)")
     save_result(obra, key, entry, title, markdown if markdown.endswith("\n") else markdown + "\n",
-                "browser", final_url or entry["url"])
+                "browser-meta" if meta else "browser", final_url or entry["url"])
+    write_json_atomic(store_path(obra), data)
+
+
+def mark(obra: Obra, key: str, status: str, note: str) -> None:
+    """Marcado manual: `gone` (la página ya no existe) o `link_only` (se queda como enlace)."""
+    if status not in ("gone", "link_only", "pending"):
+        raise SystemExit("estado no admitido: usa gone | link_only | pending")
+    data = load(obra)
+    entry = data.get(key)
+    if not entry:
+        raise SystemExit(f"hash desconocido: {key}")
+    if entry["family"].startswith("agent:") and status != "pending":
+        raise SystemExit("un share de agente no se descarta a mano: usa browser-block (REGLA PARAR)")
+    entry.update({"status": status, "note": note, "fetched_at": now_iso()})
+    entry.pop("error", None)
+    write_json_atomic(store_path(obra), data)
+
+
+def set_public_url(obra: Obra, key: str, public_url: str) -> None:
+    """El autor republicó un share con otra URL pública (p. ej. un artifact): se anota junto a la original."""
+    data = load(obra)
+    data[key]["public_url"] = public_url
     write_json_atomic(store_path(obra), data)
 
 

@@ -81,6 +81,18 @@ python pub/rrss-sidecar/twitter_x/sidecar.py browser-next --obra mi-obra     # �
 python pub/rrss-sidecar/twitter_x/sidecar.py browser-save --obra mi-obra --hash <h> --title "…" --md-file conv.md
 ```
 
+### Enlaces que no se descargan, metadatos y URL pública
+
+- **`link_only_hosts`** en `obra.json` (coincidencia exacta de host, p. ej. `["miblog.example"]`): esos
+  enlaces **se quedan como enlace**, nunca se descargan ni se reintentan. Útil para tu propio blog si
+  prefieres que la obra apunte a él. Lo ya recuperado (`ok`) no se toca.
+- `sidecar.py link-mark --obra <obra> --hash <h> --status gone|link_only|pending --note "…"`: marcado
+  manual de un enlace **no-agente** (página que ya no existe, sitio caído).
+- `sidecar.py browser-save … --meta`: para páginas de vídeo de las que solo se guardan metadatos
+  (título, descripción). Nunca para `agent:*`.
+- `sidecar.py link-public-url --obra <obra> --hash <h> --url <nueva>`: si republicas un share con otra
+  URL (p. ej. un artifact), se anota junto a la original y el visor enlaza ambas.
+
 ### REGLA PARAR
 
 Las conversaciones con agentes se compartieron como públicas. Si una responde con login,

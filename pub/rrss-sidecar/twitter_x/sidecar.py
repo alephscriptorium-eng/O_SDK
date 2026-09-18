@@ -193,8 +193,20 @@ def cmd_browser_next(args) -> int:
 
 def cmd_browser_save(args) -> int:
     obra = Obra(args.obra).require()
-    links.browser_save(obra, args.hash, args.title, Path(args.md_file), args.final_url)
+    links.browser_save(obra, args.hash, args.title, Path(args.md_file), args.final_url, args.meta)
     print(f"✅ guardado {args.hash}")
+    return 0
+
+
+def cmd_link_mark(args) -> int:
+    links.mark(Obra(args.obra).require(), args.hash, args.status, args.note)
+    print(f"{args.hash} -> {args.status}")
+    return 0
+
+
+def cmd_link_public_url(args) -> int:
+    links.set_public_url(Obra(args.obra).require(), args.hash, args.url)
+    print(f"{args.hash} public_url = {args.url}")
     return 0
 
 
@@ -351,6 +363,16 @@ def main() -> int:
     p.add_argument("--title", required=True)
     p.add_argument("--md-file", required=True)
     p.add_argument("--final-url")
+    p.add_argument("--meta", action="store_true", help="solo metadatos (vídeo): admite texto breve; nunca para agent:*")
+    p = add("link-mark", cmd_link_mark, "marca un enlace no-agente como gone | link_only | pending")
+    p.add_argument("--obra", required=True)
+    p.add_argument("--hash", required=True)
+    p.add_argument("--status", required=True, choices=["gone", "link_only", "pending"])
+    p.add_argument("--note", default="")
+    p = add("link-public-url", cmd_link_public_url, "anota la URL pública con que el autor republicó un share")
+    p.add_argument("--obra", required=True)
+    p.add_argument("--hash", required=True)
+    p.add_argument("--url", required=True)
     p = add("browser-block", cmd_browser_block, "REGLA PARAR: el share resultó privado o caducado")
     p.add_argument("--obra", required=True)
     p.add_argument("--hash", required=True)

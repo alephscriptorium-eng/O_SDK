@@ -7,6 +7,7 @@
   "tagline": "El archivo de una cuenta como pieza en actos, escenas y apartes.",
   "account": { "id": "0000000000000000000", "handle": "mi_cuenta", "name": "Mi Nombre" },
   "own_hosts": ["midominio.example", "miusuario.github.io"],
+  "link_only_hosts": [],
   "sources": [
     { "generation": "2026-01-15", "path": "exports/2026-01-15" },
     { "generation": "2026-06-30", "path": "exports/2026-06-30", "primary": true }

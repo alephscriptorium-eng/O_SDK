@@ -31,6 +31,8 @@ MES = {1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio", 
        8: "agosto", 9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"}
 FAMILY_LABEL = {"agent": "Conversaciones con agentes", "github": "Código (GitHub)", "own": "Dominio propio",
                 "video": "Vídeo", "generic": "Otras páginas"}
+STATUS_LABEL = {"link_only": "se queda como enlace", "gone": "ya no existe", "pending": "pendiente",
+                "pending_browser": "pendiente de navegador", "error": "no recuperado", "blocked": "no público"}
 INFRA_COPY = ("sidecar.py", "lib", "tools", "templates", "patches", "README.md")
 
 
@@ -566,7 +568,8 @@ class Site:
                 if entry.get("status") == "ok":
                     title = f'<a href="{b}/enlaces/{key}.html">{esc(entry.get("title") or entry["url"])}</a>'
                 else:
-                    title = f'{esc(entry["url"])} <span class="no-dispo">({esc(entry.get("status") or "pending")})</span>'
+                    label = STATUS_LABEL.get(entry.get("status") or "pending", entry.get("status") or "pendiente")
+                    title = f'<a href="{esc(entry["url"])}">{esc(entry["url"])}</a> <span class="no-dispo">({esc(label)})</span>'
                 filas.append(f'<div class="fila"><span class="k">{esc(entry.get("family", ""))}</span> {title} · citado en {cited}</div>')
             secciones.append(f'<h2 class="acto">{esc(FAMILY_LABEL[group])} ({len(items)})</h2><div class="listado">{"".join(filas)}</div>')
         write_text(out / "index.html", self.page(
@@ -582,6 +585,7 @@ class Site:
                 f'<h2 class="acto">{esc(entry.get("title") or entry["url"])}</h2>'
                 f'<div class="acto-sub">{esc(entry.get("family", ""))} · recuperado {esc((entry.get("fetched_at") or "")[:10])} '
                 f'({esc(entry.get("method") or "")}) · <a href="{esc(entry["url"])}">original</a> · '
+                + (f'<a href="{esc(entry["public_url"])}">enlace público</a> · ' if entry.get("public_url") else "") +
                 f'<a href="{b}/corpus/links/{key}.md">md</a></div>'
                 f'<div class="ficha">Citado en: {cited or "—"}</div>'
             )
