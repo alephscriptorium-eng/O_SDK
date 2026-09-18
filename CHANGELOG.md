@@ -30,6 +30,12 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 - Aleph Cero, propuesta v1 (en el lore, fuera de git): 5 territorios, 21
   constructos, 13 cortes, 143 citas verificadas, sigilo de portada.
 
+- Revisión del custodio: `album.lyrics` (letra de la obra entera, repartida por los cortes),
+  `voice_notes` (descripción del custodio como `alt` de la media de una voz ajena),
+  `obra.json → imprint` (cabecera y colofón con sello y licencia en todas las páginas) y
+  `link-mark --waived-by` (dispensa expresa para dejar un share de agente como enlace).
+  Aleph Cero: constructo «Sacar la cabeza» (22 constructos, 151 citas verificadas).
+
 ### Changed
 
 - `lib/guards.py`: barre también `*.svg` y los `<svg>` inline (sin script,

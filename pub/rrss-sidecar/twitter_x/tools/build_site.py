@@ -237,9 +237,26 @@ class Site:
             f' · <a href="{b}/{self.zip_name}">ZIP ↓</a></div>'
         )
 
+    def imprint(self) -> tuple[str, str]:
+        """(cabecera, colofón) declarados en `obra.json` → `imprint`: sello editorial y licencia de la obra."""
+        cfg = self.obra.cfg.get("imprint") or {}
+
+        def item(entry) -> str:
+            if isinstance(entry, dict):
+                url = str(entry.get("url") or "")
+                text = esc(str(entry.get("text") or url))
+                return f'<a href="{esc(url)}">{text}</a>' if url.startswith(("https://", "/")) else text
+            return esc(str(entry))
+
+        head = " · ".join(item(e) for e in cfg.get("header") or [])
+        foot = " · ".join(item(e) for e in cfg.get("footer") or [])
+        return head, foot
+
     def footer(self) -> str:
         capas = f" · {self.n_generations} generaciones" if self.n_generations > 1 else ""
+        colofon = self.imprint()[1]
         return (
+            (f'<div class="colofon">{colofon}</div>' if colofon else "") +
             f'<footer class="footer">{esc(self.title)} · Teatro del Scriptorium · archivo oficial X '
             f"{self.generation}{capas} · texto verbatim · citar por id · "
             f'<a href="{self.base}/AGENTS.md">protocolo</a></footer>'
@@ -257,7 +274,7 @@ class Site:
         )
 
     # piezas
-    def media_html(self, paths: list[str]) -> str:
+    def media_html(self, paths: list[str], alt: str = "") -> str:
         if not paths:
             return ""
         cells = []
@@ -266,7 +283,7 @@ class Site:
             if rel.lower().endswith(".mp4"):
                 cells.append(f'<figure><video controls preload="metadata" src="{src}"></video></figure>')
             else:
-                cells.append(f'<figure><img src="{src}" alt="" loading="lazy"></figure>')
+                cells.append(f'<figure><img src="{src}" alt="{esc(alt)}" loading="lazy"></figure>')
         return f'<div class="media">{"".join(cells)}</div>'
 
     def ctx_block(self, label: str, tid: str, depth: int = 1) -> str:
@@ -288,7 +305,10 @@ class Site:
             body = '<p class="no-dispo">No disponible en X (borrado, protegido o cuenta ausente).</p>'
         else:
             body = f'<p class="no-dispo">No recuperado (<code>{esc(status or "missing")}</code>).</p>'
-        body += self.media_html([m["local"] for m in node.get("media") or [] if m.get("local")])
+        note = self.editorial.voice_notes.get(str(node.get("id") or tid)) or self.editorial.voice_notes.get(tid) or ""
+        body += self.media_html([m["local"] for m in node.get("media") or [] if m.get("local")], alt=note)
+        if note:
+            body += f'<p class="nota-custodio">Descripción del custodio: {esc(note)}</p>'
         inner = ""
         if depth == 1:
             inner = "".join(self.ctx_block(lbl, sub, 2) for lbl, sub in level2_refs(node) if sub in self.tweets)
@@ -556,7 +576,8 @@ class Site:
         )
         name = account.get("accountDisplayName") or self.obra.account.get("name") or self.obra.handle
         portada = (
-            f'<header class="header"><div class="stamp">{esc(self.obra.cfg.get("stamp") or "Obra")}</div><h1>{esc(self.title)}</h1>'
+            f'<header class="header"><div class="stamp">{esc(self.obra.cfg.get("stamp") or "Obra")}</div>'
+            + (f'<div class="kicker">{self.imprint()[0]}</div>' if self.imprint()[0] else "") + f'<h1>{esc(self.title)}</h1>'
             '<div class="sub">Teatro del Scriptorium</div>'
             f'<div class="sub2">{esc(self.obra.cfg.get("tagline") or "El archivo de una cuenta como pieza en actos, escenas y apartes.")}</div>'
             f'<div class="issue">TEATRO · {self.generation[:4]}</div></header><div class="washi"></div>'
@@ -674,17 +695,23 @@ class Site:
         album = ed.album
         title = album.get("title") or "El cantar"
         steps = [(f'{t["n"]:02d}', t["title"]) for t in ed.tracks]
+        any_track_lyrics = any(t["lyrics"] for t in ed.tracks)
         rows = "".join(
             f'<tr><td class="num">{num}</td><td>{esc(t["side"])}</td><td><a href="{b}/cantar/{num}.html">{esc(t["title"])}</a></td>'
-            f'<td class="num">{esc(t["duration"])}</td><td>{"letra" if t["lyrics"] else "—"}</td></tr>'
+            f'<td class="num">{esc(t["duration"])}</td>' + (f'<td>{"letra" if t["lyrics"] else "—"}</td>' if any_track_lyrics else "") + "</tr>"
             for (num, _), t in zip(steps, ed.tracks))
         intro = ed.text(album.get("text")) if album.get("text") else ""
+        whole = ed.text(album.get("lyrics")) if album.get("lyrics") else ""
         source = f' · <a href="{esc(album["url"])}">lista de reproducción</a>' if str(album.get("url") or "").startswith("https://") else ""
         write_text(out / "index.html", self.page(
             f"{title} · {self.title}",
             f'<h2 class="acto">{esc(title)}</h2><div class="acto-sub">{esc(album.get("copy") or "")}{source}</div>' + self.curado()
             + (f'<article class="doc">{self.ed_html(intro)}</article>' if intro else "")
-            + f'<table class="tbl"><tr><th>#</th><th>Cara</th><th>Corte</th><th>Dur.</th><th>Letra</th></tr>{rows}</table>',
+            + f'<table class="tbl"><tr><th>#</th><th>Cara</th><th>Corte</th><th>Dur.</th>{"<th>Letra</th>" if any_track_lyrics else ""}</tr>{rows}</table>'
+            + (('<h3 class="sub-acto">Recapitula</h3><div class="chips">' + "".join(
+                f'<a href="{b}/sistema/{x}.html">{esc(ed.constructs[x]["title"])}</a>' for x in album.get("constructs") or [] if x in ed.constructs)
+                + "</div>") if album.get("constructs") else "")
+            + (f'<h3 class="sub-acto" id="letra">Letra</h3><article class="doc letra">{self.ed_html(whole)}</article>' if whole else ""),
             album.get("copy") or ""))
         for i, t in enumerate(ed.tracks):
             num = steps[i][0]
@@ -695,8 +722,10 @@ class Site:
             if t["note"]:
                 body.append(f'<div class="ficha">{esc(t["note"])}</div>')
             lyrics = ed.text(t["lyrics"]) if t["lyrics"] else ""
-            body.append(f'<article class="doc letra">{self.ed_html(lyrics)}</article>' if lyrics
-                        else '<p class="no-dispo">Letra pendiente de que la aporte el custodio.</p>')
+            if lyrics:
+                body.append(f'<article class="doc letra">{self.ed_html(lyrics)}</article>')
+            elif whole:
+                body.append(f'<div class="ficha">La letra del cantar se reparte por los cortes: <a href="{b}/cantar/#letra">léela entera</a>.</div>')
             if t["constructs"]:
                 chips = "".join(f'<a href="{b}/sistema/{s}.html">{esc(ed.constructs[s]["title"])}</a>' for s in t["constructs"])
                 body.append(f'<h3 class="sub-acto">Recapitula</h3><div class="chips">{chips}</div>')

@@ -515,8 +515,11 @@ def browser_save(obra: Obra, key: str, title: str, md_file: Path, final_url: str
     write_json_atomic(store_path(obra), data)
 
 
-def mark(obra: Obra, key: str, status: str, note: str) -> None:
-    """Marcado manual: `gone` (la página ya no existe) o `link_only` (se queda como enlace)."""
+def mark(obra: Obra, key: str, status: str, note: str, waived_by: str = "") -> None:
+    """Marcado manual: `gone` (la página ya no existe) o `link_only` (se queda como enlace).
+
+    Un share de agente solo se deja como enlace con dispensa expresa del custodio (`waived_by`).
+    """
     if status not in ("gone", "link_only", "pending"):
         raise SystemExit("estado no admitido: usa gone | link_only | pending")
     data = load(obra)
@@ -524,7 +527,10 @@ def mark(obra: Obra, key: str, status: str, note: str) -> None:
     if not entry:
         raise SystemExit(f"hash desconocido: {key}")
     if entry["family"].startswith("agent:") and status != "pending":
-        raise SystemExit("un share de agente no se descarta a mano: usa browser-block (REGLA PARAR)")
+        if not (status == "link_only" and waived_by):
+            raise SystemExit("un share de agente no se descarta a mano: usa browser-block (REGLA PARAR), "
+                             "o link_only con --waived-by <custodio> si el custodio renuncia a rescatarlo")
+        entry.update({"waived_by": waived_by, "waived_at": now_iso()})
     entry.update({"status": status, "note": note, "fetched_at": now_iso()})
     entry.pop("error", None)
     write_json_atomic(store_path(obra), data)

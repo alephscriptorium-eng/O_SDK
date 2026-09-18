@@ -165,10 +165,16 @@ class Editorial:
     def album(self) -> dict:
         return self.raw.get("album") or {}
 
+    @property
+    def voice_notes(self) -> dict[str, str]:
+        """Descripciones del custodio para voces ajenas (p. ej. qué muestra una foto): id → texto."""
+        return {str(k): str(v) for k, v in (self.raw.get("voice_notes") or {}).items() if v}
+
     # ── comprobación ──
     def editorial_files(self) -> list[tuple[str, str]]:
         """(etiqueta, ruta relativa) de cada `.md` referenciado."""
-        files = [("concepto", self.raw.get("concept")), ("álbum", self.album.get("text"))]
+        files = [("concepto", self.raw.get("concept")), ("álbum", self.album.get("text")),
+                 ("corte (letra del álbum)", self.album.get("lyrics"))]
         files += [(f"constructo {c['slug']}", c["text"]) for c in self.constructs.values()]
         files += [(f"corte {t['n']:02d}", t["lyrics"]) for t in self.tracks]
         return [(label, rel) for label, rel in files if rel]

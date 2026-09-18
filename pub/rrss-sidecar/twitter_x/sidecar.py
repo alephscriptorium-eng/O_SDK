@@ -199,7 +199,7 @@ def cmd_browser_save(args) -> int:
 
 
 def cmd_link_mark(args) -> int:
-    links.mark(Obra(args.obra).require(), args.hash, args.status, args.note)
+    links.mark(Obra(args.obra).require(), args.hash, args.status, args.note, args.waived_by)
     print(f"{args.hash} -> {args.status}")
     return 0
 
@@ -433,6 +433,7 @@ def main() -> int:
     p.add_argument("--hash", required=True)
     p.add_argument("--status", required=True, choices=["gone", "link_only", "pending"])
     p.add_argument("--note", default="")
+    p.add_argument("--waived-by", default="", help="dispensa del custodio: deja un share de agente como enlace, sin rescatarlo")
     p = add("link-public-url", cmd_link_public_url, "anota la URL pública con que el autor republicó un share")
     p.add_argument("--obra", required=True)
     p.add_argument("--hash", required=True)

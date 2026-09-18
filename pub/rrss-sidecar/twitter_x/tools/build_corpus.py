@@ -337,8 +337,16 @@ def write_editorial(obra: Obra, out: Path, records: list[dict], threads: dict, l
                       " · ".join(x for x in (t["side"], t["duration"], t["video"]) if x), ""]
             if t["constructs"]:
                 lines += ["Recapitula: " + ", ".join(f"`{s}`" for s in t["constructs"]), ""]
-            lines += [clean(ed.text(t["lyrics"])) if t["lyrics"] else "_Letra pendiente de que la aporte el custodio._", ""]
+            if t["lyrics"]:
+                lines += [clean(ed.text(t["lyrics"])), ""]
+        if album.get("lyrics"):
+            lines += ["## Letra", "", "La letra se reparte por los cortes.", "", clean(ed.text(album["lyrics"])), ""]
         write_text(indexes_dir / "cantar.md", "\n".join(lines))
+    if ed.voice_notes:
+        for tid, note in ed.voice_notes.items():
+            path = out / "corpus" / "external" / f"{tid}.md"
+            if path.is_file():
+                write_text(path, path.read_text(encoding="utf-8").rstrip("\n") + f"\n\n> Descripción del custodio (no es texto de la voz): {note}\n")
     return len(ed.constructs)
 
 

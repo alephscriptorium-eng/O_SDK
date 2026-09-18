@@ -379,3 +379,7 @@ h3.sub-acto { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.0
 .chips a:hover { background: #000; color: #fff; }
 .letra p { margin: 1.1em 0; line-height: 1.75; }
 .doc a[href*="/posts/"] { word-break: normal; white-space: nowrap; font-size: 0.9em; }
+.kicker { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 8px; }
+.kicker a, .colofon a { text-decoration: none; border-bottom: 1px solid #000; }
+.colofon { border-top: 2px solid #000; margin-top: 28px; padding-top: 10px; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; line-height: 1.8; }
+.nota-custodio { font-size: 0.64rem; font-style: italic; border-left: 2px dashed #000; padding-left: 8px; margin-top: 6px; }

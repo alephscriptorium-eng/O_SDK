@@ -37,7 +37,8 @@ de trabajo del custodio y no sale del lore.
 | `title`, `copy` | Nombre y entradilla de la puerta principal |
 | `concept`, `cover`, `cover_caption` | Texto de concepto (portada e índice del sistema) y SVG de portada |
 | `territories[].constructs[]` | `slug`, `title`, `copy`, `text` (ruta al `.md`), `first_id` (post en que nace), **`post_ids`**, **`thread_roots`**, **`link_hashes`** (selección curada), `terms` (regex de la búsqueda mecánica) |
-| `album` | `title`, `copy`, `url`, `text`, `tracks[]` con `n`, `side`, `title`, `duration`, `video` (https), `lyrics` (ruta o `null`), `note`, `constructs[]`, `post_ids[]` |
+| `voice_notes` | `{id de voz ajena: texto}` — descripción del custodio de lo que muestra una voz (p. ej. una foto): va como `alt` de su media y como nota rotulada; nunca como texto de la voz |
+| `album` | `title`, `copy`, `url`, `text`, **`lyrics`** (letra de la obra entera, cuando se reparte por los cortes), `constructs[]`, `tracks[]` con `n`, `side`, `title`, `duration`, `video` (https), `lyrics` (ruta o `null`), `note`, `constructs[]`, `post_ids[]` |
 
 ### Convenciones de los `.md` editoriales
 
@@ -89,7 +90,9 @@ Cuando la capa la ha propuesto otro (un editor, un agente), `curated_by` lo dice
    - **afinar lo mecánico**: edita `terms` (regex, sin distinguir mayúsculas);
    - **texto**: edita el `.md`; toda cita con `[[id]]` se vuelve a verificar;
    - **portada**: sustituye `portada.svg` o quita `cover` para no llevar portada;
-   - **letras**: añade el `.md` y apunta `lyrics` en el corte; mapea `constructs`.
+   - **letras**: si la letra es una y se reparte por los cortes, va en `album.lyrics` (se publica entera
+     en el índice del cantar); si un corte tiene la suya, en `tracks[].lyrics`;
+   - **describir una imagen ajena**: `voice_notes`.
 4. Firma: pon tu nombre en `curated_by` y la fecha en `curated_at`.
 5. `build` → `check` → deploy (`TEATRO-PROTOCOL.md` §4).
 
@@ -127,7 +130,22 @@ Un agente puede **proponer**, nunca firmar:
 - los lectores agente de la obra publicada tienen sus reglas en `AGENTS.md` («Ideas, tono, temas»):
   la capa curada es mapa, la fuente es `corpus/posts/<id>.md`.
 
-## 7. Qué se publica de la capa
+## 7. Sello editorial y licencia (en `obra.json`, no en la capa curada)
+
+`obra.json → imprint` declara la cabecera y el colofón de la obra, como en los demás artefactos de la
+casa. Cada elemento es un texto o `{ "text", "url" }` (solo `https://` o rutas `/`):
+
+```json
+"imprint": {
+  "header": ["Animus Iocandi", "Hipernivola transmedia", {"text": "Scriptorium Skins", "url": "https://…"}],
+  "footer": [{"text": "Escrivivir", "url": "https://escrivivir.co"}, "Animus Iocandi", "GPL-3.0",
+             {"text": "Repositorio", "url": "https://github.com/…"}]
+}
+```
+
+`header` sale sobre el título de la portada; `footer`, como colofón en **todas** las páginas.
+
+## 8. Qué se publica de la capa
 
 `sistema/` y `cantar/` (HTML), `indexes/sistema.md` e `indexes/cantar.md` (segundo cerebro, con el
 aviso de capa curada), el SVG inline en la portada y los chips «curado en» de cada permalink. El
