@@ -217,6 +217,62 @@ def cmd_browser_block(args) -> int:
     return links.EXIT_BLOCKED
 
 
+# ── capa editorial (puerta semántica, curada por el custodio) ──
+
+def load_editorial(obra: Obra):
+    from lib import editorial, normalize
+
+    records = normalize.records(obra)
+    return editorial.Editorial(obra, records, normalize.threads_of(records), links.load(obra))
+
+
+def cmd_editorial_init(args) -> int:
+    obra = Obra(args.obra).require()
+    target = obra.editorial_dir
+    if (target / "obra-semantica.json").exists():
+        print(f"ya existe {target / 'obra-semantica.json'}: no se toca")
+        return 0
+    copy_tree(Path(__file__).resolve().parent / "editorial.example", target)
+    print(f"✅ esqueleto editorial en {target}\n   edita obra-semantica.json y los .md; luego: sidecar.py editorial-check --obra {obra.name}")
+    return 0
+
+
+def cmd_editorial_check(args) -> int:
+    ed = load_editorial(Obra(args.obra).require())
+    if not ed.present:
+        print("esta obra no tiene capa editorial (editorial/obra-semantica.json): nada que comprobar")
+        return 0
+    report = ed.check()
+    print("editorial ·", " · ".join(f"{k}: {v}" for k, v in report.items()))
+    for line in ed.warnings:
+        print("   aviso ·", line)
+    for line in ed.problems:
+        print("   ⛔", line)
+    if args.verbose:
+        for c in ed.constructs.values():
+            print(f"   {c['territory']:>10} / {c['slug']:<28} curados {len(c['curated']):>3} · mecánicos {len(c['mechanical']):>3}")
+    print("✅ capa editorial OK" if not ed.problems else f"⛔ {len(ed.problems)} errores")
+    return 1 if ed.problems else 0
+
+
+def cmd_editorial_delta(args) -> int:
+    ed = load_editorial(Obra(args.obra).require())
+    since = args.since or ed.raw.get("curated_at") or ""
+    if not since:
+        print("indica --since AAAA-MM-DD (la capa no tiene `curated_at`)")
+        return 2
+    delta = ed.delta(since)
+    print(f"desde {since}: {len(delta['fresh'])} posts propios · {len(delta['uncurated'])} sin curar")
+    for slug, ids in delta["suggestions"].items():
+        print(f"\n  candidatos a `{slug}` (por sus términos): {len(ids)}")
+        for pid in ids[: args.limit]:
+            print(f"    {pid}  {ed.by_id[pid]['created_at'][:10]}  {' '.join(ed.by_id[pid]['text'].split())[:90]}")
+    print(f"\n  sin constructo que los reclame: {len(delta['orphans'])}")
+    for r in delta["orphans"][: args.limit]:
+        print(f"    {r['id']}  {r['created_at'][:10]}  {' '.join(r['text'].split())[:90]}")
+    return 0
+
+
 # ── build / check / manifest / pack ──────────────────────────────────────────
 
 def resolve_out(args, obra: Obra) -> Path:
@@ -247,6 +303,14 @@ def cmd_build(args) -> int:
         return links.EXIT_BLOCKED
     out = resolve_out(args, obra)
     out.mkdir(parents=True, exist_ok=True)
+    ed = load_editorial(obra)
+    if ed.present:
+        ed.check()
+        if ed.problems:
+            for line in ed.problems:
+                print("   ⛔ editorial ·", line)
+            print("build detenido: corrige la capa editorial (sidecar.py editorial-check).")
+            return 1
     build_corpus.build(obra, out)
     build_site.build(obra, out)
     build_viewer.build(obra, out)
@@ -377,6 +441,15 @@ def main() -> int:
     p.add_argument("--obra", required=True)
     p.add_argument("--hash", required=True)
     p.add_argument("--evidence", required=True)
+
+    add("editorial-init", cmd_editorial_init, "crea el esqueleto de la capa curada en el lore").add_argument("--obra", required=True)
+    p = add("editorial-check", cmd_editorial_check, "verifica ids, ficheros, citas literales y cobertura de la capa curada")
+    p.add_argument("--obra", required=True)
+    p.add_argument("-v", "--verbose", action="store_true")
+    p = add("editorial-delta", cmd_editorial_delta, "posts nuevos aún sin curar (tras un export nuevo)")
+    p.add_argument("--obra", required=True)
+    p.add_argument("--since", help="fecha ISO; por defecto `curated_at`")
+    p.add_argument("--limit", type=int, default=40)
 
     p = add("build", cmd_build, "corpus + sitio + visor + guardas")
     p.add_argument("--obra", required=True)

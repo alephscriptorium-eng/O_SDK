@@ -569,6 +569,36 @@ nunca se reinicia `pub-web` · ningún proceso escribe en el origen de un export
 «Aleph Cero»: se decide en modo plan, leyendo el feed hacia atrás.
 Dep: WP-O46 (volumen y layout del VPS). Relación: WP-O47 (disco), WP-O55 (backup).
 
+| **WP-O100** | **P1** | Teatro · puerta semántica: «El sistema» y «El cantar» (capa curada) |
+
+**BRIEF** · El Teatro solo ofrecía puertas mecánicas. Añadir la puerta que
+explica la obra como **visión del mundo expresada como sistema** (teoría →
+máquina → red → juguetes → libro; los protagonistas son los constructos del
+autor), como **capa editorial declarativa**: genérica en el sidecar
+(`lib/editorial.py`, `editorial.example/`, subcomandos `editorial-init |
+check | delta`) y con el contenido en el lore privado
+(`ARCHIVO/LORE/<fuente>/<obra>/editorial/obra-semantica.json` + `.md` + SVG).
+Segunda puerta «El cantar de Aleph» (recap T1, 13 cortes). Puertas mecánicas
+intactas y ampliadas: **Conversaciones** e **Interlocutores**. Portada con
+sigilo SVG inline. Protocolo para revisar, actualizar y seguir curando:
+`docs/PUB/TEATRO-CURADURIA-PROTOCOL.md`.
+**CA** · `npm run teatro:test` verde (sin capa editorial la salida no cambia;
+con ella: páginas, chips, índices, portada) · `editorial-check` sin errores
+sobre Aleph Cero (21 constructos, 13 cortes, 143 citas literales
+verificadas) · `teatro:check` verde · `git ls-files ARCHIVO/LORE` = 2
+ficheros · deploy con verificación automática verde; `/sistema/` y
+`/cantar/` → 200 · resto de vhosts intactos.
+**Hostil-omite** · una cita no literal, un `.md` ausente, una ruta fuera de
+`editorial/` o un `version` desconocido **detienen el build** · un id borrado
+o inexistente se avisa y se omite, nunca se rellena · curado y mecánico se
+muestran separados · la portada SVG con script, eventos, `<image>` o recursos
+se rechaza, y las guardas barren todo SVG del árbol · los vídeos solo se
+enlazan · el JSON y los dosieres de `editorial/` no se publican.
+**Pendiente del custodio (sesión de revisión)** · hacer suya la propuesta v1
+(`curated_by`), aportar las 12 letras que faltan, y los flecos de WP-O99
+(enlace de Perplexity, copia de backups fuera de la máquina).
+Dep: WP-O99.
+
 ---
 
 ## L5 · Pub / L1 permanente
@@ -928,6 +958,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-17: +WP-O97 P1 en L4 — upgrade 1.1.2 con HUB.)
 (2026-09-17: +WP-O98 P1 en L4 — cliente fresco + importación de identidad.)
 (2026-09-18: +WP-O99 P1 en L4 — Teatro: sidecar de RRSS, asiento D-O16.)
+(2026-09-18: +WP-O100 P1 en L4 — Teatro: puerta semántica, asiento D-O17.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11

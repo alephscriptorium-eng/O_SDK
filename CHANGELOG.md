@@ -5,6 +5,37 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Teatro: puerta semántica, «El sistema» y «El cantar» (WP-O100, 2026-09-18)
+
+- **Capa editorial declarativa** en el sidecar (`lib/editorial.py`): lee
+  `ARCHIVO/LORE/<fuente>/<obra>/editorial/obra-semantica.json` (territorios →
+  constructos, álbum, concepto, portada). Opcional: sin ella la obra se
+  construye como antes. Subcomandos `editorial-init | editorial-check |
+  editorial-delta` y scripts `teatro:editorial:*`; esqueleto en
+  `editorial.example/`.
+- Puertas curadas: `sistema/` (índice + una página por constructo: prosa,
+  «Nace en», posts que lo explican, hilos, enlaces y, aparte, «También lo
+  mencionan (búsqueda mecánica)») y `cantar/` (tracklist + corte: vídeo
+  enlazado, letra, constructos que recapitula). Chips «curado en» en cada
+  permalink; `indexes/sistema.md` e `indexes/cantar.md` en el segundo cerebro.
+- Portada: **SVG inline** de la obra, texto de concepto y puertas en dos
+  grupos, «Leer la obra» / «Recorrer el archivo».
+- Puertas mecánicas nuevas: **Conversaciones** (shares de agentes por agente)
+  e **Interlocutores** (réplicas, menciones y RT por cuenta;
+  `indexes/interlocutores.md`). El registro normalizado gana `mentions[]`.
+- Convención de cita verificable en los `.md` editoriales: `«…» [[id]]` debe
+  ser literal en ese post; si no, el build se detiene.
+- `docs/PUB/TEATRO-CURADURIA-PROTOCOL.md`: crear, revisar, actualizar tras un
+  export nuevo, subir de versión y reglas para agentes.
+- Aleph Cero, propuesta v1 (en el lore, fuera de git): 5 territorios, 21
+  constructos, 13 cortes, 143 citas verificadas, sigilo de portada.
+
+### Changed
+
+- `lib/guards.py`: barre también `*.svg` y los `<svg>` inline (sin script,
+  eventos, `<image>`, `<foreignObject>` ni `href` externos).
+- `AGENTS.md` (plantilla): distingue índices mecánicos de capa curada.
+
 ### Added — Teatro: sidecar de RRSS con fuente en exports de x.com (WP-O99, 2026-09-18)
 
 - `pub/rrss-sidecar/twitter_x/`: el generador de obras del Teatro, en git y

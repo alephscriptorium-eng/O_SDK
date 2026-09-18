@@ -8,6 +8,7 @@
 > git (`pub/rrss-sidecar/`), el lore del usuario vive en `ARCHIVO/LORE/` (ignorado por git) y la
 > obra se genera en `volumes-dev/teatro/<obra>/`. Obra Nº 1 «Aleph Cero»: generación 2026-09-18,
 > 1940 posts. Cómo se hace una obra desde un export de X: [`RRSS-SIDECAR-PROTOCOL.md`](./RRSS-SIDECAR-PROTOCOL.md).
+> Cómo se cura su puerta semántica («El sistema», «El cantar»): [`TEATRO-CURADURIA-PROTOCOL.md`](./TEATRO-CURADURIA-PROTOCOL.md).
 
 Checklist operativo para **publicar** una obra en el Teatro: invariantes, alta en el catálogo,
 deploy, certificación, verificación y realidad del VPS.

@@ -59,7 +59,29 @@ Mapeo previsto desde una entrada B.O.E.: `entrada.timestamp → created_at`, `en
 | `cited_by` | ids de los posts que lo enlazan |
 | `fetched_at`, `sha256_md`, `bytes_md` | el markdown íntegro está en `cache/links/<hash>.md` |
 
-## 4. Lo que el visor produce
+## 4. Capa curada — `editorial/obra-semantica.json` (opcional)
+
+No es parte de la fuente: es una lectura del custodio **sobre** el corpus normalizado, así que sirve
+igual para cualquier adaptador (X hoy, B.O.E. mañana). Solo referencia ids de post, raíces de hilo y
+claves de enlace. `version: 1`:
+
+```json
+{ "version": 1, "curated_by": "", "curated_at": "AAAA-MM-DD", "title": "", "copy": "",
+  "concept": "concepto.md", "cover": "portada.svg", "cover_caption": "",
+  "territories": [{ "slug": "", "title": "", "copy": "",
+    "constructs": [{ "slug": "", "title": "", "copy": "", "text": "constructos/<slug>.md", "first_id": "",
+                     "post_ids": [], "thread_roots": [], "link_hashes": [], "terms": [] }] }],
+  "album": { "title": "", "copy": "", "url": "https://…", "text": "",
+    "tracks": [{ "n": 1, "side": "", "title": "", "duration": "", "video": "https://…",
+                 "lyrics": null, "note": "", "constructs": [], "post_ids": [] }] } }
+```
+
+`post_ids`/`thread_roots`/`link_hashes` = selección curada; `terms` = regex de la lista mecánica
+aparte. En los `.md`: `[[id]]` enlaza un post; `«cita» [[id]]` se verifica literal contra el post.
+Reglas y flujo: `docs/PUB/TEATRO-CURADURIA-PROTOCOL.md`. El registro de post gana el campo
+`mentions[]` (cuentas mencionadas, sin la propia), que alimenta la puerta «Interlocutores».
+
+## 5. Lo que el visor produce
 
 `corpus/posts/{id}.md`, `corpus/external/{id}.md`, `corpus/links/{hash}.md`, `indexes/*.md` y el HTML
 estático. Invariantes de publicación: `<fuente>/lib/guards.py`.

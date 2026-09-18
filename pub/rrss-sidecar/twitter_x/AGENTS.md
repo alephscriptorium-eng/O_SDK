@@ -37,10 +37,20 @@ existen en la capa histórica privada y **no** están aquí).
 - Tipos (`original` / `self_reply` / `reply_to_other` / `retweet`): `indexes/tipos.md`
 - Voces ajenas: `indexes/externos.md`
 - Enlaces y conversaciones con agentes: `indexes/enlaces.md`
+- Interlocutores (a quién responde, menciona o retuitea): `indexes/interlocutores.md`
 
 ## Ideas, tono, temas
 
-Leer los posts. No hay ficheros de temas inventados.
+Leer los posts. Todos los índices anteriores son **mecánicos**: salen de campos del archivo.
+
+Si existen `indexes/sistema.md` y `indexes/cantar.md`, son la **capa curada**: una lectura de la obra
+firmada y fechada por su custodio (constructos, genealogía, posts elegidos, letras). Reglas:
+
+- Es una interpretación, no un dato. Úsala como mapa para llegar a los posts; la fuente sigue siendo
+  `corpus/posts/{id}.md` y se cita por id.
+- Sus citas entre «…» seguidas de un id son literales y están verificadas contra ese post.
+- La lista «Mención mecánica» de cada constructo es una búsqueda por términos, sin selección.
+- No amplíes ni corrijas la capa por tu cuenta: propón cambios al custodio (ids concretos y motivo).
 
 ## Regenerar
 

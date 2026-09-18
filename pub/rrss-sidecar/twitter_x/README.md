@@ -113,7 +113,23 @@ Invariantes (`lib/guards.py`): solo la whitelist de `data/`; ningún `.js` salvo
 sin CDNs; desactívalo con `publish.viewer: false`); ningún recurso externo cargado; ningún nombre de
 fichero sensible; ni tu email ni tu teléfono en ninguna página.
 
-## 6. Publicar
+## 6. La puerta semántica (opcional, curada por ti)
+
+Todo lo anterior es mecánico. Si quieres que la obra se explique —qué ideas sostiene, dónde nace cada
+una, qué posts las cuentan mejor— añade la **capa curada** en tu lore:
+
+```bash
+npm run teatro:editorial:init  -- --obra mi-obra     # esqueleto en ARCHIVO/LORE/…/mi-obra/editorial/
+npm run teatro:editorial:check -- --obra mi-obra -v  # ids, ficheros, citas literales, cobertura
+npm run teatro:editorial:delta -- --obra mi-obra     # tras un export nuevo: qué falta por curar
+```
+
+Genera las puertas «El sistema» (territorios → constructos) y «El cantar» (una obra derivada: disco,
+serie de vídeos…), una portada SVG y chips «curado en» en cada post. Curado y mecánico nunca se
+mezclan, y una cita que no sea literal detiene el build. Guía completa:
+`docs/PUB/TEATRO-CURADURIA-PROTOCOL.md`.
+
+## 7. Publicar
 
 `docs/PUB/TEATRO-PROTOCOL.md`: alta en el catálogo y `TEATRO_OBRA=mi-obra npm run devops:teatro:deploy`.
 La descarga destacada es el **zip con todo**; el zip ligero y `MANIFEST.sha256` son para inspección.
@@ -127,6 +143,7 @@ La descarga destacada es el **zip con todo**; el zip ligero y `MANIFEST.sha256` 
 | `lib/ytd.py`, `lib/normalize.py` | **lo único que conoce el formato de X** (costura B.O.E.: `../CORPUS-SCHEMA.md`) |
 | `lib/store.py` | store aditivo multi-generación |
 | `lib/voices.py`, `lib/links.py`, `lib/html2md.py` | protocolos (a) y (b) |
+| `lib/editorial.py`, `editorial.example/` | capa curada: puerta semántica declarada en el lore |
 | `lib/guards.py` | invariantes de publicación |
 | `tools/build_corpus.py`, `tools/build_site.py`, `tools/build_viewer.py` | generadores |
 | `patches/*.json` | parches declarativos del visor (se aplican solo si el sha256 del bundle coincide) |

@@ -14,6 +14,7 @@ No conoce el formato de X: eso es cosa de `lib/normalize.py` (la costura B.O.E.)
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -288,6 +289,72 @@ def write_indexes(out: Path, records: list[dict], threads: dict[str, list[dict]]
     write_text(indexes_dir / "tipos.md", "\n".join(tipos))
 
 
+def write_editorial(obra: Obra, out: Path, records: list[dict], threads: dict, link_store: dict) -> int:
+    """`indexes/sistema.md` y `indexes/cantar.md`: la capa curada, marcada como tal. Sin editorial, se retiran."""
+    from lib import editorial as editorial_lib
+
+    ed = editorial_lib.Editorial(obra, records, threads, link_store)
+    indexes_dir = out / "indexes"
+    for name in ("sistema.md", "cantar.md"):
+        (indexes_dir / name).unlink(missing_ok=True)
+    if not ed.present:
+        return 0
+    by_id = {r["id"]: r for r in records}
+    href = lambda pid: f"../corpus/posts/{pid}.md" if pid in by_id else None  # noqa: E731
+    clean = lambda md: editorial_lib.link_posts(re.sub(r"<!--.*?-->", "", md, flags=re.S), href).strip()  # noqa: E731
+    firma = " · ".join(x for x in (ed.raw.get("curated_by"), ed.raw.get("curated_at")) if x)
+    aviso = (f"> CAPA CURADA{' por ' + firma if firma else ''}. Es una lectura del editor, no un campo del archivo: "
+             "la selección y la glosa son suyas; las citas son literales. Citar siempre el post por su id, no esta página.")
+    if ed.territories:
+        lines = [f"# {ed.raw.get('title') or 'El sistema'}", "", aviso, ""]
+        concept = ed.text(ed.raw.get("concept")) if ed.raw.get("concept") else ""
+        if concept:
+            lines += [clean(concept), ""]
+        for t in ed.territories:
+            lines += [f"## {t['title']}", "", t["copy"], ""]
+            for c in t["constructs"]:
+                lines += [f"### {c['title']} (`{c['slug']}`)", ""]
+                if c["text"]:
+                    lines += [clean(ed.text(c["text"])), ""]
+                if c["first_id"]:
+                    lines += [f"- nace en: {md_link(c['first_id'])}"]
+                lines += [f"- curado: {md_link(i)}" for i in c["post_ids"] if i != c["first_id"]]
+                lines += [f"- hilo: [{root}](../corpus/posts/{root}.md) ({len(threads[root])} posts)" for root in c["thread_roots"]]
+                lines += [f"- enlace: [{(link_store[k].get('title') or link_store[k]['url'])}](../corpus/links/{k}.md)"
+                          for k in c["link_hashes"] if link_store[k].get("status") == "ok"]
+                if c["mechanical"]:
+                    lines += ["", f"Mención mecánica ({', '.join('`' + t + '`' for t in c['terms'])}): "
+                              + " ".join(md_link(i) for i in c["mechanical"])]
+                lines += [""]
+        write_text(indexes_dir / "sistema.md", "\n".join(lines))
+    if ed.tracks:
+        album = ed.album
+        lines = [f"# {album.get('title') or 'El cantar'}", "", aviso, "", album.get("copy") or "", ""]
+        if album.get("text"):
+            lines += [clean(ed.text(album["text"])), ""]
+        for t in ed.tracks:
+            lines += [f"## {t['n']:02d} · {t['title']}", "",
+                      " · ".join(x for x in (t["side"], t["duration"], t["video"]) if x), ""]
+            if t["constructs"]:
+                lines += ["Recapitula: " + ", ".join(f"`{s}`" for s in t["constructs"]), ""]
+            lines += [clean(ed.text(t["lyrics"])) if t["lyrics"] else "_Letra pendiente de que la aporte el custodio._", ""]
+        write_text(indexes_dir / "cantar.md", "\n".join(lines))
+    return len(ed.constructs)
+
+
+def write_interlocutores(out: Path, records: list[dict]) -> None:
+    people: dict[str, list[str]] = {}
+    names: dict[str, str] = {}
+    for r in records:
+        for handle in (r["mentions"][:1] if r["kind"] == "retweet" else r["mentions"]):
+            names.setdefault(handle.lower(), handle)
+            people.setdefault(handle.lower(), []).append(r["id"])
+    lines = ["# Interlocutores", "", "Cuentas a las que la obra responde, menciona o retuitea. Recuento mecánico.", ""]
+    for h in sorted(people, key=lambda h: (-len(people[h]), h)):
+        lines += [f"## @{names[h]} ({len(people[h])})", ""] + [f"- {md_link(i)}" for i in people[h]] + [""]
+    write_text(out / "indexes" / "interlocutores.md", "\n".join(lines))
+
+
 def build(obra: Obra, out: Path) -> dict:
     records = normalize.records(obra)
     threads = normalize.threads_of(records)
@@ -304,8 +371,10 @@ def build(obra: Obra, out: Path) -> dict:
         write_text(posts_dir / f"{record['id']}.md", render_post(record, context_block(record, tweets), keys))
 
     write_indexes(out, records, threads)
+    write_interlocutores(out, records)
     n_ext = write_external(out, tweets)
     n_links = write_links(obra, out, link_store)
+    n_constructs = write_editorial(obra, out, records, threads, link_store)
 
     files = {p.stem for p in posts_dir.glob("*.md")}
     if files != {r["id"] for r in records}:
@@ -313,7 +382,7 @@ def build(obra: Obra, out: Path) -> dict:
     kinds = {k: sum(1 for r in records if r["kind"] == k) for k in normalize.KINDS}
     stats = {
         "posts": len(records), "threads": len(threads), "external": n_ext, "links_md": n_links,
-        "with_context": sum(1 for r in records if voice_refs(r)), **kinds,
+        "with_context": sum(1 for r in records if voice_refs(r)), "constructs": n_constructs, **kinds,
     }
     print("corpus build ok ·", " · ".join(f"{k}: {v}" for k, v in stats.items()))
     return stats

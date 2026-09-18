@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "curated_by": "tu nombre o firma",
+  "curated_at": "2026-01-01",
+  "title": "El sistema",
+  "copy": "Qué explica esta obra y dónde nace cada idea.",
+  "concept": "concepto.md",
+  "cover": "portada.svg",
+  "cover_caption": "",
+  "territories": [
+    {
+      "slug": "ideas",
+      "title": "Ideas",
+      "copy": "Una frase que diga qué agrupa este territorio.",
+      "constructs": [
+        {
+          "slug": "mi-primera-idea",
+          "title": "Mi primera idea",
+          "copy": "Una línea para la tarjeta del índice.",
+          "text": "constructos/mi-primera-idea.md",
+          "first_id": "",
+          "post_ids": [],
+          "thread_roots": [],
+          "link_hashes": [],
+          "terms": ["primera idea"]
+        }
+      ]
+    }
+  ],
+  "album": {
+    "title": "El cantar",
+    "copy": "Opcional: una obra derivada (disco, serie de vídeos, fanzine) que recapitula la principal.",
+    "url": "",
+    "text": "",
+    "tracks": [
+      {
+        "n": 1,
+        "side": "Cara A",
+        "title": "Primer corte",
+        "duration": "",
+        "video": "",
+        "lyrics": "cantar/01-letra.md",
+        "note": "",
+        "constructs": ["mi-primera-idea"],
+        "post_ids": []
+      }
+    ]
+  }
+}

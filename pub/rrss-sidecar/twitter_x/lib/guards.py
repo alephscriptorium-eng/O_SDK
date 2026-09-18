@@ -7,7 +7,8 @@ Una obra publicada:
   3. no tiene `<script` salvo en `navegador.html` (EXCEPCIÓN DECLARADA: el visor oficial de X);
   4. no carga ningún recurso externo (los `<a href>` externos sí están permitidos);
   5. no incluye ningún fichero de nombre sensible, en el árbol ni en los zips;
-  6. no deja placeholders ni rutas locales del operador.
+  6. no deja placeholders ni rutas locales del operador;
+  7. sus SVG (sueltos o inline) son vector puro: sin script, eventos, `<image>` ni recursos.
 """
 
 from __future__ import annotations
@@ -38,6 +39,8 @@ EXTERNAL_LOAD = re.compile(
 )
 LOCAL_PATH = re.compile(r"(?<![\w/])(?:[A-Za-z]:[\\/]Users[\\/]|/Users/[^/\s\"'<]+/|/home/[^/\s\"'<]+/|/mnt/[a-z]/)", re.I)
 PLACEHOLDER = re.compile(r"__[A-Z0-9_]*SHA256__")
+SVG_BLOCK = re.compile(r"<svg\b.*?</svg>", re.I | re.S)
+SVG_ACTIVE = re.compile(r"<script|\bon[a-z]+\s*=|<image\b|<foreignObject\b|href\s*=\s*[\"']?\s*(?:https?:|//|data:)", re.I)
 
 
 def check(out: Path, allow_placeholders: bool = True, extra_needles: list[str] | None = None) -> list[str]:
@@ -67,10 +70,15 @@ def check(out: Path, allow_placeholders: bool = True, extra_needles: list[str] |
             problems.append(f"bytecode en la obra: {rel}")
 
     needles = [n for n in (extra_needles or []) if n and len(n) >= 6]
-    for path in list(out.rglob("*.html")) + list(out.rglob("*.md")) + list(out.rglob("*.css")):
+    scanned = [p for ext in ("*.html", "*.md", "*.css", "*.svg") for p in out.rglob(ext)]
+    for path in scanned:
         rel = path.relative_to(out).as_posix()
         text = path.read_text(encoding="utf-8", errors="replace")
         published_md = rel.startswith("corpus/")
+        if path.name != VIEWER_PAGE and not rel.startswith("assets/"):
+            blocks = [text] if path.suffix == ".svg" else SVG_BLOCK.findall(text) if path.suffix == ".html" else []
+            if any(SVG_ACTIVE.search(block) for block in blocks):
+                problems.append(f"SVG con contenido activo o externo: {rel}")
         if path.suffix == ".html" and path.name != VIEWER_PAGE and "<script" in text.lower():
             problems.append(f"<script> en página generada: {rel}")
         if path.name != VIEWER_PAGE and not published_md and EXTERNAL_LOAD.search(text):

@@ -83,6 +83,11 @@ class Obra:
         return self.lore / "legacy"
 
     @property
+    def editorial_dir(self) -> Path:
+        """Capa curada por el custodio (opcional): ver `lib/editorial.py`."""
+        return self.lore / "editorial"
+
+    @property
     def out(self) -> Path:
         return out_root() / self.name
 
