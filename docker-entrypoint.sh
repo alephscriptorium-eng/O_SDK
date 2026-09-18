@@ -13,6 +13,9 @@ MODEL_FILE="oasis-42-1-chat.Q4_K_M.gguf"
 MODEL_PATH="$MODEL_DIR/$MODEL_FILE"
 LEGACY_MODEL_PATH="$CURRENT_DIR/src/AI/$MODEL_FILE"
 CONFIG_FILE="$CURRENT_DIR/src/configs/oasis-config.json"
+# OJO: setup_ssb_config reasigna CONFIG_FILE (global) a ~/.ssb/config. Todo lo que
+# toca oasis-config.json usa OASIS_CONFIG_FILE, que nadie reasigna.
+OASIS_CONFIG_FILE="$CURRENT_DIR/src/configs/oasis-config.json"
 
 if [ "$(id -u)" = "0" ] && [ "${OASIS_ENTRYPOINT_REEXEC:-0}" != "1" ]; then
     mkdir -p /home/oasis/.ssb "$MODEL_DIR" "$CURRENT_DIR/logs"
@@ -21,6 +24,15 @@ if [ "$(id -u)" = "0" ] && [ "${OASIS_ENTRYPOINT_REEXEC:-0}" != "1" ]; then
 
     if [ -d /home/oasis/.ssb ]; then
         find /home/oasis/.ssb -mindepth 1 -maxdepth 1 ! -name config -exec chown -R oasis:oasis {} + 2>/dev/null || true
+    fi
+
+    # WP-O103: estado persistente del cliente (solo si OASIS_CLIENT_STATE_DIR está
+    # definido y el modo no es server). Pub, HUB y wallet-bot no lo definen.
+    if [ -n "${OASIS_CLIENT_STATE_DIR:-}" ] && [ "${1:-full}" != "server" ]; then
+        CLIENT_BANKING_DIR="${OASIS_BANKING_DIR:-$OASIS_CLIENT_STATE_DIR/banking}"
+        mkdir -p "$OASIS_CLIENT_STATE_DIR" "$CLIENT_BANKING_DIR" 2>/dev/null || true
+        chown -R oasis:oasis "$OASIS_CLIENT_STATE_DIR" "$CLIENT_BANKING_DIR" 2>/dev/null || true
+        chmod u+rwx "$OASIS_CLIENT_STATE_DIR" "$CLIENT_BANKING_DIR" 2>/dev/null || true
     fi
 
     REEXEC_ARGS=$(printf '%q ' "$@")
@@ -254,24 +266,275 @@ link_ai_model() {
 }
 
 # =============================================================================
+# WP-O103 · Estado persistente del cliente y cableado de la cartera ECOin
+# -----------------------------------------------------------------------------
+# Todo lo de este bloque está condicionado a OASIS_CLIENT_STATE_DIR definido y a
+# un modo distinto de "server". Pub, HUB y wallet-bot no definen la variable (y
+# montan oasis-config.json como bind :ro): para ellos nada de esto se ejecuta.
+# =============================================================================
+
+# Utilidades JS compartidas por los `node -e` de configuración. Va entre comillas
+# simples de bash: el JS de este bloque NO puede contener comillas simples.
+NODE_CFG_LIB='
+const fs = require("fs");
+const path = require("path");
+const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const readJson = (p) => JSON.parse(fs.readFileSync(p, "utf8"));
+// Objetos: recursivo. Arrays y escalares: gana "over" (lo persistido).
+const deepMerge = (base, over) => {
+  if (!isObj(base) || !isObj(over)) return over === undefined ? base : over;
+  const out = Object.assign({}, base);
+  for (const k of Object.keys(over)) {
+    if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+    out[k] = Object.prototype.hasOwnProperty.call(base, k) ? deepMerge(base[k], over[k]) : over[k];
+  }
+  return out;
+};
+// Mismo formato que saveConfig de Oasis: 2 espacios, sin salto final.
+const serialize = (obj) => JSON.stringify(obj, null, 2);
+// Escritura atómica: temporal + rename en el directorio del fichero REAL (si el
+// destino es un symlink se resuelve antes, así el symlink nunca se rompe). Si el
+// rename no es posible (p. ej. fichero montado por bind) se escribe en el sitio.
+// Lanza si el destino no es escribible: quien llama decide.
+const writeJson = (target, obj) => {
+  const data = serialize(obj);
+  let real = target;
+  try { real = fs.realpathSync(target); } catch (e) {}
+  try { if (fs.readFileSync(real, "utf8") === data) return false; } catch (e) {}
+  const tmp = path.join(path.dirname(real), "." + path.basename(real) + ".tmp-" + process.pid);
+  try {
+    fs.writeFileSync(tmp, data, { mode: 0o600 });
+    fs.renameSync(tmp, real);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch (e2) {}
+    fs.writeFileSync(real, data);
+  }
+  return true;
+};
+'
+
+client_state_enabled() {
+    [ -n "${OASIS_CLIENT_STATE_DIR:-}" ] && [ "$MODE" != "server" ]
+}
+
+# =============================================================================
+# FUNCIÓN: Persistir el estado del cliente fuera de la capa efímera de la imagen
+#   - oasis-config.json: default de la imagen + deep-merge de lo persistido
+#     (gana lo persistido; las claves nuevas de upstream entran por el default),
+#     escrito en $OASIS_CLIENT_STATE_DIR y enlazado desde src/configs.
+#   - wallet-addresses.json: un único mapa en $OASIS_BANKING_DIR, enlazado desde
+#     src/configs (backend.js tiene esa ruta fija; banking_model usa la variable).
+# Corre como usuario oasis (dueño de /app; el state dir lo prepara el bloque root).
+# =============================================================================
+persist_client_state() {
+    local state_dir="$OASIS_CLIENT_STATE_DIR"
+    export OASIS_BANKING_DIR="${OASIS_BANKING_DIR:-$state_dir/banking}"
+    local state_cfg="$state_dir/oasis-config.json"
+    local default_cfg="$CURRENT_DIR/src/configs/.oasis-config.image-default.json"
+    local bank_map="$OASIS_BANKING_DIR/wallet-addresses.json"
+    local cfg_map="$CURRENT_DIR/src/configs/wallet-addresses.json"
+
+    echo "Persistiendo estado del cliente en $state_dir ..."
+
+    mkdir -p "$state_dir" "$OASIS_BANKING_DIR" 2>/dev/null || true
+    if [ ! -d "$state_dir" ] || [ ! -w "$state_dir" ]; then
+        echo "  ⚠ $state_dir no existe o no es escribible: el estado NO se persiste en este arranque"
+        return 0
+    fi
+
+    # Contenedor nuevo: oasis-config.json es fichero regular = default de la imagen.
+    # Se guarda una copia para poder rehacer el merge en reinicios del mismo contenedor.
+    if [ -f "$OASIS_CONFIG_FILE" ] && [ ! -L "$OASIS_CONFIG_FILE" ]; then
+        cp -f "$OASIS_CONFIG_FILE" "$default_cfg" 2>/dev/null || \
+            echo "  ⚠ No se pudo guardar la copia del default de la imagen"
+    fi
+
+    if [ -f "$default_cfg" ]; then
+        if CFG_DEFAULT="$default_cfg" CFG_STATE="$state_cfg" node -e "$NODE_CFG_LIB"'
+            const def = readJson(process.env.CFG_DEFAULT);
+            const state = process.env.CFG_STATE;
+            let persisted = null;
+            if (fs.existsSync(state)) {
+              try {
+                persisted = readJson(state);
+                if (!isObj(persisted)) throw new Error("no es un objeto JSON");
+              } catch (e) {
+                const bad = state + ".corrupt-" + Date.now();
+                fs.renameSync(state, bad);
+                persisted = null;
+                console.log("  ⚠ oasis-config.json persistido ilegible (" + e.message + "): apartado en " + bad);
+              }
+            }
+            const merged = persisted ? deepMerge(def, persisted) : def;
+            const wrote = writeJson(state, merged);
+            console.log(persisted
+              ? "  → oasis-config.json: default de la imagen + estado persistido" + (wrote ? "" : " (sin cambios)")
+              : "  → oasis-config.json: sembrado desde el default de la imagen");
+        '; then
+            if [ "$(readlink "$OASIS_CONFIG_FILE" 2>/dev/null)" != "$state_cfg" ]; then
+                ln -sfn "$state_cfg" "$OASIS_CONFIG_FILE" 2>/dev/null || \
+                    echo "  ⚠ No se pudo enlazar $OASIS_CONFIG_FILE → $state_cfg (¿montado por bind?)"
+            fi
+            [ -L "$OASIS_CONFIG_FILE" ] && echo "    ✓ $OASIS_CONFIG_FILE → $state_cfg"
+        else
+            echo "  ⚠ Falló el merge de oasis-config.json: se mantiene la configuración actual"
+        fi
+    else
+        echo "  ⚠ Sin default de la imagen para oasis-config.json: no se toca"
+    fi
+
+    # Mapa de direcciones único (sembrado con {}).
+    if [ ! -s "$bank_map" ]; then
+        printf '{}\n' > "$bank_map" 2>/dev/null || echo "  ⚠ No se pudo sembrar $bank_map"
+    fi
+    if [ -f "$bank_map" ]; then
+        if [ "$(readlink "$cfg_map" 2>/dev/null)" != "$bank_map" ]; then
+            ln -sfn "$bank_map" "$cfg_map" 2>/dev/null || \
+                echo "  ⚠ No se pudo enlazar $cfg_map → $bank_map"
+        fi
+        [ -L "$cfg_map" ] && echo "    ✓ $cfg_map → $bank_map"
+    fi
+    return 0
+}
+
+# =============================================================================
+# FUNCIÓN: Cablear la cartera ECOin desde el entorno (el entorno manda)
+#   ECOIN_RPC_URL definida (aunque vacía) → wallet.url/user/pass
+#   OASIS_WALLET_FEE (opcional)           → wallet.fee
+#   OASIS_WALLET_PUB_ID (feed válido)     → walletPub.pubId
+#   OASIS_WALLET_WIRING=manual            → no se toca nada
+# Nunca imprime usuario ni contraseña.
+# =============================================================================
+wire_wallet_config() {
+    echo "Cableando la cartera ECOin desde el entorno..."
+
+    if [ "${OASIS_WALLET_WIRING:-}" = "manual" ]; then
+        echo "  → OASIS_WALLET_WIRING=manual: no se toca wallet.* ni walletPub.* (manda /settings/wallet)"
+        return 0
+    fi
+    if [ ! -f "$OASIS_CONFIG_FILE" ]; then
+        echo "  ⚠ Archivo de configuración no encontrado: $OASIS_CONFIG_FILE"
+        return 0
+    fi
+
+    OASIS_CFG="$OASIS_CONFIG_FILE" node -e "$NODE_CFG_LIB"'
+        const env = process.env;
+        const cfgPath = env.OASIS_CFG;
+        let cfg;
+        try {
+          cfg = readJson(cfgPath);
+          if (!isObj(cfg)) throw new Error("no es un objeto JSON");
+        } catch (e) {
+          console.log("  ⚠ No se pudo leer " + cfgPath + " (" + e.message + "): cartera sin cablear");
+          process.exit(0);
+        }
+        if (!isObj(cfg.wallet)) cfg.wallet = {};
+        if (!isObj(cfg.walletPub)) cfg.walletPub = {};
+
+        const LOCAL_HOSTS = ["ecoin-wallet", "localhost", "127.0.0.1", "host.docker.internal"];
+        const safeUrl = (u) => u.protocol + "//" + u.host + (u.pathname === "/" ? "" : u.pathname);
+
+        if ("ECOIN_RPC_URL" in env) {
+          const raw = String(env.ECOIN_RPC_URL).trim();
+          let url = raw;
+          let shown = "(vacía: cartera RPC desactivada, modo solo dirección)";
+          if (raw) {
+            let u = null;
+            try { u = new URL(raw); } catch (e) {}
+            if (!u || !/^https?:$/.test(u.protocol) || !u.hostname) {
+              console.log("  ❌ ERROR: ECOIN_RPC_URL no es una URL http(s) válida → wallet.url = \"\"");
+              url = "";
+              shown = "(vacía: URL rechazada)";
+            } else if (!LOCAL_HOSTS.includes(u.hostname.toLowerCase())) {
+              if (env.ECOIN_RPC_ALLOW_REMOTE === "i-know") {
+                console.log("  ⚠ AVISO: ecoind remoto (" + u.hostname + ") aceptado por ECOIN_RPC_ALLOW_REMOTE=i-know. El RPC viaja en HTTP plano.");
+                shown = safeUrl(u);
+              } else {
+                console.log("  ❌ ERROR: ECOIN_RPC_URL apunta a un host remoto (" + u.hostname + "). El cliente solo habla con su propio ecoind");
+                console.log("     (" + LOCAL_HOSTS.join(", ") + ") → wallet.url = \"\". Escape consciente: ECOIN_RPC_ALLOW_REMOTE=i-know");
+                url = "";
+                shown = "(vacía: URL remota rechazada)";
+              }
+            } else {
+              shown = safeUrl(u);
+            }
+          }
+          cfg.wallet.url = url;
+          cfg.wallet.user = env.ECOIN_RPC_USER || "";
+          cfg.wallet.pass = env.ECOIN_RPC_PASS || "";
+          console.log("  → wallet.url: " + shown);
+          console.log("  → user: " + (cfg.wallet.user ? "(configurado)" : "(vacío)"));
+        } else {
+          console.log("  → ECOIN_RPC_URL no definida: wallet.url/user/pass sin cambios");
+        }
+
+        const fee = String(env.OASIS_WALLET_FEE || "").trim();
+        if (fee) {
+          if (/^\d+(\.\d+)?$/.test(fee)) {
+            cfg.wallet.fee = fee;
+            console.log("  → wallet.fee: " + fee);
+          } else {
+            console.log("  ⚠ OASIS_WALLET_FEE no es un número: se ignora (wallet.fee sin cambios)");
+          }
+        }
+
+        const pubId = String(env.OASIS_WALLET_PUB_ID || "").trim();
+        if (pubId) {
+          if (/^@[A-Za-z0-9+/]{43}=\.ed25519$/.test(pubId)) {
+            cfg.walletPub.pubId = pubId;
+          } else {
+            console.log("  ⚠ OASIS_WALLET_PUB_ID no es un feed SSB válido (@…=.ed25519): se ignora (walletPub.pubId sin cambios)");
+          }
+        }
+        console.log("  → walletPub.pubId: " + (cfg.walletPub.pubId || "(sin banco configurado)"));
+
+        try {
+          const wrote = writeJson(cfgPath, cfg);
+          console.log(wrote ? "    ✓ configuración de cartera escrita" : "    ✓ configuración de cartera ya al día");
+        } catch (e) {
+          console.log("  ⚠ " + cfgPath + " no es escribible (" + e.code + "): cartera sin cablear");
+        }
+    ' || echo "  ⚠ Falló el cableado de la cartera (node): se continúa con la configuración actual"
+    return 0
+}
+
+# =============================================================================
 # FUNCIÓN: Configurar oasis según modelo IA (integración de oasis.sh)
+# En node (no sed -i, que sustituiría un symlink por un fichero regular). Misma
+# semántica: "off"→"on" si hay modelo, "on"→"off" si no lo hay; otro valor no se
+# toca. Tolera un fichero no escribible (bind :ro) sin abortar el arranque.
 # =============================================================================
 setup_oasis_config() {
     echo "Configurando OASIS según disponibilidad del modelo IA..."
-    
-    if [ -f "$CONFIG_FILE" ]; then
+
+    if [ -f "$OASIS_CONFIG_FILE" ]; then
+        local ai_target
         if [ -f "$MODEL_PATH" ] || [ -f "$LEGACY_MODEL_PATH" ]; then
             echo "  → Modelo IA encontrado, habilitando IA en configuración..."
-            sed -i.bak 's/"aiMod": *"off"/"aiMod": "on"/' "$CONFIG_FILE" 2>/dev/null || true
-            echo "    ✓ aiMod: 'on'"
+            ai_target="on"
         else
             echo "  → Modelo IA no encontrado, deshabilitando IA en configuración..."
-            sed -i.bak 's/"aiMod": *"on"/"aiMod": "off"/' "$CONFIG_FILE" 2>/dev/null || true
-            echo "    ✓ aiMod: 'off'"
+            ai_target="off"
         fi
-        rm -f "$CONFIG_FILE.bak" 2>/dev/null || true
+        OASIS_CFG="$OASIS_CONFIG_FILE" AI_TARGET="$ai_target" node -e "$NODE_CFG_LIB"'
+            const cfgPath = process.env.OASIS_CFG;
+            const target = process.env.AI_TARGET;
+            const from = target === "on" ? "off" : "on";
+            try {
+              const cfg = readJson(cfgPath);
+              if (isObj(cfg) && isObj(cfg.modules) && cfg.modules.aiMod === from) {
+                cfg.modules.aiMod = target;
+                writeJson(cfgPath, cfg);
+              }
+              const now = isObj(cfg) && isObj(cfg.modules) ? cfg.modules.aiMod : undefined;
+              const q = String.fromCharCode(39);
+              console.log("    ✓ aiMod: " + q + now + q);
+            } catch (e) {
+              console.log("  ⚠ No se pudo ajustar aiMod en " + cfgPath + " (" + (e.code || e.message) + "): se deja como está");
+            }
+        ' || true
     else
-        echo "  ⚠ Archivo de configuración no encontrado: $CONFIG_FILE"
+        echo "  ⚠ Archivo de configuración no encontrado: $OASIS_CONFIG_FILE"
     fi
 }
 
@@ -484,6 +747,13 @@ install_runtime_deps
 # 4. Aplicar parches críticos
 apply_node_patches
 
+# 4b. WP-O103: estado persistente del cliente y cableado de la cartera.
+# Depende de OASIS_CLIENT_STATE_DIR y del modo, NO de OASIS_SKIP_AI_MODEL.
+if client_state_enabled; then
+    persist_client_state
+    wire_wallet_config
+fi
+
 # 5. Configurar OASIS según modelo disponible
 if [ "$SKIP_AI_MODEL" = "true" ] || [ "$MODE" = "server" ]; then
     echo "⏭ Saltando configuración IA del cliente para modo: $MODE"
@@ -494,6 +764,12 @@ fi
 echo ""
 echo "✅ OASIS configurado correctamente!"
 echo ""
+
+# Ensayo de configuración (tests/drill): termina aquí, sin arrancar SSB ni backend.
+if [ "${OASIS_ENTRYPOINT_DRYRUN:-0}" = "1" ]; then
+    echo "⏹ OASIS_ENTRYPOINT_DRYRUN=1: configuración aplicada; no se arranca Oasis."
+    exit 0
+fi
 
 # =============================================================================
 # LÓGICA DE EJECUCIÓN (integración de oasis.sh)
