@@ -1,0 +1,331 @@
+/* Aleph Cero · Teatro del Scriptorium — hoja única, sin dependencias.
+   Voz propia derivada del fanzine.css del pub (Courier, tinta negra, papel). */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Courier New', Courier, monospace;
+  background:
+    radial-gradient(circle at top left, rgba(0, 0, 0, 0.05), transparent 30rem),
+    #f6f1e6;
+  color: #000;
+  padding: 24px 16px;
+  max-width: 860px;
+  margin: 0 auto;
+  line-height: 1.4;
+}
+
+a { color: #000; }
+
+/* ── navegación superior ─────────────────────────────── */
+.nav-top {
+  font-size: 0.64rem;
+  text-align: right;
+  padding: 5px 0 6px;
+  border-bottom: 1px dashed #000;
+  margin-bottom: 14px;
+  letter-spacing: 1px;
+}
+.nav-top a {
+  text-decoration: none;
+  border-bottom: 1.5px solid #000;
+  padding: 1px 2px;
+}
+.nav-top a:hover { background: #000; color: #fff; }
+
+/* ── cabecera de obra ────────────────────────────────── */
+.header {
+  text-align: center;
+  padding: 26px 10px 20px;
+  border: 4px double #000;
+  margin-bottom: 8px;
+  position: relative;
+  background: #fff;
+}
+.header h1 {
+  font-size: 2.4rem;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  transform: rotate(-1.2deg);
+  line-height: 1.1;
+}
+.header .sub { font-size: 0.95rem; margin-top: 8px; letter-spacing: 2px; }
+.header .sub2 { font-size: 0.72rem; margin-top: 6px; letter-spacing: 1px; opacity: 0.7; }
+.stamp {
+  position: absolute;
+  top: 12px; right: 16px;
+  border: 3px solid #000;
+  padding: 4px 10px;
+  font-size: 0.66rem;
+  font-weight: bold;
+  transform: rotate(8deg);
+  letter-spacing: 1.5px;
+}
+.issue {
+  position: absolute;
+  bottom: 8px; left: 14px;
+  font-size: 0.58rem;
+  letter-spacing: 1px;
+  opacity: 0.5;
+}
+
+.washi {
+  height: 8px;
+  background: repeating-linear-gradient(90deg, #000 0, #000 4px, transparent 4px, transparent 8px);
+  margin: 10px 0;
+}
+
+/* ── perfil (portada) ────────────────────────────────── */
+.banner { border: 2.5px solid #000; margin: 14px 0 0; }
+.banner img { display: block; width: 100%; height: auto; filter: grayscale(35%); }
+.perfil {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  border: 2.5px solid #000;
+  border-top: none;
+  background: #fff;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.perfil img.avatar {
+  width: 84px; height: 84px;
+  border: 2.5px solid #000;
+  flex: none;
+}
+.perfil .quien .nombre { font-size: 1.1rem; font-weight: bold; letter-spacing: 1px; }
+.perfil .quien .arroba { font-size: 0.72rem; opacity: 0.7; letter-spacing: 1px; }
+.perfil .quien .bio { font-size: 0.7rem; margin-top: 8px; line-height: 1.5; }
+.perfil .quien .meta { font-size: 0.6rem; margin-top: 6px; opacity: 0.6; letter-spacing: 1px; }
+
+.stats-bar {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 10px 6px;
+  border-top: 2px solid #000;
+  border-bottom: 2px solid #000;
+}
+.stat { text-align: center; flex: 1 1 90px; min-width: 90px; }
+.stat .val { font-size: 1.5rem; font-weight: bold; display: block; line-height: 1.1; }
+.stat .lbl {
+  font-size: 0.58rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  display: block;
+  margin-top: 2px;
+  opacity: 0.7;
+}
+
+.callout {
+  border: 3px solid #000;
+  background: #fff;
+  padding: 10px 14px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 16px 0;
+}
+
+/* ── puertas (portada) ───────────────────────────────── */
+.puertas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+.puerta {
+  border: 2px solid #000;
+  background: #fff;
+  padding: 11px 13px;
+}
+.puerta .p-title {
+  font-size: 0.8rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.puerta .p-copy { font-size: 0.64rem; line-height: 1.5; margin-bottom: 9px; }
+.door-link {
+  display: inline-block;
+  border: 2px solid #000;
+  padding: 5px 10px;
+  text-decoration: none;
+  font-size: 0.6rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  font-weight: bold;
+  background: #fff;
+}
+.door-link:hover { background: #000; color: #fff; }
+
+/* ── títulos de sección ──────────────────────────────── */
+h2.acto {
+  font-size: 1.05rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 20px 0 4px;
+  transform: rotate(-0.5deg);
+}
+.acto-sub { font-size: 0.64rem; opacity: 0.65; letter-spacing: 1px; margin-bottom: 12px; }
+
+/* ── posts ───────────────────────────────────────────── */
+.post {
+  border: 2px solid #000;
+  background: #fff;
+  padding: 11px 13px;
+  margin: 14px 0;
+  position: relative;
+}
+.post-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.6rem;
+  border-bottom: 1px dashed #000;
+  padding-bottom: 5px;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+.kind {
+  display: inline-block;
+  border: 1.5px solid #000;
+  padding: 1px 6px;
+  font-size: 0.56rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+.kind-retweet, .kind-reply_to_other { background: #000; color: #fff; }
+.pid { text-decoration: none; border-bottom: 1.5px solid #000; }
+.pid:hover { background: #000; color: #fff; }
+.pid code { font-size: 0.6rem; }
+.post-head time { opacity: 0.65; }
+.post-head .en-hilo { margin-left: auto; }
+.post-head .en-hilo a { text-decoration: none; border-bottom: 1.5px solid #000; }
+.post-head .en-hilo a:hover { background: #000; color: #fff; }
+
+.cuerpo { font-size: 0.78rem; line-height: 1.55; overflow-wrap: anywhere; }
+.cuerpo a { word-break: break-all; }
+.rt-caption {
+  font-size: 0.62rem;
+  opacity: 0.6;
+  margin-top: 8px;
+  border-top: 1px dashed #000;
+  padding-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+/* voz ajena (Padre / Original) */
+blockquote.ctx {
+  border-left: 4px solid #000;
+  background: #f4efe4;
+  padding: 8px 11px;
+  margin: 8px 0;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+blockquote.ctx .ctx-who {
+  font-size: 0.6rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+blockquote.ctx .no-dispo { opacity: 0.6; font-style: italic; }
+
+/* media */
+.media {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.media figure { border: 2px solid #000; background: #000; }
+.media img, .media video { display: block; width: 100%; height: auto; }
+
+/* enlaces y etiquetas del post */
+.links { font-size: 0.62rem; margin-top: 9px; line-height: 1.6; }
+.links a { word-break: break-all; }
+.tags { margin-top: 8px; }
+.tags a {
+  display: inline-block;
+  border: 1.5px solid #000;
+  padding: 1px 6px;
+  font-size: 0.58rem;
+  letter-spacing: 1px;
+  margin: 2px 3px 0 0;
+  text-decoration: none;
+}
+.tags a:hover { background: #000; color: #fff; }
+
+/* ── listados compactos ──────────────────────────────── */
+.listado { font-size: 0.66rem; line-height: 1.7; }
+.listado .fila { padding: 2px 0; border-bottom: 1px dotted rgba(0,0,0,0.25); }
+.listado .fila time { opacity: 0.6; }
+.listado .fila a { text-decoration: none; border-bottom: 1.5px solid #000; }
+.listado .fila a:hover { background: #000; color: #fff; }
+.listado .k { font-size: 0.54rem; border: 1px solid #000; padding: 0 4px; text-transform: uppercase; }
+
+/* tabla de actos / índices */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+  margin: 10px 0;
+  background: #fff;
+}
+.tbl th, .tbl td { border: 1.5px solid #000; padding: 5px 8px; text-align: left; }
+.tbl th { background: #000; color: #fff; text-transform: uppercase; letter-spacing: 1px; font-size: 0.6rem; }
+.tbl td.num { text-align: right; }
+.tbl a { text-decoration: none; border-bottom: 1.5px solid #000; }
+.tbl a:hover { background: #000; color: #fff; }
+.tbl .vacio { opacity: 0.4; }
+
+/* nav anterior/siguiente */
+.pn {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.64rem;
+  margin: 16px 0;
+  letter-spacing: 1px;
+}
+.pn a { text-decoration: none; border-bottom: 1.5px solid #000; }
+.pn a:hover { background: #000; color: #fff; }
+
+/* ficha del permalink */
+.ficha {
+  font-size: 0.62rem;
+  border: 1.5px dashed #000;
+  background: #fcfaf4;
+  padding: 8px 11px;
+  margin: 14px 0;
+  line-height: 1.7;
+}
+.ficha a { border-bottom: 1.5px solid #000; text-decoration: none; }
+.ficha a:hover { background: #000; color: #fff; }
+
+.footer {
+  text-align: center;
+  font-size: 0.56rem;
+  letter-spacing: 2px;
+  opacity: 0.5;
+  margin-top: 22px;
+  padding-top: 10px;
+  border-top: 1px solid #000;
+  text-transform: uppercase;
+}
+
+@media (max-width: 560px) {
+  body { padding: 14px 8px; }
+  .perfil { flex-direction: column; }
+  .header h1 { font-size: 1.6rem; letter-spacing: 3px; }
+}
