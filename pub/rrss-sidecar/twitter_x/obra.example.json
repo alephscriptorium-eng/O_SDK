@@ -1,0 +1,15 @@
+{
+  "obra": "mi-obra",
+  "adapter": "twitter_x",
+  "title": "Mi Obra",
+  "base": "/teatro/mi-obra",
+  "stamp": "Obra Nº 1",
+  "tagline": "El archivo de una cuenta como pieza en actos, escenas y apartes.",
+  "account": { "id": "0000000000000000000", "handle": "mi_cuenta", "name": "Mi Nombre" },
+  "own_hosts": ["midominio.example", "miusuario.github.io"],
+  "sources": [
+    { "generation": "2026-01-15", "path": "exports/2026-01-15" },
+    { "generation": "2026-06-30", "path": "exports/2026-06-30", "primary": true }
+  ],
+  "publish": { "deleted_posts": "hidden", "external_media": "local", "viewer": true }
+}

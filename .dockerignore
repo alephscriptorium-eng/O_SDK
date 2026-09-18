@@ -59,3 +59,9 @@ pub/blobstore-sidecar
 pub/blobstore-sidecar/**
 pub/assets
 pub/assets/**
+
+# Lore del usuario (exports de RRSS, varios GB) y su sidecar: no viajan en la imagen de Oasis
+ARCHIVO/LORE
+ARCHIVO/LORE/**
+pub/rrss-sidecar
+pub/rrss-sidecar/**

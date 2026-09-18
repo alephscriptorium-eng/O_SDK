@@ -1,140 +1,31 @@
 #!/usr/bin/env python3
-"""Build corpus/posts and indexes/ from the official X archive.
+"""Genera el «segundo cerebro» de una obra: corpus/ e indexes/ en Markdown plano.
 
-Canonical source: data/tweets.js (do not modify).
-Does not copy media; only records relative paths under data/tweets_media/.
+Entrada: el corpus normalizado (`lib/normalize.records`) + los stores de voces ajenas y enlaces.
+Salida (dentro del árbol de la obra, regenerable):
+  corpus/posts/{id}.md      un post propio, texto verbatim + contexto recuperado
+  corpus/external/{id}.md   una voz ajena (nivel 1 o 2)
+  corpus/links/{hash}.md    el contenido íntegro de un enlace externo
+  indexes/*.md              hilos, cronología, hashtags, media, tipos, externos, enlaces
+
+No conoce el formato de X: eso es cosa de `lib/normalize.py` (la costura B.O.E.).
 """
 
 from __future__ import annotations
 
-import html
 import json
 import sys
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-OWN_ID = "1807003571025592320"
-EXPECTED_POSTS = 1454
-PREFIX = "window.YTD.tweets.part0 ="
+from lib import links as links_lib  # noqa: E402
+from lib import normalize, voices  # noqa: E402
+from lib.obra import Obra  # noqa: E402
 
-MONTHS = {
-    "Jan": 1,
-    "Feb": 2,
-    "Mar": 3,
-    "Apr": 4,
-    "May": 5,
-    "Jun": 6,
-    "Jul": 7,
-    "Aug": 8,
-    "Sep": 9,
-    "Oct": 10,
-    "Nov": 11,
-    "Dec": 12,
-}
-
-YAML_BARE_SAFE = frozenset(
-    {
-        "y",
-        "n",
-        "yes",
-        "no",
-        "true",
-        "false",
-        "on",
-        "off",
-        "null",
-        "none",
-    }
-)
-
-
-def repo_root() -> Path:
-    return Path(__file__).resolve().parent.parent
-
-
-def parse_tweets_js(path: Path) -> list[dict]:
-    text = path.read_text(encoding="utf-8")
-    if text.startswith("\ufeff"):
-        text = text[1:]
-    idx = text.find(PREFIX)
-    if idx < 0:
-        raise SystemExit(f"missing `{PREFIX}` wrapper in {path}")
-    payload = text[idx + len(PREFIX) :].strip()
-    if payload.endswith(";"):
-        payload = payload[:-1].rstrip()
-    data = json.loads(payload)
-    if not isinstance(data, list):
-        raise SystemExit(f"expected a JSON array in {path}")
-    tweets = []
-    for entry in data:
-        if not isinstance(entry, dict) or "tweet" not in entry:
-            raise SystemExit("unexpected tweets.js entry shape")
-        tweets.append(entry["tweet"])
-    return tweets
-
-
-def parse_twitter_date(value: str) -> str:
-    """Parse 'Wed Jul 08 08:11:30 +0000 2026' → ISO 8601 (locale-independent)."""
-    weekday, mon, day, hms, tz, year = value.split()
-    del weekday
-    hour, minute, second = (int(part) for part in hms.split(":"))
-    sign = 1 if tz[0] == "+" else -1
-    offset = timezone(sign * timedelta(hours=int(tz[1:3]), minutes=int(tz[3:5])))
-    dt = datetime(
-        int(year),
-        MONTHS[mon],
-        int(day),
-        hour,
-        minute,
-        second,
-        tzinfo=offset,
-    )
-    return dt.isoformat()
-
-
-def classify(tweet: dict) -> str:
-    text = tweet.get("full_text") or ""
-    if text.startswith("RT @"):
-        return "retweet"
-    if tweet.get("in_reply_to_user_id_str") == OWN_ID:
-        return "self_reply"
-    if tweet.get("in_reply_to_status_id_str"):
-        return "reply_to_other"
-    return "original"
-
-
-def thread_root_of(tweet_id: str, tweets_by_id: dict[str, dict]) -> str:
-    seen: set[str] = set()
-    current = tweet_id
-    while current not in seen:
-        seen.add(current)
-        tweet = tweets_by_id.get(current)
-        if tweet is None:
-            break
-        parent_user = tweet.get("in_reply_to_user_id_str")
-        parent_id = tweet.get("in_reply_to_status_id_str")
-        if parent_user != OWN_ID or not parent_id:
-            break
-        if parent_id not in tweets_by_id:
-            break
-        current = parent_id
-    return current
-
-
-def index_media(media_dir: Path) -> dict[str, list[str]]:
-    by_id: dict[str, list[str]] = defaultdict(list)
-    if not media_dir.is_dir():
-        raise SystemExit(f"missing media directory: {media_dir}")
-    for path in media_dir.iterdir():
-        if not path.is_file():
-            continue
-        tweet_id = path.name.split("-", 1)[0]
-        by_id[tweet_id].append(f"data/tweets_media/{path.name}")
-    for paths in by_id.values():
-        paths.sort()
-    return dict(by_id)
+YAML_BARE_SAFE = frozenset({"y", "n", "yes", "no", "true", "false", "on", "off", "null", "none"})
+UNAVAILABLE = "_No disponible en X (borrado, protegido o cuenta ausente)._"
 
 
 def yaml_dquote(value: str) -> str:
@@ -148,87 +39,7 @@ def yaml_lang(value: str) -> str:
 
 
 def yaml_id_or_null(value: str | None) -> str:
-    if value is None:
-        return "null"
-    return yaml_dquote(value)
-
-
-def load_external(path: Path) -> dict:
-    if not path.is_file():
-        return {"tweets": {}}
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        return {"tweets": {}}
-    data.setdefault("tweets", {})
-    return data
-
-
-def lookup_external(external: dict, tweet_id: str | None) -> dict | None:
-    if not tweet_id:
-        return None
-    item = (external.get("tweets") or {}).get(tweet_id)
-    return item if isinstance(item, dict) else None
-
-
-def context_block(kind: str, fetched: dict) -> str:
-    heading = "### Padre" if kind == "reply_to_other" else "### Original"
-    tid = fetched.get("final_id") or fetched.get("requested_id") or ""
-    user = fetched.get("user")
-    name = fetched.get("name")
-    who = " ".join(part for part in (name, f"@{user}" if user else "") if part)
-    lines = [f"{heading} `{tid}` {who}".rstrip(), ""]
-    status = fetched.get("status")
-    text = fetched.get("text")
-    if status == "ok" and text:
-        lines.append(text)
-    elif status == "ok":
-        lines.append("_Sin texto (solo media)._")
-    elif status == "unavailable":
-        lines.append("_No disponible en X (borrado, protegido o cuenta ausente)._")
-    else:
-        lines.append(f"_No recuperado (`{status or 'missing'}`)._")
-    return "\n".join(lines)
-
-
-def render_post(record: dict) -> str:
-    lines = [
-        "---",
-        f"id: {yaml_dquote(record['id'])}",
-        f"created_at: {yaml_dquote(record['created_at'])}",
-        f"lang: {yaml_lang(record['lang'])}",
-        f"in_reply_to: {yaml_id_or_null(record['in_reply_to'])}",
-        f"in_reply_to_user: {yaml_id_or_null(record['in_reply_to_user'])}",
-        f"thread_root: {yaml_dquote(record['thread_root'])}",
-        f"kind: {record['kind']}",
-    ]
-    if record.get("original_id"):
-        lines.append(f"original_id: {yaml_dquote(record['original_id'])}")
-    if record.get("external_status"):
-        lines.append(f"external_status: {record['external_status']}")
-    if record["media"]:
-        lines.append("media:")
-        for path in record["media"]:
-            lines.append(f"  - {path}")
-    if record["urls"]:
-        lines.append("urls:")
-        for url in record["urls"]:
-            lines.append(f"  - expanded: {yaml_dquote(url)}")
-    lines.append("---")
-    lines.append("")
-    lines.append(record["full_text"])
-    if record.get("context"):
-        lines.append("")
-        lines.append("---")
-        lines.append("")
-        lines.append(record["context"])
-    body = "\n".join(lines)
-    if not body.endswith("\n"):
-        body += "\n"
-    return body
-
-
-def md_link(tweet_id: str) -> str:
-    return f"[`{tweet_id}`](../corpus/posts/{tweet_id}.md)"
+    return "null" if value is None else yaml_dquote(value)
 
 
 def write_text(path: Path, content: str) -> None:
@@ -239,317 +50,270 @@ def write_text(path: Path, content: str) -> None:
         handle.write(content)
 
 
-def month_range(start: str, end: str) -> list[str]:
-    start_y, start_m = (int(part) for part in start.split("-"))
-    end_y, end_m = (int(part) for part in end.split("-"))
-    months: list[str] = []
-    year, month = start_y, start_m
-    while (year, month) <= (end_y, end_m):
-        months.append(f"{year:04d}-{month:02d}")
-        month += 1
-        if month == 13:
-            month = 1
-            year += 1
-    return months
+def md_link(tweet_id: str) -> str:
+    return f"[`{tweet_id}`](../corpus/posts/{tweet_id}.md)"
 
 
-def write_indexes(indexes_dir: Path, records: list[dict], threads: dict[str, list[dict]]) -> None:
-    by_id = {record["id"]: record for record in records}
+# ── voces ajenas ─────────────────────────────────────────────────────────────
 
-    hilos_lines = [
-        "# Hilos",
-        "",
-        f"{len(threads)} hilos propios (cadenas de 2 o más posts de la cuenta).",
-        "Solo punteros; el texto está en `corpus/posts/{id}.md`.",
-        "",
-    ]
-    thread_items = []
-    for root_id, members in threads.items():
-        root = by_id[root_id]
-        thread_items.append((root["created_at"], root_id, members))
-    thread_items.sort(key=lambda item: (item[0], item[1]))
-    for created_at, root_id, members in thread_items:
-        day = created_at[:10]
-        hilos_lines.append(
-            f"## {len(members)} posts · {day} · raíz {md_link(root_id)}"
-        )
-        hilos_lines.append("")
-        for i, member in enumerate(members, start=1):
-            hilos_lines.append(f"{i}. {md_link(member['id'])}")
-        hilos_lines.append("")
-    write_text(indexes_dir / "hilos.md", "\n".join(hilos_lines))
+def voice_refs(record: dict) -> list[tuple[str, str]]:
+    """→ [(rótulo, id)] de las voces de nivel 1 que corresponden a un post."""
+    refs: list[tuple[str, str]] = []
+    if record["kind"] == "retweet":
+        refs.append(("Original", record["id"]))
+    elif record["kind"] == "reply_to_other" and record["parent_id"]:
+        refs.append(("Padre", record["parent_id"]))
+    refs += [("Cita", qid) for qid in record["quotes"]]
+    return refs
 
-    by_month: dict[str, list[dict]] = defaultdict(list)
-    for record in records:
-        by_month[record["created_at"][:7]].append(record)
-    crono_lines = [
-        "# Cronología",
-        "",
-        "Posts por mes (`created_at`), de 2024-06 a 2026-08. Solo punteros.",
-        "",
-    ]
-    for month in month_range("2024-06", "2026-08"):
-        items = sorted(by_month.get(month, []), key=lambda r: (r["created_at"], r["id"]))
-        crono_lines.append(f"## {month} ({len(items)})")
-        crono_lines.append("")
-        for record in items:
-            crono_lines.append(f"- {md_link(record['id'])}")
-        if items:
-            crono_lines.append("")
-        else:
-            crono_lines.append("")
-    write_text(indexes_dir / "cronologia.md", "\n".join(crono_lines))
 
-    tag_to_ids: dict[str, list[str]] = defaultdict(list)
-    seen_pair: set[tuple[str, str]] = set()
-    for record in records:
-        for tag in record["hashtags"]:
-            pair = (tag, record["id"])
-            if pair in seen_pair:
+def level2_refs(node: dict) -> list[tuple[str, str]]:
+    refs = []
+    if node.get("parent_id"):
+        refs.append(("En respuesta a", str(node["parent_id"])))
+    if node.get("quoted_id"):
+        refs.append(("Citaba a", str(node["quoted_id"])))
+    return refs
+
+
+def voice_body(node: dict | None) -> str:
+    if not node:
+        return "_No recuperado (`missing`)._"
+    status, text = node.get("status"), node.get("text")
+    if text:
+        return text
+    if status in ("ok", "legacy"):
+        return "_Sin texto (solo media)._"
+    if status == "unavailable":
+        return UNAVAILABLE
+    return f"_No recuperado (`{status or 'missing'}`)._"
+
+
+def voice_who(node: dict | None, tid: str) -> str:
+    node = node or {}
+    who = " ".join(p for p in (node.get("name"), f"@{node['user']}" if node.get("user") else "") if p)
+    when = (node.get("created_at") or "")[:10]
+    return " ".join(p for p in (f"`{node.get('id') or tid}`", who, when) if p)
+
+
+def context_block(record: dict, tweets: dict) -> str | None:
+    blocks = []
+    for label, tid in voice_refs(record):
+        node = tweets.get(tid)
+        lines = [f"### {label} {voice_who(node, tid)}", "", voice_body(node)]
+        for sub_label, sub_id in level2_refs(node or {}):
+            sub = tweets.get(sub_id)
+            if sub is None:
                 continue
-            seen_pair.add(pair)
-            tag_to_ids[tag].append(record["id"])
-    hashtag_lines = [
-        "# Hashtags",
-        "",
-        f"{len(tag_to_ids)} etiquetas tomadas de `entities.hashtags`. Solo estas; no inferir otras.",
-        "",
+            lines += ["", f"#### {sub_label} {voice_who(sub, sub_id)}", "", voice_body(sub)]
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks) if blocks else None
+
+
+def render_post(record: dict, context: str | None, link_keys: list[str]) -> str:
+    lines = [
+        "---",
+        f"id: {yaml_dquote(record['id'])}",
+        f"created_at: {yaml_dquote(record['created_at'])}",
+        f"lang: {yaml_lang(record['lang'])}",
+        f"in_reply_to: {yaml_id_or_null(record['parent_id'])}",
+        f"in_reply_to_user: {yaml_id_or_null(record['parent_user_id'])}",
+        f"thread_root: {yaml_dquote(record['thread_root'])}",
+        f"kind: {record['kind']}",
     ]
-    for tag in sorted(tag_to_ids, key=lambda t: (t.casefold(), t)):
-        ids = tag_to_ids[tag]
-        ids_sorted = sorted(ids, key=lambda i: (by_id[i]["created_at"], i))
-        hashtag_lines.append(f"## #{tag} ({len(ids_sorted)})")
-        hashtag_lines.append("")
-        for tweet_id in ids_sorted:
-            hashtag_lines.append(f"- {md_link(tweet_id)}")
-        hashtag_lines.append("")
-    write_text(indexes_dir / "hashtags.md", "\n".join(hashtag_lines))
-
-    media_records = [record for record in records if record["media"]]
-    media_records.sort(key=lambda r: (r["created_at"], r["id"]))
-    media_lines = [
-        "# Media",
-        "",
-        f"{len(media_records)} posts con archivos locales en `data/tweets_media/`.",
-        "Rutas relativas a la raíz del repo. Solo punteros.",
-        "",
-    ]
-    for record in media_records:
-        media_lines.append(f"## {md_link(record['id'])} ({len(record['media'])})")
-        media_lines.append("")
-        for path in record["media"]:
-            media_lines.append(f"- `{path}`")
-        media_lines.append("")
-    write_text(indexes_dir / "media.md", "\n".join(media_lines))
-
-    kinds = ("original", "self_reply", "reply_to_other", "retweet")
-    tipo_lines = [
-        "# Tipos",
-        "",
-        "Partición mecánica por campos (no por juicio):",
-        "- `retweet` si `full_text` empieza por `RT @`",
-        "- `self_reply` si `in_reply_to_user_id_str` es la cuenta propia",
-        "- `reply_to_other` si hay `in_reply_to_status_id_str` y el usuario no es el propio",
-        "- `original` en el resto",
-        "",
-    ]
-    for kind in kinds:
-        items = [r for r in records if r["kind"] == kind]
-        items.sort(key=lambda r: (r["created_at"], r["id"]))
-        tipo_lines.append(f"## {kind} ({len(items)})")
-        tipo_lines.append("")
-        for record in items:
-            tipo_lines.append(f"- {md_link(record['id'])}")
-        tipo_lines.append("")
-    write_text(indexes_dir / "tipos.md", "\n".join(tipo_lines))
+    if record["quotes"]:
+        lines.append("quotes:")
+        lines += [f"  - {yaml_dquote(q)}" for q in record["quotes"]]
+    if record["media"]:
+        lines.append("media:")
+        lines += [f"  - {path}" for path in record["media"]]
+    if record["urls"]:
+        lines.append("urls:")
+        lines += [f"  - expanded: {yaml_dquote(url)}" for url in record["urls"]]
+    if link_keys:
+        lines.append("links:")
+        lines += [f"  - ../links/{key}.md" for key in link_keys]
+    lines += ["---", "", record["text"]]
+    if context:
+        lines += ["", "---", "", context]
+    return "\n".join(lines) + "\n"
 
 
-def write_external(indexes_dir: Path, external_dir: Path, external: dict) -> int:
-    tweets = external.get("tweets") or {}
-    items = []
-    for tweet_id, item in tweets.items():
-        if not isinstance(item, dict):
-            continue
-        items.append((tweet_id, item))
-    items.sort(key=lambda pair: pair[0])
+def write_external(out: Path, tweets: dict) -> int:
+    external_dir = out / "corpus" / "external"
     external_dir.mkdir(parents=True, exist_ok=True)
     for stale in external_dir.glob("*.md"):
         stale.unlink()
-    for tweet_id, item in items:
-        user = item.get("user")
-        name = item.get("name")
-        status = item.get("status") or "unknown"
-        url = item.get("url") or ""
-        text = item.get("text") or ""
+    items = sorted(tweets.items())
+    for tid, node in items:
         lines = [
             "---",
-            f"id: {yaml_dquote(tweet_id)}",
-            f"user: {yaml_id_or_null(user)}",
-            f"name: {yaml_dquote(name) if name else 'null'}",
-            f"status: {status}",
+            f"id: {yaml_dquote(str(node.get('id') or tid))}",
+            f"requested_id: {yaml_dquote(tid)}",
+            f"status: {node.get('status') or 'unknown'}",
+            f"level: {node.get('level') or 1}",
+            f"user: {yaml_id_or_null(node.get('user'))}",
+            f"name: {yaml_dquote(node['name']) if node.get('name') else 'null'}",
+            f"created_at: {yaml_id_or_null(node.get('created_at'))}",
+            f"in_reply_to: {yaml_id_or_null(str(node['parent_id']) if node.get('parent_id') else None)}",
+            f"quoted: {yaml_id_or_null(str(node['quoted_id']) if node.get('quoted_id') else None)}",
+            f"source: {node.get('source') or 'unknown'}",
         ]
-        if url:
-            lines.append(f"url: {yaml_dquote(url)}")
-        lines.append("---")
-        lines.append("")
-        if status == "ok" and text:
-            lines.append(text)
-        elif status == "unavailable":
-            lines.append("_No disponible en X (borrado, protegido o cuenta ausente)._")
-        else:
-            lines.append(f"_No recuperado (`{status}`)._")
-        write_text(external_dir / f"{tweet_id}.md", "\n".join(lines))
-    lines = [
+        if node.get("url"):
+            lines.append(f"url: {yaml_dquote(node['url'])}")
+        if node.get("via"):
+            lines.append("via:")
+            lines += [f"  - {v.get('rel')}: {yaml_dquote(str(v.get('from')))}" for v in node["via"]]
+        media = [m["local"] for m in node.get("media") or [] if m.get("local")]
+        if media:
+            lines.append("media:")
+            lines += [f"  - {path}" for path in media]
+        lines += ["---", "", voice_body(node)]
+        write_text(external_dir / f"{tid}.md", "\n".join(lines))
+
+    index = [
         "# Externos",
         "",
-        f"{len(items)} tweets ajenos recuperados (padres de `reply_to_other` y originales de `retweet`).",
-        "Texto canónico de terceros: `corpus/external/{id}.md`. También se copia al post propio bajo `### Padre` / `### Original`.",
+        f"{len(items)} voces ajenas: originales de RT, padres de réplicas, tuits citados (nivel 1) y"
+        " el padre o el citado de estos (nivel 2).",
+        "Texto canónico de terceros: `corpus/external/{id}.md`. Lo no recuperado no se completa.",
         "",
     ]
-    for tweet_id, item in items:
-        user = item.get("user") or "?"
-        status = item.get("status") or "unknown"
-        lines.append(f"- [`{tweet_id}`](../corpus/external/{tweet_id}.md) @{user} · {status}")
-    write_text(indexes_dir / "externos.md", "\n".join(lines))
+    for tid, node in items:
+        index.append(
+            f"- [`{tid}`](../corpus/external/{tid}.md) @{node.get('user') or '?'} · "
+            f"{node.get('status') or 'unknown'} · L{node.get('level') or 1}"
+        )
+    write_text(out / "indexes" / "externos.md", "\n".join(index))
     return len(items)
 
 
-def main() -> int:
-    root = repo_root()
-    tweets_js = root / "data" / "tweets.js"
-    media_dir = root / "data" / "tweets_media"
-    posts_dir = root / "corpus" / "posts"
-    indexes_dir = root / "indexes"
+def write_links(obra: Obra, out: Path, store: dict) -> int:
+    links_dir = out / "corpus" / "links"
+    links_dir.mkdir(parents=True, exist_ok=True)
+    for stale in links_dir.glob("*.md"):
+        stale.unlink()
+    written = 0
+    by_family: dict[str, list[tuple[str, dict]]] = defaultdict(list)
+    for key, entry in sorted(store.items()):
+        by_family[entry.get("family") or "generic"].append((key, entry))
+        source = links_lib.md_path(obra, key)
+        if entry.get("status") != "ok" or not source.is_file():
+            continue
+        front = [
+            "---",
+            f"hash: {key}",
+            f"url: {yaml_dquote(entry['url'])}",
+            f"final_url: {yaml_dquote(entry.get('final_url') or entry['url'])}",
+            f"family: {entry.get('family')}",
+            f"title: {yaml_dquote(entry.get('title') or '')}",
+            f"method: {entry.get('method')}",
+            f"fetched_at: {yaml_dquote(entry.get('fetched_at') or '')}",
+            f"sha256_md: {entry.get('sha256_md')}",
+            "cited_by:",
+            *[f"  - {yaml_dquote(t)}" for t in entry.get("cited_by") or []],
+            "---",
+            "",
+        ]
+        write_text(links_dir / f"{key}.md", "\n".join(front) + source.read_text(encoding="utf-8"))
+        written += 1
 
-    tweets = parse_tweets_js(tweets_js)
-    if len(tweets) != EXPECTED_POSTS:
-        raise SystemExit(f"expected {EXPECTED_POSTS} tweets, got {len(tweets)}")
+    index = ["# Enlaces", "", f"{len(store)} enlaces externos citados en los posts propios.",
+             "Contenido íntegro recuperado: `corpus/links/{hash}.md`. Lo no recuperado se lista sin texto.", ""]
+    for family in sorted(by_family, key=lambda f: (not f.startswith("agent:"), f)):
+        index += [f"## {family} ({len(by_family[family])})", ""]
+        for key, entry in by_family[family]:
+            label = entry.get("title") or entry["url"]
+            target = f"[{label}](../corpus/links/{key}.md)" if entry.get("status") == "ok" else label
+            index.append(f"- {target} · {entry.get('status')} · <{entry['url']}>")
+        index.append("")
+    write_text(out / "indexes" / "enlaces.md", "\n".join(index))
+    return written
 
-    tweets_by_id: dict[str, dict] = {}
-    for tweet in tweets:
-        tweet_id = tweet.get("id_str")
-        if not tweet_id:
-            raise SystemExit("tweet missing id_str")
-        if tweet_id in tweets_by_id:
-            raise SystemExit(f"duplicate tweet id {tweet_id}")
-        tweets_by_id[tweet_id] = tweet
 
-    media_by_id = index_media(media_dir)
-    external = load_external(root / "data" / "external_tweets.json")
+def write_indexes(out: Path, records: list[dict], threads: dict[str, list[dict]]) -> None:
+    indexes_dir = out / "indexes"
+    by_id = {r["id"]: r for r in records}
 
-    records: list[dict] = []
-    missing_parents: list[tuple[str, str]] = []
-    for tweet in tweets:
-        tweet_id = tweet["id_str"]
-        if "full_text" not in tweet:
-            raise SystemExit(f"tweet {tweet_id} missing full_text")
-        parent_id = tweet.get("in_reply_to_status_id_str") or None
-        parent_user = tweet.get("in_reply_to_user_id_str") or None
-        if parent_user == OWN_ID and parent_id and parent_id not in tweets_by_id:
-            missing_parents.append((tweet_id, parent_id))
-        urls: list[str] = []
-        seen_urls: set[str] = set()
-        for url_obj in (tweet.get("entities") or {}).get("urls") or []:
-            expanded = url_obj.get("expanded_url")
-            if expanded and expanded not in seen_urls:
-                seen_urls.add(expanded)
-                urls.append(expanded)
-        hashtags = []
-        seen_tags: set[str] = set()
-        for tag_obj in (tweet.get("entities") or {}).get("hashtags") or []:
-            text = tag_obj.get("text")
-            if text and text not in seen_tags:
-                seen_tags.add(text)
-                hashtags.append(text)
-        kind = classify(tweet)
-        fetched_id = parent_id if kind == "reply_to_other" else (tweet_id if kind == "retweet" else None)
-        fetched = lookup_external(external, fetched_id)
-        original_id = None
-        external_status = None
-        context = None
-        if fetched:
-            external_status = fetched.get("status")
-            if kind == "retweet":
-                original_id = fetched.get("final_id") if fetched.get("final_id") != tweet_id else None
-            context = context_block(kind, fetched)
-        records.append(
-            {
-                "id": tweet_id,
-                "created_at": parse_twitter_date(tweet["created_at"]),
-                "lang": tweet.get("lang") or "und",
-                "in_reply_to": parent_id,
-                "in_reply_to_user": parent_user,
-                "thread_root": thread_root_of(tweet_id, tweets_by_id),
-                "kind": kind,
-                "media": list(media_by_id.get(tweet_id, [])),
-                "urls": urls,
-                "hashtags": hashtags,
-                "full_text": html.unescape(tweet["full_text"]),
-                "original_id": original_id,
-                "external_status": external_status,
-                "context": context,
-            }
-        )
+    hilos = ["# Hilos", "", f"{len(threads)} hilos propios (cadenas de 2 o más posts de la cuenta).",
+             "Solo punteros; el texto está en `corpus/posts/{id}.md`.", ""]
+    for created_at, root_id, members in sorted(
+            (by_id[root]["created_at"], root, m) for root, m in threads.items()):
+        hilos += [f"## {len(members)} posts · {created_at[:10]} · raíz {md_link(root_id)}", ""]
+        hilos += [f"{i}. {md_link(m['id'])}" for i, m in enumerate(members, start=1)]
+        hilos.append("")
+    write_text(indexes_dir / "hilos.md", "\n".join(hilos))
 
-    records.sort(key=lambda r: (r["created_at"], r["id"]))
-
-    threads: dict[str, list[dict]] = defaultdict(list)
+    months = normalize.month_span(records)
+    by_month: dict[str, list[dict]] = defaultdict(list)
     for record in records:
-        threads[record["thread_root"]].append(record)
-    threads = {
-        root_id: members
-        for root_id, members in threads.items()
-        if len(members) >= 2
-    }
-    for members in threads.values():
-        members.sort(key=lambda r: (r["created_at"], r["id"]))
+        by_month[record["created_at"][:7]].append(record)
+    span = f"de {months[0]} a {months[-1]}" if months else "sin posts"
+    crono = ["# Cronología", "", f"Posts por mes (`created_at`), {span}. Solo punteros.", ""]
+    for month in months:
+        items = by_month.get(month, [])
+        crono += [f"## {month} ({len(items)})", ""]
+        crono += [f"- {md_link(r['id'])}" for r in items]
+        crono.append("")
+    write_text(indexes_dir / "cronologia.md", "\n".join(crono))
 
+    tag_to_ids: dict[str, list[str]] = defaultdict(list)
+    for record in records:
+        for tag in record["hashtags"]:
+            if record["id"] not in tag_to_ids[tag]:
+                tag_to_ids[tag].append(record["id"])
+    tags = ["# Hashtags", "",
+            f"{len(tag_to_ids)} etiquetas tomadas de `entities.hashtags`. Solo estas; no inferir otras.", ""]
+    for tag in sorted(tag_to_ids, key=lambda t: (t.casefold(), t)):
+        ids = sorted(tag_to_ids[tag], key=lambda i: (by_id[i]["created_at"], i))
+        tags += [f"## #{tag} ({len(ids)})", ""] + [f"- {md_link(i)}" for i in ids] + [""]
+    write_text(indexes_dir / "hashtags.md", "\n".join(tags))
+
+    with_media = [r for r in records if r["media"]]
+    media = ["# Media", "", f"{len(with_media)} posts con archivos locales en `data/tweets_media/`.",
+             "Rutas relativas a la raíz de la obra. Solo punteros.", ""]
+    for record in with_media:
+        media += [f"## {md_link(record['id'])} ({len(record['media'])})", ""]
+        media += [f"- `{path}`" for path in record["media"]] + [""]
+    write_text(indexes_dir / "media.md", "\n".join(media))
+
+    tipos = ["# Tipos", "", "Partición mecánica por campos (no por juicio):",
+             "- `retweet` si `full_text` empieza por `RT @`",
+             "- `self_reply` si `in_reply_to_user_id_str` es la cuenta propia",
+             "- `reply_to_other` si hay `in_reply_to_status_id_str` y el usuario no es el propio",
+             "- `original` en el resto", ""]
+    for kind in normalize.KINDS:
+        items = [r for r in records if r["kind"] == kind]
+        tipos += [f"## {kind} ({len(items)})", ""] + [f"- {md_link(r['id'])}" for r in items] + [""]
+    write_text(indexes_dir / "tipos.md", "\n".join(tipos))
+
+
+def build(obra: Obra, out: Path) -> dict:
+    records = normalize.records(obra)
+    threads = normalize.threads_of(records)
+    tweets = voices.published(obra)
+    link_store = links_lib.load(obra)
+
+    posts_dir = out / "corpus" / "posts"
     posts_dir.mkdir(parents=True, exist_ok=True)
     for stale in posts_dir.glob("*.md"):
         stale.unlink()
     for record in records:
-        write_text(posts_dir / f"{record['id']}.md", render_post(record))
+        keys = [links_lib.key_of(u) for u in record["links"]]
+        keys = [k for k in dict.fromkeys(keys) if (link_store.get(k) or {}).get("status") == "ok"]
+        write_text(posts_dir / f"{record['id']}.md", render_post(record, context_block(record, tweets), keys))
 
-    write_indexes(indexes_dir, records, threads)
-    external_count = write_external(indexes_dir, root / "corpus" / "external", external)
+    write_indexes(out, records, threads)
+    n_ext = write_external(out, tweets)
+    n_links = write_links(obra, out, link_store)
 
-    post_files = sorted(posts_dir.glob("*.md"))
-    if len(post_files) != EXPECTED_POSTS:
-        raise SystemExit(f"expected {EXPECTED_POSTS} post files, got {len(post_files)}")
-    file_ids = {path.stem for path in post_files}
-    tweet_ids = set(tweets_by_id)
-    if file_ids != tweet_ids:
-        missing = tweet_ids - file_ids
-        extra = file_ids - tweet_ids
-        raise SystemExit(f"id mismatch: missing={sorted(missing)[:5]} extra={sorted(extra)[:5]}")
-
-    media_refs = [path for record in records for path in record["media"]]
-    for rel in media_refs:
-        if not (root / rel).is_file():
-            raise SystemExit(f"referenced media missing: {rel}")
-
-    kinds_count = {kind: 0 for kind in ("original", "self_reply", "reply_to_other", "retweet")}
-    for record in records:
-        kinds_count[record["kind"]] += 1
-
-    print("corpus build ok")
-    print(f"posts: {len(records)}")
-    print(f"posts with media: {sum(1 for r in records if r['media'])}")
-    print(f"media files referenced: {len(media_refs)}")
-    print(f"self-threads: {len(threads)}")
-    print(f"posts in threads: {sum(len(m) for m in threads.values())}")
-    print(f"original: {kinds_count['original']}")
-    print(f"self_reply: {kinds_count['self_reply']}")
-    print(f"reply_to_other: {kinds_count['reply_to_other']}")
-    print(f"retweet: {kinds_count['retweet']}")
-    print(f"hashtags: {len({tag for r in records for tag in r['hashtags']})}")
-    print(f"external tweets: {external_count}")
-    print(f"posts with recovered context: {sum(1 for r in records if r.get('context'))}")
-    print(f"self-replies whose parent is missing: {len(missing_parents)}")
-    for tweet_id, parent_id in missing_parents:
-        print(f"  missing parent: {tweet_id} -> {parent_id}")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    files = {p.stem for p in posts_dir.glob("*.md")}
+    if files != {r["id"] for r in records}:
+        raise SystemExit("corpus/posts no coincide con los registros visibles")
+    kinds = {k: sum(1 for r in records if r["kind"] == k) for k in normalize.KINDS}
+    stats = {
+        "posts": len(records), "threads": len(threads), "external": n_ext, "links_md": n_links,
+        "with_context": sum(1 for r in records if voice_refs(r)), **kinds,
+    }
+    print("corpus build ok ·", " · ".join(f"{k}: {v}" for k, v in stats.items()))
+    return stats

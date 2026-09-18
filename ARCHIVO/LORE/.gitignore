@@ -1,0 +1,5 @@
+# Deny-by-default: el lore son DATOS PERSONALES (exports de cuenta, stores de terceros).
+# En ARCHIVO/LORE/ solo se versionan este fichero y el README. Nunca `git add -f` aqui.
+*
+!.gitignore
+!README.md

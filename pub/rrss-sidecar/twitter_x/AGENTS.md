@@ -1,22 +1,32 @@
 # Mapa
 
-Segundo cerebro de @_dev_aleph_1 (αlephillΩ). Archivo oficial X generado el 2026-08-21
-(generación anterior, 2026-07-08, conservada en `../../web/`; 2 posts borrados entre
-ambas solo existen en esa capa histórica).
+Segundo cerebro de @{handle} · obra «{title}». Archivo oficial de X generado el {generation}
+({n_generations} generación/es integradas; los posts que el autor borró entre generaciones solo
+existen en la capa histórica privada y **no** están aquí).
+
+> Este fichero es una plantilla de `pub/rrss-sidecar/twitter_x/AGENTS.md`: el build sustituye
+> los marcadores entre llaves por los datos de cada obra.
 
 ## Corpus
 
-- Exactamente **1454** posts en `corpus/posts/{id}.md`.
-- Media local en `data/tweets_media/` (1290 archivos). No copiar; las rutas relativas están en el frontmatter.
-- Fuente canónica: `data/tweets.js`. Si hay discrepancia, gana el archivo.
+- Exactamente **{n_posts}** posts propios en `corpus/posts/{id}.md`.
+- Voces ajenas (originales de RT, padres de réplicas, tuits citados; nivel 1 y 2): `corpus/external/{id}.md`.
+- Páginas enlazadas desde los posts, traídas a Markdown íntegro: `corpus/links/{hash}.md`.
+- Media local en `data/tweets_media/`. No copiar; las rutas relativas están en el frontmatter.
+- Si hay discrepancia entre una página HTML y el corpus, gana el corpus.
 
 ## Protocolo
 
-- Citar por `id`. El texto vive en `corpus/posts/{id}.md`.
+- Citar por `id` (posts y voces) o por `hash` (enlaces). El texto vive en el fichero citado.
 - Nunca resumir como sustituto del post.
-- Nunca inventar el texto de tweets ajenos. El padre de un `reply_to_other` y el original de un RT, si se recuperaron, están en el mismo post (bloques `### Padre` / `### Original`) y en `corpus/external/{id}.md`.
-- Si no hay bloque o `external_status` es `unavailable` / ausente, no completar el texto.
-- No usar likes, following.
+- Nunca inventar el texto de tuits ajenos. El original de un RT, el padre de una réplica y el tuit
+  citado, si se recuperaron, están en el mismo post (bloques `### Original` / `### Padre` /
+  `### Cita`, con su nivel 2 en `#### En respuesta a` / `#### Citaba a`) y en `corpus/external/`.
+- Si no hay bloque, o el estado es `unavailable` / ausente, no completar el texto.
+- El contenido de `corpus/links/` es de terceros (o de conversaciones del autor con agentes):
+  citarlo como fuente enlazada, con su `url` y su `fetched_at`; no atribuirlo al autor de la obra
+  salvo los turnos `## Usuario` de una conversación.
+- No usar likes, following, ni nada que no esté en este árbol.
 
 ## Dónde buscar
 
@@ -25,7 +35,8 @@ ambas solo existen en esa capa histórica).
 - Hashtags: solo los de `indexes/hashtags.md` (no inferir otros)
 - Media local: `indexes/media.md`
 - Tipos (`original` / `self_reply` / `reply_to_other` / `retweet`): `indexes/tipos.md`
-- Tweets ajenos recuperados: `indexes/externos.md`
+- Voces ajenas: `indexes/externos.md`
+- Enlaces y conversaciones con agentes: `indexes/enlaces.md`
 
 ## Ideas, tono, temas
 
@@ -33,6 +44,8 @@ Leer los posts. No hay ficheros de temas inventados.
 
 ## Regenerar
 
+El generador completo viaja en `tools/` (es `pub/rrss-sidecar/twitter_x/` del repo O_SDK):
+
 ```bash
-python3 tools/build_corpus.py
+python tools/sidecar.py build --obra <obra>
 ```
