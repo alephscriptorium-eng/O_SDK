@@ -160,7 +160,8 @@ docker info >/dev/null 2>&1       || die 6 "el demonio de docker no responde (¿
 # Un env con credenciales DENTRO del repo tiene que estar ignorado por git.
 case "$ENV_FILE" in
   "$REPO_ROOT"/*)
-    git -C "$REPO_ROOT" check-ignore -q "$ENV_FILE" 2>/dev/null \
+    # Ruta RELATIVA y cd: bajo MSYS_NO_PATHCONV=1 git.exe no entiende /c/... (ni en -C ni como argumento).
+    ( cd "$REPO_ROOT" && git check-ignore -q -- "${ENV_FILE#"$REPO_ROOT"/}" ) 2>/dev/null \
       || die 3 "${ENV_FILE#"$REPO_ROOT"/} NO está ignorado por git: no se escriben credenciales en un fichero versionable" ;;
 esac
 

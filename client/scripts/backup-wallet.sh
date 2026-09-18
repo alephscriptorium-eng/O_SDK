@@ -157,7 +157,8 @@ VOLUME="$(docker inspect -f "{{range .Mounts}}{{if eq .Destination \"$IN_DATADIR
 # El destino en el host no puede ser versionable.
 case "$BACKUP_ROOT" in
   "$REPO_ROOT"/*)
-    git -C "$REPO_ROOT" check-ignore -q "$BACKUP_ROOT/x" 2>/dev/null \
+    # Ruta RELATIVA y cd: bajo MSYS_NO_PATHCONV=1 git.exe no entiende /c/... (ni en -C ni como argumento).
+    ( cd "$REPO_ROOT" && git check-ignore -q -- "${BACKUP_ROOT#"$REPO_ROOT"/}/x" ) 2>/dev/null \
       || die "${BACKUP_ROOT#"$REPO_ROOT"/} NO está ignorado por git: no se escribe material de claves en una ruta versionable" ;;
 esac
 
