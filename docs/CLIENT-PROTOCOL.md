@@ -387,6 +387,20 @@ docker compose up -d oasis-client          # OASIS_WALLET_PUB_ID → walletPub.p
   editan. Una dirección equivocada o duplicada se queda en tu feed y en el pub.
 - **Abrir la GUI con el nivel (ii) activo llama a `getnewaddress`** (§8.2): backup antes.
 - `.env` raíz: lo comparte todo el compose de la raíz. El pub usa su propio `--env-file` y no lo lee.
+- **Al pasar de cartera propia a solo dirección, para antes `ecoind`**: `npm run ecoin:stop`. Un
+  `docker compose down` sin `--profile ecoin` no ve el servicio `ecoin-wallet`: lo deja corriendo y la
+  red queda «still in use».
+- En modo solo dirección `wallet.url` queda vacía, pero `wallet.user` y `wallet.pass` siguen en
+  `volumes-dev/client-state/oasis-config.json`: inocuo (no hay RPC), pero es un fichero con secretos.
+
+**Medido en el drill del 2026-09-18** (identidad desechable, proyecto `o-sdk-drill`): el healthcheck
+del contenedor pide `/` sin seguir el 302 y **no** genera direcciones; la dirección la fija la primera
+visita a `/wallet`, `/banking` o `/activity` (un navegador que abre `/` sí sigue la redirección). En
+el drill `ecoind` reutilizó su dirección por defecto (0 nuevas); en el VPS creó dos: no des por fijo
+ese número. La publicación automática no ocurre en 1.1.2 (fallo de upstream): se publica con el alta
+manual de §8.1, **una sola vez**. Tras recrear el contenedor, reconstruir la imagen y `down -v`
+siguieron la misma dirección, la config de la GUI y un único mensaje `wallet`; backup y restore
+devolvieron `ismine: true`.
 
 ### 8.9 Drill con identidad desechable
 
