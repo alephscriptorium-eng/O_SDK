@@ -29,6 +29,11 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+for _stream in (sys.stdout, sys.stderr):  # consolas Windows (cp1252) al lanzar desde npm
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 from lib import guards, links, store, voices, ytd  # noqa: E402
 from lib.obra import Obra, generation_of, read_manifest, repo_root  # noqa: E402
@@ -208,6 +213,7 @@ def resolve_out(args, obra: Obra) -> Path:
 
 def run_guards(obra: Obra | None, out: Path, strict: bool) -> int:
     needles = guards.personal_needles(obra.primary()["dir"]) if obra else []
+    needles += [str(repo_root()), repo_root().as_posix()]  # la ruta del operador tampoco se publica
     problems = guards.check(out, allow_placeholders=not strict, extra_needles=needles)
     if problems:
         print(f"⛔ {len(problems)} violaciones de invariantes en {out}:")

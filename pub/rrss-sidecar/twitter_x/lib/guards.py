@@ -36,7 +36,7 @@ EXTERNAL_LOAD = re.compile(
     r"""|<link\b[^>]*?\bhref\s*=\s*["']?https?://|url\(\s*["']?https?://|@import\s+["']?https?://)""",
     re.I,
 )
-LOCAL_PATH = re.compile(r"(?<![\w/])(?:[A-Za-z]:[\\/](?:Users|S_LAB|S_META)|/Users/[^/\s\"'<]+/|/mnt/c/)", re.I)
+LOCAL_PATH = re.compile(r"(?<![\w/])(?:[A-Za-z]:[\\/]Users[\\/]|/Users/[^/\s\"'<]+/|/home/[^/\s\"'<]+/|/mnt/[a-z]/)", re.I)
 PLACEHOLDER = re.compile(r"__[A-Z0-9_]*SHA256__")
 
 
