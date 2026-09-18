@@ -68,3 +68,9 @@ echo "-- Disco del HUB (hub-disk.sh check; best-effort) --"
 # Nunca fatal: si el HUB no está desplegado o falla el SSH, deploy-status sigue.
 hub_line="$(bash "$REPO_ROOT/devops/scripts/hub-disk.sh" check 2>/dev/null || true)"
 echo "  ${hub_line:-(hub-disk.sh check no disponible — ¿HUB aún no desplegado / SSH?)}"
+echo
+
+echo "-- hub-wallet (ecoin) (ecoin-disk.sh check; best-effort) --"
+# Nunca fatal: si el hub-wallet no está desplegado o falla el SSH, deploy-status sigue.
+ecoin_line="$(bash "$REPO_ROOT/devops/scripts/ecoin-disk.sh" check 2>/dev/null || true)"
+echo "  ${ecoin_line:-(hub-wallet no desplegado)}"
