@@ -177,6 +177,10 @@ if [[ "${TEATRO_SKIP_VERIFY:-0}" != "1" ]]; then
   expect 200 "$H/teatro/"
   expect 200 "$B/"
   expect 200 "$B/enlaces/"
+  expect 200 "$B/interlocutores/"
+  # puertas curadas: solo si la obra lleva capa editorial
+  [[ -f "$LOCAL_OBRA/sistema/index.html" ]] && expect 200 "$B/sistema/"
+  [[ -f "$LOCAL_OBRA/cantar/index.html" ]] && expect 200 "$B/cantar/"
   expect 200 "$B/$OBRA.zip.sha256"
   expect 200 "$B/$OBRA-cerebro.zip"
   expect 200 "$B/MANIFEST.sha256"

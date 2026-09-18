@@ -44,6 +44,10 @@ if [[ -d "$LORE/store" ]]; then
   echo "[backup-teatro] stores del lore (voces y enlaces) → $DEST/lore-store.tgz"
   tar -C "$LORE" -czf "$DEST/lore-store.tgz" store cache/links obra.json 2>/dev/null || tar -C "$LORE" -czf "$DEST/lore-store.tgz" store obra.json
 fi
+if [[ -d "$LORE/editorial" ]]; then
+  echo "[backup-teatro] capa curada del lore (editorial/) → $DEST/lore-editorial.tgz"
+  tar -C "$LORE" -czf "$DEST/lore-editorial.tgz" editorial
+fi
 ( cd "$DEST" && find . -type f ! -name SHA256SUMS.txt -print0 | xargs -0 sha256sum > SHA256SUMS.txt && sha256sum -c --quiet SHA256SUMS.txt )
 du -sh "$DEST" | sed 's/^/[backup-teatro] /'
 echo "[backup-teatro] OK. Cópialo fuera de la máquina. Los exports (ARCHIVO/LORE/.../exports) NO van aquí."
