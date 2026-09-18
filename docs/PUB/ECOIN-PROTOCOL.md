@@ -4,7 +4,8 @@
 > `https://github.com/alephscriptorium-eng/O_SDK.git`). El hub-wallet **no tiene puerta web**:
 > vive dentro de la red Docker del pub y solo se ve por lo que su bot publica en SSB.
 
-> **Estado · IMPLEMENTADO en la rama `wp/O102-hub-wallet`, NO desplegado** (WP-O102, 2026-09-18).
+> **Estado · IMPLEMENTADO en la rama `wp/O102-hub-wallet`, gates locales G1-G6 pasados, NO
+> desplegado** (WP-O102, 2026-09-18). Hallazgos de los gates en §14.
 > Nada de lo descrito aquí corre todavía en `pub.escrivivir.co`: ni `oasis-pub-ecoin` ni
 > `oasis-pub-wallet-bot` existen en el VPS, el bot no tiene feed id y no hay `wallet.dat` de
 > producción. Este bloque se cambia al activar (§3) y el registro se escribe en §13. Decisiones del
@@ -108,7 +109,7 @@ después cliente (WP-O103).
 |---|---|---|---|
 | Binario verificado | `ecoin/ecoin_0.0.4-1_amd64.deb.sha256` · `ecoin/fetch-deb.sh` · `ecoin/ecoin_0.0.4-1_amd64.deb.txt` (URL) | sha256 `ccc6b3bc09194ddf3d2872495f44df8a594dd735d0d438a94865daab1a14ede1` (2 835 896 B); el `.deb` está gitignored; `fetch-deb.sh` descarga con `curl -fL`, comprueba y **borra si no casa** | ✅ rama |
 | Imagen `ecoin` | `ecoin/Dockerfile` | `sha256sum -c` tras el `COPY` (el build falla con otro binario); conf completa también en `/usr/share/ecoin/ecoin.conf.default` (un bind del datadir no la tapa); `EXPOSE 7474 7408`; healthcheck sin credenciales por defecto | ✅ rama |
-| Arranque de `ecoind` | `ecoin/docker-entrypoint.sh` · `ecoin/ecoin.conf` | siembra la conf **completa** si falta; `umask 077`, conf a 600; fail-closed con `ECOIN_REQUIRE_CREDS=1`; `port=7408` explícito; `rpcallowip=172.16.0.0/12`; marcadores en vez de credenciales | ✅ rama |
+| Arranque de `ecoind` | `ecoin/docker-entrypoint.sh` · `ecoin/ecoin.conf` | siembra la conf **completa** si falta; `umask 077`, conf a 600; fail-closed con `ECOIN_REQUIRE_CREDS=1`; `port=7408` explícito; `rpcallowip=172.16.*`…`172.31.*` con comodines (este ecoind no entiende CIDR: con `172.16.0.0/12` daba 403 a toda la red Docker); marcadores en vez de credenciales | ✅ rama |
 | Servicio `ecoin` (`oasis-pub-ecoin`) | `pub/docker-compose.pub.yml` | `profiles: ["wallet"]`, `build: ../ecoin`, **sin `ports`**, bind `OASIS_ECOIN_DATA_DIR` → `/home/ecoin/.ecoin`, `mem_limit 512m`, `cpus 0.75`, `-maxconnections=16`, `stop_grace_period 60s`, `logging 10m×3`, healthcheck `getinfo` con `start_period 600s` | ✅ rama |
 | Servicio `oasis-wallet-bot` (`oasis-pub-wallet-bot`) | `pub/docker-compose.pub.yml` | copia del patrón `oasis-hub`: misma imagen, `command: ["backend"]`, `profiles: ["wallet"]`, sin `ports`, `OASIS_ALLOW_HOST=localhost`, `OASIS_BANKING_DIR=/app/banking`, `mem_limit 768m`, `cpus 1.0`, `NODE_OPTIONS=--max-old-space-size=512` | ✅ rama |
 | Identidad y replicación | `pub/config/wallet-bot/ssb-config` (bind `:ro`) | copia del del HUB: `friends.hops: 3`, `host 0.0.0.0`, **sin `seeds`**, mismo `caps.shs` (lockstep de rotación, `HUB-PROTOCOL.md` §5.2) | ✅ rama |
@@ -191,13 +192,23 @@ sin cambios), con `oasis-wallet-bot` donde dice `oasis-hub`:
    → CONNECTED en el log del pub.
 6. `about`: `name` = `azofaifo-scriptorium-wallet-bot-2`; descripción: cartera ECOin del pub,
    custodia la dote, reparte la RBU, no escribe en el pub; serie de bots. Sin `vis_*`.
-7. Con `ecoind` healthy: `GET /banking` **desde el loopback** guarda la dirección en
-   `banking/wallet-addresses.json` y publica el mensaje `wallet`; `POST /banking/addresses`
-   (solo loopback, `backend.js:10989-10990`) la fija si hiciera falta. Exactamente **un** mensaje `wallet`.
-8. **Backup de `wallet.dat` ANTES de comunicar la dirección a nadie** (§8). Una dirección publicada
-   sin copia de su clave es una dote que se puede perder.
-9. `OASIS_WALLET_BOT_PUBLIC=true` + `up -d --no-deps`; gate: `POST` = 302 con `?error=` de modo
-   público (400 sin Referer; nunca 200).
+7. Con `ecoind` healthy y **sincronizado** (`blocks` = altura que anuncian los pares; `healthy` solo
+   dice que el RPC responde): `GET /banking` **desde el loopback** (`Host: localhost:3000`) guarda la
+   dirección en `banking/wallet-addresses.json`. **No la publica**: el camino automático falla en
+   silencio por el `ReferenceError` de §12.4 (comprobado en G3). Ese primer GET crea dos direcciones
+   en la cartera; la válida es la que queda en `wallet-addresses.json`.
+8. Publicarla: `POST /banking/addresses` (solo loopback, Referer y Host con el **mismo** host:puerto)
+   **EXACTAMENTE UNA VEZ**. No es idempotente: responde «exists» y aun así publica otro `wallet`.
+   Comprobar: un mensaje `wallet` con `author` = bot y `validateaddress` → `ismine: true`.
+9. **Backup de `wallet.dat` DESPUÉS de generar la dirección y ANTES de comunicarla a nadie** (§8).
+   Un backup anterior al paso 7 no contiene esa clave. Una dirección publicada sin copia de su clave
+   es una dote que se puede perder.
+10. `OASIS_WALLET_BOT_PUBLIC=true` + `up -d --no-deps`; gate con `Host: localhost:3000` y
+    `Referer: http://localhost:3000/invites`: 302 con `?error=` de modo público. Si el host del
+    Referer no coincide exactamente con `Host` devuelve 403 con el mismo texto; sin Referer, 400.
+    Cualquier 200 = no seguir.
+11. **No ensayar el interruptor en el VPS antes de la dote.** Encenderlo con saldo 0 deja fijado el
+    epoch del mes con pool 0 y una `ubiAllocation` de 1 ECO del bot a sí mismo (visto en G3).
 
 **Hito posterior, con confirmación expresa del custodio**: dote de Irkä a la dirección publicada
 → encender el motor (§9) → ensayo E2E con el cliente (WP-O103).
@@ -437,3 +448,23 @@ desviaciones del plan. Reporte: `plan/REPORTES/WP-O102-hub-wallet.md` (al cerrar
 
 WP futuro anotado (sin numerar): **presentación comunitaria de los bots oficiales** — maquetar para
 la comunidad quiénes son los bots Azofaifo, qué firma cada uno y por qué la RBU llega de bot-2.
+
+## 14. Hallazgos de los gates locales G1-G6 (2026-09-18)
+
+Contra el stack local en Docker Desktop, con una identidad desechable. Todos pasados.
+
+| Gate | Hallazgo | Qué se hizo |
+|---|---|---|
+| G1 | Este binario **sí** tiene `backupwallet`; el P2P enlaza en **7408**; el staking se gobierna con `reservebalance`. El build falla con el `.sha256` alterado; sin credenciales o con las de por defecto el contenedor sale con 1 | confirmado, sin cambios |
+| G2 | **`rpcallowip` no entiende CIDR.** Con `172.16.0.0/12` este `ecoind` (base 0.7) devolvía **403 a toda la red Docker** aun con credenciales correctas: compara la IP como texto con comodines | `ecoin.conf` y la conf de reserva del entrypoint usan `172.16.*` … `172.31.*` y `192.168.*` |
+| G2 | `healthy` llega en unos 35 s porque `getinfo` responde sin estar sincronizado | §3 paso 7 exige `blocks` = altura de los pares |
+| G2/G5 | El entrypoint recopiaba `bootstrap.dat` en **cada** arranque (miraba `blkindex.dat`, que esta build no crea): unas 1600 líneas «already have block» por reinicio | la condición mira `blk0001.dat`, `txleveldb/` y `bootstrap.dat.old` |
+| G3 | La publicación automática de la dirección **no ocurre** (§12.4); `POST /banking/addresses` no es idempotente; el primer `GET /banking` crea dos direcciones; `GET /banking` publica un `karmaScore` aun con el motor apagado | §3 pasos 7-9 reescritos; `karmaScore` ya estaba en los tipos permitidos |
+| G3 | **Interruptor ensayado**: encender → a los ~20 s `pubAvailability {available:false}` y una `ubiAllocation` de 1 ECO del bot a sí mismo con pool 0; apagar → deja de publicar | §3 paso 11: no ensayarlo en el VPS antes de la dote |
+| G3 | El 302 del modo público exige que el host del Referer sea idéntico a `Host` (si no, 403 con el mismo texto) | §3 paso 10 |
+| G3 | En Git Bash con `MSYS_NO_PATHCONV=1` el render daba un falso «no parsea como JSON» (node recibía la ruta sin convertir) | `render-wallet-bot-config.sh` usa `cygpath -m` si existe; en Linux no cambia nada |
+| G4 | Con `ecoind` parado, `GET /banking` del bot tarda ~7,7 s: el alias `ecoin` deja de resolver (ENOTFOUND, ~3,9 s por consulta) en vez de rechazar al instante. El bot no tiene ruta pública: nadie lo sufre. Pub intacto | documentado |
+| G4 | `docker stop` del bot acaba en SIGKILL (137): PID 1 es `su` y no propaga SIGTERM a node (entrypoint raíz, igual que el HUB). Rearranca limpio y reconecta | documentado; no se toca el entrypoint raíz |
+| G5 | Backup en caliente y `--cold` verificados por sha256; **simulacro de restore**: con la cartera apartada la dirección del bot deja de ser `ismine`, tras restaurar vuelve a serlo | — |
+| G5 | `ecoin-disk.sh` no sumaba `txleveldb/` (el índice de esta build) | añadido a `chain_bytes` y a `status` |
+| G6 | Cadena **completa a 51.750 bloques ≈ 50 MB** de datadir (`blk0001.dat` 21 MB, `txleveldb/` 23 MB). Pico de `ecoind` 122 MiB sincronizando desde cero, ~30 MiB en reposo, CPU < 1 % ya sincronizado; bot 139 MiB de pico | los límites 512m / 768m sobran; ajuste a las 24 h en el VPS |
