@@ -57,10 +57,23 @@
 7. El store v1 indexaba cada RT por dos claves (id del RT e id final): 184 duplicados. Se conservan en el store y no se publican.
 8. `pub/README.md` decía que el HUB estaba «planificado»: corregido en WP-O98.
 
+## Segunda tanda (2026-09-18, tras reabrir el navegador)
+
+| Asunto | Resultado |
+|---|---|
+| Artifacts de Claude | El custodio publicó los dos que faltaban: «Diez redes sobre Oasis» (nueva URL pública `claude.ai/artifact/8CzEhn5DK9Zxy9ttE4JEYX`, anotada como `public_url` en las dos entradas que lo citan; identidad comprobada en el navegador) y «Antes del argumento ontológico» |
+| Blog propio | Decisión del custodio: las 26 URLs de `escrivivir.co` que dan 404 **se quedan como enlace** (se volverán a publicar en el blog). Nuevo `link_only_hosts: ["escrivivir.co"]` en `obra.json` → estado `link_only`, nunca se descargan ni se reintentan |
+| Grok | 3/3. Método estable: la pestaña navega a un receptor local que guarda el texto y **responde 302 a una web normal**, de modo que la extensión no se bloquea |
+| Vídeo (5 Twitch, 3 TikTok) | Solo metadatos con `browser-save --meta`; dos VOD de Twitch ya no exponen título (caducados) |
+| Odysee y 3 páginas con anti-bot | `r.jina.ai` como segunda vía de páginas genéricas |
+| Vistas `commits` de GitHub (3) | Nuevo fetcher `github:commits` por API, con ramas que llevan «/» |
+| Caídos | Una página de GitHub Pages (404) y `hackstory.net` (timeout) marcados `gone` con `link-mark` |
+| **Estado final de enlaces** | 364 URLs → **331 `ok`**, 26 `link_only`, 6 `gone`, **1 `pending_browser`** (Perplexity). Agentes **38/39**. `links_blocked.json` vacío |
+| Build | 2635 páginas · 331 páginas de enlaces · invariantes OK |
+
 ## Pendientes
 
-- **Tanda de navegador sin terminar** (12): 1 Grok (`…/9618eda2…`), 1 Perplexity (la extensión no tiene permiso para `perplexity.ai`), 8 de vídeo (Twitch/TikTok), 1 Odysee y 1 página propia SPA. Requiere que el custodio cierre la pestaña de Chrome que quedó en `127.0.0.1:8766` y, para Perplexity, conceda el dominio a la extensión.
-- 7 enlaces en `error` (un.org, europarl, hackstory, everynoise y 3 vistas `commits` de GitHub): reintentar o pasar a navegador.
-- Confirmar de forma anónima que los otros dos artifacts de Claude están compartidos públicamente (se leyeron como propietario).
+- **Perplexity** (1 enlace, `pending_browser`): la extensión de Chrome no tiene permiso para `perplexity.ai` y el proxy de lectura choca con el challenge de Cloudflare. Requiere que el custodio conceda el dominio a la extensión.
+- Cuando el blog vuelva a publicar las 26 entradas, no hay que hacer nada: la obra ya las enlaza.
 - Migración del layout del VPS a un checkout git (`MIGRATION-2026-07.md`), que sigue pendiente y explica por qué los ficheros se suben in place.
 - **Punto final anotado — reorganización semántica de «Aleph Cero»**: se hará **en modo plan**, leyendo el feed hacia atrás desde el tramo final para construir el concepto de obra. Este WP deja reunidos los datos: `store/posts.json`, `external_tweets.v2.json` (voces a dos niveles), `links_store.json` y `cache/links/*.md` (conversaciones y páginas).
