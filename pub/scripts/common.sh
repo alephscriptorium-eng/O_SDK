@@ -72,6 +72,15 @@ load_pub_env() {
   set +a
 }
 
+# hub-wallet (WP-O102): rutas opcionales. Solo cuentan si la variable está definida y no vacía
+# (un host sin wallet no debe fallar ni ver directorios creados de más).
+PUB_WALLET_DIR_VARS=(
+  OASIS_ECOIN_DATA_DIR
+  OASIS_WALLET_BOT_SSB_DATA_DIR
+  OASIS_WALLET_BOT_LOGS_DIR
+  OASIS_WALLET_BOT_BANKING_DIR
+)
+
 validate_vps_persistent_paths() {
   if ! is_canonical_vps_layout; then
     return 0
@@ -86,6 +95,13 @@ validate_vps_persistent_paths() {
   require_vps_persistent_path "OASIS_HUB_SSB_DATA_DIR" "${OASIS_HUB_SSB_DATA_DIR:-../volumes-dev/oasis-hub/ssb-data}"
   require_vps_persistent_path "OASIS_HUB_LOGS_DIR" "${OASIS_HUB_LOGS_DIR:-../volumes-dev/oasis-hub/logs}"
   require_vps_persistent_path "OASIS_HUB_HTTP_CACHE_DIR" "${OASIS_HUB_HTTP_CACHE_DIR:-../volumes-dev/oasis-hub/http-cache}"
+
+  local wallet_var
+  for wallet_var in "${PUB_WALLET_DIR_VARS[@]}" OASIS_WALLET_BOT_OASIS_CONFIG_FILE; do
+    if [ -n "${!wallet_var:-}" ]; then
+      require_vps_persistent_path "$wallet_var" "${!wallet_var}"
+    fi
+  done
 }
 
 ensure_runtime_dirs() {
@@ -98,6 +114,17 @@ ensure_runtime_dirs() {
   mkdir_pub_path "${OASIS_HUB_SSB_DATA_DIR:-../volumes-dev/oasis-hub/ssb-data}"
   mkdir_pub_path "${OASIS_HUB_LOGS_DIR:-../volumes-dev/oasis-hub/logs}"
   mkdir_pub_path "${OASIS_HUB_HTTP_CACHE_DIR:-../volumes-dev/oasis-hub/http-cache}"
+
+  local wallet_var
+  for wallet_var in "${PUB_WALLET_DIR_VARS[@]}"; do
+    if [ -n "${!wallet_var:-}" ]; then
+      mkdir_pub_path "${!wallet_var}"
+    fi
+  done
+  # El oasis-config.json del bot lo escribe render-wallet-bot-config.sh: aquí solo su directorio padre.
+  if [ -n "${OASIS_WALLET_BOT_OASIS_CONFIG_FILE:-}" ]; then
+    mkdir_pub_path "$(dirname "$OASIS_WALLET_BOT_OASIS_CONFIG_FILE")"
+  fi
 }
 
 ensure_env_from_template() {

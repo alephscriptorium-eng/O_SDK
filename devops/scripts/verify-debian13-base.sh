@@ -170,7 +170,7 @@ check_mount() {
 }
 
 check_layout() {
-  local dir hub_root teatro_root
+  local dir hub_root teatro_root ecoin_root wallet_bot_root wallet_stat
   # HUB clearnet (WP-O46): estado del nodo de soporte, hermano de DATA_ROOT en el volumen de datos.
   hub_root="$(dirname "$DATA_ROOT")/oasis-hub"
   # Teatro (WP-O99): obras estáticas; también en el volumen de datos, nunca en el disco de sistema.
@@ -208,6 +208,35 @@ check_layout() {
     else
       pass "Teatro sin ficheros world-writable"
     fi
+  fi
+
+  # hub-wallet (WP-O102): opcional. Un host sin wallet no falla; si la raíz existe, se exige completa.
+  ecoin_root="$(dirname "$DATA_ROOT")/ecoin"
+  wallet_bot_root="$(dirname "$DATA_ROOT")/oasis-wallet-bot"
+  if [[ -d "$ecoin_root" ]]; then
+    pass "Directory exists: $ecoin_root"
+    # El datadir es 700 de uid 1000: se mira con run_root.
+    if run_root test -f "$ecoin_root/wallet.dat"; then
+      wallet_stat="$(run_root stat -c '%a %u' "$ecoin_root/wallet.dat" 2>/dev/null || true)"
+      if [[ "$wallet_stat" == "600 1000" ]]; then
+        pass "wallet.dat con modo 600 y uid 1000: $ecoin_root/wallet.dat"
+      else
+        fail "wallet.dat debe ser modo 600 y uid 1000 (actual: ${wallet_stat:-desconocido}): $ecoin_root/wallet.dat"
+      fi
+    fi
+  else
+    warn "hub-wallet no desplegado (informativo): no existe $ecoin_root"
+  fi
+  if [[ -d "$wallet_bot_root" ]]; then
+    for dir in ssb-data logs banking config; do
+      if [[ -d "$wallet_bot_root/$dir" ]]; then
+        pass "Directory exists: $wallet_bot_root/$dir"
+      else
+        fail "Missing directory: $wallet_bot_root/$dir"
+      fi
+    done
+  else
+    warn "hub-wallet no desplegado (informativo): no existe $wallet_bot_root"
   fi
 }
 
