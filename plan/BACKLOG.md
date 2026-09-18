@@ -623,6 +623,10 @@ Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertur
 
 | **WP-O103** | **P1** | Cliente · ECOin en la app (dirección o cartera propia) |
 
+**Estado** · 🔶 en curso (2026-09-18): implementado en la rama
+`wp/O103-cliente-ecoin`, drill con identidad desechable pendiente. BRIEF de
+trabajo: `plan/BRIEFS/WP-O103-cliente-ecoin.md`.
+
 **BRIEF** · El cliente también necesita ECOin, en **dos niveles**: (i) *solo
 dirección* — aparecer, recibir y reclamar RBU (el claim es un mensaje SSB;
 paga el `ecoind` del banco); (ii) *cartera propia* — saldo, envíos e
