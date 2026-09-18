@@ -1,7 +1,7 @@
 # Reporte · WP-O99 · Teatro: sidecar de RRSS con fuente en exports de x.com
 
 - **Fecha**: 2026-09-18 · **Rama**: `wp/O99-teatro-rrss-sidecar` sobre `7adb5e2` · **Método**: plan aprobado por el custodio (3 exploraciones + 1 diseño; una revisión del plan a petición suya: lore dentro de o-sdk), un solo operador.
-- **Resultado**: <pendiente: se cierra al terminar el deploy>.
+- **Resultado**: **desplegado**. `https://pub.escrivivir.co/teatro/aleph-cero/` sirve la generación 2026-09-18 (1940 posts, 891 voces ajenas a dos niveles, 315 páginas enlazadas en Markdown) desde el volumen de datos, generada íntegramente desde o-sdk. Queda abierta la tanda de navegador (12 enlaces) y, como punto aparte, la reorganización semántica.
 - **Asiento**: D-O16. **Docs vivas**: `docs/PUB/RRSS-SIDECAR-PROTOCOL.md`, `docs/PUB/TEATRO-PROTOCOL.md`, `pub/rrss-sidecar/**/README.md`, `ARCHIVO/LORE/README.md`.
 
 ## Estado de partida (verificado, solo lectura)
@@ -42,7 +42,9 @@
 | Caddy `@teatro` | ✅ probado en contenedor contra la obra local y aplicado en producción: `caddy validate` en el contenedor vivo → escritura in place (mismo inode 135503) → `caddy reload`. `/teatro/no-existe/` **404**, `data/ip-audit.js` **404**, CSP `script-src 'none'` en páginas y CSP propia en el visor. Vecinos como en la línea base de WP-O46 (pub 200 · scriptorium 404 · admin 404 · mcp 502 preexistente · npm 200 · rooms 200) |
 | Permisos VPS | ✅ 755/644; 0 ficheros world-writable |
 | Ensayo de deploy | ✅ 221 borrados, todos esperados: `second-brain.md`, 193 duplicados del store v1 de voces, 6 posts borrados por el autor, 2 de `profile_media` y las herramientas antiguas |
-| Deploy + verificación automática | <pendiente> |
+| Deploy + verificación automática | ✅ `TEATRO_OBRA=aleph-cero TEATRO_DELETE=1` por WSL: pre-vuelo de invariantes OK · `MANIFEST.sha256` 14 264 ficheros / 1,5 GB · rsync · **`sha256sum -c` en el VPS OK** · `aleph-cero.zip` 1,6 GB (`f7d753df…427b7b`, completo) y `aleph-cero-cerebro.zip` 34 MB · 3 firmas ed25519 · verificación pública: 200 ×6, **206** con `Range` sobre un mp4, **404** en `data/ip-audit.js` y `data/direct-messages.js`, hash estampado, portada sin `<script>`, 404 real, nada world-writable, `/` y `/public/status` 200 |
+| Verificación independiente | ✅ `backup-teatro.sh --verify` → `OK_MANIFEST` · firma en frío: `Good "file" signature for teatro@escrivivir.co` para el zip y para el manifiesto · obra 3,1 GB; `/srv/oasis` 16 % → 20 % |
+| Backup de lo no regenerable | ✅ `devops/backups/teatro/aleph-cero/20260918T093049Z/` (portada estampada, checksums, firmas, manifiesto y `lore-store.tgz` con stores y Markdown de enlaces; 3,8 MB, sha256 verificado) |
 
 ## Hallazgos del ciclo
 
