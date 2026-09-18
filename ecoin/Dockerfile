@@ -47,8 +47,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # STAGE 2: Install ECOin prebuilt package contents
 # =============================================================================
 
-# Copiar paquete .deb local al contexto de build
-COPY ecoin_0.0.4-1_amd64.deb /tmp/ecoin_0.0.4-1_amd64.deb
+# Copiar paquete .deb local al contexto de build, junto con su hash versionado.
+# El .deb no está en git: se trae con `bash ecoin/fetch-deb.sh`.
+COPY ecoin_0.0.4-1_amd64.deb ecoin_0.0.4-1_amd64.deb.sha256 /tmp/
+
+# Verificación de integridad ANTES de desempaquetar: si el hash no casa, el build FALLA.
+# (tr -d '\r' por si el .sha256 llega con CRLF desde un checkout de Windows.)
+RUN cd /tmp \
+    && tr -d '\r' < ecoin_0.0.4-1_amd64.deb.sha256 > ecoin.sha256.lf \
+    && sha256sum -c ecoin.sha256.lf \
+    && rm -f ecoin.sha256.lf ecoin_0.0.4-1_amd64.deb.sha256
 
 RUN mkdir -p /tmp/ecoin-pkg /usr/share/ecoin/tools \
     && dpkg-deb -x /tmp/ecoin_0.0.4-1_amd64.deb /tmp/ecoin-pkg \
@@ -75,6 +83,12 @@ RUN mkdir -p /home/ecoin/.ecoin \
 COPY --chown=ecoin:ecoin ecoin.conf /home/ecoin/.ecoin/ecoin.conf
 RUN sed -i 's/\r$//' /home/ecoin/.ecoin/ecoin.conf
 
+# Copia de la conf COMPLETA fuera del datadir: un bind mount sobre /home/ecoin/.ecoin
+# tapa la de arriba; el entrypoint siembra desde aquí si falta ecoin.conf.
+COPY ecoin.conf /usr/share/ecoin/ecoin.conf.default
+RUN sed -i 's/\r$//' /usr/share/ecoin/ecoin.conf.default \
+    && chmod 0644 /usr/share/ecoin/ecoin.conf.default
+
 # Copiar bootstrap.dat si existe (acelera sync inicial)
 # COPY --chown=ecoin:ecoin bootstrap.dat /home/ecoin/.ecoin/bootstrap.dat
 
@@ -93,18 +107,21 @@ WORKDIR /home/ecoin
 
 # Puertos:
 # - 7474: JSON-RPC (comunicación con Oasis)
-# - 12000: P2P ECOin network
-EXPOSE 7474 12000
+# - 7408: P2P ECOin network (el binario enlaza P2P en 7408, no en 12000; ver
+#         archive/session-backlog/ECOIN_DOCKER_HANDOFF_REPORT_2026-04-28.md)
+EXPOSE 7474 7408
 
 # Volumen para persistencia de datos
 VOLUME ["/home/ecoin/.ecoin"]
 
-# Health check - verifica que el daemon responde
+# Health check - verifica que el daemon responde.
+# Sin credenciales por defecto: usa RPC_USER/RPC_PASS tal cual y falla si están vacías.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -sf --user "${RPC_USER:-ecoinrpc}:${RPC_PASS:-ecoinrpc}" \
+    CMD [ -n "${RPC_USER}" ] && [ -n "${RPC_PASS}" ] \
+        && curl -sf --user "${RPC_USER}:${RPC_PASS}" \
         --data-binary '{"jsonrpc":"1.0","id":"health","method":"getinfo","params":[]}' \
         -H 'content-type: text/plain;' \
-        http://127.0.0.1:7474/ || exit 1
+        "http://127.0.0.1:${RPC_PORT:-7474}/" || exit 1
 
 # Entrypoint para configuración dinámica
 ENTRYPOINT ["docker-entrypoint.sh"]

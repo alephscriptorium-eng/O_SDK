@@ -8,6 +8,10 @@ Caddyfile text eol=lf
 *.env.example text eol=lf
 # Configs del HUB clearnet: bind-mounts de fichero en contenedores Linux (nginx template, ssb-config, oasis-config.json).
 pub/config/hub/* text eol=lf
+pub/config/wallet-bot/* text eol=lf
+# Imagen ecoin (WP-O102): la conf se copia a un contenedor Linux y el .sha256 lo lee sha256sum -c.
+ecoin/ecoin.conf text eol=lf
+ecoin/*.sha256 text eol=lf
 # Sidecar de RRSS: Python y plantillas en LF (corren tambien en WSL y dentro de la obra publicada)
 pub/rrss-sidecar/** text eol=lf
 pub/rrss-sidecar/**/*.json text eol=lf
