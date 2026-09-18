@@ -216,19 +216,21 @@ def fetch_chatgpt(url: str):
 
 
 def fetch_jina(url: str):
-    code, headers, body, _final = http_get(JINA + url, "text/plain", {"X-Return-Format": "markdown"}, timeout=90)
-    text = decode(body, headers)
-    if code != 200:
-        raise Blocked(f"HTTP {code} vía r.jina.ai")
-    title = ""
-    match = re.search(r"^Title:\s*(.+)$", text, re.M)
-    if match:
-        title = match.group(1).strip()
-    marker = "Markdown Content:"
-    markdown = text.split(marker, 1)[1].strip() if marker in text else text.strip()
-    if len(markdown) < 200 or WALL.search(markdown[:600]):
-        raise Blocked(f"contenido vacío o muro ({len(markdown)} caracteres)")
-    return title or "Conversación", markdown + "\n", "jina", url
+    """Proxy de lectura r.jina.ai. Un resultado vacío es un fallo del proxy, no prueba de que el
+    share sea privado: se reintenta y, si persiste, decide el navegador (cola). Solo el navegador
+    —que ve si la página pide login— puede declarar un share `blocked`."""
+    last = ""
+    for attempt in range(3):
+        code, headers, body, _final = http_get(JINA + url, "text/plain", {"X-Return-Format": "markdown"}, timeout=90)
+        text = decode(body, headers)
+        marker = "Markdown Content:"
+        markdown = text.split(marker, 1)[1].strip() if marker in text else text.strip()
+        if code == 200 and len(markdown) >= 200 and not WALL.search(markdown[:600]):
+            match = re.search(r"^Title:\s*(.+)$", text, re.M)
+            return (match.group(1).strip() if match else "Conversación"), markdown + "\n", "jina", url
+        last = f"HTTP {code}, {len(markdown)} caracteres"
+        time.sleep(8 + attempt * 8)
+    raise NeedsBrowser(f"r.jina.ai sin contenido tras 3 intentos ({last})")
 
 
 def fetch_github(url: str, family: str):
@@ -381,6 +383,7 @@ def run(obra: Obra, families: list[str] | None = None, retry: bool = False, limi
     if limit:
         todo = todo[:limit]
     stop = False
+    touched: dict[str, dict] = {}
     for index, (key, entry) in enumerate(todo, start=1):
         url, family = entry["url"], entry["family"]
         entry["attempts"] = int(entry.get("attempts") or 0) + 1
@@ -406,18 +409,31 @@ def run(obra: Obra, families: list[str] | None = None, retry: bool = False, limi
         except Exception as err:  # noqa: BLE001 — un enlace roto no debe tumbar la tanda
             entry.update({"status": "error", "error": f"{type(err).__name__}: {err}"[:300], "fetched_at": now_iso()})
         print(f"  [{index}/{len(todo)}] {entry['status']:<15} {family:<16} {url[:90]}", flush=True)
+        touched[key] = entry
         if index % 10 == 0 or stop:
-            write_json_atomic(store_path(obra), data)
+            data = merge_write(obra, touched)
         if stop:
             break
         time.sleep(4.0 if family == "agent:deepseek" else 0.6)
-    write_json_atomic(store_path(obra), data)
+    merge_write(obra, touched)
     write_json_atomic(obra.store_dir / "links_browser_queue.json", queue)
     write_json_atomic(obra.store_dir / "links_blocked.json", blocked)
     if stop:
         print_blocked(blocked)
         return EXIT_BLOCKED
     return 0
+
+
+def merge_write(obra: Obra, touched: dict[str, dict]) -> dict:
+    """Vuelca SOLO las entradas tocadas en esta tanda sobre lo que haya en disco: una tanda larga no
+    debe pisar lo que entre tanto guardó `browser-save` (u otra tanda)."""
+    disk = load(obra)
+    for key, entry in touched.items():
+        if (disk.get(key) or {}).get("status") == "ok" and entry.get("status") != "ok":
+            continue  # nunca degradar un enlace ya recuperado
+        disk[key] = entry
+    write_json_atomic(store_path(obra), disk)
+    return disk
 
 
 def print_blocked(blocked: list[dict]) -> None:
