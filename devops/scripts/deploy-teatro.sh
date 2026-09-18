@@ -82,7 +82,15 @@ RSYNC_FLAGS=(-a --partial --chmod=D755,F644 --info=progress2
 [[ "${TEATRO_DELETE:-0}" = "1" ]] && RSYNC_FLAGS+=(--delete)
 if [[ "${TEATRO_DRY_RUN:-0}" = "1" ]]; then
   echo "[deploy-teatro] DRY RUN (nada se sube ni se borra):"
-  rsync "${RSYNC_FLAGS[@]}" -n --itemize-changes -e "ssh $SSH_OPTS" "$LOCAL_OBRA/" "$REMOTE:$REMOTE_OBRA/" | grep -v '^\.' | head -200
+  rsync "${RSYNC_FLAGS[@]}" -n --itemize-changes --no-inc-recursive --info=progress0,stats2 \
+    -e "ssh $SSH_OPTS" "$LOCAL_OBRA/" "$REMOTE:$REMOTE_OBRA/" > "$TMP_WORK/dry.txt"
+  echo "  nuevos (+++++++++):      $(grep -c '^<f+++++++++' "$TMP_WORK/dry.txt" || true)"
+  echo "  contenido cambiado:      $(grep -cE '^<f[.c]s' "$TMP_WORK/dry.txt" || true)"
+  echo "  solo fecha (sin subida): $(grep -cE '^<f\.\.t' "$TMP_WORK/dry.txt" || true)"
+  echo "  a BORRAR en el VPS:      $(grep -c '^\*deleting' "$TMP_WORK/dry.txt" || true)"
+  echo "  --- primeros borrados:"; grep '^\*deleting' "$TMP_WORK/dry.txt" | head -25 | sed 's/^/    /'
+  echo "  --- borrados por carpeta:"; grep '^\*deleting' "$TMP_WORK/dry.txt" | awk '{print $2}' | cut -d/ -f1-2 | sort | uniq -c | sort -rn | head -12 | sed 's/^/    /'
+  grep -E 'Total transferred file size|Total file size|Number of regular files transferred' "$TMP_WORK/dry.txt" | sed 's/^/  /'
   echo "[deploy-teatro] fin del DRY RUN."; exit 0
 fi
 echo "[deploy-teatro] rsync de la obra (reanudable; relanzar si se corta)…"
