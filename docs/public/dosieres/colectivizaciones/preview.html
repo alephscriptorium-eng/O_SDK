@@ -1,0 +1,515 @@
+<title>La Colectividad</title>
+<style>
+  :root {
+    --pizarra: #282c30;
+    --suelo: #2e3138;
+    --deuda: #141619;
+    --penumbra-bg: #22252a;
+    --tiza: #e9e5d8;
+    --tiza-tenue: #a9a698;
+    --tiza-apagada: #7c7970;
+    --amarilla: #e0c26e;
+    --verde: #a3c692;
+    --roja: #cf8a7a;
+    --fair: #8fc0b4;
+    --marco: #4a4f55;
+    --display: 'Special Elite', 'Courier New', monospace;
+    --mono: 'Courier Prime', 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--pizarra);
+    color: var(--tiza);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  .hoja { max-width: 940px; margin: 0 auto; padding: 48px 28px 72px; }
+
+  /* ---- portada ---- */
+  .sello {
+    display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline;
+    font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--tiza-tenue); border-bottom: 1px dashed var(--marco); padding-bottom: 14px;
+  }
+  .sello b { color: var(--amarilla); font-weight: 400; }
+  h1 {
+    font-family: var(--display); font-weight: 400; text-wrap: balance;
+    font-size: clamp(34px, 6vw, 56px); margin: 30px 0 6px; color: var(--tiza);
+  }
+  .pregunta { font-size: 18px; color: var(--amarilla); margin: 0 0 10px; font-style: italic; }
+  .contexto { max-width: 62ch; color: var(--tiza-tenue); margin: 0; }
+  .contexto em { color: var(--tiza); font-style: normal; }
+
+  h2 {
+    font-family: var(--display); font-weight: 400; font-size: 24px;
+    margin: 64px 0 6px; color: var(--tiza);
+  }
+  h2::before { content: '§ '; color: var(--amarilla); }
+  .nota-seccion { color: var(--tiza-tenue); font-size: 14px; margin: 0 0 22px; max-width: 70ch; }
+
+  /* ---- qué es esto ---- */
+  .triangulo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 820px) { .triangulo { grid-template-columns: 1fr; } }
+  .vertice { border: 1px solid var(--marco); background: var(--suelo); padding: 14px 16px 12px; }
+  .vertice h3 { font-family: var(--display); font-weight: 400; font-size: 16px; margin: 0 0 6px; color: var(--amarilla); }
+  .vertice p { font-size: 13.5px; color: var(--tiza-tenue); margin: 0; }
+  .vertice p b { color: var(--tiza); font-weight: 700; }
+
+  /* ---- leyenda ---- */
+  .leyenda {
+    border: 1px dashed var(--marco); background: var(--suelo);
+    padding: 14px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 26px;
+    font-size: 13px; color: var(--tiza-tenue);
+  }
+  @media (max-width: 700px) { .leyenda { grid-template-columns: 1fr; } }
+  .leyenda .k { color: var(--tiza); font-weight: 700; }
+  .leyenda .ok { color: var(--verde); }
+  .leyenda .pen { color: var(--tiza-apagada); }
+  .leyenda .osc { color: var(--roja); }
+  .leyenda .fai { color: var(--fair); }
+  .leyenda .amar { color: var(--amarilla); }
+
+  /* ---- veredicto ---- */
+  .veredicto { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 700px) { .veredicto { grid-template-columns: 1fr; } }
+  .mano { border: 1px solid var(--marco); background: var(--suelo); padding: 20px 22px; }
+  .mano h3 { font-family: var(--display); font-weight: 400; font-size: 19px; margin: 0 0 12px; letter-spacing: .04em; }
+  .mano.si h3 { color: var(--verde); }
+  .mano.no h3 { color: var(--roja); }
+  .mano ul { margin: 0; padding-left: 20px; }
+  .mano li { margin-bottom: 10px; font-size: 14.5px; }
+  .mano li::marker { color: var(--tiza-tenue); }
+  .mano .clave { color: var(--tiza); font-weight: 700; }
+  .dictamen {
+    margin-top: 18px; border-left: 3px solid var(--amarilla); padding: 12px 18px;
+    background: var(--suelo); font-size: 15px; max-width: 78ch;
+  }
+  .dictamen b { color: var(--amarilla); font-weight: 700; }
+
+  /* ---- envoltura fair ---- */
+  .tabla-envoltura { overflow-x: auto; border: 1px solid var(--marco); background: var(--suelo); }
+  .tabla-envoltura table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13.5px; }
+  .tabla-envoltura th {
+    font-family: var(--display); font-weight: 400; text-align: left; font-size: 13px;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--fair);
+    padding: 10px 14px; border-bottom: 1px solid var(--marco);
+  }
+  .tabla-envoltura td { padding: 8px 14px; border-bottom: 1px dashed var(--marco); vertical-align: top; }
+  .tabla-envoltura tr:last-child td { border-bottom: none; }
+  .tabla-envoltura td:first-child { color: var(--tiza); }
+  .tabla-envoltura td code, .regla code, .vertice code {
+    font-family: var(--mono); color: var(--fair); background: var(--pizarra); padding: 0 5px; font-size: 12.5px;
+  }
+  .regla {
+    margin-top: 14px; font-size: 13.5px; color: var(--tiza-tenue);
+    border-left: 3px solid var(--fair); padding: 8px 14px; background: var(--suelo); max-width: 78ch;
+  }
+  .regla b { color: var(--fair); font-weight: 700; }
+
+  /* ---- croquis: anillo + isla ---- */
+  .anillo { border: 2px solid var(--fair); background: var(--suelo); padding: 24px 22px 16px; position: relative; }
+  .anillo-titulo {
+    position: absolute; top: -11px; left: 18px; background: var(--pizarra);
+    padding: 0 10px; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--fair);
+  }
+  .muelles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 820px) { .muelles { grid-template-columns: repeat(2, 1fr); } }
+  .muelle { border: 1px solid var(--fair); background: var(--pizarra); padding: 10px 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .muelle .nombre { font-family: var(--display); font-size: 14.5px; color: var(--fair); }
+  .muelle .mecanismo { font-size: 12px; color: var(--tiza-tenue); flex: 1; }
+  .muelle .pieza { font-size: 11.5px; color: var(--fair); }
+  .isla { border: 2px solid var(--marco); background: var(--suelo); padding: 22px 18px 14px; position: relative; }
+  .isla-titulo {
+    position: absolute; top: -11px; left: 14px; background: var(--suelo);
+    padding: 0 10px; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--tiza-tenue);
+  }
+  .zonas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 820px) { .zonas { grid-template-columns: repeat(2, 1fr); } }
+  .zona {
+    border: 1.5px dashed var(--tiza-tenue); padding: 11px 11px 9px;
+    background: var(--pizarra); min-height: 100px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .zona .nombre { font-family: var(--display); font-size: 15.5px; letter-spacing: .03em; }
+  .zona .mecanismo { font-size: 12px; color: var(--tiza-tenue); flex: 1; }
+  .zona .estado { font-size: 11.5px; letter-spacing: .08em; }
+  .zona .sustrato { font-size: 11.5px; color: var(--fair); }
+  .zona.ok { border-color: var(--verde); }
+  .zona.ok .estado { color: var(--verde); }
+  .zona.parcial .estado { color: var(--amarilla); }
+  .zona.oscura { background: var(--deuda); border-style: solid; border-color: #000; color: #6d6a60; }
+  .zona.oscura .nombre { color: #8a8678; }
+  .zona.oscura .estado { color: var(--roja); }
+  .huerto {
+    margin-top: 16px; border: 1.5px solid var(--tiza-apagada); background: var(--penumbra-bg);
+    padding: 11px 14px 9px; display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline;
+  }
+  .huerto .nombre { font-family: var(--display); font-size: 15.5px; color: #948f82; }
+  .huerto .mecanismo { font-size: 12.5px; color: var(--tiza-apagada); flex: 1; min-width: 240px; }
+  .huerto .mecanismo b { color: var(--fair); font-weight: 400; }
+  .huerto .estado { font-size: 11.5px; color: var(--roja); letter-spacing: .08em; }
+  .anillo-pie { margin-top: 14px; font-size: 12.5px; color: var(--tiza-tenue); border-top: 1px dashed var(--marco); padding-top: 10px; }
+  .anillo-pie b { color: var(--fair); font-weight: 400; }
+
+  /* ---- storyboard ---- */
+  .actos { display: flex; flex-direction: column; gap: 14px; }
+  .acto { display: grid; grid-template-columns: 92px 1fr; border: 1px solid var(--marco); background: var(--suelo); }
+  @media (max-width: 600px) { .acto { grid-template-columns: 1fr; } }
+  .acto-num {
+    font-family: var(--display); font-size: 26px; color: var(--amarilla);
+    display: flex; align-items: center; justify-content: center;
+    border-right: 1px dashed var(--marco); padding: 14px 8px;
+  }
+  .acto.fairacto { border-color: var(--fair); }
+  .acto.fairacto .acto-num { color: var(--fair); }
+  .acto.deuda { background: var(--deuda); border-color: #000; }
+  .acto.deuda .acto-num { color: #6d6a60; }
+  .acto-cuerpo { padding: 14px 18px 12px; }
+  .acto-cuerpo h3 { font-family: var(--display); font-weight: 400; font-size: 18px; margin: 0 0 4px; }
+  .acto-meta { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--tiza-tenue); margin-bottom: 8px; }
+  .acto-meta .v { color: var(--verde); }
+  .acto-meta .f { color: var(--fair); }
+  .acto-beat { font-size: 14.5px; margin: 0 0 8px; max-width: 72ch; }
+  .acto.deuda .acto-cuerpo h3, .acto.deuda .acto-beat { color: #8a8678; }
+  .fila-things { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; border: 1px solid var(--marco); padding: 2px 9px; color: var(--tiza-tenue); background: var(--pizarra); border-radius: 2px; }
+  .chip.offer { color: var(--amarilla); border-color: var(--amarilla); }
+  .chip.bloqueada { color: var(--amarilla); border-color: var(--amarilla); border-style: dashed; text-decoration: line-through; }
+  .chip.vendor { color: var(--fair); border-color: var(--fair); }
+
+  /* ---- reparto ---- */
+  .reparto { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 820px) { .reparto { grid-template-columns: repeat(2, 1fr); } }
+  .papel { border-top: 3px solid var(--amarilla); background: var(--suelo); padding: 12px 14px; }
+  .papel h3 { font-family: var(--display); font-weight: 400; font-size: 16px; margin: 0 0 4px; }
+  .papel p { font-size: 13px; color: var(--tiza-tenue); margin: 0; }
+  .papel .fuente { display: block; margin-top: 8px; font-size: 11.5px; font-style: italic; color: var(--tiza-tenue); }
+
+  /* ---- cierre ---- */
+  .cierre {
+    margin-top: 70px; border-top: 1px dashed var(--marco); padding-top: 18px;
+    display: flex; flex-wrap: wrap; gap: 8px 26px; font-size: 12.5px; color: var(--tiza-tenue);
+  }
+  .cierre .pendiente { color: var(--amarilla); }
+</style>
+
+<div class="hoja">
+
+  <header>
+    <div class="sello">
+      <span>Dosier de <b>decisión</b></span>
+      <span>catálogo <b>modelador-redes</b> · modelo <b>colectivizaciones</b></span>
+      <span>editor <b>Novelist</b></span>
+      <span>3ª revisión · 2026-09-10</span>
+    </div>
+    <h1>La Colectividad</h1>
+    <p class="pregunta">¿Se monta del tirón con lo que el editor ya sabe hacer, o hace falta otra herramienta?</p>
+    <p class="contexto">Las colectivizaciones libertarias de Aragón (1936-37) —asamblea soberana,
+    salario por hogar, racionamiento sin moneda, federación de abajo arriba— convertidas en una
+    <em>obra teatral 3D</em>. Este documento existe para decidir: <em>planificar el montaje o
+    descartarlo</em>. El veredicto va primero; el croquis y el guion, después.</p>
+  </header>
+
+  <h2>Qué es esto</h2>
+  <p class="nota-seccion">Tres piezas se cruzan en esta página. Con estas tres definiciones se
+  lee todo lo demás.</p>
+  <div class="triangulo">
+    <div class="vertice">
+      <h3>El catálogo</h3>
+      <p><b>modelador-redes</b> audita un mismo código de red social distribuida (Oasis, un
+      cliente del protocolo <b>Secure Scuttlebutt</b>: sin servidor central, cada quien firma su
+      propio registro) desde doctrinas políticas distintas. Es un grafo: cada doctrina es un
+      <b>nodo</b>; el contraste entre dos, una <b>arista</b>. El plan a largo plazo: diez
+      modelos, representados como diez barrios de una misma obra.</p>
+    </div>
+    <div class="vertice">
+      <h3>El editor</h3>
+      <p><b>Novelist</b> es un editor teatral: la obra se escribe como datos (actos, personajes,
+      objetos, decorados) y se <b>materializa</b> en una escena 3D navegable. Cada personaje
+      ofrece un <b>menú de acciones</b> que cambia según el estado de la función. Precedente ya
+      montado: <em>«El trecho del continuo»</em>, cinco actos sobre la Hipótesis del Continuo
+      con Cantor, Gödel y Cohen como personajes.</p>
+    </div>
+    <div class="vertice">
+      <h3>El ecosistema fair</h3>
+      <p><b>FairCoin</b> es una moneda cooperativa; su ecosistema (cadena, monederos,
+      contabilidad cooperativa) está clonado en el catálogo a <b>commits fijos</b> y puede
+      citarse fichero:línea. Regla de la casa: <b>hechos sin adjetivo</b> — FairCoin no está
+      «muerta»: <code>sin commits desde 2022-02-05, código completo, MIT, citable</code>.</p>
+    </div>
+  </div>
+
+  <h2>Leyenda</h2>
+  <div class="leyenda">
+    <div><span class="k">D'01…D'08</span> — tareas de investigación doctrinal del modelo. <span class="ok">✓</span> = contrastada con fuentes primarias (Leval, Souchy, estatutos de 1936-37).</div>
+    <div><span class="k">CL-1…CL-11</span> — parches que la auditoría propone sobre el código de Oasis.</div>
+    <div>Estados de zona: <span class="ok">✓ verificada</span> · <span class="pen">◐ penumbra</span> (mecánica cubierta, doctrina pendiente) · <span class="osc">oscura</span> (sin investigar: deuda declarada).</div>
+    <div>Fichas: <span class="amar">acción del menú</span> · <span class="amar" style="text-decoration:line-through">acción bloqueada por voto</span> · <span class="fai">pieza del ecosistema fair</span> · objeto de escena.</div>
+  </div>
+
+  <h2>Veredicto a dos manos</h2>
+  <p class="nota-seccion">Proyección técnica, no decisión: la decisión es del equipo.</p>
+  <div class="veredicto">
+    <div class="mano si">
+      <h3>✓ Se monta del tirón</h3>
+      <ul>
+        <li><span class="clave">Cuatro actos con fuentes verificadas</span>: asamblea, salario por hogar, racionamiento, federación (tareas D'01–D'04, todas ✓).</li>
+        <li><span class="clave">El individualista sale casi gratis.</span> El vecino que no se colectivizó delibera en la plaza, pero su menú no incluye VOTAR (Leval, p. 130) — condicionar menús por estado es capacidad nativa del editor. Su cuenta corriente la cubre un monedero fair (<code style="font-family:inherit">electrumfair</code>).</li>
+        <li><span class="clave">La imprenta parada.</span> La herramienta <code style="font-family:inherit">fairchains-tool</code> puede emitir una moneda local desde un fichero de configuración; en la obra, la asamblea vota no encenderla — el acuerdo de Caspe (febrero de 1937) escenificado como renuncia, no como carencia.</li>
+        <li><span class="clave">Letreros con doble cita</span>: las cifras históricas reales (Graus, Fraga, Binéfar) y el código, citado fichero:línea a commits fijos.</li>
+      </ul>
+    </div>
+    <div class="mano no">
+      <h3>✗ No se monta del tirón</h3>
+      <ul>
+        <li><span class="clave">El editor monta escenas, no simula economías.</span> El ecosistema fair entra como atrezzo y cita — no como moneda funcionando dentro de la obra.</li>
+        <li><span class="clave">La deuda doctrinal no se envuelve.</span> Cuatro preguntas del modelo siguen sin investigar (D'05–D'08): estatuto del individualista, Decreto frente a práctica, derechos sociales, el hogar. Sus zonas van en penumbra u oscuridad.</li>
+        <li><span class="clave">La auditoría es tabular.</span> Convertir los parches CL-1…CL-11 en escenas es trabajo de guion; la herramienta ni ayuda ni estorba.</li>
+        <li><span class="clave">Citar el código fair desde este modelo</span> exige su propia tarea en el backlog del catálogo — este dosier lo proyecta, no lo ejecuta.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="dictamen"><b>Dictamen:</b> el editor es el correcto para la <b>obra</b> — dramatizar
+  la doctrina — y no es el instrumento de la <b>auditoría</b>, que vive en el catálogo. Primer
+  montaje viable: los cuatro actos verificados más el acto del puerto, sobre código citable; el
+  huerto del individualista, en penumbra hasta que su doctrina se investigue.</p>
+
+  <h2>La envoltura fair</h2>
+  <p class="nota-seccion">Cada mecánica histórica que quedaba sin sustrato técnico encuentra su
+  pieza en el ecosistema clonado. La correspondencia, una a una:</p>
+  <div class="tabla-envoltura">
+    <table>
+      <tr><th>Mecánica histórica (1936-37)</th><th>Pieza fair (código clonado)</th><th>Dónde entra en la obra</th></tr>
+      <tr><td>Comercio exterior en pesetas desde la caja común</td><td>FAIR, la moneda cooperativa — <code>faircoin</code></td><td>zona PUERTO</td></tr>
+      <tr><td>Cuenta corriente del individualista (reglamento de Oliete)</td><td>monedero <code>electrumfair</code></td><td>EL HUERTO ◐</td></tr>
+      <tr><td>Bonos locales impresos, suprimidos en el congreso de Caspe</td><td><code>fairchains-tool</code>: genera una cadena nueva desde un fichero JSON — la imprenta que se vota no usar</td><td>acto III</td></tr>
+      <tr><td>Caja de compensación comarcal: cuenta entre pueblos</td><td>contabilidad cooperativa REA — <code>valuenetwork</code> + <code>faircoin-nrp</code></td><td>zona TELAR</td></tr>
+      <tr><td>Delegados con mandato que certifican a los cargos</td><td>criterios socio-políticos para certificar operadores de nodo (guía CVN §4.1, remoción §4.5)</td><td>zona ATENEO</td></tr>
+      <tr><td>Custodia de claves por cargos revocables</td><td><code>fasito</code> (llave física) · modo <code>-cvn=file</code></td><td>zona COMISIÓN</td></tr>
+      <tr><td>Tablón público de las cuentas del tesoro</td><td><code>faircoin-exporter</code></td><td>zona MIRADOR</td></tr>
+    </table>
+  </div>
+  <p class="regla"><b>Nota de método:</b> antes de esta revisión, el puerto y el huerto figuraban
+  como «zonas no cubiertas». No eran zonas muertas — eran zonas <b>sin sustrato asignado</b>.
+  Esta tabla se lo asigna.</p>
+
+  <h2>Croquis — isla y anillo</h2>
+  <p class="nota-seccion">La obra es una isla (la vida interior de la colectividad, sin moneda)
+  envuelta por un anillo (su frontera con el mundo, cubierta por las piezas fair). Cada caja es
+  una zona del decorado.</p>
+  <div class="anillo">
+    <span class="anillo-titulo">Anillo fair · la frontera</span>
+    <div class="muelles">
+      <div class="muelle">
+        <span class="nombre">PUERTO</span>
+        <span class="mecanismo">el comercio exterior se hace en moneda cooperativa, no estatal</span>
+        <span class="pieza">faircoin</span>
+      </div>
+      <div class="muelle">
+        <span class="nombre">IMPRENTA (parada)</span>
+        <span class="mecanismo">capaz de emitir moneda local; la asamblea vota no encenderla</span>
+        <span class="pieza">fairchains-tool</span>
+      </div>
+      <div class="muelle">
+        <span class="nombre">TELAR</span>
+        <span class="mecanismo">la caja de compensación asienta las cuentas entre pueblos</span>
+        <span class="pieza">valuenetwork · faircoin-nrp</span>
+      </div>
+      <div class="muelle">
+        <span class="nombre">MIRADOR</span>
+        <span class="mecanismo">tablón público de las cuentas del tesoro</span>
+        <span class="pieza">faircoin-exporter</span>
+      </div>
+    </div>
+    <div class="isla">
+      <span class="isla-titulo">Isla · la vida interior, sin moneda</span>
+      <div class="zonas">
+        <div class="zona ok">
+          <span class="nombre">PLAZA</span>
+          <span class="mecanismo">asamblea soberana: voto público de los presentes, a mano alzada</span>
+          <span class="estado">D'01 ✓</span>
+        </div>
+        <div class="zona parcial">
+          <span class="nombre">COMISIÓN</span>
+          <span class="mecanismo">cargos rotatorios y revocables por la asamblea</span>
+          <span class="estado">parcial · CL-2, CL-11</span>
+          <span class="sustrato">custodia de claves: fasito</span>
+        </div>
+        <div class="zona ok">
+          <span class="nombre">ATENEO</span>
+          <span class="mecanismo">federación de abajo arriba: delegados con mandato (Caspe)</span>
+          <span class="estado">D'04 ✓</span>
+          <span class="sustrato">certificación de operadores §4.1</span>
+        </div>
+        <div class="zona ok">
+          <span class="nombre">HOGAR</span>
+          <span class="mecanismo">salario familiar: escala decreciente por persona, carnet por hogar</span>
+          <span class="estado">D'02 ✓</span>
+        </div>
+        <div class="zona ok">
+          <span class="nombre">ALMACÉN</span>
+          <span class="mecanismo">carnet de consumo = cupo de productos, no saldo de dinero</span>
+          <span class="estado">D'03 ✓</span>
+        </div>
+        <div class="zona ok">
+          <span class="nombre">CAJA</span>
+          <span class="mecanismo">vales de tiempo como complemento; asienta hacia el telar</span>
+          <span class="estado">D'03 ✓</span>
+        </div>
+        <div class="zona oscura">
+          <span class="nombre">ZONA OSCURA</span>
+          <span class="mecanismo">Decreto frente a práctica · derechos sociales · el hogar</span>
+          <span class="estado">D'06–D'08 sin investigar</span>
+        </div>
+        <div class="zona parcial">
+          <span class="nombre">PASILLOS</span>
+          <span class="mecanismo">el orden del backlog del modelo, convertido en recorrido físico entre zonas</span>
+          <span class="estado">trabajo de guion</span>
+        </div>
+      </div>
+      <div class="huerto">
+        <span class="nombre">EL HUERTO ◐</span>
+        <span class="mecanismo">el individualista: delibera sin votar · <b>su monedero ya tiene sustrato (electrumfair)</b> · su estatuto doctrinal (D'05) sigue sin investigar — por eso penumbra, no oscuridad</span>
+        <span class="estado">◐ D'05 pendiente</span>
+      </div>
+    </div>
+    <p class="anillo-pie">Este mismo código clonado lo citará el modelo hermano del catálogo
+    (<b>res_publica</b>, la República constitucional de Trevijano): un suelo común para el
+    contraste entre ambas doctrinas, hoy en pausa.</p>
+  </div>
+
+  <h2>Storyboard — seis actos</h2>
+  <p class="nota-seccion">Un decorado por acto. Los cinco primeros siguen el orden de la vida de
+  la colectividad — de la plaza al puerto —; el sexto es su deuda declarada.</p>
+  <div class="actos">
+    <div class="acto">
+      <div class="acto-num">I</div>
+      <div class="acto-cuerpo">
+        <h3>La plaza</h3>
+        <div class="acto-meta">Zona PLAZA · <span class="v">D'01 ✓</span></div>
+        <p class="acto-beat">Asamblea de los presentes: decide la mayoría de quienes acuden, sin
+        quórum aritmético; voto público a mano alzada. Asistir era derecho — y solo en algunos
+        reglamentos, deber: multas a los nuevos miembros (Seidman, p. 212), obligación de asistir
+        para las mujeres en Tamarite (art. 16). El individualista habla — y en su menú no existe VOTAR.</p>
+        <div class="fila-things">
+          <span class="chip offer">VOTAR</span><span class="chip offer">CONVOCAR</span>
+          <span class="chip">campana</span><span class="chip">acta</span><span class="chip">libro de multas (solo nuevos miembros)</span>
+        </div>
+      </div>
+    </div>
+    <div class="acto">
+      <div class="acto-num">II</div>
+      <div class="acto-cuerpo">
+        <h3>El hogar</h3>
+        <div class="acto-meta">Zona HOGAR · <span class="v">D'02 ✓</span></div>
+        <p class="acto-beat">Un carnet por hogar, a nombre del cabeza de familia, cobro semanal.
+        Escala decreciente por persona (coeficientes 1 + 0,5 + 0,15 + 0,10) — con las cifras
+        reales de Graus, Fraga y Binéfar en letreros de tiza.</p>
+        <div class="fila-things">
+          <span class="chip offer">COBRAR</span>
+          <span class="chip">carnet del hogar</span><span class="chip">letrero de la escala</span>
+        </div>
+      </div>
+    </div>
+    <div class="acto">
+      <div class="acto-num">III</div>
+      <div class="acto-cuerpo">
+        <h3>La imprenta parada</h3>
+        <div class="acto-meta">Zonas ALMACÉN + CAJA + IMPRENTA · <span class="v">D'03 ✓</span> · <span class="f">pieza fair</span></div>
+        <p class="acto-beat">El carnet es cupo, no saldo; los vales de tiempo, solo complemento.
+        Beat central: la imprenta de moneda local existe y funciona — y la asamblea vota no
+        encenderla, como acordó el congreso de Caspe (14-15 de febrero de 1937) al suprimir la
+        moneda interior. La acción queda en el menú, bloqueada por el voto: renuncia, no carencia.</p>
+        <div class="fila-things">
+          <span class="chip offer">RETIRAR</span><span class="chip offer">GASTAR VALE</span>
+          <span class="chip bloqueada">ENCENDER IMPRENTA</span>
+          <span class="chip">carnet de consumo</span><span class="chip">vale</span>
+          <span class="chip vendor">cita: fairchains-tool.cpp</span>
+        </div>
+      </div>
+    </div>
+    <div class="acto">
+      <div class="acto-num">IV</div>
+      <div class="acto-cuerpo">
+        <h3>El ateneo</h3>
+        <div class="acto-meta">Zona ATENEO · <span class="v">D'04 ✓</span> · <span class="f">pieza fair</span></div>
+        <p class="acto-beat">La delegada lleva mandato previo firmado por su asamblea, revocable en
+        cualquier momento; los acuerdos federales valen desde que se votan. La federación además
+        certifica a sus operadores técnicos — con criterios socio-políticos escritos, como los de
+        la guía de operadores de nodo del proyecto FairCoin.</p>
+        <div class="fila-things">
+          <span class="chip offer">MANDATAR</span><span class="chip offer">REVOCAR</span><span class="chip offer">FEDERAR</span>
+          <span class="chip offer">CERTIFICAR OPERADOR</span>
+          <span class="chip">estatutos de Caspe</span><span class="chip">credencial</span>
+          <span class="chip vendor">cita: guía CVN §4.1</span>
+        </div>
+      </div>
+    </div>
+    <div class="acto fairacto">
+      <div class="acto-num">V</div>
+      <div class="acto-cuerpo">
+        <h3>El puerto</h3>
+        <div class="acto-meta">Zonas PUERTO + TELAR · <span class="v">D'03 ✓</span> · <span class="f">pieza fair</span></div>
+        <p class="acto-beat">El trigo sale, la moneda cooperativa entra: el comercio exterior no se
+        hace en moneda estatal. La caja asienta la cuenta entre pueblos en el telar; el
+        individualista pasa por el puerto con su monedero; el mirador publica las cuentas del
+        tesoro a la vista de todos.</p>
+        <div class="fila-things">
+          <span class="chip offer">EXPORTAR</span><span class="chip offer">COMPENSAR</span>
+          <span class="chip offer">ABRIR MONEDERO</span><span class="chip offer">MIRAR TABLÓN</span>
+          <span class="chip vendor">monedero electrumfair</span><span class="chip vendor">cuenta del telar</span>
+          <span class="chip vendor">tablón del tesoro</span>
+        </div>
+      </div>
+    </div>
+    <div class="acto deuda">
+      <div class="acto-num">VI</div>
+      <div class="acto-cuerpo">
+        <h3>La deuda</h3>
+        <div class="acto-meta">Zona oscura · D'05–D'08 sin investigar</div>
+        <p class="acto-beat">Lo no investigado no se ilumina: es la regla de honestidad del modelo,
+        puesta en escena. A oscuras quedan el Decreto frente a la práctica, los derechos sociales
+        y el hogar; el huerto del individualista, en penumbra — su monedero funciona, su estatuto
+        sigue ilegible. Única acción general: leer el índice de la deuda.</p>
+        <div class="fila-things">
+          <span class="chip offer">LEER</span><span class="chip">índice de la deuda</span>
+          <span class="chip">monedero en penumbra</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Reparto</h2>
+  <p class="nota-seccion">Figuras históricas con fuente — el mismo patrón que Cantor, Gödel y
+  Cohen en la obra precedente del editor.</p>
+  <div class="reparto">
+    <div class="papel">
+      <h3>LEVAL</h3>
+      <p>Gaston Leval, cronista-testigo de las colectividades. Narra entre zonas; sus citas son los letreros.</p>
+      <span class="fuente">Colectividades libertarias en España</span>
+    </div>
+    <div class="papel">
+      <h3>CABEZA DE FAMILIA</h3>
+      <p>Cobra el carnet por hogar. No vota por dos: el hogar cobra, la persona vota.</p>
+      <span class="fuente">Estatutos de Tamarite, arts. 15-16</span>
+    </div>
+    <div class="papel">
+      <h3>LA DELEGADA</h3>
+      <p>Mandato previo firmado, revocable; certifica operadores en el ateneo.</p>
+      <span class="fuente">Carrasquer — delegado de Binéfar en Caspe</span>
+    </div>
+    <div class="papel">
+      <h3>EL INDIVIDUALISTA</h3>
+      <p>Vecino no colectivizado: delibera sin votar. Monedero propio; pasa por el puerto, no por la urna.</p>
+      <span class="fuente">Leval p. 130 · reglamento de Oliete</span>
+    </div>
+  </div>
+
+  <div class="cierre">
+    <span>Dosier de decisión · documentos de trabajo: dictamen, croquis, storyboard</span>
+    <span class="pendiente">Decisión pendiente: planificar el primer montaje · descartar · aparcar</span>
+  </div>
+
+</div>

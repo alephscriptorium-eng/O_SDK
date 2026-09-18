@@ -187,6 +187,21 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   con el post en que nace) y «El cantar de Aleph» (el recap T1 como álbum).
   (7) En esta vuelta la propuesta la firma el editor; el custodio la revisa
   y la hace suya con `docs/PUB/TEATRO-CURADURIA-PROTOCOL.md`.
+- **D-O18 · 2026-09-18 · El roadmap se publica como dosieres, en copia
+  saneada, y un dato vivo se enlaza, no se duplica.** Decidido con el
+  custodio (WP-O101): (1) lo prospectivo va a `docs/ROADMAP/` —lo único que
+  la web renderiza—, rotulado como tal; `docs/` operativo, `ARCHIVO/DISCO`
+  (plan + evidencia) y `archive/` (histórico congelado) conservan su papel.
+  (2) Los dosieres nacen fuera del repo; aquí entra la copia que produce
+  `scripts/roadmap-import.py`, idempotente, sin rutas locales ni recursos
+  externos. (3) **DRY de datos vivos**: `connect`, `caps`, invite, versión y
+  checksums se enlazan a su fuente (`/public/status`, la portada del pub, los
+  `.sha256`), no se copian en documentos que envejecen. (4) El ensayo
+  relacional entra entero: es público (registrado en Oasis el 2026-09-16) y
+  es la identificación del modelo que la casa clona o forkea; esa decisión
+  vive en el dosier aleph-net. (5) Criterio editorial, tamaño y curaduría de
+  una obra acogida no se regulan aquí: sobre Oasis y Scriptorium, con m-sdk y
+  n-sdk encima, los resuelve la propia red.
 
 ## Índice de dependencias externas vivas
 

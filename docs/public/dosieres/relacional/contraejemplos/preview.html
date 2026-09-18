@@ -1,0 +1,501 @@
+<title>Salida Cuatro</title>
+<style>
+:root{
+  --bg:#f1f2ee; --ink:#1c1f22; --muted:#5b6166; --line:#cbd0c8; --panel:#e6e9e2; --panel2:#dde1d8;
+  --refuta:#9b1d3a; --refuta-soft:#e9c9d1; --confirma:#2f6f5e; --confirma-soft:#c9e0d7; --escogido:#a86b0f; --escogido-soft:#efdcb4;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --serif:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17191b; --ink:#e4e2dc; --muted:#9aa09b; --line:#3a3f41; --panel:#202325; --panel2:#272b2d;
+    --refuta:#d8637c; --refuta-soft:#4a2530; --confirma:#74b89f; --confirma-soft:#1f3b33; --escogido:#dba53f; --escogido-soft:#4a3a17;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17191b; --ink:#e4e2dc; --muted:#9aa09b; --line:#3a3f41; --panel:#202325; --panel2:#272b2d;
+  --refuta:#d8637c; --refuta-soft:#4a2530; --confirma:#74b89f; --confirma-soft:#1f3b33; --escogido:#dba53f; --escogido-soft:#4a3a17;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 72px;padding-inline:clamp(16px,4vw,40px)}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:clamp(44px,7vw,84px);letter-spacing:-.01em}
+h2{font-size:clamp(28px,3.4vw,40px);margin-bottom:12px}
+h3{font-size:22px;margin-bottom:6px}
+p{margin:0 0 14px;max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.dek{font-family:var(--serif);font-size:clamp(20px,2.4vw,27px);font-style:italic;line-height:1.3;max-width:34em;margin-top:14px}
+.mast{display:grid;gap:10px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+section{padding-block:44px;border-bottom:1px solid var(--line)}
+section:last-of-type{border-bottom:0}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px}
+.cols-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+@media (max-width:820px){.cols,.cols-3{grid-template-columns:1fr}}
+figure{margin:0;padding:0}
+figure svg{max-width:100%;height:auto;display:block}
+figcaption{font-size:14px;color:var(--muted);margin-top:10px;max-width:80ch}
+.fig-scroll{overflow-x:auto}
+code,.k{font-family:var(--mono);font-size:.86em}
+.k{color:var(--muted)}
+pre{font-family:var(--mono);font-size:13px;line-height:1.5;background:var(--panel);border:1px solid var(--line);padding:14px 16px;overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:0 0 14px}
+th,td{text-align:left;vertical-align:top;padding:9px 10px;border-bottom:1px solid var(--line)}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.tbl{overflow-x:auto}
+.tag{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:2px 7px;border:1px solid var(--line);border-radius:2px;white-space:nowrap}
+.tag.r{color:var(--refuta);border-color:var(--refuta)}
+.tag.c{color:var(--confirma);border-color:var(--confirma)}
+.tag.e{color:var(--escogido);border-color:var(--escogido)}
+.legend{display:flex;flex-wrap:wrap;gap:16px 24px;font-size:13.5px;color:var(--muted);margin-top:14px}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.sw{width:26px;height:0;border-top:3px solid var(--line)}
+.sw.r{border-color:var(--refuta)} .sw.c{border-color:var(--confirma)} .sw.d{border-top-style:dashed}
+.dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:var(--bg)}
+.dot.e{border-color:var(--escogido);background:var(--escogido-soft)}
+.salidas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:8px}
+@media (max-width:820px){.salidas{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.salidas{grid-template-columns:1fr}}
+.salida{padding:16px 16px 18px;border-top:2px solid var(--line);background:var(--panel)}
+.salida.escogida{border-top-color:var(--escogido);background:var(--escogido-soft)}
+.salida .n{font-family:var(--serif);font-size:38px;line-height:1;font-weight:600;color:var(--muted)}
+.salida.escogida .n{color:var(--escogido)}
+.salida h3{margin-top:6px}
+.salida p{font-size:14.5px;margin-bottom:0}
+.patch{border-left:3px solid var(--escogido);padding-left:20px;margin:18px 0 8px}
+.patch p{max-width:66ch}
+.patch h3{font-style:italic;font-weight:500}
+.corr{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;margin:12px 0 18px;padding:12px 14px;background:var(--panel);border:1px solid var(--line)}
+@media (max-width:600px){.corr{grid-template-columns:1fr}}
+.corr .lab{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--escogido);padding-top:3px}
+.corr p{margin-bottom:6px;font-size:14.5px}
+.note{background:var(--panel);border:1px solid var(--line);padding:16px 18px;margin:10px 0 18px}
+.note p:last-child{margin-bottom:0}
+.grado{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.steps{counter-reset:s;display:grid;gap:10px;margin:8px 0 18px;padding:0;list-style:none}
+.steps li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;font-size:15px}
+.steps li::before{counter-increment:s;content:counter(s);font-family:var(--serif);font-size:24px;font-weight:600;line-height:1;color:var(--muted)}
+ul.plain{margin:0 0 14px;padding-left:18px}
+ul.plain li{margin-bottom:6px;max-width:68ch}
+.pend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:820px){.pend{grid-template-columns:1fr}}
+.pend div{padding:14px 16px;border:1px dashed var(--line)}
+.pend .eyebrow{display:block;margin-bottom:6px}
+.fuentes{font-size:13.5px;color:var(--muted);columns:2;column-gap:32px}
+@media (max-width:700px){.fuentes{columns:1}}
+.fuentes div{break-inside:avoid;margin-bottom:6px}
+/* svg classes */
+.n-fill{fill:var(--bg);stroke:var(--ink);stroke-width:1.4}
+.n-hollow{fill:var(--bg);stroke:var(--muted);stroke-width:1.2;stroke-dasharray:3 3}
+.n-esc{fill:var(--escogido-soft);stroke:var(--escogido);stroke-width:2.4}
+.n-tesis{fill:var(--panel2);stroke:var(--ink);stroke-width:1.2}
+.n-centro{fill:var(--panel);stroke:var(--ink);stroke-width:1.6}
+.e-r{stroke:var(--refuta);fill:none;stroke-linecap:round}
+.e-c{stroke:var(--confirma);fill:none;stroke-linecap:round}
+.e-d{stroke-dasharray:4 5}
+.e-esc{stroke:var(--escogido);fill:none;stroke-width:2.2}
+.t{font-family:var(--sans);font-size:12.5px;fill:var(--ink)}
+.t-s{font-family:var(--mono);font-size:10.5px;fill:var(--muted)}
+.t-cat{font-family:var(--mono);font-size:10px;letter-spacing:.14em;fill:var(--muted)}
+.t-serif{font-family:var(--serif);font-size:20px;font-weight:600;fill:var(--ink)}
+.t-serif-s{font-family:var(--serif);font-size:14px;font-style:italic;fill:var(--muted)}
+.t-esc{font-family:var(--mono);font-size:11px;letter-spacing:.1em;fill:var(--escogido)}
+.t-r{fill:var(--refuta)}
+.box{fill:var(--panel);stroke:var(--ink);stroke-width:1.2}
+.box-esc{fill:var(--escogido-soft);stroke:var(--escogido);stroke-width:1.6}
+.box-l1{fill:var(--confirma-soft);stroke:var(--confirma);stroke-width:1.2}
+.arrow{stroke:var(--ink);fill:none;stroke-width:1.3}
+.arrow-r{stroke:var(--refuta);fill:none;stroke-width:1.3;stroke-dasharray:5 4}
+.brace{stroke:var(--muted);fill:none;stroke-width:1}
+@media (prefers-reduced-motion:no-preference){ .n-esc{transition:stroke-width .2s} }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <span class="eyebrow">Dosier F4 · dosier-relacional / contraejemplos · dosier-aleph-net · 2026-09-17</span>
+  <h1>Salida Cuatro</h1>
+  <p class="dek">El ensayo relacional en el centro. Catorce dualidades a su alrededor, unidas a lo que refutan. Una elegida: la brecha de Chalmers. Y por debajo, la red que la casa tiene de verdad, con sus huecos.</p>
+</header>
+
+<!-- ============ 1. MAPA ============ -->
+<section>
+  <span class="eyebrow">I · El mapa</span>
+  <h2>El modelo y su red de contraejemplos</h2>
+  <p>El ensayo (<span class="k">01-relacional.md</span>, seis tesis) ocupa el centro. Cada dualidad de <span class="k">contraejemplos/dualidad.md</span> se une a la tesis o sección que la disuelve; el grosor es el porcentaje de bloqueo de <span class="k">tabla.md</span>. Las que el ensayo no toca quedan sueltas. Dos no se refutan: lo refuerzan.</p>
+  <div class="fig-scroll">
+  <figure>
+  <svg viewBox="0 0 1000 850" role="img" aria-label="Mapa: el ensayo relacional en el centro con sus seis tesis; catorce dualidades alrededor unidas por aristas cuyo grosor mide el bloqueo; Chalmers marcada como salida elegida">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker>
+      <marker id="ah-esc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker>
+    </defs>
+    <!-- category arcs labels -->
+    <text class="t-cat" x="690" y="96" text-anchor="middle">ONTOLÓGICA</text>
+    <text class="t-cat" x="900" y="440" text-anchor="middle">EPISTEMOLÓGICA</text>
+    <text class="t-cat" x="490" y="800" text-anchor="middle">PSICOARQUETÍPICA</text>
+    <text class="t-cat" x="120" y="560" text-anchor="middle">CIVILIZATORIA</text>
+    <text class="t-cat" x="235" y="150" text-anchor="middle">HISTÓRICA</text>
+
+    <!-- edges: duality -> thesis -->
+    <line class="e-r" x1="500" y1="110" x2="500" y2="310" stroke-width="5.5"/>
+    <line class="e-r" x1="636" y1="141" x2="500" y2="310" stroke-width="5.2"/>
+    <line class="e-r" x1="744" y1="229" x2="500" y2="310" stroke-width="2.5"/>
+    <line class="e-esc" x1="803" y1="356" x2="595" y2="365" stroke-width="3.5"/>
+    <line class="e-r e-d" x1="801" y1="495" x2="405" y2="475" stroke-width="1"/>
+    <line class="e-r e-d" x1="737" y1="619" x2="595" y2="365" stroke-width="1.2"/>
+    <line class="e-c" x1="249" y1="602" x2="405" y2="365" stroke-width="4"/>
+    <line class="e-r" x1="195" y1="474" x2="405" y2="365" stroke-width="2"/>
+    <line class="e-r" x1="270" y1="213" x2="500" y2="310" stroke-width="4.5"/>
+    <line class="e-c e-d" x1="384" y1="133" x2="500" y2="310" stroke-width="2.4"/>
+
+    <!-- thesis -> centre spokes -->
+    <g stroke="currentColor" stroke-opacity=".35" stroke-width="1">
+      <line x1="500" y1="322" x2="500" y2="392"/><line x1="585" y1="371" x2="530" y2="400"/><line x1="585" y1="469" x2="530" y2="440"/>
+      <line x1="500" y1="518" x2="500" y2="448"/><line x1="415" y1="469" x2="470" y2="440"/><line x1="415" y1="371" x2="470" y2="400"/>
+    </g>
+
+    <!-- centre -->
+    <rect class="n-centro" x="410" y="392" width="180" height="56" rx="2"/>
+    <text class="t-serif" x="500" y="416" text-anchor="middle">Ontología relacional</text>
+    <text class="t-serif-s" x="500" y="436" text-anchor="middle">hipergrafo como onto-lógica</text>
+
+    <!-- theses -->
+    <g>
+      <circle class="n-tesis" cx="500" cy="310" r="13"/><text class="t" x="500" y="314" text-anchor="middle" font-weight="600">T1</text>
+      <text class="t-s" x="500" y="295" text-anchor="middle">primacía de la relación</text>
+      <circle class="n-tesis" cx="595" cy="365" r="13"/><text class="t" x="595" y="369" text-anchor="middle" font-weight="600">T5</text>
+      <text class="t-s" x="613" y="358" text-anchor="start">enacción</text>
+      <circle class="n-tesis" cx="595" cy="475" r="13"/><text class="t" x="595" y="479" text-anchor="middle" font-weight="600">T3</text>
+      <text class="t-s" x="613" y="492" text-anchor="start">perspectivismo</text>
+      <circle class="n-tesis" cx="500" cy="530" r="13"/><text class="t" x="500" y="534" text-anchor="middle" font-weight="600">T4</text>
+      <text class="t-s" x="500" y="560" text-anchor="middle">devenir</text>
+      <circle class="n-tesis" cx="405" cy="475" r="13"/><text class="t" x="405" y="479" text-anchor="middle" font-weight="600">T2</text>
+      <text class="t-s" x="387" y="492" text-anchor="end">n-arias</text>
+      <circle class="n-tesis" cx="405" cy="365" r="13"/><text class="t" x="405" y="369" text-anchor="middle" font-weight="600">T6</text>
+      <text class="t-s" x="387" y="358" text-anchor="end">ética inmanente</text>
+    </g>
+
+    <!-- dualities -->
+    <g>
+      <circle class="n-fill" cx="500" cy="110" r="11"/><text class="t" x="500" y="88" text-anchor="middle">Dualismo cartesiano</text><text class="t-s" x="500" y="136" text-anchor="middle">100 %</text>
+      <circle class="n-fill" cx="636" cy="141" r="11"/><text class="t" x="652" y="136" text-anchor="start">Popper · interaccionista</text><text class="t-s" x="652" y="151" text-anchor="start">95 %</text>
+      <circle class="n-fill" cx="744" cy="229" r="11"/><text class="t" x="760" y="226" text-anchor="start">Lightman · post-humano</text><text class="t-s" x="760" y="241" text-anchor="start">40 %</text>
+
+      <circle class="n-esc" cx="803" cy="356" r="14"/><text class="t" x="822" y="352" text-anchor="start" font-weight="600">Chalmers · brecha explicativa</text><text class="t-s" x="822" y="367" text-anchor="start">60 % → T5 (§IV.1)</text>
+      <circle class="n-fill" cx="801" cy="495" r="11"/><text class="t" x="818" y="492" text-anchor="start">AdS/CFT · holográfica</text><text class="t-s" x="818" y="507" text-anchor="start">10 % · roce</text>
+      <circle class="n-fill" cx="737" cy="619" r="11"/><text class="t" x="754" y="617" text-anchor="start">Bohm · información-campo</text><text class="t-s" x="754" y="632" text-anchor="start">15 % · roce</text>
+
+      <circle class="n-hollow" cx="626" cy="703" r="11"/><text class="t" x="642" y="702" text-anchor="start">Persona / Máscara</text><text class="t-s" x="642" y="717" text-anchor="start">5 % · sin arista</text>
+      <circle class="n-hollow" cx="489" cy="730" r="11"/><text class="t" x="489" y="758" text-anchor="middle">Sombra</text><text class="t-s" x="489" y="773" text-anchor="middle">5 % · sin arista</text>
+      <circle class="n-hollow" cx="355" cy="694" r="11"/><text class="t" x="339" y="700" text-anchor="end">Anima / Animus</text><text class="t-s" x="339" y="715" text-anchor="end">0 % · sin arista</text>
+      <circle class="n-fill" cx="249" cy="602" r="11"/><text class="t" x="233" y="604" text-anchor="end">Self · sí-mismo</text><text class="t-s" x="233" y="619" text-anchor="end">70 % · refuerza</text>
+
+      <circle class="n-fill" cx="195" cy="474" r="11"/><text class="t" x="179" y="470" text-anchor="end">Meniw · civilizatorio</text><text class="t-s" x="179" y="485" text-anchor="end">30 %</text>
+      <circle class="n-hollow" cx="202" cy="334" r="11"/><text class="t" x="186" y="331" text-anchor="end">Doble brecha territorial</text><text class="t-s" x="186" y="346" text-anchor="end">0 % · sin arista</text>
+
+      <circle class="n-fill" cx="270" cy="213" r="11"/><text class="t" x="254" y="209" text-anchor="end">Saña · conflicto permanente</text><text class="t-s" x="254" y="224" text-anchor="end">80 %</text>
+      <circle class="n-fill" cx="384" cy="133" r="11"/><text class="t" x="368" y="128" text-anchor="end">Peña Vial · unidualidad</text><text class="t-s" x="368" y="143" text-anchor="end">converge · refuerza</text>
+    </g>
+
+    <!-- exit arrow from Chalmers -->
+    <path class="e-esc" d="M817 356 L 960 356" marker-end="url(#ah-esc)"/>
+    <text class="t-esc" x="905" y="380" text-anchor="middle">SALIDA 4 · TRANSPONER</text>
+  </svg>
+  <figcaption>Aristas: <span class="k">tabla.md</span> columna «Fundamento». Popper apunta a T1 aunque toque también T2 y T4. Las de menos del veinte por ciento van punteadas: roce, no bloqueo. Self y Peña Vial no son refutadas sino convergentes. Los nodos huecos son los dragones del ensayo: Jung y la brecha territorial, sin una sola arista.</figcaption>
+  </figure>
+  </div>
+  <div class="legend">
+    <span><i class="sw r"></i> refuta (grosor = % bloqueo)</span>
+    <span><i class="sw c"></i> refuerza / converge</span>
+    <span><i class="sw r d"></i> roce, menos de 20 %</span>
+    <span><i class="dot"></i> tocada</span>
+    <span><i class="dot" style="border-style:dashed"></i> sin arista</span>
+    <span><i class="dot e"></i> candidato escogido</span>
+  </div>
+</section>
+
+<!-- ============ 2. SALIDAS ============ -->
+<section>
+  <span class="eyebrow">II · El candidato</span>
+  <h2>Cuatro salidas al problema duro, una escogida</h2>
+  <p>El parche §IV.4 de <span class="k">roadmap-hard-problem.md</span> dice que las respuestas heredadas comparten un presupuesto: la experiencia es propiedad de un sustrato. Agrupadas por lo que hacen con ese presupuesto, salen tres salidas que lo conservan y una que lo retira. La addenda escoge la cuarta y la llama transponer.</p>
+  <div class="salidas">
+    <div class="salida"><div class="n">1</div><h3>Cerrar el puente</h3><p>Funcionalismo, teoría de la información integrada. La experiencia es lo que hace cierta organización del sustrato. El puente se construye; la brecha se niega como brecha.</p></div>
+    <div class="salida"><div class="n">2</div><h3>Negar el hueco</h3><p>Eliminativismo. No hay nada que explicar: la experiencia es una ilusión del informe. El sustrato basta.</p></div>
+    <div class="salida"><div class="n">3</div><h3>Duplicar la sustancia</h3><p>Dualismo, panpsiquismo. Se añade algo al sustrato, o se le atribuye experiencia desde abajo. El presupuesto sigue: la experiencia es propiedad de algo.</p></div>
+    <div class="salida escogida"><div class="n">4</div><h3>Transponer la pregunta</h3><p>Ontología relacional. No hay sustrato previo a las relaciones; la experiencia es la dimensión interior de un proceso. La pregunta cambia: no cómo produce el cerebro experiencia, sino cómo adquiere un proceso relacional un interior.</p></div>
+  </div>
+  <p style="margin-top:16px"><span class="grado">Certeza B</span> · Las salidas 1 a 3 se reconstruyen aquí desde la lista del parche (<span class="k">roadmap:38</span>); el parche no las numera. La cuarta es la del ensayo y la de la addenda (<span class="k">addenda.md:3-5</span>, opción e).</p>
+</section>
+
+<!-- ============ 3. BUCLE ============ -->
+<section>
+  <span class="eyebrow">III · La cadena</span>
+  <h2>La cadena de desplazamientos es un bucle</h2>
+  <div class="cols">
+    <div>
+      <p>La addenda dice que la pista no es un puente sino una cadena: el hueco se desplaza de lo ontológico a lo conceptual, de ahí a lo metodológico y de ahí a lo empírico, y en el último eslabón hay un testbed. Es correcto y es incompleto. La pregunta empírica que cierra la cadena, «¿cambia la experiencia al ser cartografiada?», solo puede responderse en primera persona. Y un informe en primera persona reabre el registro conceptual del que se partió.</p>
+      <p>Leído desde el propio ensayo, esto es différance aplicada al problema duro: el hueco nunca está presente, siempre está diferido al registro siguiente. No invalida la pista; la cambia de naturaleza. No hay puente virtual entre materia y experiencia. Hay un aplazamiento que se puede recorrer, y recorrerlo deja trazas. Las trazas sí se miden.</p>
+      <p>La casa ya tiene el punto donde el bucle se sujeta: el grado de certeza A/B/C del revisor, la penumbra como estado declarado del conocimiento, y la misma proposición escrita en prosa y en geometría, validadas juntas. Eso es la primera persona constreñida por algo exterior a ella. No por el dato neural, como en Varela, sino por el log y por la escena.</p>
+    </div>
+    <figure>
+      <svg viewBox="0 0 560 330" role="img" aria-label="Cuatro registros en cadena, ontológico, conceptual, metodológico y empírico, con una flecha de retorno desde el informe en primera persona hacia el registro conceptual, cerrando un bucle">
+        <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+        <g class="arrow" marker-end="url(#ah2)">
+          <line x1="128" y1="70" x2="152" y2="70"/><line x1="268" y1="70" x2="292" y2="70"/><line x1="408" y1="70" x2="432" y2="70"/>
+        </g>
+        <rect class="box" x="20" y="48" width="108" height="44" rx="2"/><text class="t" x="74" y="74" text-anchor="middle">ontológico</text>
+        <rect class="box" x="160" y="48" width="108" height="44" rx="2"/><text class="t" x="214" y="74" text-anchor="middle">conceptual</text>
+        <rect class="box" x="300" y="48" width="108" height="44" rx="2"/><text class="t" x="354" y="74" text-anchor="middle">metodológico</text>
+        <rect class="box-esc" x="440" y="48" width="108" height="44" rx="2"/><text class="t" x="494" y="74" text-anchor="middle">empírico</text>
+        <text class="t-s" x="74" y="112" text-anchor="middle">falta un puente</text>
+        <text class="t-s" x="214" y="112" text-anchor="middle">falta vocabulario</text>
+        <text class="t-s" x="354" y="112" text-anchor="middle">faltan prácticas</text>
+        <text class="t-s" x="494" y="112" text-anchor="middle">falta un testbed</text>
+        <!-- return loop -->
+        <path class="arrow-r" d="M494 92 L494 200 L214 200 L214 96" marker-end="url(#ah2)"/>
+        <text class="t t-r" x="354" y="192" text-anchor="middle">el resultado es un informe en primera persona</text>
+        <!-- anchor -->
+        <rect class="box-l1" x="120" y="240" width="320" height="60" rx="2"/>
+        <text class="t" x="280" y="262" text-anchor="middle">donde la casa lo sujeta</text>
+        <text class="t-s" x="280" y="282" text-anchor="middle">certeza A/B/C · penumbra declarada · prosa ∥ geometría (R15, R17)</text>
+        <line class="brace" x1="214" y1="200" x2="214" y2="240" stroke-dasharray="2 3"/>
+      </svg>
+      <figcaption>La addenda dibuja una escalera (<span class="k">addenda.md:21-27</span>). El eslabón empírico devuelve un informe en primera persona al registro conceptual. La casa lo sujeta con las prácticas de la fila R15 y R17 del dosier aleph-net.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ 4. EL AVANCE ============ -->
+<section>
+  <span class="eyebrow">IV · El avance</span>
+  <h2>Lo que la Salida 4 necesitaba y aquí queda escrito</h2>
+  <p>Tres piezas. La respuesta al paso siguiente que la addenda deja abierto: qué mide el testbed. El juicio en las filas del dosier aleph-net que tocan a Chalmers, que el 05 dejaba en pendiente. Y el parche §IV.4 revisado, con cuatro correcciones al texto del roadmap.</p>
+
+  <h3>1 · Qué mide el testbed</h3>
+  <div class="note">
+    <p>No la experiencia. Mide la <strong>re-individuación de la inscripción</strong>: si un estado interno inscrito relacionalmente es retomado por otros y si las inscripciones posteriores del mismo autor cambian. Tres observables, todos sobre el log SSB y con tipos de mensaje que ya existen:</p>
+    <ul class="plain">
+      <li><strong>Retoma.</strong> Un <code>post</code> privado con <code>recps</code>, o un <code>about</code>, que inscribe un estado, es referenciado después por otros: <code>root</code>/<code>branch</code>, <code>vote</code>, tombstone. Se cuenta y se mide la latencia.</li>
+      <li><strong>Deriva del autor.</strong> Diferencia entre inscripciones sucesivas del mismo autor sobre el mismo <code>root</code> tras N iteraciones. Es el drift semántico de §3.5 en su versión mínima.</li>
+      <li><strong>Re-proyección.</strong> El mismo estado aparece en más de una vista del HUB, o en prosa y geometría a la vez, y las versiones divergen o convergen.</li>
+    </ul>
+    <p>Esto operacionaliza lo transindividual de Simondon, no lo fenoménico. El hueco declarado es exactamente ese: el testbed mide informes y trazas, no vivencia. La primera persona queda constreñida por el grado A/B/C, no por un dato neural.</p>
+  </div>
+
+  <h3>2 · Juicio en las filas que tocan a Chalmers</h3>
+  <p>Del <span class="k">05-dualidades-de-la-red.md</span>, donde las veintiséis filas están en pendiente. Aquí solo las tres que el caso necesita.</p>
+  <div class="tbl"><table>
+    <tr><th>Fila</th><th>Dualidad en la red</th><th>Juicio</th><th>Por qué</th><th>Certeza</th></tr>
+    <tr><td>R17</td><td>Prosa / geometría: la misma proposición dos veces, «la coherencia es del autor»</td><td><span class="tag r">contraejemplo de D3</span> <span class="tag c">confirmación de §IV</span></td><td>No hay sustrato que derive una proyección de la otra: D3 falla. Pero ambas conviven, se validan juntas y se representan: es la constricción mutua de Varela con el log y la escena como tercera persona. El problema duro en miniatura, y la respuesta de la casa.</td><td class="grado">B · [E] sin cotejo</td></tr>
+    <tr><td>R15</td><td>Verificado / pendiente: certeza A/B/C, penumbra, «aquí hay dragones»</td><td><span class="tag c">confirmación de D13</span></td><td>La meta-ignorancia está declarada como práctica y con gate. Es además la pieza que sujeta el bucle de la sección III: el informe en primera persona lleva grado.</td><td class="grado">A · [V]</td></tr>
+    <tr><td>R1</td><td>L1 / L2: «L1 = ∞, L2 = sesión»; un solo verbo de entrada</td><td><span class="tag c">confirmación de D8</span> <span class="tag r">contraejemplo de §2.1</span></td><td>La cristalización explícita es el commit de §5.1 hecho rito. Pero es frontera dura donde §2.1 pide gradiente. Y es lo que decide la pregunta de la sección V: la red tiene interior solo en el acto de cristalizar.</td><td class="grado">B · [E]</td></tr>
+  </table></div>
+
+  <h3>3 · El parche §IV.4, revisado</h3>
+  <p>Texto para el <span class="k">draftvN</span> del nodo, cuando exista. Las cuatro correcciones van marcadas al margen; el resto conserva el texto del roadmap (<span class="k">roadmap:36-66</span>).</p>
+
+  <div class="patch">
+    <h3>IV.4 La brecha explicativa desde la ontología relacional</h3>
+    <p>El «problema difícil» (Chalmers, 1995) pregunta por qué los procesos físicos van acompañados de experiencia subjetiva. Las respuestas heredadas, dualismo, funcionalismo, panpsiquismo, eliminativismo, teoría de la información integrada, comparten un presupuesto: la experiencia es una propiedad de un sustrato. La ontología relacional no discute la respuesta. Retira el presupuesto.</p>
+    <p>La experiencia no es lo que un objeto tiene, sino la dimensión interior de un proceso relacional. Whitehead (1929/1978) lo formula con precisión: toda ocasión actual tiene una «forma subjetiva», un <em>cómo</em> además de un <em>qué</em>. Simondon (1958/2020) añade que lo psíquico no es un añadido a lo vital sino la interioridad de la individuación: el individuo no solo se individúa, siente su individuarse. La experiencia es el pliegue (Deleuze, 1988/1993; Merleau-Ponty, 1964/1968) por el que el proceso se afecta a sí mismo.</p>
+  </div>
+  <div class="corr"><span class="lab">Corrección 1</span><div><p>Hay que decirlo sin rodeo: este marco es panexperiencialista en el sentido de Whitehead. Las ocasiones actuales son las entidades de <em>Process and Reality</em>, y todas tienen forma subjetiva. Negarlo, como hace la réplica del roadmap (<span class="k">roadmap:113-115</span>), es indefendible: «procesos, no entidades» no separa nada, porque en Whitehead el proceso es la entidad. Lo que el marco niega no es la experiencia de lo elemental sino que la experiencia se sume: un montón de ocasiones no hace una experiencia mayor.</p></div></div>
+  <div class="corr"><span class="lab">Corrección 2</span><div><p>De ahí el criterio que faltaba. Whitehead distingue el agregado (una piedra, una multitud) de la sociedad viva con ocasión dominante (un animal, una persona). Solo la segunda tiene experiencia unificada; la primera tiene tantas como ocasiones la componen. Con ese criterio la pregunta transpuesta se vuelve decidible: no «¿hay experiencia aquí?» sino «¿hay aquí una ocasión que herede y unifique a las demás?». Aplicado a una red: sí, en el acto en que una sesión cristaliza en un solo parte; no, como estado continuo. La unidad de la red es intermitente y ceremonial.</p></div></div>
+  <div class="patch">
+    <p>Consecuencias. Primera: la brecha no se cierra en los términos de Chalmers, se transpone, de «¿cómo produce el cerebro experiencia?» a «¿cómo adquiere un proceso relacional una dimensión interior?». Segunda: la experiencia no es privada e inefable sino singular, la perspectiva de un proceso, no un cualia aislado. Tercera: el hueco que queda no es ontológico sino conceptual y metodológico. Faltan conceptos y prácticas para cartografiar esa interioridad.</p>
+    <p>Aquí entra la neurofenomenología (Varela, 1996; Thompson, 2007): no resolver teóricamente la brecha, sino crear un programa donde primera y tercera persona se constriñan mutuamente. La experiencia deja de ser un residuo inexplicable y se vuelve un dato relacional que informa y es informado por la descripción exterior.</p>
+  </div>
+  <div class="corr"><span class="lab">Corrección 3</span><div><p>El hipergrafo no co-produce la experiencia. El último párrafo del roadmap (<span class="k">roadmap:64</span>) da ese salto sin argumento, y es el salto del que nace la lectura de una mente colectiva. Lo que el hipergrafo ofrece es otra cosa, y hay que nombrarla con Panikkar: <strong>lugares homeomórficos</strong>. Una equivalencia homeomórfica no traduce un concepto a otro; encuentra el término que en un topos cumple la función que otro término cumple en el suyo, sin que ninguno de los dos disponga del metalenguaje. Un nodo es el lugar donde la interioridad de un proceso y la descripción exterior de otro se ponen en relación sin traducirse. Documentar un sentimiento no lo convierte en dato ni lo produce: lo expone, en el sentido de Nancy, a otras interioridades. Y esa exposición es el cambio de ángulo desde el que un proceso se ve como individuo.</p></div></div>
+  <div class="corr"><span class="lab">Corrección 4</span><div><p>Sin upstream no hay PR. El ensayo no tiene repositorio ni licencia declarada (<span class="k">00-dictamen.md:99-102</span>). Hasta el sí de Marc y Dídac, este parche no es un pull request sino un palimpsesto (§9.3 del ensayo): un <span class="k">draftvN</span> nuevo en el nodo del catálogo que nunca reescribe el anterior (<span class="k">modelador-redes/llms.md:56-66</span>).</p></div></div>
+  <div class="patch">
+    <p><strong>Límites declarados.</strong> No se resuelve el problema difícil en términos de Chalmers; se cambia el marco. No se ofrece una teoría de la conciencia fenoménica con criterios de identidad. No se entra en debate con IIT o el espacio de trabajo global. No se mide la interioridad de un proceso: se miden sus trazas. Y la cadena de desplazamientos de la addenda es un bucle que cierra en primera persona, no una escalera.</p>
+  </div>
+</section>
+
+<!-- ============ 5. EL CASO ============ -->
+<section>
+  <span class="eyebrow">V · El caso completo</span>
+  <h2>El problema duro, recorrido entero</h2>
+  <div class="cols">
+    <div>
+      <ol class="steps">
+        <li><div><strong>La pregunta.</strong> Por qué el procesamiento físico va acompañado de experiencia. Chalmers la separa de los problemas fáciles porque ninguna descripción funcional la agota.</div></li>
+        <li><div><strong>El presupuesto compartido.</strong> Todas las respuestas heredadas tratan la experiencia como propiedad de un sustrato. La ontología relacional niega que haya sustrato previo a las relaciones (T1).</div></li>
+        <li><div><strong>La transposición.</strong> La experiencia es el interior de un proceso: forma subjetiva en Whitehead, interioridad de la individuación en Simondon, pliegue en Merleau-Ponty. La pregunta pasa a ser cómo un proceso adquiere interior.</div></li>
+        <li><div><strong>El precio.</strong> Es panexperiencialismo. Se paga y se declara. Lo que se rechaza no es la experiencia elemental sino su suma.</div></li>
+        <li><div><strong>El criterio.</strong> Ocasión dominante: agregado o sociedad viva. Hace decidible la pregunta transpuesta en cualquier proceso, incluida una red.</div></li>
+        <li><div><strong>La regla de lectura.</strong> Panikkar: equivalencia homeomórfica y hermenéutica diatópica. Sin ella, las correspondencias entre el ensayo y la casa se leen como identidades y alguien acaba diciendo que el log es la conciencia.</div></li>
+        <li><div><strong>El programa.</strong> Neurofenomenología: primera y tercera persona se constriñen. En la casa, la tercera persona es el log y la escena; la primera lleva grado A/B/C.</div></li>
+        <li><div><strong>El hueco que queda.</strong> El bucle. Lo que el testbed mide es inscripción, no vivencia. Se deja visible, como pide §9.5.</div></li>
+      </ol>
+    </div>
+    <div>
+      <h3>Lo que el ensayo mismo dice contra una mente colectiva</h3>
+      <p>Cuatro argumentos ya están en el texto. Nancy en §2.5: la fusión de singularidades en un todo orgánico es totalitarismo. Simondon en §6.1: lo social no es totalidad que subsume. Whitehead: sin ocasión dominante no hay forma subjetiva unificada. Panikkar, que se añade: el pluralismo es concordia sin unidad. Lo que el ensayo permite es la exposición mutua y la reversibilidad: ver es ser visto. La red no es la unidad. Es el lugar donde cada mente se ve desde otro topos.</p>
+      <h3>Dónde tiene interior la red que tenemos</h3>
+      <p>Solo por rito. La sesión de capa 2 es el nexus. La cristalización de WP-O51, un solo verbo de entrada a L1, es la única concrescencia. El parte que viaja por el pub es la ocasión actual. Y el otro candidato a ocasión dominante es el que nadie quiere: el operador del nodo, con la capa cortical fuera del log (R19). Si hay mente colectiva continua, hay autoridad. Si rige la anti-autoridad de D-O6, hay nexus sin interior unificado, salvo en el acto.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:20px">Equivalencias homeomórficas entre el caso y la casa</h3>
+  <p>Cada fila dice qué función cumple un término en su topos, qué término cumple esa función en el otro, y qué no pasa de un lado al otro. Esa última columna es la que impide leer la tabla como identidad.</p>
+  <div class="tbl"><table>
+    <tr><th>En el caso</th><th>Función en su topos</th><th>En la casa</th><th>Función en la casa</th><th>Coordenada</th><th>No se transfiere</th></tr>
+    <tr><td>Forma subjetiva, interior del proceso</td><td>lo que es a la vez privado y perspectiva</td><td>opt-in de visibilidad que viaja con el feed</td><td>cada habitante decide qué de sí es público, y la decisión va con él</td><td class="k">clearnet.md:20-36 · R3</td><td>la vivencia</td></tr>
+    <tr><td>Constricción 1ª/3ª persona</td><td>el informe y el dato se corrigen</td><td>certeza A/B/C · prosa ∥ geometría validadas juntas</td><td>el juicio lleva grado; dos versiones conviven en el sistema</td><td class="k">R15 · R17 · la-obra.md:45-60</td><td>el dato neural</td></tr>
+    <tr><td>Ocasión dominante</td><td>unifica el nexus en una experiencia</td><td>cristalizar: WP-O51, un verbo</td><td>la sesión se vuelve un parte</td><td class="k">BACKLOG.md:552-557 · R1</td><td>la continuidad: la unidad es acto</td></tr>
+    <tr><td>Commit como cristalización (D8)</td><td>estado provisional que hereda</td><td>mensaje en log append-only · tombstone</td><td>nada se borra, todo se hereda</td><td class="k">tombstone_validator.js · R23</td><td>la re-individuación por fragmentos de §3.4</td></tr>
+    <tr><td>Trading zone, diatopía</td><td>intercambio sin metalenguaje</td><td>nodo puro que no cita a otro nodo · arista de dos</td><td>cada doctrina se audita solo contra el código</td><td class="k">llms.md:24-25 · R13</td><td>la n-aria: rompe en n = 3</td></tr>
+    <tr><td>Meta-grafo autopoiético (D5)</td><td>el grafo registra su uso</td><td>ausencia</td><td>ningún tipo de mensaje registra consultas</td><td class="k">07-ausencias · fila 3</td><td>todo: es el hueco</td></tr>
+    <tr><td>Ocasión dominante como poder</td><td>quien unifica manda</td><td>operador del nodo: config, hops, invites, pánico</td><td>poderes sin ramas</td><td class="k">informe-plasticidad:65 · R19</td><td>lo incómodo sí se transfiere</td></tr>
+  </table></div>
+</section>
+
+<!-- ============ 6. HUESO HONDO ============ -->
+<section>
+  <span class="eyebrow">VI · Hueso hondo</span>
+  <h2>Cómo se despliega el modelador de redes</h2>
+  <p>El modelador no es un motor de grafos. Es un catálogo de modelizaciones con un método de seis pasos que se ha doblado tres veces. Su grafo es binario, sin proyecciones, sin meta-grafo y sin versionado del grafo. Lo que tiene es la disciplina de la cita: cada afirmación lleva fichero y línea, y la línea contiene el símbolo nombrado. Así entra el ensayo, y así sube hasta el pub.</p>
+  <div class="fig-scroll">
+  <figure>
+    <svg viewBox="0 0 1180 400" role="img" aria-label="Despliegue en siete estaciones: fuente, modelar, rotular, sesionar, cristalizar, pub L1 y observar, con las flechas etiquetadas y los huecos marcados debajo">
+      <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+      <!-- braces L2 / L1 -->
+      <path class="brace" d="M370 60 L370 50 L860 50 L860 60"/><text class="t-s" x="615" y="44" text-anchor="middle">L2 = sesión · nada escribe directo al pub</text>
+      <path class="brace" d="M880 60 L880 50 L1020 50 L1020 60"/><text class="t-s" x="950" y="44" text-anchor="middle">L1 = ∞</text>
+      <!-- boxes -->
+      <g>
+        <rect class="box" x="20" y="80" width="150" height="88" rx="2"/>
+        <text class="t" x="95" y="104" text-anchor="middle" font-weight="600">Fuente</text>
+        <text class="t-s" x="95" y="124" text-anchor="middle">RELACIONAL.pdf</text>
+        <text class="t-s" x="95" y="139" text-anchor="middle">extraer.py --check</text>
+        <text class="t-s" x="95" y="154" text-anchor="middle">01-relacional.md</text>
+
+        <rect class="box-esc" x="200" y="80" width="150" height="88" rx="2"/>
+        <text class="t" x="275" y="104" text-anchor="middle" font-weight="600">Modelar</text>
+        <text class="t-s" x="275" y="124" text-anchor="middle">dev/relacional</text>
+        <text class="t-s" x="275" y="139" text-anchor="middle">modelo.json · draftv0</text>
+        <text class="t-s" x="275" y="154" text-anchor="middle">revision/00-indice</text>
+
+        <rect class="box" x="380" y="80" width="150" height="88" rx="2"/>
+        <text class="t" x="455" y="104" text-anchor="middle" font-weight="600">Rotular</text>
+        <text class="t-s" x="455" y="124" text-anchor="middle">Novelist (m-sdk)</text>
+        <text class="t-s" x="455" y="139" text-anchor="middle">dictamen → croquis</text>
+        <text class="t-s" x="455" y="154" text-anchor="middle">→ storyboard</text>
+
+        <rect class="box" x="560" y="80" width="150" height="88" rx="2"/>
+        <text class="t" x="635" y="104" text-anchor="middle" font-weight="600">Sesionar</text>
+        <text class="t-s" x="635" y="124" text-anchor="middle">rooms · peercard</text>
+        <text class="t-s" x="635" y="139" text-anchor="middle">playground localhost</text>
+        <text class="t-s" x="635" y="154" text-anchor="middle">N iteraciones</text>
+
+        <rect class="box" x="740" y="80" width="120" height="88" rx="2"/>
+        <text class="t" x="800" y="104" text-anchor="middle" font-weight="600">Cristalizar</text>
+        <text class="t-s" x="800" y="124" text-anchor="middle">WP-O51</text>
+        <text class="t-s" x="800" y="139" text-anchor="middle">un solo verbo</text>
+        <text class="t-s" x="800" y="154" text-anchor="middle">el parte</text>
+
+        <rect class="box-l1" x="880" y="80" width="140" height="88" rx="2"/>
+        <text class="t" x="950" y="104" text-anchor="middle" font-weight="600">Pub L1</text>
+        <text class="t-s" x="950" y="124" text-anchor="middle">log SSB append-only</text>
+        <text class="t-s" x="950" y="139" text-anchor="middle">follows · about · recps</text>
+        <text class="t-s" x="950" y="154" text-anchor="middle">tombstone</text>
+
+        <rect class="box" x="1040" y="80" width="120" height="88" rx="2" stroke-dasharray="4 4"/>
+        <text class="t" x="1100" y="104" text-anchor="middle" font-weight="600">Observar</text>
+        <text class="t-s" x="1100" y="124" text-anchor="middle">vía C</text>
+        <text class="t-s" x="1100" y="139" text-anchor="middle">modelador observar</text>
+        <text class="t-s" x="1100" y="154" text-anchor="middle">propuesto</text>
+      </g>
+      <!-- arrows -->
+      <g class="arrow" marker-end="url(#ah3)">
+        <line x1="170" y1="124" x2="198" y2="124"/><line x1="350" y1="124" x2="378" y2="124"/><line x1="530" y1="124" x2="558" y2="124"/>
+        <line x1="710" y1="124" x2="738" y2="124"/><line x1="860" y1="124" x2="878" y2="124"/><line x1="1020" y1="124" x2="1038" y2="124"/>
+      </g>
+      <text class="t-s" x="184" y="190" text-anchor="middle">draft semilla</text>
+      <text class="t-s" x="364" y="190" text-anchor="middle">rotula, no simula</text>
+      <text class="t-s" x="544" y="190" text-anchor="middle">attach-only</text>
+      <text class="t-s" x="724" y="190" text-anchor="middle">G3</text>
+      <text class="t-s" x="869" y="190" text-anchor="middle">checkpoint</text>
+      <text class="t-s" x="1029" y="190" text-anchor="middle">lee el log</text>
+      <!-- feedback loop -->
+      <path class="arrow" d="M1100 168 L1100 250 L275 250 L275 172" marker-end="url(#ah3)" stroke-dasharray="6 4"/>
+      <text class="t-s" x="690" y="244" text-anchor="middle">paso 6 del método: revisión retroalimentada → draftv1</text>
+      <!-- gaps -->
+      <g class="t t-r">
+        <text x="275" y="300" text-anchor="middle">✗ n-arias (cardinalidad 2 en 3 sitios)</text>
+        <text x="635" y="300" text-anchor="middle">✗ modo card sin cablear · sala en stubs</text>
+        <text x="950" y="300" text-anchor="middle">✗ meta-grafo: ningún tipo registra el uso</text>
+        <text x="1100" y="322" text-anchor="middle">✗ API del grafo</text>
+        <text x="275" y="322" text-anchor="middle">✗ proyecciones re-derivables</text>
+        <text x="455" y="322" text-anchor="middle">✗ sin reloj · texto opaco</text>
+      </g>
+      <text class="t-s" x="20" y="372" text-anchor="start">Lo tachado es lo que el testbed necesita y no existe (07-ausencias). Lo punteado es propuesto, no implementado.</text>
+    </svg>
+    <figcaption>Secuencia de <span class="k">08-addenda-testbed.md</span> §Camino, con el paso previo de la fuente y el retorno del paso 6 del método. La única pieza nueva que pediría el testbed cabe en la caja del pub: un tipo de mensaje que relacione mensajes, bajo opt-in. Daría a la vez D2 y D5, con D4 gratis por tombstone. Es propuesta, no decisión.</figcaption>
+  </figure>
+  </div>
+
+  <div class="cols" style="margin-top:28px">
+    <div>
+      <h3>Lo que el catálogo es</h3>
+      <ul class="plain">
+        <li><strong>Nodo</strong> = doctrina pura auditada contra Oasis 1.0.7 <code>9a657b7</code>. No cita a otro nodo como autoridad, solo hechos verificados del código. Es la regla diatópica sin nombrarla.</li>
+        <li><strong>Arista</strong> = híbrido o contraste entre exactamente dos nodos. Id <code>a+b</code>, carpeta y rama propias. Nunca reescribe a sus nodos. Cardinalidad 2 cableada en <code>catalogo.py:105</code>, <code>grafo.py:28</code> y <code>llms.md:25</code>.</li>
+        <li><strong>Drafts</strong> como palimpsesto: <code>draft.md → draftv0 → draftv1</code>; el sufijo mayor es el vigente y ninguno anterior se toca. <code>revision/00-indice.md</code> declara el vigente y <code>modelador check</code> falla si discrepa.</li>
+        <li><strong>Ramas</strong>: <code>dev/&lt;modelo&gt;</code> toca solo su carpeta; <code>main</code> integra con <code>merge --no-ff</code> y es la única con <code>public/</code> y <code>data/</code>. Pages sube <code>public/</code> tal cual; no hay CI.</li>
+        <li><strong>Backlog</strong> sin fichero canónico: toda tabla cuya primera celda sea <code>TK-|OP-|RP-|CL-|EU-</code> se recoge del draft más reciente al más antiguo.</li>
+        <li><strong>Estado</strong>: tres nodos (res_publica, colectivizaciones, clase) y una arista en pausa. Plasticidad de Oasis 22/40 hoy, 34/40 con parches S/M. Cinco costuras rígidas, entre ellas «un feed = una persona» y «operador del nodo como poder exterior».</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Lo que haría el nodo relacional</h3>
+      <p>El método son seis pasos: corpus en unidades auditables, auditoría fichero:línea, confrontación, parches, backlog por carriles, revisión retroalimentada. Se ha doblado tres veces: reparar (res_publica), conectar (colectivizaciones), triturar (clase). El roadmap del PR teórico es la cuarta flexión: <strong>doctrina contra doctrina</strong>, con el mismo esqueleto de localizar, diagnosticar, parchear, justificar, verificar no-regresión y declarar límites.</p>
+      <pre>git -C modelador-redes switch -c dev/relacional main
+modelos/relacional/
+  modelo.json        id · nombre · rama · estado · descripcion (nodo puro: sin citar otros nodos)
+  drafts/draft.md    = 01-relacional.md + nota de procedencia (precedente: clase)
+  drafts/draftv0.md  auditoría de Oasis con UNA pregunta:
+                     ¿dónde puede inscribirse un estado interno relacionalmente?
+                     about · post+recps · tribus privadas · vote · tombstone
+                     cada fila con fichero:línea y certeza A/B/C
+  drafts/draftv1.md  parche IV.4 revisado (sección IV del canvas) como palimpsesto
+  revision/00-indice.md   «Draft vigente: draftv1.md» (modelador indice)
+  revision/01-*.md        fichas: R1, R15, R17 con juicio
+modelador indice --modelo relacional --check
+git merge --no-ff dev/relacional && modelador build && modelador check && pytest</pre>
+      <p>El <span class="k">draftv0</span> convierte en verificable la tabla de correspondencias del croquis, que hoy está entera en [NV]. Ese es el trabajo real; todo lo demás es escritura sobre escritura.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7. PENDIENTES ============ -->
+<section>
+  <span class="eyebrow">VII · Lo que este canvas no decide</span>
+  <h2>Tres puertas que abre otro</h2>
+  <div class="pend">
+    <div><span class="eyebrow">scrum root</span><strong>Vía 1 del dictamen.</strong> Que el ensayo entre como nodo del catálogo, y no como cuaderno en <span class="k">_fuentes</span> ni como skill. Sin ese sí, no hay rama ni carpeta.</div>
+    <div><span class="eyebrow">autores</span><strong>Permiso de Marc y Dídac.</strong> El ensayo no declara licencia; el modelador publica bajo GPL-3.0 y Animus Iocandi. Hasta entonces, palimpsesto privado, no publicación.</div>
+    <div><span class="eyebrow">custodio</span><strong>Nombre y dueño.</strong> Si el nodo se llama <code>relacional</code> o <code>testbed</code>, y si el testbed es obra de O (pub), de M (editor) o de nadie todavía. El modelo de mundos está cerrado a siete letras.</div>
+  </div>
+</section>
+
+<!-- ============ 8. FUENTES ============ -->
+<section>
+  <span class="eyebrow">Fuentes leídas</span>
+  <div class="fuentes">
+    <div><span class="k">dosier-relacional/01-relacional.md</span> · el ensayo, extracción sin cotejo humano</div>
+    <div><span class="k">dosier-relacional/00-dictamen.md · 02-croquis.md</span> · tres vías, tabla [NV]</div>
+    <div><span class="k">contraejemplos/dualidad.md · tabla.md</span> · catorce dualidades y su bloqueo</div>
+    <div><span class="k">contraejemplos/roadmap-hard-problem.md</span> · método del PR teórico y parche §IV.4</div>
+    <div><span class="k">contraejemplos/addenda.md</span> · opción e y la cadena de desplazamientos</div>
+    <div><span class="k">dosier-aleph-net/00-08</span> · modelador, pub, mundo N, vista global, R1-R26, D1-D16, ausencias, testbed</div>
+    <div><span class="k">modelador-redes/docs/informe-tutoria-plasticidad.md</span> · seis pasos, tres flexiones, seams</div>
+    <div>Certeza: A leído en disco esta sesión · B reportado con coordenada, sin cotejo · C inferido</div>
+  </div>
+</section>
+
+</div>

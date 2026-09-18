@@ -27,6 +27,8 @@ o-sdk aporta al pack: el **rol pub**, el **edge TLS compartido** y el
 | Wallet | `ecoin/` (profile `ecoin`) | ✅ opcional, desacoplado |
 | Teatro (Sala 03) | `pub/site-templates/teatro/` (catálogo) + mount `OASIS_PUB_TEATRO_DIR → /srv/site/teatro:ro` + bloque `@teatro` de Caddy | ✅ en producción; obras en el **volumen de datos** `/srv/oasis/teatro` · `docs/PUB/TEATRO-PROTOCOL.md` |
 | Sidecar RRSS | `pub/rrss-sidecar/twitter_x/` (generador, Python stdlib) · lore en `ARCHIVO/LORE/` (fuera de git) · salida `volumes-dev/teatro/` | ✅ autocontenido · costura B.O.E. en `pub/rrss-sidecar/CORPUS-SCHEMA.md` · `docs/PUB/RRSS-SIDECAR-PROTOCOL.md` |
+| Roadmap futuro (dosieres) | `docs/ROADMAP/` (Markdown) + `docs/public/dosieres/` (previews, figuras, PDF) · origen fuera del repo, aquí la **copia saneada** | ✅ publicado en <https://o-sdk.escrivivir.co/ROADMAP/> · 6 dosieres · prospectivo, no operativo |
+| `archive/` vs `ARCHIVO/` | `archive/` = histórico congelado (2026-07) · `ARCHIVO/DISCO` = plan + evidencia de un WP (git) · `ARCHIVO/LORE` = datos del usuario (fuera de git) | ✅ declarado en `ARCHIVO/README.md` |
 | Puerta semántica del Teatro | `pub/rrss-sidecar/twitter_x/lib/editorial.py` + `editorial.example/` · contenido en `ARCHIVO/LORE/<fuente>/<obra>/editorial/` (fuera de git) | ✅ «El sistema» y «El cantar» en producción (Aleph Cero, propuesta v1) · `docs/PUB/TEATRO-CURADURIA-PROTOCOL.md` |
 | Sidecar blobs | `pub/blobstore-sidecar/` | ⚠️ **huérfano**: no está en ningún compose vivo |
 | Frontend pub | `pub-frontend` (profile `frontend`) | ❌ **superficie muerta**: `PUB_FRONTEND_DIR=./frontend` no existe |

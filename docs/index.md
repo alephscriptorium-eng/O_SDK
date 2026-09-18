@@ -26,6 +26,9 @@ features:
   - title: Operación verificada
     details: Protocolos de upgrade y recuperación reutilizables, probados en producción.
     link: /PUB/UPGRADE-PROTOCOL
+  - title: Roadmap futuro
+    details: Los dosieres de trabajo — la red de la casa, el modelo relacional, los modelos políticos y el call4obras. Prospectivo, con fecha y estado.
+    link: /ROADMAP/
 ---
 
 ## Empezar

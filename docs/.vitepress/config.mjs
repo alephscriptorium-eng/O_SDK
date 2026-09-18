@@ -74,6 +74,7 @@ export default defineConfig({
           { text: 'Protocolo del cliente', link: '/CLIENT-PROTOCOL' }
         ]
       },
+      { text: 'Roadmap', link: '/ROADMAP/' },
       { text: 'Repo', link: BACK.repo }
     ],
     sidebar: [
@@ -94,6 +95,18 @@ export default defineConfig({
           { text: 'Protocolo de curaduría del Teatro', link: '/PUB/TEATRO-CURADURIA-PROTOCOL' },
           { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' },
           { text: 'Protocolo del cliente', link: '/CLIENT-PROTOCOL' }
+        ]
+      },
+      {
+        text: 'Roadmap futuro',
+        items: [
+          { text: 'Los dosieres', link: '/ROADMAP/' },
+          { text: 'Aleph net', link: '/ROADMAP/aleph-net/00-indice' },
+          { text: 'Relacional', link: '/ROADMAP/relacional/00-dictamen' },
+          { text: 'Colectivizaciones', link: '/ROADMAP/colectivizaciones/00-dictamen' },
+          { text: 'Res publica', link: '/ROADMAP/res-publica/00-dictamen' },
+          { text: 'Oasis · FairCoin', link: '/ROADMAP/oasis-faircoin/00-informe' },
+          { text: 'Publicidad y redes', link: '/ROADMAP/publicidad-rrss/00-indice' }
         ]
       }
     ],

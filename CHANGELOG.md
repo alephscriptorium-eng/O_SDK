@@ -5,6 +5,18 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Roadmap futuro: los dosieres de trabajo (WP-O101, 2026-09-18)
+
+- `docs/ROADMAP/`: seis dosieres (aleph-net, relacional, colectivizaciones,
+  res-publica, oasis-faircoin, publicidad-rrss) con página índice; anexos
+  (previews HTML, figuras, PDF, banners) en `docs/public/dosieres/`. Sección
+  «Roadmap» en menú, barra lateral, portada y README.
+- `scripts/roadmap-import.py <carpeta>`: importa los dosieres como copia
+  saneada e idempotente (rutas locales, Google Fonts, artifacts privados y
+  datos de conexión del pub).
+- `ARCHIVO/README.md`: declara los territorios (`DISCO`, `LORE`) y la
+  diferencia con `archive/`; fila en README y MAPA.
+
 ### Added — Teatro: puerta semántica, «El sistema» y «El cantar» (WP-O100, 2026-09-18)
 
 - **Capa editorial declarativa** en el sidecar (`lib/editorial.py`): lee

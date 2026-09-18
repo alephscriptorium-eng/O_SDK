@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 850" role="img" aria-label="Mapa: el ensayo relacional en el centro con sus seis tesis; catorce dualidades alrededor unidas por aristas cuyo grosor mide el bloqueo; Chalmers marcada como salida elegida">
+<style>
+.n-fill{fill:#f1f2ee;stroke:#1c1f22;stroke-width:1.4}
+.n-hollow{fill:#f1f2ee;stroke:#5b6166;stroke-width:1.2;stroke-dasharray:3 3}
+.n-esc{fill:#efdcb4;stroke:#a86b0f;stroke-width:2.4}
+.n-tesis{fill:#dde1d8;stroke:#1c1f22;stroke-width:1.2}
+.n-centro{fill:#e6e9e2;stroke:#1c1f22;stroke-width:1.6}
+.e-r{stroke:#9b1d3a;fill:none;stroke-linecap:round}
+.e-c{stroke:#2f6f5e;fill:none;stroke-linecap:round}
+.e-d{stroke-dasharray:4 5}
+.e-esc{stroke:#a86b0f;fill:none;stroke-width:2.2}
+.t{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:12.5px;fill:#1c1f22}
+.t-s{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;fill:#5b6166}
+.t-cat{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;fill:#5b6166}
+.t-serif{font-family:"Cormorant Garamond",Georgia,serif;font-size:20px;font-weight:600;fill:#1c1f22}
+.t-serif-s{font-family:"Cormorant Garamond",Georgia,serif;font-size:14px;font-style:italic;fill:#5b6166}
+.t-esc{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.1em;fill:#a86b0f}
+.t-r{fill:#9b1d3a}
+.box{fill:#e6e9e2;stroke:#1c1f22;stroke-width:1.2}
+.box-esc{fill:#efdcb4;stroke:#a86b0f;stroke-width:1.6}
+.box-l1{fill:#c9e0d7;stroke:#2f6f5e;stroke-width:1.2}
+.arrow{stroke:#1c1f22;fill:none;stroke-width:1.3}
+.arrow-r{stroke:#9b1d3a;fill:none;stroke-width:1.3;stroke-dasharray:5 4}
+.brace{stroke:#5b6166;fill:none;stroke-width:1}
+svg{color:#1c1f22;background:#f1f2ee}
+</style>
+<rect width="1000" height="850" fill="#f1f2ee"/>
+
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker>
+      <marker id="ah-esc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker>
+    </defs>
+    <!-- category arcs labels -->
+    <text class="t-cat" x="690" y="96" text-anchor="middle">ONTOLÓGICA</text>
+    <text class="t-cat" x="900" y="440" text-anchor="middle">EPISTEMOLÓGICA</text>
+    <text class="t-cat" x="490" y="800" text-anchor="middle">PSICOARQUETÍPICA</text>
+    <text class="t-cat" x="120" y="560" text-anchor="middle">CIVILIZATORIA</text>
+    <text class="t-cat" x="235" y="150" text-anchor="middle">HISTÓRICA</text>
+
+    <!-- edges: duality -> thesis -->
+    <line class="e-r" x1="500" y1="110" x2="500" y2="310" stroke-width="5.5"/>
+    <line class="e-r" x1="636" y1="141" x2="500" y2="310" stroke-width="5.2"/>
+    <line class="e-r" x1="744" y1="229" x2="500" y2="310" stroke-width="2.5"/>
+    <line class="e-esc" x1="803" y1="356" x2="595" y2="365" stroke-width="3.5"/>
+    <line class="e-r e-d" x1="801" y1="495" x2="405" y2="475" stroke-width="1"/>
+    <line class="e-r e-d" x1="737" y1="619" x2="595" y2="365" stroke-width="1.2"/>
+    <line class="e-c" x1="249" y1="602" x2="405" y2="365" stroke-width="4"/>
+    <line class="e-r" x1="195" y1="474" x2="405" y2="365" stroke-width="2"/>
+    <line class="e-r" x1="270" y1="213" x2="500" y2="310" stroke-width="4.5"/>
+    <line class="e-c e-d" x1="384" y1="133" x2="500" y2="310" stroke-width="2.4"/>
+
+    <!-- thesis -> centre spokes -->
+    <g stroke="currentColor" stroke-opacity=".35" stroke-width="1">
+      <line x1="500" y1="322" x2="500" y2="392"/><line x1="585" y1="371" x2="530" y2="400"/><line x1="585" y1="469" x2="530" y2="440"/>
+      <line x1="500" y1="518" x2="500" y2="448"/><line x1="415" y1="469" x2="470" y2="440"/><line x1="415" y1="371" x2="470" y2="400"/>
+    </g>
+
+    <!-- centre -->
+    <rect class="n-centro" x="410" y="392" width="180" height="56" rx="2"/>
+    <text class="t-serif" x="500" y="416" text-anchor="middle">Ontología relacional</text>
+    <text class="t-serif-s" x="500" y="436" text-anchor="middle">hipergrafo como onto-lógica</text>
+
+    <!-- theses -->
+    <g>
+      <circle class="n-tesis" cx="500" cy="310" r="13"/><text class="t" x="500" y="314" text-anchor="middle" font-weight="600">T1</text>
+      <text class="t-s" x="500" y="295" text-anchor="middle">primacía de la relación</text>
+      <circle class="n-tesis" cx="595" cy="365" r="13"/><text class="t" x="595" y="369" text-anchor="middle" font-weight="600">T5</text>
+      <text class="t-s" x="613" y="358" text-anchor="start">enacción</text>
+      <circle class="n-tesis" cx="595" cy="475" r="13"/><text class="t" x="595" y="479" text-anchor="middle" font-weight="600">T3</text>
+      <text class="t-s" x="613" y="492" text-anchor="start">perspectivismo</text>
+      <circle class="n-tesis" cx="500" cy="530" r="13"/><text class="t" x="500" y="534" text-anchor="middle" font-weight="600">T4</text>
+      <text class="t-s" x="500" y="560" text-anchor="middle">devenir</text>
+      <circle class="n-tesis" cx="405" cy="475" r="13"/><text class="t" x="405" y="479" text-anchor="middle" font-weight="600">T2</text>
+      <text class="t-s" x="387" y="492" text-anchor="end">n-arias</text>
+      <circle class="n-tesis" cx="405" cy="365" r="13"/><text class="t" x="405" y="369" text-anchor="middle" font-weight="600">T6</text>
+      <text class="t-s" x="387" y="358" text-anchor="end">ética inmanente</text>
+    </g>
+
+    <!-- dualities -->
+    <g>
+      <circle class="n-fill" cx="500" cy="110" r="11"/><text class="t" x="500" y="88" text-anchor="middle">Dualismo cartesiano</text><text class="t-s" x="500" y="136" text-anchor="middle">100 %</text>
+      <circle class="n-fill" cx="636" cy="141" r="11"/><text class="t" x="652" y="136" text-anchor="start">Popper · interaccionista</text><text class="t-s" x="652" y="151" text-anchor="start">95 %</text>
+      <circle class="n-fill" cx="744" cy="229" r="11"/><text class="t" x="760" y="226" text-anchor="start">Lightman · post-humano</text><text class="t-s" x="760" y="241" text-anchor="start">40 %</text>
+
+      <circle class="n-esc" cx="803" cy="356" r="14"/><text class="t" x="822" y="352" text-anchor="start" font-weight="600">Chalmers · brecha explicativa</text><text class="t-s" x="822" y="367" text-anchor="start">60 % → T5 (§IV.1)</text>
+      <circle class="n-fill" cx="801" cy="495" r="11"/><text class="t" x="818" y="492" text-anchor="start">AdS/CFT · holográfica</text><text class="t-s" x="818" y="507" text-anchor="start">10 % · roce</text>
+      <circle class="n-fill" cx="737" cy="619" r="11"/><text class="t" x="754" y="617" text-anchor="start">Bohm · información-campo</text><text class="t-s" x="754" y="632" text-anchor="start">15 % · roce</text>
+
+      <circle class="n-hollow" cx="626" cy="703" r="11"/><text class="t" x="642" y="702" text-anchor="start">Persona / Máscara</text><text class="t-s" x="642" y="717" text-anchor="start">5 % · sin arista</text>
+      <circle class="n-hollow" cx="489" cy="730" r="11"/><text class="t" x="489" y="758" text-anchor="middle">Sombra</text><text class="t-s" x="489" y="773" text-anchor="middle">5 % · sin arista</text>
+      <circle class="n-hollow" cx="355" cy="694" r="11"/><text class="t" x="339" y="700" text-anchor="end">Anima / Animus</text><text class="t-s" x="339" y="715" text-anchor="end">0 % · sin arista</text>
+      <circle class="n-fill" cx="249" cy="602" r="11"/><text class="t" x="233" y="604" text-anchor="end">Self · sí-mismo</text><text class="t-s" x="233" y="619" text-anchor="end">70 % · refuerza</text>
+
+      <circle class="n-fill" cx="195" cy="474" r="11"/><text class="t" x="179" y="470" text-anchor="end">Meniw · civilizatorio</text><text class="t-s" x="179" y="485" text-anchor="end">30 %</text>
+      <circle class="n-hollow" cx="202" cy="334" r="11"/><text class="t" x="186" y="331" text-anchor="end">Doble brecha territorial</text><text class="t-s" x="186" y="346" text-anchor="end">0 % · sin arista</text>
+
+      <circle class="n-fill" cx="270" cy="213" r="11"/><text class="t" x="254" y="209" text-anchor="end">Saña · conflicto permanente</text><text class="t-s" x="254" y="224" text-anchor="end">80 %</text>
+      <circle class="n-fill" cx="384" cy="133" r="11"/><text class="t" x="368" y="128" text-anchor="end">Peña Vial · unidualidad</text><text class="t-s" x="368" y="143" text-anchor="end">converge · refuerza</text>
+    </g>
+
+    <!-- exit arrow from Chalmers -->
+    <path class="e-esc" d="M817 356 L 960 356" marker-end="url(#ah-esc)"/>
+    <text class="t-esc" x="905" y="380" text-anchor="middle">SALIDA 4 · TRANSPONER</text>
+  </svg>
