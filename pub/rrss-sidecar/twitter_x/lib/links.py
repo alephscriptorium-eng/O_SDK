@@ -30,6 +30,7 @@ from . import html2md, normalize
 from .obra import Obra, read_json, write_json_atomic
 
 UA = "Mozilla/5.0 (compatible; rrss-sidecar/1.0; archivo estatico)"
+BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"
 JINA = "https://r.jina.ai/"
 TRACKING = re.compile(r"^(utm_|fbclid$|gclid$|igshid$|ref_src$|ref_url$|s$|si$|feature$)")
 EXIT_BLOCKED = 3
@@ -172,9 +173,17 @@ class NeedsBrowser(Exception):
 
 def fetch_chatgpt(url: str):
     share_id = urlsplit(url).path.rstrip("/").split("/")[-1]
-    code, _h, body, final = http_get(f"https://chatgpt.com/backend-api/share/{share_id}", "application/json")
+    api = f"https://chatgpt.com/backend-api/share/{share_id}"
+    code, body = 0, b""
+    for attempt, agent in enumerate((UA, BROWSER_UA, UA, BROWSER_UA)):
+        code, _h, body, _final = http_get(api, "application/json", {"User-Agent": agent})
+        if code == 200:
+            break
+        if code in (404, 410):
+            raise Blocked(f"HTTP {code}: el share no existe o fue retirado")
+        time.sleep(3 + attempt * 3)  # el 403 de chatgpt.com es un anti-bot intermitente, no «privado»
     if code != 200:
-        raise Blocked(f"HTTP {code} en backend-api/share")
+        raise NeedsBrowser(f"HTTP {code} persistente en backend-api/share (anti-bot)")
     data = json.loads(body.decode("utf-8", "replace"))
     if "linear_conversation" not in data:
         raise Blocked(f"sin linear_conversation: {str(data.get('detail'))[:120]}")

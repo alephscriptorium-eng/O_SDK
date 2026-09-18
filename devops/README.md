@@ -255,8 +255,11 @@ bash devops/scripts/hub-disk.sh --json >> devops/logs/hub-disk.jsonl    # serie 
 ```
 
 Nunca toca `flume/`, `secret`, `conn.json` ni `gossip*.json`. `deploy-status.sh` imprime la línea
-de `check`. Layout del host que verifica `verify-debian13-base.sh` desde WP-O46:
-`/srv/oasis/oasis-pub/*` (pub, intacto) · `/srv/oasis/teatro/` · `/srv/oasis/oasis-hub/*` (HUB).
+de `check`. Layout del host que verifica `verify-debian13-base.sh`:
+`/srv/oasis/oasis-pub/*` (pub, intacto) · `/srv/oasis/oasis-hub/*` (HUB, WP-O46) ·
+`/srv/oasis/teatro/` (WP-O99: existe, está en el volumen de datos y no tiene nada world-writable).
+Teatro: `deploy-teatro.sh` (por obra, con verificación), `teatro-wsl.sh` (lanzador WSL) y
+`backup-teatro.sh` (`--verify` contra el manifiesto; backup de firmas y de los stores del lore).
 
 ## Por qué una carpeta separada
 

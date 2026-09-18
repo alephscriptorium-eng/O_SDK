@@ -179,7 +179,7 @@ echo "-- mount $DATA_MOUNT (noatime ⇒ prune-blobs usa -mtime) --"
 mount_opts "$DATA_MOUNT"
 echo
 echo "-- tamaño (du) --"
-for d in "$HUB_DATA/ssb-data/flume" "$HUB_DATA/ssb-data/blobs" "$HUB_DATA/http-cache" "$HUB_DATA/logs" "$PUB_DATA"; do
+for d in "$HUB_DATA/ssb-data/flume" "$HUB_DATA/ssb-data/blobs" "$HUB_DATA/http-cache" "$HUB_DATA/logs" "$PUB_DATA" "$(dirname "$PUB_DATA")/teatro"; do
   if [ -d "$d" ]; then $SUDO du -sh "$d" 2>/dev/null || echo "?	$d"; else echo "0	$d (no existe)"; fi
 done
 echo

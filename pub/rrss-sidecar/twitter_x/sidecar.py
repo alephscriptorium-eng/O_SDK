@@ -260,8 +260,8 @@ def manifest_files(out: Path) -> list[Path]:
         name = path.name
         if name.startswith("MANIFEST.sha256") or name == "allowed_signers":
             continue
-        if path.parent == out and name.endswith(NOT_IN_MANIFEST):
-            continue
+        if path.parent == out and (name.endswith(NOT_IN_MANIFEST) or name == "index.html"):
+            continue  # la portada se estampa en el VPS con el sha del zip: no puede ir en el manifiesto
         keep.append(path)
     return keep
 

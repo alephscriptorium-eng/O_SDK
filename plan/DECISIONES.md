@@ -145,6 +145,30 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   el grafo del pub a mano. El disco sigue gobernado por `hub-disk.sh` y
   el orden de rebajas de HUB-PROTOCOL §7 pasa a «limit → hops 3→2».
 
+- **D-O16 · 2026-09-18 · El Teatro se alimenta de un sidecar de RRSS
+  autocontenido en o-sdk (lore → sidecar → visor).** Decisiones del custodio
+  al planificar WP-O99: (1) la infra del generador vive en git en
+  `pub/rrss-sidecar/<fuente>/` (hoy `twitter_x`, a medida); `pub/site/teatro`
+  es solo el **visor**. (2) El **lore** del usuario vive dentro del repo en
+  `ARCHIVO/LORE/<fuente>/<obra>/`, ignorado por git (deny-by-default) y
+  excluido de la imagen: el protocolo no depende de ninguna ruta externa y
+  la obra «Aleph Cero» es un caso contingente; el directorio de origen del
+  lore no se toca. (3) Destino de las fuentes: formato **B.O.E. (Arrakis)**
+  de Scriptorium; la costura es `pub/rrss-sidecar/CORPUS-SCHEMA.md` (solo
+  `lib/normalize.py` conoce el formato de X). (4) Se publica el **Markdown
+  íntegro** de todas las páginas enlazadas. (5) Páginas con muro: DeepSeek
+  por `r.jina.ai`; Grok, Claude y Perplexity con el Chrome del usuario;
+  todo share es público por definición → **regla PARAR**: si uno no lo es,
+  la tanda se detiene y se pide al usuario que lo publique. (6) **Dos
+  descargas**: el zip con todo (media incluida) es la principal y no debe
+  inducir a equívoco; el zip ligero y `MANIFEST.sha256` son secundarios,
+  para inspección. (7) Los posts borrados por el autor **no se publican**;
+  se conservan en el store del lore como capa histórica. Adoptado por
+  recomendación: media de terceros solo foto/póster en local;
+  `navegador.html` (visor oficial de X) es la **excepción declarada** al
+  invariante «cero JS», con CSP propia. (8) La reorganización **semántica**
+  de la obra queda fuera: se hará en modo plan, leyendo el feed hacia atrás.
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |
