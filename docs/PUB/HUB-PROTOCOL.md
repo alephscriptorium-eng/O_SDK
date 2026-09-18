@@ -207,6 +207,7 @@ nuevas en `oasis-config.json`.
 - **Rotación de ciclo** (`UPGRADE-PROTOCOL.md` §5): `caps.shs` también vive en
   `pub/config/hub/ssb-config`. Añadirlo al lockstep. Cambiar el cap no rompe el follow
   (está en los logs), pero HUB y pub deben rotar juntos.
+  El `caps.shs` del wallet-bot (`pub/config/wallet-bot/ssb-config`, WP-O102) entra en el mismo lockstep.
 
 **5.3 Deploy del upgrade con el HUB activo.** La imagen es compartida: tras
 `build oasis-pub` y `up -d --no-deps oasis-pub`, el HUB sigue corriendo la imagen
@@ -381,7 +382,11 @@ contenedor propio + estado en el volumen de datos.
 | # | `name` (about) | Tipo | Qué sirve | Contenedor · estado | Feed id | Alta |
 |---|---|---|---|---|---|---|
 | 1 | `azofaifo-scriptorium-skin-bot-1` | `scriptorium-skin` | HUB clearnet `/c` (Sala 04) | `oasis-pub-hub` · `/srv/oasis/oasis-hub` | `@KM+ZBipR18VSyjNTFjAOnsmz6EiobGYHb3ZCZ4ZxQYI=.ed25519` | 2026-09-13 (WP-O46) |
-| 2… | `azofaifo-<tipo>-bot-<n>` | hackería · parlamento · teatro… | la vista que conecte | uno por servicio | | por decidir |
+| 2 | `azofaifo-scriptorium-wallet-bot-2` | `scriptorium-wallet` | hub-wallet: cartera ECOin del pub (custodia la dote, reparte la RBU); **sin ruta pública** | `oasis-pub-wallet-bot` (+ `oasis-pub-ecoin`) · `/srv/oasis/oasis-wallet-bot` y `/srv/oasis/ecoin` | pendiente (nace en el bootstrap) | implementado, **no desplegado** (WP-O102, D-O19) |
+| 3… | `azofaifo-<tipo>-bot-<n>` | hackería · parlamento · teatro… | la vista que conecte | uno por servicio | | por decidir |
+
+El bot 2 no sirve ninguna vista web: su protocolo propio es `ECOIN-PROTOCOL.md` (misma carpeta),
+que reutiliza el bootstrap de §3 tal cual y remite a §9 para la realidad del VPS.
 
 Plantilla del `about` (multipart `name` + `description`, `POST /profile/edit` en fase
 `OASIS_HUB_PUBLIC=false`, sin `vis_*`):

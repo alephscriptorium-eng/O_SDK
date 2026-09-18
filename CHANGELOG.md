@@ -5,6 +5,39 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — hub-wallet del pub: `ecoind` + `azofaifo-scriptorium-wallet-bot-2` (WP-O102, 2026-09-18)
+
+Estado: **implementado en la rama `wp/O102-hub-wallet`, NO desplegado** en el
+VPS. Asiento D-O19; doc viva `docs/PUB/ECOIN-PROTOCOL.md`.
+
+- **Imagen `ecoin/` endurecida** (compartida con el cliente): sha256 del
+  `.deb` versionado (`ecoin_0.0.4-1_amd64.deb.sha256`) y `fetch-deb.sh`; el
+  build **falla** si el binario no casa; conf completa de respaldo fuera del
+  datadir; `port=7408` explícito; sin credenciales reales en git y arranque
+  fail-closed (`ECOIN_REQUIRE_CREDS=1` rechaza vacío y `ecoinrpc`).
+- **Dos servicios nuevos** en `pub/docker-compose.pub.yml`, perfil `wallet`
+  (ni `pub:local:up` ni `deploy.sh` los arrastran), **sin `ports`** y sin ruta
+  en Caddy: `ecoin` (`oasis-pub-ecoin`; 512m, `cpus 0.75`,
+  `stop_grace_period 60s`) y `oasis-wallet-bot` (`oasis-pub-wallet-bot`; misma
+  imagen que el pub, `command: ["backend"]`, hops 3, `OASIS_BANKING_DIR`
+  persistente). El RPC no sale de `oasis_pub_net`.
+- `pub/config/wallet-bot/` (`ssb-config`, `oasis-config.json.tpl`) y
+  `pub/scripts/render-wallet-bot-config.sh`: la config con credenciales se
+  renderiza **fuera de git**. **Motor de RBU armado y apagado**: el interruptor
+  es `OASIS_WALLET_BOT_PUB_ID`, vacío hasta la dote.
+- Herramientas: `devops/scripts/backup-ecoin.sh` (`backupwallet`, `--cold`,
+  `--verify`; nunca borra `wallet.dat`), `devops/scripts/ecoin-disk.sh`
+  (`status`/`check`/`--json`), línea en `deploy-status.sh`, rutas nuevas en
+  `common.sh` y `verify-debian13-base.sh`, bloques `OASIS_ECOIN_*` /
+  `OASIS_WALLET_BOT_*` en los tres `pub/.env*.example`, scripts npm
+  `pub:ecoin:fetch-deb`, `pub:local:ecoin:up|info`, `pub:local:wallet-bot:up`,
+  `pub:wallet-bot:render`, `devops:ecoin-disk`, `devops:backup:ecoin`.
+- Docs y gobierno: `docs/PUB/ECOIN-PROTOCOL.md` (invariantes, activación,
+  preflight de upgrades, tabla de contingencia 1.1.3, cartera, interruptor del
+  motor, hallazgos de upstream), `HUB-PROTOCOL.md` §11 fila 2 y §5.2
+  (lockstep de `caps.shs`), D-O19, WP-O102 y WP-O103 en el backlog. Delta en
+  `src/` = cero; el pub, el HUB y Caddy no cambian.
+
 ### Added — Roadmap futuro: los dosieres de trabajo (WP-O101, 2026-09-18)
 
 - `docs/ROADMAP/`: seis dosieres (aleph-net, relacional, colectivizaciones,
