@@ -8,8 +8,8 @@
 > `wp/O102-hub-wallet`). `azofaifo-scriptorium-wallet-bot-2` =
 > `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` · dirección ECOin de la cartera del pub
 > `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc` (publicada en su feed, saldo 0) · `ecoind` sincronizado.
-> **Motor de RBU: APAGADO** (`OASIS_WALLET_BOT_PUB_ID` vacío) hasta la dote y la confirmación
-> expresa del custodio (§9). Registro en §13, hallazgos en §14, reporte
+> **Motor de RBU**: se gobierna con `devops/scripts/hub-wallet.sh` (§9, reescrito para Oasis 1.1.4);
+> su estado vigente está en §13 y se mide con `hub-wallet.sh status`. Registro en §13, hallazgos en §14, reporte
 > `plan/REPORTES/WP-O102-hub-wallet.md`. Decisiones: `plan/DECISIONES.md` **D-O19**. Siguiente
 > pieza: WP-O103 (ECOin en la app cliente; procedimiento en `../CLIENT-PROTOCOL.md` §8 «ECOin en el cliente»).
 
@@ -86,10 +86,10 @@ después cliente (WP-O103).
   con `OASIS_PUBLIC=true` (todo no-GET → 403).
 - **Los bots Azofaifo son la representación oficial del pub**, y **la RBU la firma el bot**: los
   `ubiAllocation`, `ubiClaimResult`, `bankClaim` y `transfer` de la RBU salen del feed de bot-2, no
-  del feed del pub. Los clientes apuntan su `walletPub.pubId` al feed de bot-2.
-- **Motor ARMADO y APAGADO hasta la dote.** El interruptor es `OASIS_WALLET_BOT_PUB_ID` en
-  `.env.prod`. **Vacío** = `walletPub.pubId` vacío = `isPubNode()` falso = ni tick ni pagos ni
-  `pubAvailability`. Se enciende solo con confirmación expresa del custodio (§9).
+  del feed del pub. Desde 1.1.3 los clientes **descubren solos** el banco por los `pubAvailability` replicados.
+- **El motor se enciende y se pausa, nunca por accidente.** El interruptor es el ssb-config montado
+  (`pub: false` = `isPubNode()` falso = ni tick ni pagos ni `pubAvailability`). Se enciende solo con
+  confirmación expresa del custodio y `hub-wallet.sh on --yes` (§9).
 - **Hops 3, política asumida.** Con el motor encendido el bot paga **cualquier** `ubiClaim` que vea
   en su log (§9, §12). La defensa no es un filtro, es el tamaño de la cartera.
 - **Cartera caliente, sin cifrar, saldo pequeño.** Sin `encryptwallet` (el motor no sabe
@@ -288,7 +288,7 @@ tabla no previó, la última fila):
 | sondea `localhost:7474` | `network_mode: "service:ecoin"` en `oasis-wallet-bot` (comparten pila de red; `ecoin` sigue sin `ports`) | compose, 1 recreate del bot; revisar `rpcallowip` |
 | lee un `ecoin.conf` local para sacar credenciales | bind `:ro` de `/srv/oasis/ecoin/ecoin.conf` en la ruta que espere | compose, 1 recreate del bot |
 | lanza (`spawn`) su propio `ecoind` | **no soportado**: rompe «ecoind en contenedor propio»; se desactiva por config o se reporta a upstream antes de subir | decisión del custodio |
-| **(lo que pasó)** cambia el interruptor: desaparece `walletPub`; el motor corre si `pub: true` en el ssb-config y `wallet.url` no está vacía | con `pub: false` el motor queda **apagado**; `walletPub` sobrante se ignora. Interruptor nuevo y gestión de admin: **WP-O107** (D-O21) | 0 para seguir apagado |
+| **(lo que pasó)** cambia el interruptor: desaparece `walletPub`; el motor corre si `pub: true` en el ssb-config y `wallet.url` no está vacía | con `pub: false` el motor queda **apagado**; `walletPub` sobrante se ignora. Interruptor nuevo y gestión de admin: §9 (WP-O107, D-O21) | 0 para seguir apagado |
 
 En todos los casos: el motor se **apaga** antes del upgrade del bot si hay dudas (§9) y se
 re-enciende tras verificar; la cartera no se mueve.
@@ -311,7 +311,7 @@ re-enciende tras verificar; la cartera no se mueve.
   La carpeta vieja se conserva como backup. Verificar tras arrancar: la dirección de
   `ssb-data/oasis/banking/wallet-addresses.json` es la misma, `ismine: true`, y el feed sigue con
   **un** mensaje `wallet`.
-- **Interruptor**: §9 entero queda obsoleto (ver su cabecera).
+- **Interruptor**: §9, reescrito para 1.1.4.
 - **Anuncios**: `pubAvailability` ya solo se publica al cambiar de estado o cada 12 h, y no en `GET /banking`.
 - **Sin arreglar en 1.1.4**: §12 (paga cualquier `ubiClaim` visible, suelo de 1 ECO sin fondos,
   `ReferenceError` de la autopublicación, alta no idempotente).
@@ -387,44 +387,66 @@ imagen · una sola `wallet.dat` por dirección publicada: si se pierde sin copia
 feed queda huérfana para siempre (el mensaje `wallet` es permanente) · el cliente **nunca** apunta
 a este `ecoind` (WP-O103: guarda anti-remoto del entrypoint, `../CLIENT-PROTOCOL.md` §8).
 
-## 9. El interruptor del motor
+## 9. El motor de RBU: encender, comprobar, pausar
 
-> **OBSOLETO desde Oasis 1.1.4 (2026-09-19).** Lo que sigue describe el interruptor de 1.1.2
-> (`OASIS_WALLET_BOT_PUB_ID` → `walletPub.pubId`), que upstream eliminó. En 1.1.4 el motor corre si el
-> ssb-config del bot dice `pub: true` y `wallet.url` no está vacía. El nuestro dice `pub: false`: **motor
-> apagado**, y poner `OASIS_WALLET_BOT_PUB_ID` no hace nada. **No cambies `pub` a mano**: además de
-> encender el motor cambia el plugin de invites del sbot (`ssb-invite`), y eso no está ensayado. El
-> interruptor nuevo y la gestión *encender → comprobar → pausar* son **WP-O107** (D-O21). El reparto no
-> crea dinero: redistribuye ECO de la cartera, `pool = min(saldo − 500, 2000, 0,2·saldo)`.
+> **Reescrito el 2026-09-19 para Oasis 1.1.4 (WP-O107, D-O21).** El interruptor de 1.1.2
+> (`OASIS_WALLET_BOT_PUB_ID` → `walletPub.pubId`) ya no existe: upstream lo eliminó.
 
-**Encender** (solo con dote recibida, backup hecho y confirmación expresa del custodio):
+**Qué es y qué no es.** El motor **no crea dinero**. Paga los `ubiClaim` pendientes con `sendtoaddress`
+desde la cartera del bot, es decir, **redistribuye ECO que ya están ahí**: dote, donaciones y el
+excedente que otros pubs reparten solos (lo que pase de 2000 ECO, máximo 200 por pub y época). Pool de la
+época: `min(saldo − 500, 2000, 0,2 · saldo)`; con saldo ≤ 500 no se paga nada. Tope por persona 50 ECO
+por época; solo cobran feeds con ≥ 30 días, dirección publicada y actividad. Oasis no trae panel de admin:
+solo `POST /banking/run` y `/banking/simulate` desde el loopback de un nodo pub.
+
+**El interruptor.** `isPubNode()` = `pub: true` en el ssb-config del proceso **y** `wallet.url` no vacía.
+La `wallet.url` la pone el render (§2); `pub` lo decide **qué fichero se monta** como `~/.ssb/config`:
+
+| Fichero | `pub` | Para qué |
+|---|---|---|
+| `pub/config/wallet-bot/ssb-config` | `false` | bootstrap (invite) y **pausa**: motor apagado |
+| `pub/config/wallet-bot/ssb-config.engine-on` | `true` | motor encendido |
+
+Se elige con `OASIS_WALLET_BOT_SSB_CONFIG_FILE` en el env-file del host + recreate del bot. `pub: true`
+también cambia el plugin `ssb-invite-client` por `ssb-invite` y quita `ssb-lan`; la conexión al pub va
+por `conn.json` y **no se ve afectada** (ensayado). El bootstrap del invite se hace siempre con `pub: false`.
+Los dos ficheros deben ser idénticos salvo esa línea (`diff` = 1 línea): `caps.shs` rota en los dos.
+
+**La gestión** es `devops/scripts/hub-wallet.sh` (`--local` para el stack local):
 
 ```bash
-# .env.prod (backup previo): OASIS_WALLET_BOT_PUB_ID=@<feed id de bot-2>.ed25519
-bash scripts/render-wallet-bot-config.sh .env.prod               # reescribe in place la config (400)
-$C up -d --no-deps oasis-wallet-bot                              # isPubNode() se evalúa al arrancar
-# a los 15 s corre el primer tick; después cada 30 min (backend.js:11744-11747)
+bash devops/scripts/hub-wallet.sh status     # modo, log del motor, mensajes propios, anuncio, saldo, pool
+bash devops/scripts/hub-wallet.sh ready      # precondiciones, sin encender (exit 0 = listo)
+bash devops/scripts/hub-wallet.sh on --yes   # ready + interruptor + recreate + verificación
+bash devops/scripts/hub-wallet.sh pause      # vuelve a pub:false; no publica nada
 ```
 
-**Apagar**: vaciar `OASIS_WALLET_BOT_PUB_ID` → render → `up -d --no-deps oasis-wallet-bot`. Es
-también el rollback N0: no toca `ecoind`, ni la cartera, ni el feed.
+`ready` exige: bot y `ecoind` healthy · RPC responde · cadena sincronizada con la altura que anuncian los
+pares · dirección en `oasis/banking` y `ismine: true` · **un** mensaje `wallet` propio · backup local de
+`wallet.dat` de menos de 24 h (`backup-ecoin.sh`) · el pub ve conectado al bot · `ssb-config.engine-on`
+presente. Las credenciales RPC no salen del contenedor de `ecoind`.
 
-**Qué publica encendido.**
+**Encender es irreversible** (`AGENTES.md` §3) y pide GO del custodio: a los 15 s del arranque el motor
+publica un `pubAvailability` (y después solo al cambiar de estado o cada 12 h) y el pub **aparece en la
+lista de pubs de Banking** de todos los clientes 1.1.3+. Sin fondos sale con ✗ (`available: false`) y pool
+0: es lo esperado hasta la dote. `on` hace backup del env-file (`*.bak-hubwallet-<fecha>`), verifica
+`pub=true` y `[UBI] PUB engine on` en el log, y si no, lo dice y propone `pause`.
 
-| Situación | Mensajes en el feed de bot-2 |
-|---|---|
-| **0 ECO** en la cartera | `pubAvailability` con `available:false` en **cada tick**: **48 al día**, haya cambio o no (`banking_model.js:1119-1129`). A primeros de mes, `executeEpoch` publica un `ubiAllocation` de **1 ECO** por dirección conocida **aunque no haya fondos** (el suelo `floor_user` se aplica sobre un pool de 0: `banking_model.js:953`, `:966`, `:990-1014`). No paga nada (`pubBal <= 0` → salta, `:1430`) |
-| **Con dote** | los mismos 48 `pubAvailability`/día (ahora `available:true`) + los `ubiAllocation` de la época + **3 mensajes por reclamo pagado**: `ubiClaimResult`, `bankClaim` y `transfer` con tag `UBI` (`:1443-1447`) |
+**Pausar** no publica nada: deja de anunciar, y la tarjeta de Banking **caduca sola a los 3 días**.
+Pausar antes de cualquier duda (upgrade del bot, cartera en mantenimiento, saldo que no cuadra).
 
-Además, cada `GET /banking` con el motor encendido publica otro `pubAvailability`
-(`banking_model.js:1152-1156`): no abrir la GUI del bot por rutina.
+**Dos cosas que hay que saber con el motor encendido:**
 
-**Por qué paga cualquier `ubiClaim` visible.** `processPendingClaims` (`banking_model.js:1399-1419`)
-recorre `messagesByType({ type: "ubiClaim" })` sobre **todo el log replicado** y solo descarta los
-ya resueltos por `epochId:userId`; **no compara `claim.pubId` con el feed propio**. Con hops 3,
-un reclamo dirigido a otro pub que llegue al log del bot, de un autor con dirección ECOin válida
-conocida, se paga (mínimo 1 ECO, `:1440`). Es política asumida (D-O19.6): la cota es el saldo de
-la cartera. Si el drenaje molesta antes de que upstream lo filtre (§12): bajar hops o apagar.
+- **Cada anuncio lleva una dirección nueva.** `pubAvailability.address` sale de `getnewaddress`, no de la
+  dirección publicada como `wallet`. Es de la misma cartera (`ismine: true`) y sale del *keypool* (100
+  claves pregeneradas): un backup de `wallet.dat` cubre las ~100 direcciones siguientes. Regla:
+  **`backup-ecoin.sh` semanal mientras el motor esté encendido**, y siempre tras recibir fondos.
+- **Paga cualquier `ubiClaim` elegible que vea**, no solo los dirigidos a él (§12): a hops 3, eso es media
+  red. La cartera es caliente y pequeña por diseño (§8); si el saldo se mueve de forma que no entiendes, `pause`.
+
+Registro del ensayo (local, 2026-09-19): `on` → `pub=true`, 1 × `[UBI] PUB engine on`, `pubAvailability`
++1 (`available:false, balance:0, pool:0`), `wallet` sigue en 1, el pub lo ve `CONNECTED`; `pause` →
+`pub=false`, 0 en el log, ningún mensaje nuevo.
 
 ## 10. Rollback
 
