@@ -112,7 +112,8 @@ export default defineConfig({
           { text: 'Colectivizaciones', link: '/ROADMAP/colectivizaciones/00-dictamen' },
           { text: 'Res publica', link: '/ROADMAP/res-publica/00-dictamen' },
           { text: 'Oasis · FairCoin', link: '/ROADMAP/oasis-faircoin/00-informe' },
-          { text: 'Publicidad y redes', link: '/ROADMAP/publicidad-rrss/00-indice' }
+          { text: 'Publicidad y redes', link: '/ROADMAP/publicidad-rrss/00-indice' },
+          { text: 'P2P', link: '/ROADMAP/p2p/00-indice' }
         ]
       }
     ],

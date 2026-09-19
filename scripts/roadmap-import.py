@@ -1,6 +1,7 @@
 """Importa los dosieres de trabajo a docs/ROADMAP como copia saneada. El origen no se modifica.
 
-Uso: python scripts/roadmap-import.py <carpeta-con-los-dosier-*>   (luego: npm run docs:build)
+Uso: python scripts/roadmap-import.py <carpeta-con-los-dosier-*> [--only <slug>]   (luego: npm run docs:build)
+`--only` reimporta un solo dosier sin tocar los demás. `docs/ROADMAP/index.md` se escribe a mano y nunca se borra.
 Sanea: rutas de disco locales, Google Fonts, enlaces a artifacts privados y datos de conexión del pub.
 """
 import re
@@ -20,6 +21,7 @@ DOSSIERS = {
     "dosier-res-publica": "res-publica",
     "dosier-oasis-faircoin": "oasis-faircoin",
     "dosier-publicidad-rrss": "publicidad-rrss",
+    "dosier-p2p": "p2p",
 }
 STATUS_URL = "https://pub.escrivivir.co/public/status"
 
@@ -91,11 +93,16 @@ def special(slug: str, rel: str, text: str) -> str:
 
 
 def main() -> None:
-    for out in (MD_OUT, PUB_OUT):
-        if out.exists():
-            shutil.rmtree(out)
+    only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None
+    if only and only not in DOSSIERS.values():
+        sys.exit(f"dosier desconocido: {only} (hay: {', '.join(DOSSIERS.values())})")
+    wanted = {k: v for k, v in DOSSIERS.items() if not only or v == only}
+    for slug in wanted.values():  # se limpia dosier a dosier: index.md y lo ajeno no se tocan
+        for out in (MD_OUT / slug, PUB_OUT / slug):
+            if out.exists():
+                shutil.rmtree(out)
     report = {}
-    for src_name, slug in DOSSIERS.items():
+    for src_name, slug in wanted.items():
         src = F4 / src_name
         n_md = n_pub = 0
         for path in sorted(src.rglob("*")):
@@ -116,7 +123,7 @@ def main() -> None:
         report[slug] = (n_md, n_pub)
     # el sigilo viaja junto al generador de banners
     sig = REPO / "ARCHIVO/LORE/twitter_x/aleph-cero/editorial/portada.svg"
-    if sig.is_file():
+    if sig.is_file() and "publicidad-rrss" in wanted.values():
         shutil.copy2(sig, PUB_OUT / "publicidad-rrss" / "banners" / "sigilo.svg")
     for slug, (a, b) in report.items():
         print(f"{slug:<20} md: {a:>2} · anexos: {b:>2}")
