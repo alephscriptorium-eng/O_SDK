@@ -71,9 +71,9 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
   `devops/**`). Los 4 guards de `UPGRADE-PROTOCOL.md` §2 siguen siendo los únicos.
 - **`CA-ANTI-AUTORIDAD`** (D-O6): el opt-in viaja con el feed del habitante; el HUB no
   decide quién aparece y **no se lista a sí mismo** (su `about` no lleva `vis_*`).
-- **La cuenta se declara con nombre de serie** (D-O14): `azofaifo-scriptorium-skin-bot-1`,
-  convención `<nombre>-<tipo>-bot-<cardinal>`. Cada bot de soporte que se conecte al pub
-  (vistas de hackería, parlamento, teatro…) toma el siguiente cardinal y se registra en §11.
+- **La cuenta se declara con nombre propio de bot de soporte** (D-O20, que supera la forma de
+  D-O14): nick corto que dice tipo y pub, cadena completa en la descripción (`AGENTES.md` §5). Cada
+  bot que se conecte al pub toma el siguiente cardinal y se registra en la ficha de instancia (§11).
 - **Fail-open en topología, fail-closed en capacidades** (D-O7): cualquier nodo que
   replique puede servir un HUB; lo que no puede es escribir.
 
@@ -127,7 +127,7 @@ G0  gates locales con npm run pub:local:up (G1 sintaxis · G2 arranque · G3 inv
     (siempre 302: verificar POR ESTADO: conn.json del HUB + contact +1 en el pub) →
     hub-conn-fix.js 'net:oasis-pub:8008~shs:<KEY del pub>' (normaliza conn.json; sin esto no
     replica ni reconecta) → docker restart oasis-pub-hub y ver CONNECTED en el log del pub →
-    POST /profile/edit (about: name=azofaifo-scriptorium-skin-bot-1 + descripción de §11, sin
+    POST /profile/edit (about según §12: nombre y descripción de la ficha de instancia, sin
     vis_*) → up -d --no-deps oasis-hub (PUBLIC=true) → POST invite/accept = 302 con
     ?error=…public mode… (400 sin Referer; nunca 200) = gate antes de exponer
 4   up -d --no-deps hub-cache → MISS/HIT desde la red Docker → caddy validate + caddy reload
@@ -370,33 +370,56 @@ Cada semana: §6 `status --json`. Riesgos abiertos heredados del plan (`v2.md` �
 decisiones abiertas»): `robots.txt` para `/c/blob/`, 200 que parecen 404 (upstream, WP-O83),
 `Cache-Control` en los HTML de `/c`, indexing gate cacheado 60 s tras rebuild.
 
-## 11. Serie de bots de soporte (registro)
+## 11. Serie de bots de soporte
 
-Convención de identidad (D-O14): **`<nombre>-<tipo>-bot-<cardinal>`**. El nombre es propio
-(Azofaifo), el tipo dice qué vista conecta al pub (`scriptorium-skin` = piel web del Scriptorium),
-el cardinal es único en la serie del pub y no se reutiliza. Cada bot es una cuenta SSB propia con
-su `.ssb` en `/srv/oasis/<servicio>/`, redime su invite, se declara en su `about` y **no se lista a
-sí mismo**. Al dar de alta uno nuevo: fila aquí, su `about` sigue la plantilla, mismo patrón de
-contenedor propio + estado en el volumen de datos.
+Un pub delega funciones en **bots**: cada uno es una cuenta SSB propia, con su `.ssb` en el volumen de
+datos (`<datos>/<servicio>/`), en **contenedor propio** (D-O13), que redime un invite del pub (§3), se
+declara en su `about` y **no se lista a sí mismo**. El pub no se toca para añadir uno.
 
-| # | `name` (about) | Tipo | Qué sirve | Contenedor · estado | Feed id | Alta |
-|---|---|---|---|---|---|---|
-| 1 | `azofaifo-scriptorium-skin-bot-1` | `scriptorium-skin` | HUB clearnet `/c` (Sala 04) | `oasis-pub-hub` · `/srv/oasis/oasis-hub` | `@KM+ZBipR18VSyjNTFjAOnsmz6EiobGYHb3ZCZ4ZxQYI=.ed25519` | 2026-09-13 (WP-O46) |
-| 2 | `azofaifo-scriptorium-wallet-bot-2` | `scriptorium-wallet` | hub-wallet: cartera ECOin del pub (custodia la dote, reparte la RBU); **sin ruta pública** | `oasis-pub-wallet-bot` (+ `oasis-pub-ecoin`) · `/srv/oasis/oasis-wallet-bot` y `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102, D-O19); motor de RBU apagado |
-| 3… | `azofaifo-<tipo>-bot-<n>` | hackería · parlamento · teatro… | la vista que conecte | uno por servicio | | por decidir |
+- **Nombres**: convención en [`AGENTES.md` §5](../AGENTES.md) (D-O20, que supera la forma de D-O14):
+  forma libre, corta, que diga tipo y pub; la cadena *tipo → piel → pub* va en la descripción.
+- **Cardinal**: único en la serie del pub, no se reutiliza. Va en la descripción, no en el nick.
+- **Registro**: el de cada despliegue vive en su ficha de instancia. El de la casa:
+  [`INSTANCIA-SCRIPTORIUM.md` §3-§4](./INSTANCIA-SCRIPTORIUM.md) (bot 1 = este HUB; bot 2 = hub-wallet,
+  cuyo protocolo es `ECOIN-PROTOCOL.md` y reutiliza el bootstrap de §3 tal cual).
+- **Alta de uno nuevo**: fila en la ficha de instancia → contenedor propio + estado en el volumen →
+  bootstrap de §3 → `about` con §12 → transcribir el literal en la ficha.
 
-El bot 2 no sirve ninguna vista web: su protocolo propio es `ECOIN-PROTOCOL.md` (misma carpeta),
-que reutiliza el bootstrap de §3 tal cual y remite a §9 para la realidad del VPS.
+## 12. Poner o cambiar el nombre de un bot (`about`)
 
-Plantilla del `about` (multipart `name` + `description`, `POST /profile/edit` en fase
-`OASIS_HUB_PUBLIC=false`, sin `vis_*`):
+Vale para cualquier bot de la serie. **Irreversible** (`AGENTES.md` §3): el `about` es append-only; un
+cambio publica otro `about` y el anterior queda en el log. Gana el último que firma el propio feed.
+El feed id no cambia.
 
-```
-name:        azofaifo-scriptorium-skin-bot-1
-description: Azofaifo · bot scriptorium-skin nº 1. Cuenta de soporte de pub.escrivivir.co:
-             sirve la piel web de solo lectura (/c) con lo que cada habitante marcó como
-             clearnet. No publica por nadie ni escribe en el pub: replica y muestra.
-             Serie: otros bots conectarán las vistas de hackería, parlamento o teatro.
-```
+Precondiciones: texto literal (`name` + `description`) aprobado por el custodio y escrito en la ficha
+de instancia como *propuesto*; nombre dentro de los máximos de `AGENTES.md` §5; descripción < 6 KB y
+sin ángulos ni etiquetas (el saneado los elimina; el formulario no comprueba el límite de mensaje SSB).
 
-El `about` es append-only: un cambio posterior publica otro `about`, el anterior queda en el log.
+1. **Ventana no pública.** El formulario de perfil no existe en modo público. En el `.env` del host,
+   la variable `*_PUBLIC` del bot a `false` (`OASIS_HUB_PUBLIC`, `OASIS_WALLET_BOT_PUBLIC`) y
+   `up -d --no-deps <servicio>`. En un bot con ruta pública, durante la ventana el edge sigue sirviendo
+   lo que tenga en caché; mantenerla corta.
+2. **Contar antes**: mensajes `about` del propio feed en su log
+   (`grep -a -o '"type":"about"' flume/log.offset | wc -l`, dentro del contenedor o en el volumen).
+3. **Publicar, una vez**, desde el loopback del contenedor, multipart, **sin ningún campo `vis_*`**
+   (el handler los reconstruye todos: sin ellos quedan en falso, que es lo querido en un bot) y con
+   `Host` y el host del `Referer` idénticos:
+
+   ```bash
+   docker exec <contenedor> curl -s -o /dev/null -w '%{http_code}\n' \
+     -H 'Host: localhost:3000' -H 'Referer: http://localhost:3000/profile/edit' \
+     -F 'name=<nombre>' -F 'description=<descripción en una línea>' \
+     http://localhost:3000/profile/edit
+   ```
+
+   Esperado: `302`. Un 403 o 400 = Host/Referer; un 500 = descripción demasiado larga. **No reintentar
+   a ciegas**: primero el paso 4, por si el mensaje sí salió.
+4. **Contar después**: exactamente +1 `about`, con el `name` nuevo. Si hay +2, se reporta; no se arregla
+   publicando más.
+5. **Volver a público**: `*_PUBLIC=true` + `up -d --no-deps <servicio>` + el gate de modo público del
+   protocolo del bot (HUB §4; ECOIN §3 paso 10). Cualquier 200 donde se espera 302 = parar.
+6. **Ver el nombre**. `nameCache` es memoria de cada proceso: el propio bot lo muestra tras el
+   reinicio del paso 5; otro nodo (un cliente) lo verá cuando replique el mensaje y, si ya tenía el
+   nombre viejo en caché, tras reiniciarse.
+7. **Registrar**: en la ficha de instancia, el literal pasa de *propuesto* a *publicado* con fecha, y
+   el nombre anterior a «nombres anteriores».
