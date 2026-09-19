@@ -7,8 +7,8 @@
 #
 # Lee del env-file SOLO estas claves (no hace source del fichero):
 #   OASIS_ECOIN_RPC_USER, OASIS_ECOIN_RPC_PASS   hex, `openssl rand -hex 32`
-#   OASIS_WALLET_BOT_PUB_ID                      OBSOLETO desde Oasis 1.1.4: walletPub es una clave ignorada (dejar vacio).
-#                                                El motor lo gobierna pub:true/false del ssb-config; interruptor nuevo: WP-O107
+#   (OASIS_WALLET_BOT_PUB_ID ya no se lee: Oasis 1.1.4 elimino walletPub. El motor de RBU lo gobierna
+#    pub:true/false del ssb-config montado; gestion: devops/scripts/hub-wallet.sh, ECOIN-PROTOCOL §9)
 #   OASIS_WALLET_BOT_OASIS_CONFIG_FILE           destino (relativo a pub/ si no es absoluto)
 #
 # El destino es un bind de FICHERO del contenedor oasis-pub-wallet-bot: se escribe IN PLACE
@@ -78,11 +78,6 @@ validate_creds() {
   [ "$user" != "$pass" ] || die "OASIS_ECOIN_RPC_USER y OASIS_ECOIN_RPC_PASS son iguales"
 }
 
-validate_pub_id() {
-  local id="$1"
-  [ -z "$id" ] || [[ "$id" =~ $RE_FEED ]] || die "OASIS_WALLET_BOT_PUB_ID mal formado (esperado @<43 base64>=.ed25519 o vacio)"
-}
-
 # Valor de una clave string del JSON renderizado (formato de una clave por linea).
 json_str() { sed -n "s/^[[:space:]]*\"$2\":[[:space:]]*\"\\(.*\\)\",\\{0,1\\}[[:space:]]*\$/\\1/p" "$1" | head -n 1; }
 
@@ -107,22 +102,16 @@ validate_rendered() {
   if grep -Eq '__[A-Z0-9_]+__' "$f"; then die "quedan marcadores __…__ sin sustituir en $f"; fi
   validate_json "$f"
   validate_creds "$(json_str "$f" user)" "$(json_str "$f" pass)"
-  validate_pub_id "$(json_str "$f" pubId)"
 }
 
 summary() {
-  local f="$1" id
-  id="$(json_str "$f" pubId)"
+  local f="$1"
   echo "  destino : $f"
   echo "  permisos: $(stat -c '%a' "$f" 2>/dev/null || echo '?')"
   echo "  url     : $(json_str "$f" url)"
   echo "  user    : $(mask "$(json_str "$f" user)")"
   echo "  pass    : (oculta, $(json_str "$f" pass | tr -d '\n' | wc -c | tr -d ' ') caracteres)"
-  if [ -n "$id" ]; then
-    echo "  pubId   : $id  (motor de RBU ENCENDIDO)"
-  else
-    echo "  pubId   : (vacío: motor APAGADO)"
-  fi
+  echo "  motor   : no depende de este fichero (pub:true/false del ssb-config; hub-wallet.sh status)"
 }
 
 # --- destino -----------------------------------------------------------------
@@ -153,16 +142,14 @@ fi
 # --- render ------------------------------------------------------------------
 RPC_USER="$(env_get OASIS_ECOIN_RPC_USER)"
 RPC_PASS="$(env_get OASIS_ECOIN_RPC_PASS)"
-PUB_ID="$(env_get OASIS_WALLET_BOT_PUB_ID)"
 validate_creds "$RPC_USER" "$RPC_PASS"
-validate_pub_id "$PUB_ID"
 
 [ -d "$(dirname "$OUT")" ] || die "no existe el directorio del destino: $(dirname "$OUT")"
 
 # Delimitador «|»: los feed id llevan / y +. Los valores ya validados no contienen | & ni \.
 # El programa de sed entra por -f <(printf) (printf es builtin): los secretos no salen en `ps`.
-RENDERED="$(sed -f <(printf 's|__ECOIN_RPC_USER__|%s|g\ns|__ECOIN_RPC_PASS__|%s|g\ns|__WALLET_BOT_PUB_ID__|%s|g\n' \
-  "$RPC_USER" "$RPC_PASS" "$PUB_ID") "$TEMPLATE")"
+RENDERED="$(sed -f <(printf 's|__ECOIN_RPC_USER__|%s|g\ns|__ECOIN_RPC_PASS__|%s|g\n' \
+  "$RPC_USER" "$RPC_PASS") "$TEMPLATE")"
 [ -n "$RENDERED" ] || die "el render salio vacio"
 
 if [ -e "$OUT" ]; then
