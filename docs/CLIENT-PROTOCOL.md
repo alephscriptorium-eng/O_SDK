@@ -205,8 +205,15 @@ sus `*.nul-damaged-bak` (5,7 GB) son los primeros candidatos a borrar.
 > Es un **protocolo para cualquier habitante** que quiera su cartera: no depende de ninguna identidad
 > concreta. Publicar la dirección es siempre un acto **manual, único y tuyo**: nada de esta sección lo
 > hace por ti. Doc hermana (el lado del banco): `PUB/ECOIN-PROTOCOL.md`. Asiento: D-O19.
-> Se escribió sobre Oasis 1.1.2; upstream anuncia cambios en la 1.1.3 (autodetección de `ecoind`):
-> al hacer ese upgrade, releer §8.2 y el preflight de `PUB/ECOIN-PROTOCOL.md` §5.
+> Se escribió sobre Oasis 1.1.2.
+>
+> **AVISO · Oasis 1.1.4 (2026-09-19).** El árbol `src/` de `main` ya es 1.1.4 y esta sección **todavía
+> no**: §8.3, §8.4 y §8.7 describen un cableado que upstream cambió (el estado bancario vive en
+> `~/.ssb/oasis/banking`, `src/configs/wallet-addresses.json` ya no existe, `walletPub.pubId`
+> desapareció y el banco **se autodescubre** por los anuncios de los pubs). **No reconstruyas un cliente
+> con cartera sobre 1.1.4 hasta WP-O108**: con `OASIS_BANKING_DIR` definido habría dos mapas de
+> direcciones y riesgo de publicar una segunda dirección. Un cliente sin cartera (`wallet.url` vacía)
+> no corre ese riesgo.
 
 > **Modelo mental.** Oasis 1.1.2 lee la cartera **solo** de `src/configs/oasis-config.json`
 > (`wallet.{url,user,pass,fee}` y `walletPub.pubId`); las variables `ECOIN_RPC_*` no las lee nadie

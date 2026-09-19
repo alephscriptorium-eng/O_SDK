@@ -58,7 +58,7 @@ git rm -r -q src && git checkout oasis-upstream/main -- src/     # overlay LIMPI
 git checkout HEAD -- src/configs/blockchain-cycle.json           # único fichero fork-only bajo src/
 git checkout oasis-upstream/main -- docs/PUB/deploy.md          # docs upstream (opcional). clearnet.md lleva
                                                                  # una nota del fork en cabecera: si lo traes, repónla
-# Re-aplicar A MANO los 4 guards sobre los ficheros NUEVOS (tabla de abajo). Nunca `git checkout HEAD --`
+# Re-aplicar A MANO los guards sobre los ficheros NUEVOS (tabla de abajo). Nunca `git checkout HEAD --`
 # de los ficheros viejos: desde 1.0.x settings_view.js y ssb_config.js cambian mucho en upstream
 # (telegram, verificación, statePath) y recuperar la versión vieja rompe el árbol nuevo.
 ```
@@ -66,7 +66,14 @@ git checkout oasis-upstream/main -- docs/PUB/deploy.md          # docs upstream 
 Por qué `git rm` antes del checkout: `git checkout <tree> -- src/` sobreescribe pero **no borra**, y así
 quedaron restos de ciclos anteriores (`media-favorites.*`, retirados por upstream en 0.9.2) hasta 1.0.8.
 
-Los cuatro guards, en concreto (ciclo 1.0.8; idénticos en 1.1.2). Si upstream **no tocó** un fichero
+**Desde 1.1.3 el `git rm` es crítico, no higiene**: upstream borró 7 JSON de estado de `src/configs` y
+estrenó `src/configs/state-manager.js`, que al arrancar **migra** a `~/.ssb/oasis/**` cualquier fichero
+de estado que encuentre en `src/configs/` o en `~/.ssb/`. Un resto viejo en `src/configs` acabaría
+encima del estado real. Y el estado ya no vive donde vivía: ver `ECOIN-PROTOCOL.md` §5.4 antes de
+arrancar ninguna pieza con cartera. Si el entorno define `OASIS_TEST`, el backend arranca sin sbot
+embebido: comprobar que ningún compose la define.
+
+Los guards, en concreto (ciclo 1.0.8; idénticos en 1.1.2 y en 1.1.4, más el quinto). Si upstream **no tocó** un fichero
 entre las dos versiones (`git diff <tag-viejo> oasis-upstream/main --stat -- <fichero>` vacío), sí vale
 `git checkout HEAD -- <fichero>` para ese guard (en 1.1.2: `ssb_config.js` y `updater.js`); los que
 cambiaron (`backend.js`, `settings_view.js`) se editan a mano sobre el fichero nuevo. En Windows el
@@ -78,6 +85,7 @@ overlay sale **CRLF** en el árbol de trabajo (`autocrlf`): detecta el EOL antes
 | `ssb_config.js` | Reponer `mergeDeep` y usarlo en vez del spread (`config = mergeDeep(config, configData)`); reponer el bloque `OASIS_SERVER_CONFIG_OVERRIDE` antes de `const megabyte`. Conservar `config.statePath` de upstream. |
 | `updater.js` | Sustituir los dos `console.log("...new code updates are available!...")` por el mensaje del fork. Conservar el fix de ruta con `__dirname`. |
 | `settings_view.js` | Sustituir el `form({ action: "/update" })` por el `p(...)` informativo. |
+| `configs/snh-invite-code.json` | **Solo `url`** = dominio del pub de la instancia (D-O22): es la base de los enlaces de «compartir en clearnet» (`main_views.js`, `clearnetBase`). El invite de upstream se conserva. Efecto lateral: la caja de La Plaza en `/invites` muestra esa url. |
 
 **Fork-guard surface** (lo único que debe divergir de upstream dentro de `src/`):
 
@@ -87,6 +95,7 @@ overlay sale **CRLF** en el árbol de trabajo (`autocrlf`): detecta el EOL antes
 | `src/server/ssb_config.js` | `mergeDeep` + `OASIS_SERVER_CONFIG_OVERRIDE` + `blobs.max=50MB` |
 | `src/backend/updater.js` | auto-update = solo aviso |
 | `src/views/settings_view.js` | guard del botón de update |
+| `src/configs/snh-invite-code.json` | `url` = dominio del pub (desde 1.1.4, D-O22) |
 | `src/configs/blockchain-cycle.json` | fork-only (marcador de ciclo; preservar) |
 
 Fuera de `src/` se mantiene **wholesale** (nunca overlay): `Dockerfile`, `docker-compose*.yml`,
@@ -102,7 +111,7 @@ regenerar `pub/config/hub/oasis-config.json` desde el `src/configs/oasis-config.
 ### Verificación de invariantes (crítica)
 
 ```bash
-git diff oasis-upstream/main --stat -- src/       # SOLO los 4 guards + blockchain-cycle.json
+git diff oasis-upstream/main --stat -- src/       # SOLO los 5 guards + blockchain-cycle.json = 6 ficheros
 node --check src/backend/backend.js               # el edit a mano parsea
 grep -m1 '"version"' src/server/package.json      # = X.Y.Z
 ls src/configs/blockchain-cycle.json              # preservado

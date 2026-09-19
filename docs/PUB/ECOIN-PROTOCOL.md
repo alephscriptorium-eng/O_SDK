@@ -245,14 +245,14 @@ API estable. La imagen es compartida: aplica también todo `HUB-PROTOCOL.md` §5
 sbot embebido, `OASIS_*`).
 
 **5.1 Antes del merge (preflight del hub-wallet).** Sobre el árbol nuevo, cada línea debe dar ≥ 1
-(verificadas sobre 1.1.2 el 2026-09-18):
+(verificadas sobre 1.1.2 el 2026-09-18 y rehechas para **1.1.4** el 2026-09-19, §5.4):
 
 ```bash
 grep -c 'async function runPubEngineTick' src/backend/backend.js          # el motor sigue en backend.js…
 grep -c 'bankingModel.isPubNode()' src/backend/backend.js                 # …y sigue condicionado a isPubNode
-grep -c 'function isPubNode' src/models/banking_model.js                  # interruptor = walletPub.pubId === feed propio
-grep -c 'walletPub?.pubId' src/models/banking_model.js                    # clave de config del interruptor
-grep -c '"walletPub"' src/configs/oasis-config.json                       # la clave sigue en la config por defecto
+grep -c 'function isPubNode' src/models/banking_model.js                  # el interruptor sigue siendo isPubNode()…
+grep -c 'config?.pub === true' src/models/banking_model.js                # …y desde 1.1.3 es pub:true del ssb-config + wallet.url (antes walletPub.pubId)
+grep -c 'migrateAll' src/backend/backend.js                               # desde 1.1.3 el estado se muda a ~/.ssb/oasis/** al arrancar
 grep -c '"url": "http://localhost:7474"' src/configs/oasis-config.json    # wallet.url sigue siendo config (la plantilla lo pisa)
 grep -c 'process.env.OASIS_BANKING_DIR' src/models/banking_model.js       # estado bancario fuera de la capa efímera
 grep -c 'messagesByType({ type: "ubiClaim"' src/models/banking_model.js   # cómo ve el motor los reclamos (todo el log)
@@ -278,7 +278,9 @@ el gate G3 en local (bootstrap + motor apagado + ensayo del interruptor).
   en un upgrade de Oasis. Tras recrear el bot: mismo feed id, `banking/` intacto, **cero** mensajes
   `wallet` nuevos.
 
-**5.3 Tabla de contingencia 1.1.3** (mecanismo de autodetección desconocido hasta que haya fuente):
+**5.3 Tabla de contingencia 1.1.3** (escrita antes de que hubiera fuente; **resuelta el 2026-09-19**: se
+cumplió la primera fila —no hay autodetección, `wallet.*` sigue siendo config— y apareció un caso que la
+tabla no previó, la última fila):
 
 | Si la 1.1.3… | Qué hacemos | Coste |
 |---|---|---|
@@ -286,9 +288,33 @@ el gate G3 en local (bootstrap + motor apagado + ensayo del interruptor).
 | sondea `localhost:7474` | `network_mode: "service:ecoin"` en `oasis-wallet-bot` (comparten pila de red; `ecoin` sigue sin `ports`) | compose, 1 recreate del bot; revisar `rpcallowip` |
 | lee un `ecoin.conf` local para sacar credenciales | bind `:ro` de `/srv/oasis/ecoin/ecoin.conf` en la ruta que espere | compose, 1 recreate del bot |
 | lanza (`spawn`) su propio `ecoind` | **no soportado**: rompe «ecoind en contenedor propio»; se desactiva por config o se reporta a upstream antes de subir | decisión del custodio |
+| **(lo que pasó)** cambia el interruptor: desaparece `walletPub`; el motor corre si `pub: true` en el ssb-config y `wallet.url` no está vacía | con `pub: false` el motor queda **apagado**; `walletPub` sobrante se ignora. Interruptor nuevo y gestión de admin: **WP-O107** (D-O21) | 0 para seguir apagado |
 
 En todos los casos: el motor se **apaga** antes del upgrade del bot si hay dudas (§9) y se
 re-enciende tras verificar; la cartera no se mueve.
+
+**5.4 Lo que cambió en 1.1.3-1.1.4 y cómo se sube** (WP-O105).
+
+- **Estado bancario**: pasa a `~/.ssb/oasis/banking/` (`src/configs/state-manager.js`; migra solo desde
+  `~/.ssb/` y `src/configs/`, **no** desde `$OASIS_BANKING_DIR`). `backend.js` ignora esa variable y
+  `banking_model.js` no: con ella habría dos mapas de direcciones, y un mapa vacío hace que el primer
+  `GET /banking` pida otra dirección a `ecoind`. Por eso el compose **ya no define `OASIS_BANKING_DIR`**
+  ni monta `/app/banking`. **Antes del primer arranque en 1.1.4**, con el bot parado:
+
+  ```bash
+  D=<datos>/oasis-wallet-bot                      # /srv/oasis/oasis-wallet-bot en la casa
+  sudo mkdir -p $D/ssb-data/oasis/banking
+  sudo cp -a $D/banking/. $D/ssb-data/oasis/banking/
+  sudo chown -R --reference=$D/ssb-data/secret $D/ssb-data/oasis
+  ```
+
+  La carpeta vieja se conserva como backup. Verificar tras arrancar: la dirección de
+  `ssb-data/oasis/banking/wallet-addresses.json` es la misma, `ismine: true`, y el feed sigue con
+  **un** mensaje `wallet`.
+- **Interruptor**: §9 entero queda obsoleto (ver su cabecera).
+- **Anuncios**: `pubAvailability` ya solo se publica al cambiar de estado o cada 12 h, y no en `GET /banking`.
+- **Sin arreglar en 1.1.4**: §12 (paga cualquier `ubiClaim` visible, suelo de 1 ECO sin fondos,
+  `ReferenceError` de la autopublicación, alta no idempotente).
 
 ## 6. Disco
 
@@ -362,6 +388,14 @@ feed queda huérfana para siempre (el mensaje `wallet` es permanente) · el clie
 a este `ecoind` (WP-O103: guarda anti-remoto del entrypoint, `../CLIENT-PROTOCOL.md` §8).
 
 ## 9. El interruptor del motor
+
+> **OBSOLETO desde Oasis 1.1.4 (2026-09-19).** Lo que sigue describe el interruptor de 1.1.2
+> (`OASIS_WALLET_BOT_PUB_ID` → `walletPub.pubId`), que upstream eliminó. En 1.1.4 el motor corre si el
+> ssb-config del bot dice `pub: true` y `wallet.url` no está vacía. El nuestro dice `pub: false`: **motor
+> apagado**, y poner `OASIS_WALLET_BOT_PUB_ID` no hace nada. **No cambies `pub` a mano**: además de
+> encender el motor cambia el plugin de invites del sbot (`ssb-invite`), y eso no está ensayado. El
+> interruptor nuevo y la gestión *encender → comprobar → pausar* son **WP-O107** (D-O21). El reparto no
+> crea dinero: redistribuye ECO de la cartera, `pool = min(saldo − 500, 2000, 0,2·saldo)`.
 
 **Encender** (solo con dote recibida, backup hecho y confirmación expresa del custodio):
 
