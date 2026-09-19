@@ -63,8 +63,8 @@ viajar por SSB como blob.
 - **No siembra ni descarga.** No hay ninguna dependencia BitTorrent en el árbol: ni `webtorrent`, ni
   `bittorrent-dht`, ni `parse-torrent`, ni tracker (búsqueda en `src/` y `package.json` [V]).
   Tener Oasis abierto no sirve el contenido a nadie: solo replica el **anuncio**.
-- **No interpreta el `.torrent`**: no extrae infohash, nombre, tamaño ni semillas web; `size` lo
-  teclea quien publica. No hay campo para `magnet:` ni para `ed2k://` (la descripción es texto libre).
+- **No interpreta el `.torrent`**: no extrae infohash, nombre, tamaño ni semillas web; `size` es el
+  tamaño **del fichero `.torrent`** subido (`backend.js:8866`), no el de la obra (corregido en `07`). No hay campo para `magnet:` ni para `ed2k://` (la descripción es texto libre).
 - **No verifica procedencia**: la confianza es la del autor del mensaje SSB (su feed firmado), no la
   del contenido al que apunta el torrent.
 

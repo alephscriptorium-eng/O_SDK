@@ -681,6 +681,9 @@ Dep: WP-O106.
 **Estado** · 📋 2026-09-19: **planificado**; plan aprobado por el custodio, sin
 ejecutar. Dosier con lo explorado, las opciones y el plan verbatim:
 `docs/ROADMAP/p2p/` (el plan, en `06-plan-wp-o110.md`). Asiento D-O24.
+**Antes de ejecutar**: `07-revision-y-secuencia.md` (revisión contra 1.1.4: el
+anuncio en Oasis es el **último** paso de la fase 0; «Torrents en clearnet»
+solo desde el formulario del navegador). Dep: WP-O108.
 
 **BRIEF** · El pub es un hub: lanza obras y las suelta. Añadir a o-sdk, en
 paralelo al Teatro y sin tocar `src/`: (A) **artefactos por generación

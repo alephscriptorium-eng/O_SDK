@@ -27,6 +27,7 @@ Base de código: o-sdk `main` en `74d5c6a` (2026-09-19), con `src/` = **Oasis 1.
 | `04-infra-y-reglas.md` | El VPS y las reglas de la casa que condicionan el diseño (recursos, puertos, patrón de servicio opcional, irreversibles) |
 | `05-conversacion.md` | El hilo: qué se preguntó, qué se corrigió, qué se decidió y por qué |
 | `06-plan-wp-o110.md` | El plan aprobado, verbatim |
+| `07-revision-y-secuencia.md` | **Revisión del plan contra Oasis 1.1.4 y el estado real**: 10 correcciones y la secuencia de la fase 0, con el anuncio como último paso |
 
 ## En una página
 
@@ -43,7 +44,7 @@ Base de código: o-sdk `main` en `74d5c6a` (2026-09-19), con `src/` = **Oasis 1.
 
 ## Estado
 
-- Plan WP-O110 aprobado [C]; ejecución pendiente de abrir la rama.
+- Plan WP-O110 aprobado [C]; ejecución pendiente de abrir la rama. **Leer `07` antes de ejecutar.**
 - `pendiente` medir el tráfico saliente real del VPS antes de fijar el tope de subida de las semillas
   (no hay dato de cuota en ningún repo de la casa [E]).
 - Siguiente paso anotado, fuera de este WP: paquetes delta por generación (la media de una obra solo crece).
