@@ -645,6 +645,8 @@ Dep: WP-O104. Relación: WP-O97 (upgrade anterior).
 
 | **WP-O106** | **P1** | Aplicar en el VPS: 1.1.4 + renombrado de los dos bots |
 
+**Estado** · ✅ 2026-09-19: aplicado sin paradas (`plan/REPORTES/WP-O106-aplicacion-vps-1.1.4.md`).
+
 **BRIEF** · pub → HUB → bot-2; renombrado con `HUB-PROTOCOL.md` §12; reporte con
 correcciones al protocolo. GO expreso antes del deploy y de cada `about`.
 Dep: WP-O105.

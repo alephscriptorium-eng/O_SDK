@@ -365,6 +365,10 @@ con seed por host (`7ed4641`) · el contador de `contact` del pub con `grep -c` 
 binario (usar `grep -a -o | wc -l` o buscar `"contact":"<HUB_ID>"`) · el site se subió fichero a
 fichero con merge a tres bandas en vez de `deploy-site.sh` (riesgo 10 del plan).
 
+**Upgrade 2026-09-19 (registro).** 1.1.2 → 1.1.4 (WP-O106): estado migrado por upstream a
+`ssb-data/oasis/**`, `private` = 0, feed id igual. La cuenta pasa a llamarse `clearnet.escrivivir.co`
+(§12; segundo `about` del feed). Journal `--version 1.1.4 --mode server+hub+wallet`.
+
 Cada upgrade posterior: §5 completo + una línea del journal con `--mode server+hub`.
 Cada semana: §6 `status --json`. Riesgos abiertos heredados del plan (`v2.md` «Riesgos y
 decisiones abiertas»): `robots.txt` para `/c/blob/`, 200 que parecen 404 (upstream, WP-O83),
@@ -395,9 +399,11 @@ Precondiciones: texto literal (`name` + `description`) aprobado por el custodio 
 de instancia como *propuesto*; nombre dentro de los máximos de `AGENTES.md` §5; descripción < 6 KB y
 sin ángulos ni etiquetas (el saneado los elimina; el formulario no comprueba el límite de mensaje SSB).
 
-1. **Ventana no pública.** El formulario de perfil no existe en modo público. En el `.env` del host,
-   la variable `*_PUBLIC` del bot a `false` (`OASIS_HUB_PUBLIC`, `OASIS_WALLET_BOT_PUBLIC`) y
-   `up -d --no-deps <servicio>`. En un bot con ruta pública, durante la ventana el edge sigue sirviendo
+1. **Ventana no pública.** El formulario de perfil no existe en modo público. **Sin tocar el `.env` del
+   host**: el entorno del shell manda sobre `--env-file`, así que basta
+   `OASIS_HUB_PUBLIC=false $C up -d --no-deps oasis-hub` (o `OASIS_WALLET_BOT_PUBLIC=false` con
+   `oasis-wallet-bot`); el paso 5 es el mismo `up` sin la variable. Esperar a que `GET /profile/edit`
+   dé 200 desde el loopback antes de publicar. En un bot con ruta pública, durante la ventana el edge sigue sirviendo
    lo que tenga en caché; mantenerla corta.
 2. **Contar antes** los mensajes **del propio feed**, por tipo. Un bot con `hops` > 0 replica los `about`
    de media red: contar `"type":"about"` a secas no sirve (corrección del 2026-09-19, WP-O106). El autor
@@ -414,9 +420,13 @@ sin ángulos ni etiquetas (el saneado los elimina; el formulario no comprueba el
    ```bash
    docker exec <contenedor> curl -s -o /dev/null -w '%{http_code}\n' \
      -H 'Host: localhost:3000' -H 'Referer: http://localhost:3000/profile/edit' \
-     -F 'name=<nombre>' -F 'description=<descripción en una línea>' \
+     -F 'name=<nombre>' -F 'description=</tmp/desc.txt' \
      http://localhost:3000/profile/edit
    ```
+
+   La descripción viaja en un fichero (`-F 'campo=</ruta'` lee su contenido): una línea, UTF-8, sin salto
+   final; se sube al host, se copia al contenedor con `docker cp` y se borra después. Así no hay comillas
+   ni acentos que escapar a través de ssh y `docker exec`.
 
    **Bot de cartera** (tiene dirección ECOin publicada): añadir `-F 'vis_wallet=on'`. Sin ese campo, y
    mientras el bot no esté anunciado como pub de RBU, los clientes no pueden usar su dirección para

@@ -147,8 +147,8 @@ y `ai-models`. Con el HUB activo, también `/srv/oasis/oasis-hub/ssb-data` (su `
     Comprueba `df -h /` y `docker system df`.
   - **Rollback preparado**: `docker tag oasis-pub-scriptorium:latest oasis-pub-scriptorium:<ver-vieja>`
     y `tar -C /opt/oasis-scriptorium -czf /srv/oasis/src-<ver-vieja>.tgz src` antes de tocar nada.
-  - **Subir `src/`** desde la rama (solo trackeados, sin node_modules, EOL limpios):
-    `git archive upgrade/oasis-X.Y.Z src | ssh scriptorium-vps 'cd /opt/oasis-scriptorium && rm -rf src.new && mkdir src.new && tar -x -C src.new && mv src src.old && mv src.new/src src'`
+  - **Subir `src/`** desde la rama (solo trackeados, sin node_modules; **en Windows `git archive` aplica `autocrlf`** y el árbol llegaría en CRLF: de ahí el `-c`; comprobar en destino con `grep -c $'' src/backend/backend.js` = 0):
+    `git -c core.autocrlf=false archive upgrade/oasis-X.Y.Z src | ssh scriptorium-vps 'cd /opt/oasis-scriptorium && rm -rf src.new && mkdir src.new && tar -x -C src.new && mv src src.old && mv src.new/src src'`
   - **Build antes, recreate después** (el pub sigue sirviendo durante el build):
     `docker compose --env-file .env.prod -f docker-compose.pub.yml build oasis-pub` y luego
     `... up -d --no-deps oasis-pub`. No uses el `deploy.sh` del VPS: es una copia vieja, hace

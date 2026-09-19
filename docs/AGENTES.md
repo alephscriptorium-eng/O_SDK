@@ -86,6 +86,8 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | `bootstrap.dat` se reimporta en cada arranque | comprobar `blk0001.dat`/`txleveldb`/`bootstrap.dat.old`, no `blkindex.dat` | ECOIN §14 |
 | Tras un upgrade reaparece estado viejo o ficheros fantasma | el overlay se hizo sin `git rm -r src`: los ficheros que upstream borró siguen ahí | UPGRADE §2 |
 | Desde Oasis 1.1.3: una segunda dirección ECOin, o el mapa de direcciones «vacío» | el estado vive en `~/.ssb/oasis/**`; `OASIS_BANKING_DIR` solo lo honra medio código | ECOIN §5 · UPGRADE §2 |
+| `src/` llega al host con CRLF | en Windows `git archive` aplica `autocrlf` al empaquetar: `git -c core.autocrlf=false archive …` | UPGRADE §4 |
+| Un contador de mensajes da cientos en un bot recién nacido | con `hops` > 0 el log trae los mensajes de media red: contar **por autor** | HUB §12 |
 | El backend arranca sin sbot embebido | `OASIS_TEST` definido en el entorno (desde 1.1.3) | UPGRADE §1 |
 | El nombre nuevo de un feed no aparece | `nameCache` es memoria del proceso: reiniciar el nodo que lo muestra | HUB §12 |
 | El build del portal rompe | tokens entre ángulos fuera de código (Vue los lee como etiquetas) o enlaces muertos (`ignoreDeadLinks: false`) | `docs/proyecto.md` |

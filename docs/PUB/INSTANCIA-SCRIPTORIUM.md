@@ -41,7 +41,8 @@ nombre puede cambiar.
 | 2 | `ecoin.escrivivir.co` | ecoin (cartera) · scriptorium | hub-wallet: cartera ECOin del pub, custodia la dote y reparte la RBU; **sin ruta pública** | `oasis-pub-wallet-bot` + `oasis-pub-ecoin` · `/srv/oasis/oasis-wallet-bot`, `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
-Motor de RBU: **apagado** (rediseño del interruptor para Oasis 1.1.4 en WP-O107).
+Oasis **1.1.4** en pub, HUB y bot-2 desde el 2026-09-19 (WP-O106). Motor de RBU: **apagado**
+(`pub: false`; interruptor nuevo en WP-O107), así que la casa **no sale todavía** en la lista de pubs de Banking.
 
 Nombres anteriores (siguen en el log de cada feed; D-O14): `azofaifo-scriptorium-skin-bot-1`,
 `azofaifo-scriptorium-wallet-bot-2`.
@@ -49,9 +50,9 @@ Nombres anteriores (siguen en el log de cada feed; D-O14): `azofaifo-scriptorium
 ## 4. `about` literal de cada bot
 
 Lo que se publica se transcribe aquí **tal cual**, con fecha. Estado: *propuesto* hasta que el reporte
-del WP que lo publica diga lo contrario.
+del WP que lo publica diga lo contrario. En el feed la descripción va en **una sola línea**.
 
-**Bot 1** — propuesto 2026-09-19 (WP-O106):
+**Bot 1** — **publicado 2026-09-19** (WP-O106; segundo `about` del feed):
 
 ```
 name:        clearnet.escrivivir.co
@@ -62,7 +63,7 @@ description: Bot de soporte nº 1 de pub.escrivivir.co · tipo clearnet · piel 
              Antes: azofaifo-scriptorium-skin-bot-1.
 ```
 
-**Bot 2** — propuesto 2026-09-19 (WP-O106); se publica con `vis_wallet=on` (HUB-PROTOCOL §12 paso 3):
+**Bot 2** — **publicado 2026-09-19** (WP-O106; segundo `about` del feed) con `vis_wallet=on` (HUB-PROTOCOL §12 paso 3):
 
 ```
 name:        ecoin.escrivivir.co
