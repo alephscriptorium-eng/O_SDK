@@ -9,7 +9,7 @@
 #   D="docker compose -p o-sdk-drill -f docker-compose.yml -f client/docker-compose.drill.yml --env-file client/.env.drill"
 #
 #   # 1. preparar (env y volumen desechables; identidad nueva, sin pubs ni invite)
-#   mkdir -p volumes-dev/drill/{ssb-data,ai-models,logs,client-state/banking}
+#   mkdir -p volumes-dev/drill/{ssb-data,ai-models,logs,client-state}
 #   [ -f volumes-dev/drill/ssb-data/gossip.json ] || echo '[]' > volumes-dev/drill/ssb-data/gossip.json
 #   ECOIN_ENV_FILE=client/.env.drill ECOIN_VOLUME=o-sdk-drill-ecoin-data \
 #     ECOIN_STATE_DIR=volumes-dev/drill/client-state bash client/scripts/ecoin-init.sh --mode own

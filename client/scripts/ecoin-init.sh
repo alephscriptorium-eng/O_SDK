@@ -24,7 +24,7 @@
 #      COMPOSE_PROFILES, ECOIN_RPC_URL y OASIS_WALLET_PUB_ID; el resto de líneas no se toca.
 #   2. Volumen docker EXTERNO de la cartera (etiqueta o-sdk.role=client-wallet) si no existe.
 #      `docker compose down -v` no borra volúmenes externos. PROHIBIDO `docker volume prune`.
-#   3. mkdir -p volumes-dev/client-state/banking (estado persistente de la GUI y del banking).
+#   3. mkdir -p volumes-dev/client-state (oasis-config.json de la GUI; el banking vive en ssb-data/oasis desde 1.1.3).
 #
 # Variables (para el drill; los valores por defecto son los del cliente real):
 #   ECOIN_ENV_FILE   fichero env            (default <repo>/.env; drill: client/.env.drill)
@@ -150,7 +150,7 @@ print_state() {
   else
     echo "  volumen cartera  : (docker no disponible: no se puede comprobar)"
   fi
-  echo "  estado cliente   : ${STATE_DIR#"$REPO_ROOT"/}/banking $([ -d "$STATE_DIR/banking" ] && echo '(existe)' || echo 'NO existe')"
+  echo "  estado cliente   : ${STATE_DIR#"$REPO_ROOT"/} $([ -d "$STATE_DIR" ] && echo '(existe)' || echo 'NO existe')"
 }
 if [ $PRINT = 1 ]; then print_state; exit 0; fi
 
@@ -216,7 +216,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 4. estado persistente del cliente
-mkdir -p "$STATE_DIR/banking"
+mkdir -p "$STATE_DIR"
 
 echo
 print_state
