@@ -116,7 +116,7 @@ fi
 mkdir -p "$DST/flume" "$DST/keys" volumes-dev/ai-models volumes-dev/logs volumes-dev/client-state/banking
 # El mapa de direcciones ECOin va POR FEED: con otra identidad, el de la anterior no vale y se aparta
 # (no se borra). La cartera (volumen docker o-sdk-client-ecoin-data) NO se toca: wallet.dat no depende del feed.
-WMAP="volumes-dev/client-state/banking/wallet-addresses.json"
+WMAP="volumes-dev/client-state/banking/wallet-addresses.json"   # resto de 1.1.2; en 1.1.4 el mapa viaja dentro de ssb-data (oasis/banking) y se aparta con él
 if [ $FORCE = 1 ] && [ -f "$WMAP" ]; then
   mv "$WMAP" "$WMAP.pre-import-$TS"
   info "mapa de direcciones ECOin apartado en $WMAP.pre-import-$TS (la cartera no se toca)"

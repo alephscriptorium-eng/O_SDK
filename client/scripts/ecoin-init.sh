@@ -24,7 +24,7 @@
 #      COMPOSE_PROFILES, ECOIN_RPC_URL y OASIS_WALLET_PUB_ID; el resto de líneas no se toca.
 #   2. Volumen docker EXTERNO de la cartera (etiqueta o-sdk.role=client-wallet) si no existe.
 #      `docker compose down -v` no borra volúmenes externos. PROHIBIDO `docker volume prune`.
-#   3. mkdir -p volumes-dev/client-state/banking (estado persistente de la GUI y del banking).
+#   3. mkdir -p volumes-dev/client-state (oasis-config.json de la GUI; el banking vive en ssb-data/oasis desde 1.1.3).
 #
 # Variables (para el drill; los valores por defecto son los del cliente real):
 #   ECOIN_ENV_FILE   fichero env            (default <repo>/.env; drill: client/.env.drill)
@@ -150,7 +150,7 @@ print_state() {
   else
     echo "  volumen cartera  : (docker no disponible: no se puede comprobar)"
   fi
-  echo "  estado cliente   : ${STATE_DIR#"$REPO_ROOT"/}/banking $([ -d "$STATE_DIR/banking" ] && echo '(existe)' || echo 'NO existe')"
+  echo "  estado cliente   : ${STATE_DIR#"$REPO_ROOT"/} $([ -d "$STATE_DIR" ] && echo '(existe)' || echo 'NO existe')"
 }
 if [ $PRINT = 1 ]; then print_state; exit 0; fi
 
@@ -204,11 +204,7 @@ else
   env_has COMPOSE_PROFILES || env_set COMPOSE_PROFILES ""
   env_has ECOIN_RPC_URL    || env_set ECOIN_RPC_URL ""
 fi
-if [ $PUB_ID_SET = 1 ]; then
-  env_set OASIS_WALLET_PUB_ID "$PUB_ID"
-else
-  env_has OASIS_WALLET_PUB_ID || env_set OASIS_WALLET_PUB_ID ""
-fi
+[ $PUB_ID_SET = 1 ] && warn "--pub-id ya no hace nada: desde Oasis 1.1.3 el cliente descubre el banco por los anuncios de los pubs"
 chmod 600 "$ENV_FILE" 2>/dev/null || true
 
 # ---------------------------------------------------------------- 3. volumen externo de la cartera
@@ -220,7 +216,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 4. estado persistente del cliente
-mkdir -p "$STATE_DIR/banking"
+mkdir -p "$STATE_DIR"
 
 echo
 print_state
@@ -234,5 +230,4 @@ case "$(current_mode)" in
     echo "de una wallet.dat propia: npm run ecoin:up → npm run ecoin:address → npm run client:wallet:backup."
     echo "Para saldo/envíos/historial en la GUI: bash client/scripts/ecoin-init.sh --mode own" ;;
 esac
-[ -n "$(env_get OASIS_WALLET_PUB_ID)" ] || echo "Banco sin definir: --pub-id <feed del banco> (sin él no aparece el botón de claim de la RBU)."
 warn "la cartera vive en el volumen docker $VOLUME: PROHIBIDO «docker volume prune» / «docker system prune --volumes»."

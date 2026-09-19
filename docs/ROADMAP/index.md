@@ -45,7 +45,7 @@ se publica su **copia saneada** (sin rutas de disco locales, sin recursos extern
 
 **Publicidad y redes** — [índice](./publicidad-rrss/00-indice.md) · [01 ficha de la obra](./publicidad-rrss/01-ficha-obra.md) · [02 protocolo](./publicidad-rrss/02-protocolo-publicidad.md) · [03 call4obras](./publicidad-rrss/03-call4obras.md) · [04 hitos en el timeline](./publicidad-rrss/04-hitos-timeline.md) · [05 propuestas](./publicidad-rrss/05-propuestas.md) · banners: <a href="/dosieres/publicidad-rrss/banners/banner-01-ficha.html" target="_blank">1 ficha</a> · <a href="/dosieres/publicidad-rrss/banners/banner-02-delta.html" target="_blank">2 delta</a> · <a href="/dosieres/publicidad-rrss/banners/banner-03-tres-puertas.html" target="_blank">3 tres puertas</a> · <a href="/dosieres/publicidad-rrss/banners/banner-04-call4obras.html" target="_blank">4 call4obras</a> · <a href="/dosieres/publicidad-rrss/banners/banner-05-terminal.html" target="_blank">5 terminal</a>
 
-**P2P** — [índice](./p2p/00-indice.md) · [01 lo que Oasis ya trae](./p2p/01-oasis-nativo.md) · [02 las opciones](./p2p/02-opciones.md) · [03 lo que añade el pub](./p2p/03-extension-pub.md) · [04 infra y reglas](./p2p/04-infra-y-reglas.md) · [05 el hilo](./p2p/05-conversacion.md) · [06 el plan WP-O110](./p2p/06-plan-wp-o110.md)
+**P2P** — [índice](./p2p/00-indice.md) · [01 lo que Oasis ya trae](./p2p/01-oasis-nativo.md) · [02 las opciones](./p2p/02-opciones.md) · [03 lo que añade el pub](./p2p/03-extension-pub.md) · [04 infra y reglas](./p2p/04-infra-y-reglas.md) · [05 el hilo](./p2p/05-conversacion.md) · [06 el plan WP-O110](./p2p/06-plan-wp-o110.md) · [07 revisión y secuencia](./p2p/07-revision-y-secuencia.md)
 
 ## Lo que no está aquí, y dónde está
 
