@@ -680,8 +680,9 @@ Dep: WP-O106.
 
 | **WP-O110** | **P2** | Teatro P2P · las obras salen a la red (torrent + eD2k/Kad) con cartelera |
 
-**Estado** · 📋 2026-09-19: **planificado**; plan aprobado por el custodio, sin
-ejecutar. Dosier con lo explorado, las opciones y el plan verbatim:
+**Estado** · 🟡 2026-09-19: **fase 0 hecha** (`plan/REPORTES/WP-O110-teatro-p2p-fase0.md`): *Aleph Cero*
+congelada, torrent con semilla web + magnet + ed2k + metalink, anuncio en Oasis. Pendiente: semillas propias,
+cartelera, medición, puerta P2P en el sitio. Plan aprobado por el custodio. Dosier con lo explorado, las opciones y el plan verbatim:
 `docs/ROADMAP/p2p/` (el plan, en `06-plan-wp-o110.md`). Asiento D-O24.
 **Antes de ejecutar**: `07-revision-y-secuencia.md` (revisión contra 1.1.4: el
 anuncio en Oasis es el **último** paso de la fase 0; «Torrents en clearnet»

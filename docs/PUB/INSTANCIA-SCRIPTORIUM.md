@@ -82,6 +82,7 @@ description: Bot de soporte nº 2 de pub.escrivivir.co · tipo ecoin (cartera) �
 | HUB clearnet `/c` | `HUB-PROTOCOL.md` | §10 |
 | hub-wallet (ECOin) | `ECOIN-PROTOCOL.md` | §13 |
 | Teatro · sidecar RRSS | `TEATRO-PROTOCOL.md` · `RRSS-SIDECAR-PROTOCOL.md` | en cada uno |
+| Teatro P2P | `TEATRO-P2P-PROTOCOL.md` | §5 · *Aleph Cero* **congelada** el 2026-09-19; enlaces en `/teatro/aleph-cero/p2p/p2p.json`, anuncios de Oasis en `p2p/oasis.json` |
 
 Backups de cartera: `devops/backups/ecoin/` (no versionado). Particularidades del host que ya
 costaron una parada: `HUB-PROTOCOL.md` §9 y `ECOIN-PROTOCOL.md` §11.

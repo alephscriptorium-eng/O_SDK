@@ -13,6 +13,17 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
   el plan aprobado, verbatim.
 - `scripts/roadmap-import.py --only <slug>`: reimporta un dosier sin tocar los demás ni `index.md`.
 
+### Added — Teatro P2P, fase 0 (WP-O110, 2026-09-19)
+
+*Aleph Cero* sale a la red sin demonios nuevos. Reporte `plan/REPORTES/WP-O110-teatro-p2p-fase0.md`.
+
+- **Congelar una obra**: `CONGELADO.json` en el host; `deploy-teatro.sh` deja de regenerar zips con enlaces
+  publicados y una edición nueva sale con `TEATRO_ZIP_SUFIJO`.
+- **`devops/scripts/teatro-p2p.sh`** `status · congelar · publicar` y la imagen efímera `teatro-p2p-tools`:
+  torrent con **semilla web** (BEP 19), magnet, ed2k con AICH, metalink, `p2p.json` firmado y ficha sin JS.
+- Verificado desde fuera: descarga completa solo con el `.torrent`, sin pares, sha256 correcto.
+- Anuncio en el módulo Torrents de Oasis (2 mensajes) y **`docs/PUB/TEATRO-P2P-PROTOCOL.md`**.
+
 ### Changed — Cliente en Oasis 1.1.4 con cartera propia (WP-O108, 2026-09-19)
 
 Reporte `plan/REPORTES/WP-O108-cliente-1.1.4.md`. Ensayado con identidad desechable y aplicado al cliente del custodio.
