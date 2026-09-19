@@ -18,6 +18,11 @@ D = dict(
     brain_sha="634feaf422054ce911ceb52168a987aa527f5f0eb9cbcbf6a936e65ec95c24bf",
     last_id="2100802059889000553", last_at="2026-09-18 04:20 UTC", first_at="2024-06-30",
     url="pub.escrivivir.co/teatro", obra="pub.escrivivir.co/teatro/aleph-cero",
+    # P2P (fuente única: https://pub.escrivivir.co/teatro/aleph-cero/p2p/p2p.json)
+    frozen="2026-09-19", p2p="pub.escrivivir.co/teatro/aleph-cero/p2p",
+    zip_btih="7b50c7cdaffc37099997241ccf75bffac29c704c", brain_btih="14eb4b43908efb2f1e60dad4515474092843c2f8",
+    zip_ed2k="f5c566b4e323de1d3ec9acbd9810070e", brain_ed2k="d1a71f76980ce63e05d99f341041ff06",
+    zip_bytes_raw="1631937463", brain_bytes_raw="35064225",
 )
 
 CSS = """
@@ -172,6 +177,31 @@ navegar · visor  …/aleph-cero/navegador.html</div>
 <div class="cmd"><b>CALL4CYPHERPUNKS · CALL4OBRAS</b>
 secretaria@escrivivir.co · asunto: call4obras
 DIY: solarnethub.com · o-sdk.escrivivir.co</div></div>
+""" + FOOT
+
+# 6 ── P2P: la obra sale a la red ──
+BANNERS["banner-06-p2p"] = KICK + """<div class="stamp" style="right:215px">❄ congelada · en la red</div>
+<div class="row" style="align-items:center"><div><h1>Aleph Cero<small>sale a la red · torrent con semilla web · eD2k · metalink · Oasis</small></h1></div><div class="sig">__SIGIL__</div></div>
+<div class="washi"></div>
+<div class="row">
+<div class="box"><div class="k">01 · bittorrent</div><div class="t">Torrent con semilla web</div><div class="p">BEP 19: el propio HTTPS del pub es una semilla permanente. Baja aunque no haya nadie más. Cuando termine, <b>déjalo sembrando</b>.</div></div>
+<div class="box"><div class="k">02 · ed2k / kad</div><div class="t">eMule · aMule</div><div class="p">Enlace ed2k con AICH de cada fichero. Los mismos bytes, otra red.</div></div>
+<div class="box"><div class="k">03 · metalink</div><div class="t">aria2c</div><div class="p">HTTPS y BitTorrent a la vez, con el sha-256 dentro: <b>aria2c &lt;fichero&gt;.meta4</b></div></div>
+<div class="box inv"><div class="k">04 · oasis</div><div class="t">Anunciado en la red</div><div class="p">Módulo Torrents de Oasis (SSB): el anuncio se replica sin servidor. Oasis anuncia; los bytes los sostiene quien comparte.</div></div>
+</div>
+<div class="u" style="text-align:center;margin-top:14px">{p2p}/</div>
+<h2>Edición congelada el {frozen} · estos bytes no cambian</h2>
+<table>
+<tr><th>fichero</th><th>tamaño</th><th>infohash bittorrent · hash ed2k</th></tr>
+<tr><td><b>{zip}</b><br><span class="k">todo: páginas + corpus + media</span></td><td>{zip_size}</td><td class="sha">btih {zip_btih}<br>ed2k {zip_ed2k}</td></tr>
+<tr><td><b>{brain}</b><br><span class="k">solo texto, índices y herramientas</span></td><td>{brain_size}</td><td class="sha">btih {brain_btih}<br>ed2k {brain_ed2k}</td></tr>
+</table>
+<h2>Checksums · da igual por dónde llegue: verifica</h2>
+""" + SHAS + """
+<div class="cmd" style="margin-top:10px"><i>$</i> aria2c https://{p2p}/{brain}.torrent && sha256sum -c {brain}.sha256
+<i># firma ed25519 (teatro@escrivivir.co): p2p.json.sig · {zip}.sha256.sig · allowed_signers</i></div>
+<div class="row" style="margin-top:14px"><div class="box"><div class="t">el pub es un hub, no un almacén</div><div class="p">Sostiene la obra mientras está en cartelera. Después vive en quien la comparte.</div></div>
+<div class="box"><div class="t">call4obras · call4cypherpunks</div><div class="p">Hay sitio para tu obra: <b>secretaria@escrivivir.co</b> · asunto <b>call4obras</b>. O DIY: o-sdk.escrivivir.co</div></div></div>
 """ + FOOT
 
 for name, body in BANNERS.items():

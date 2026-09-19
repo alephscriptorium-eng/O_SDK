@@ -106,40 +106,67 @@ def main():
 
 
 def write_ficha(meta):
+    """Ficha P2P con la piel del propio sitio de la obra: su obra.css, su barra de navegación y sus bloques
+    (descarga, ficha, doc). Si la obra no trae hoja de estilos, queda HTML sobrio y legible."""
     e = html.escape
-    rows = []
-    for i in meta["ficheros"]:
-        rows.append(f"""
-<section>
-<h2>{e(i['file'])} <small>· {e(i['sizeHuman'])}</small></h2>
-<ul>
-<li><a href="{e(i['torrent'])}">.torrent</a> (lleva semilla web: baja aunque no haya nadie más)</li>
-<li><a href="{e(i['magnet'])}">magnet</a> · infohash <code>{e(i['infohash'])}</code></li>
-<li><a href="{e(i['ed2k'])}">ed2k</a> (eMule · aMule)</li>
-<li><a href="{e(i['metalink'])}">metalink</a> (aria2c: HTTPS y BitTorrent a la vez)</li>
-<li><a href="{e(i['https'])}">HTTPS directo</a></li>
-<li>sha256 <code>{e(i['sha256'])}</code> · <a href="{e(i['sha256Url'])}">.sha256</a> · <a href="{e(i['sigUrl'])}">firma ed25519</a></li>
-</ul>
-</section>""")
+    obra, titulo = meta["obra"], meta["titulo"]
+    root = f"/teatro/{obra}"
+    nav = f'<div class="nav-top"><a href="/teatro/">← Teatro</a> · <a href="{root}/">{e(titulo)}</a></div>'
+    try:
+        home = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
+        m = re.search(r'<div class="nav-top">.*?</div>', home, re.S)
+        if m:
+            nav = m.group(0)
+    except OSError:
+        pass
+    nav = nav.replace("</div>", f' · <a href="{root}/p2p/"><b>P2P</b></a></div>', 1) if "/p2p/" not in nav else nav
+    css = f'<link rel="stylesheet" href="{root}/assets/obra.css">' if os.path.isfile(os.path.join(ROOT, "assets", "obra.css")) else ""
+    blocks = []
+    for n, i in enumerate(meta["ficheros"]):
+        main = n == 0
+        blocks.append(f"""
+<div class="descarga"><div class="descarga-main">
+<div class="p-title">{e(i['file'])} · {e(i['sizeHuman'].replace('.', ','))}</div>
+<div class="p-copy">{'La obra completa: páginas, corpus, índices y <b>toda la media</b>.' if main else 'La parte ligera: corpus, índices y herramientas para inspeccionar la obra <b>sin bajar la media</b>.'}
+El torrent lleva <b>semilla web</b>: baja aunque no haya nadie más sembrando.</div>
+<a class="door-link door-main" href="{e(i['torrent'])}">.torrent ↓</a>
+<a class="door-link" href="{e(i['magnet'])}">magnet</a>
+<a class="door-link" href="{e(i['ed2k'])}">ed2k</a>
+<a class="door-link" href="{e(i['metalink'])}">metalink</a>
+<a class="door-link" href="{e(i['https'])}">HTTPS</a>
+<div class="ficha">SHA-256 de <code>{e(i['file'])}</code>:<br><code>{e(i['sha256'])}</code><br>
+Infohash BitTorrent: <code>{e(i['infohash'])}</code><br>
+Enlace ed2k (eMule · aMule): <code>{e(i['ed2k'])}</code><br>
+Comprobar: <code>sha256sum -c {e(i['file'])}.sha256</code> junto a <a href="{e(i['sha256Url'])}">{e(i['file'])}.sha256</a> ·
+<a href="{e(i['sigUrl'])}">firma ed25519</a> · <a href="{root}/allowed_signers">allowed_signers</a></div>
+</div></div>""")
+    cong = f" desde el {e(meta['congelado'])}" if meta["congelado"] else ""
     page = f"""<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{e(meta['titulo'])} · P2P · Teatro</title>
-<style>body{{font:16px/1.5 system-ui,sans-serif;max-width:46rem;margin:2rem auto;padding:0 1rem;background:#111;color:#ddd}}
-a{{color:#9cf}}code{{word-break:break-all;font-size:.85em}}small{{color:#999}}section{{border-top:1px solid #333;margin-top:1.5rem}}</style>
-</head><body>
-<p><a href="../">← {e(meta['titulo'])}</a> · <a href="../../">Teatro</a></p>
-<h1>{e(meta['titulo'])} · por P2P</h1>
-<p><strong>En cartelera.</strong> Estos ficheros están <strong>congelados</strong>{(' desde el ' + e(meta['congelado'])) if meta['congelado'] else ''}:
-sus bytes no cambian, así que los enlaces de esta página valen para siempre. Una edición futura saldrá con otro nombre.</p>
-{''.join(rows)}
-<section><h2>Verificar</h2>
-<p>Da igual por dónde llegue: <code>sha256sum -c &lt;fichero&gt;.sha256</code> y la firma con
-<code>ssh-keygen -Y verify -f allowed_signers -I teatro@escrivivir.co -n file -s &lt;fichero&gt;.sha256.sig &lt; &lt;fichero&gt;.sha256</code>
-(<a href="../allowed_signers">allowed_signers</a>). Todos los enlaces, en <a href="p2p.json">p2p.json</a> (<a href="p2p.json.sig">firma</a>).</p></section>
-<section><h2>Ayudar</h2><p>Cuando termine la descarga, <strong>deja tu cliente sembrando</strong>. El pub es un hub, no un almacén:
-sostiene la obra mientras está en cartelera; después vive en quien la comparte.</p></section>
-<p><small>Generado {e(meta['generado'])} · o-sdk · Teatro del Scriptorium</small></p>
-</body></html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{e(titulo)} · P2P · Teatro del Scriptorium</title>
+<meta name="description" content="{e(titulo)} por BitTorrent, eD2k y metalink: torrent con semilla web, magnet, ed2k, sha256 y firma.">
+<link rel="icon" type="image/png" sizes="32x32" href="/ico.png">
+{css}
+</head>
+<body>
+{nav}
+<header class="header"><div class="stamp">En cartelera</div><div class="kicker">Teatro del Scriptorium · las obras salen a la red</div><h1>{e(titulo)}</h1><div class="sub">por P2P</div><div class="sub2">BitTorrent con semilla web · eD2k/Kad · metalink. Los mismos bytes, verificables, por otro camino.</div><div class="issue">EDICIÓN CONGELADA{cong.upper()}</div></header><div class="washi"></div>
+<div class="callout">❄ Esta edición está <b>congelada</b>{cong}: sus bytes no cambian, así que los enlaces de esta página valen para siempre. Una edición futura saldrá con otro nombre.</div>
+{''.join(blocks)}
+<div class="doc">
+<h2>Verificar</h2>
+<p>Da igual por dónde llegue el fichero: el <code>sha256</code> tiene que ser el de arriba, y el <code>.sha256</code> va firmado con la clave ed25519 del Teatro:</p>
+<p><code>ssh-keygen -Y verify -f allowed_signers -I teatro@escrivivir.co -n file -s &lt;fichero&gt;.sha256.sig &lt; &lt;fichero&gt;.sha256</code></p>
+<p>Todos los enlaces de esta página, en un solo fichero firmado: <a href="p2p.json">p2p.json</a> · <a href="p2p.json.sig">firma</a>. Anuncios en Oasis: <a href="oasis.json">oasis.json</a>.</p>
+<h2>Ayudar</h2>
+<p>Cuando termine la descarga, <b>deja tu cliente sembrando</b>. El pub es un hub, no un almacén: sostiene la obra mientras está en cartelera; después vive en quien la comparte.</p>
+</div>
+<div class="footer">Generado {e(meta['generado'])} · <a href="{root}/">{e(titulo)}</a> · <a href="/teatro/">Teatro del Scriptorium</a></div>
+</body>
+</html>
 """
     with open(os.path.join(OUT, "index.html"), "w", encoding="utf-8") as fh:
         fh.write(page)
