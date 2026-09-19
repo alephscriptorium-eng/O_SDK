@@ -510,6 +510,13 @@ imprimió). (4) `healthy` tardó 70 s en el VPS, no 35.
 WP futuro anotado (sin numerar): **presentación comunitaria de los bots oficiales** — maquetar para
 la comunidad quiénes son los bots Azofaifo, qué firma cada uno y por qué la RBU llega de bot-2.
 
+**Upgrade 2026-09-19 (registro, WP-O106).** bot-2 en Oasis 1.1.4: estado bancario copiado a
+`ssb-data/oasis/banking/` (mismo sha256) y compose vivo sin `OASIS_BANKING_DIR`; **misma dirección**
+`EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`, un solo mensaje `wallet`, `private` = 0, motor apagado (`pub: false`,
+0 × `[UBI] PUB engine on`). `ecoin` no se recreó. La cuenta pasa a llamarse `ecoin.escrivivir.co` con
+`visibilityPrefs.wallet: true` (HUB §12). La carpeta vieja `/srv/oasis/oasis-wallet-bot/banking` se conserva
+como backup. Reporte `plan/REPORTES/WP-O106-aplicacion-vps-1.1.4.md`.
+
 ## 14. Hallazgos de los gates locales G1-G6 (2026-09-18)
 
 Contra el stack local en Docker Desktop, con una identidad desechable. Todos pasados.

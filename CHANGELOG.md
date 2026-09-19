@@ -13,6 +13,14 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
   el plan aprobado, verbatim.
 - `scripts/roadmap-import.py --only <slug>`: reimporta un dosier sin tocar los demás ni `index.md`.
 
+### Deployed — Oasis 1.1.4 y bots renombrados en `pub.escrivivir.co` (WP-O106, 2026-09-19)
+
+Reporte `plan/REPORTES/WP-O106-aplicacion-vps-1.1.4.md`. Pub, HUB y bot-2 en 1.1.4, mismos feed ids, misma
+dirección ECOin, motor de RBU apagado. Bots: **`clearnet.escrivivir.co`** y **`ecoin.escrivivir.co`**. La
+ejecución devolvió cinco correcciones al protocolo (conteo por autor, `git archive` y CRLF, ventana no
+pública sin tocar `.env.prod`, descripción en fichero, `vis_wallet=on`), ya en `HUB-PROTOCOL.md` §12,
+`UPGRADE-PROTOCOL.md` §4 y `AGENTES.md` §4.
+
 ### Changed — Oasis 1.1.4 (WP-O105, 2026-09-19)
 
 Reporte `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`. Gates locales pasados sobre estado real de 1.1.2.
