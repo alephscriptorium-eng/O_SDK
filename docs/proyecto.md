@@ -30,14 +30,26 @@ re-replica desde la red.
 
 ## Manuales operativos
 
+- **[Protocolo para agentes](/AGENTES)** — **empieza aquí**: qué leer según la
+  intención, reglas universales, acciones irreversibles, trampas conocidas y
+  convención de nombres de los bots. Datos de nuestro despliegue:
+  **[ficha de instancia](/PUB/INSTANCIA-SCRIPTORIUM)**.
 - **[Protocolo de upgrade](/PUB/UPGRADE-PROTOCOL)** — overlay del upstream,
-  re-aplicación de los 4 *fork-guards*, deploy por rol y healthcheck.
+  re-aplicación de los *fork-guards*, deploy por rol y healthcheck.
 - **[Protocolo de recuperación](/PUB/RECOVERY-PROTOCOL)** — triaje de
   integridad, salvamento del repo por *plumbing*, rebuild de imagen y la
   secuencia sbot-puro → sync → GUI que evita bifurcar el feed.
 - **[Protocolo del HUB clearnet](/PUB/HUB-PROTOCOL)** — el HUB web `/c`
   como *nodo de soporte* (segundo nodo SSB, misma imagen, caché nginx en
-  disco): activación, verificación, disco, memoria, upgrades y rollback.
+  disco): activación, verificación, disco, memoria, upgrades y rollback; serie de
+  bots de soporte y su renombrado.
+- **[Protocolo de ECOin](/PUB/ECOIN-PROTOCOL)** — hub-wallet del pub: `ecoind`
+  en contenedor propio y bot de cartera; backup, disco, memoria, RBU.
+- **[Protocolo del cliente](/CLIENT-PROTOCOL)** — app cliente: alta, importar
+  identidad, upgrade y cartera ECOin.
+- **Teatro**: **[obra](/PUB/TEATRO-PROTOCOL)** ·
+  **[curaduría](/PUB/TEATRO-CURADURIA-PROTOCOL)** ·
+  **[sidecar de RRSS](/PUB/RRSS-SIDECAR-PROTOCOL)**.
 
 ## Verificación
 

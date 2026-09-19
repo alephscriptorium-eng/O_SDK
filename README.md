@@ -81,8 +81,14 @@ operativos, reutilizables y verificados en producción:
 | Documento | Descripción |
 |-----------|-------------|
 | [Portal (web)](https://o-sdk.escrivivir.co) | Portada + Proyecto/DevOps |
+| **[Protocolo para agentes](docs/AGENTES.md)** | **Empieza aquí** (también [`AGENTS.md`](AGENTS.md)): qué leer según la intención, reglas, acciones irreversibles, trampas conocidas, nombres de bots |
+| [Ficha de instancia · Scriptorium](docs/PUB/INSTANCIA-SCRIPTORIUM.md) | Los datos de nuestro despliegue, y plantilla para el tuyo |
 | [Protocolo de upgrade](docs/PUB/UPGRADE-PROTOCOL.md) | Subir el fork a una versión upstream sin perder identidad ni _guards_ |
 | [Protocolo de recuperación](docs/PUB/RECOVERY-PROTOCOL.md) | Recuperar repo, imagen e identidad SSB tras un fallo de disco |
+| [Protocolo del HUB clearnet](docs/PUB/HUB-PROTOCOL.md) | HUB web `/c` como nodo de soporte; serie de bots y su renombrado |
+| [Protocolo de ECOin](docs/PUB/ECOIN-PROTOCOL.md) | hub-wallet del pub: `ecoind` en contenedor propio + bot de cartera, RBU |
+| [Protocolo del cliente](docs/CLIENT-PROTOCOL.md) | App cliente: alta, importar identidad, upgrade, cartera ECOin |
+| [Protocolo del Teatro](docs/PUB/TEATRO-PROTOCOL.md) · [curaduría](docs/PUB/TEATRO-CURADURIA-PROTOCOL.md) · [sidecar RRSS](docs/PUB/RRSS-SIDECAR-PROTOCOL.md) | Acoger, desplegar y difundir una obra |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
 
 ### 🧭 Roadmap futuro
