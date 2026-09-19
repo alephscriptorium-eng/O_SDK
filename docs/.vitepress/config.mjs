@@ -65,6 +65,8 @@ export default defineConfig({
       {
         text: 'Operación',
         items: [
+          { text: 'Protocolo para agentes', link: '/AGENTES' },
+          { text: 'Ficha de instancia · Scriptorium', link: '/PUB/INSTANCIA-SCRIPTORIUM' },
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
           { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' },
@@ -89,6 +91,8 @@ export default defineConfig({
       {
         text: 'Operación',
         items: [
+          { text: 'Protocolo para agentes', link: '/AGENTES' },
+          { text: 'Ficha de instancia · Scriptorium', link: '/PUB/INSTANCIA-SCRIPTORIUM' },
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
           { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' },

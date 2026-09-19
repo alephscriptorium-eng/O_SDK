@@ -5,6 +5,22 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Protocolo para agentes (WP-O104, 2026-09-19)
+
+Asientos D-O20, D-O21, D-O22, D-O23. Solo documentación.
+
+- **`AGENTS.md`** (raíz) y **`docs/AGENTES.md`**: entrada única para quien opera el repo — árbol
+  intención → protocolo, reglas universales, **tabla de acciones irreversibles** con su puerta,
+  **trampas conocidas** agregadas (estaban repartidas en ~15 ficheros) y convención de nombres.
+- **Método genérico, datos aparte**: `docs/PUB/INSTANCIA-SCRIPTORIUM.md` es la ficha de la casa
+  (registro de bots, `about` literales, rutas) y la plantilla para otro pub con su lore.
+- **Nombres de bots (D-O20)**: forma libre, se prefiere corta, máximos de UI medidos. La casa pasa a
+  `clearnet.escrivivir.co` y `ecoin.escrivivir.co`; la cadena tipo → piel → pub va en la descripción.
+- **`HUB-PROTOCOL.md` §11-§12**: la serie de bots pasa a ser genérica y gana el **procedimiento de
+  renombrado** (ventana no pública, un POST, contar antes y después).
+- **`plan/PRACTICAS.md`**: el método del carril (WP, commits pedagógicos, gates, GO, cierre).
+- README y `docs/proyecto.md` listan los 8 protocolos; portal con las dos páginas nuevas.
+
 ### Added — ECOin en la app cliente (WP-O103, 2026-09-18)
 
 Estado: **en `main`; gate G1 y drill con identidad desechable pasados** (montaje, publicación única,

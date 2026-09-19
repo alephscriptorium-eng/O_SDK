@@ -621,6 +621,55 @@ verde · 0 rutas `C:\S…`, 0 `fonts.googleapis`, 0 `claude.ai/code/artifact` y
 origen de los dosieres no se modifica · reimportar es idempotente.
 Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertura).
 
+| **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
+
+**Estado** · 2026-09-19 en curso (rama `wp/O104-protocolo-agentes`). Asientos D-O20, D-O23.
+`AGENTS.md` raíz → `docs/AGENTES.md` (árbol intención → protocolo, reglas
+universales, tabla de irreversibles, trampas agregadas, convención de
+nombres) · ficha de instancia `docs/PUB/INSTANCIA-SCRIPTORIUM.md` (método
+genérico, datos aparte) · `HUB-PROTOCOL.md` §11-§12 (serie de bots y
+renombrado) · `plan/PRACTICAS.md` · índices con los 8 protocolos.
+Dep: —. Relación: WP-O46, WP-O102, WP-O103.
+
+| **WP-O105** | **P1** | Upgrade mínimo Oasis 1.1.2 → 1.1.4 con pub, HUB y hub-wallet activos |
+
+**BRIEF** · Overlay con `git rm -r src` + **5 guards** (D-O22). Estado de bot-2:
+retirar `OASIS_BANKING_DIR` y copiar antes `banking/*.json` a
+`ssb-data/oasis/banking/` (1.1.4 muda el estado a `~/.ssb/oasis/**` y
+`backend.js` ignora la variable: riesgo de segunda dirección publicada).
+Motor apagado (`pub: false`). Avisos de obsolescencia en ECOIN §5.3/§9 y
+CLIENT §8. Gates: build, G0 migración de estado, G4 del HUB, bot-2.
+Dep: WP-O104. Relación: WP-O97 (upgrade anterior).
+
+| **WP-O106** | **P1** | Aplicar en el VPS: 1.1.4 + renombrado de los dos bots |
+
+**BRIEF** · pub → HUB → bot-2; renombrado con `HUB-PROTOCOL.md` §12; reporte con
+correcciones al protocolo. GO expreso antes del deploy y de cada `about`.
+Dep: WP-O105.
+
+| **WP-O107** | **P2** | Motor de RBU en 1.1.4: interruptor `pub: true` y gestión de admin |
+
+**BRIEF** · D-O21. `ssb-config.engine-on` vía `OASIS_WALLET_BOT_SSB_CONFIG_FILE`;
+limpiar `walletPub`, marcador y `OASIS_WALLET_BOT_PUB_ID`;
+`devops/scripts/hub-wallet.sh status|ready|on|pause`; gate con `pub: true`
+(cambia el plugin a `ssb-invite`: efecto sobre conexión y `hub-conn-fix.js`);
+reescribir ECOIN §9; encendido y primer `pubAvailability`.
+Dep: WP-O106.
+
+| **WP-O108** | **P2** | Cliente en 1.1.4: entrypoint, scripts y CLIENT-PROTOCOL §8 |
+
+**BRIEF** · Symlink muerto de `wallet-addresses.json` y cableado de `walletPub`
+en `docker-entrypoint.sh`; `client/scripts/*`; banco autodescubierto (§8.7);
+drill. **Hasta entonces no reconstruir el cliente con 1.1.4.**
+Dep: WP-O105.
+
+| **WP-O109** | **P3** | Endurecimiento: agente en frío, `limit_req` en `/c`, docs de upstream |
+
+**BRIEF** · Primera prueba formal de D-O23 · `limit_req` en la location `^/c/`
+(`/c/<tipo>/<slug>` reconstruye el índice, O(N·k)) · traer `deploy.md` e
+`inventory.md` de upstream.
+Dep: WP-O106.
+
 | **WP-O103** | **P1** | Cliente · ECOin en la app (dirección o cartera propia) |
 
 **Estado** · ✅ 2026-09-18: protocolo asentado en `main`; gate G1 y drill con

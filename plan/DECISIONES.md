@@ -227,6 +227,50 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   nodo de soporte en contenedor propio, el pub no se toca), **D-O14** (serie
   de bots: toma el cardinal 2) y **D-O15** (hops 3). Delta en `src/` = cero.
 
+- **D-O20 · 2026-09-19 · Nombres de los bots de soporte: forma canónica libre,
+  se prefiere corta; la cadena completa va en la descripción.** Decide el
+  custodio al ver que el bot de cartera saldrá en la lista de pubs de Banking
+  junto a los de otros pubs. Quien ve el bot debe poder trazar *tipo de bot →
+  piel que lo organiza → pub que lo crea*; el nick lleva lo imprescindible y
+  la descripción, todo. (1) No se exige gramática: cada pub elige su forma y
+  la mantiene; el protocolo **recomienda** `<tipo>.<dominio del pub>` y
+  documenta los **máximos de UI medidos** (tarjeta de Banking sin elipsis,
+  ≈20-22 caracteres; sin `about` sale el feed id entero). (2) En la casa:
+  **`clearnet.escrivivir.co`** (bot 1) y **`ecoin.escrivivir.co`** (bot 2).
+  La familia (Azofaifo), la piel (Scriptorium) y el cardinal pasan a la
+  descripción. (3) El método es genérico y el lore es de cada instancia:
+  `docs/AGENTES.md` §5 + ficha de instancia. (4) El historial actual es de
+  pruebas y se descartará hacia el ciclo 7: se renombra sin reconstruir el
+  pasado. **Supera la forma** de **D-O14** (`<nombre>-<tipo>-bot-<cardinal>`);
+  conserva de él la serie, el cardinal y un bot por servicio.
+- **D-O21 · 2026-09-19 · El motor de RBU se encenderá con gestión de admin
+  *encender → comprobar → pausar*; diferido a WP-O107.** Oasis 1.1.4 elimina
+  `walletPub`: el motor corre si `pub: true` en la config SSB del proceso y
+  `wallet.url` no está vacía; upstream no trae panel de admin (solo
+  `POST /banking/run|simulate` desde el loopback). La gestión será un script
+  de `devops/` (`status|ready|on|pause`). Naturaleza del reparto, para que
+  nadie se engañe: **no crea dinero**; redistribuye ECO que ya están en la
+  cartera del pub (dote, donaciones, excedente de otros pubs), con
+  `pool = min(saldo − 500, 2000, 0,2·saldo)`. Hasta O107 el motor sigue
+  apagado (`pub: false`), que en 1.1.4 es el estado seguro por construcción,
+  y la casa no sale en la lista de pubs de Banking. Matiza el punto (5) de
+  **D-O19** (el interruptor ya no es `OASIS_WALLET_BOT_PUB_ID`).
+- **D-O22 · 2026-09-19 · Quinto guard del fork: `src/configs/snh-invite-code.json`,
+  solo el campo `url`.** Desde 1.1.3 los enlaces de «compartir en clearnet»
+  se construyen con esa base (`https://solarnethub.com`); en un pub con HUB
+  propio deben apuntar a su dominio. Se toca **solo `url`**: el código de
+  invite de upstream se conserva. Invariante nuevo:
+  `git diff oasis-upstream/main --stat -- src/` = 6 ficheros.
+- **D-O23 · 2026-09-19 · Protocolo primero, aplicación después; la prueba de un
+  protocolo es un agente en frío.** El custodio pide reproducibilidad: o-sdk
+  debe servir a cualquiera con su lore. (1) Punto de entrada único para
+  agentes (`AGENTS.md` → `docs/AGENTES.md`), método en `plan/PRACTICAS.md`.
+  (2) **Método genérico, datos en ficha de instancia**
+  (`docs/PUB/INSTANCIA-SCRIPTORIUM.md` es la de la casa y la plantilla).
+  (3) Cada aplicación en el VPS devuelve **correcciones al protocolo**. (4) El
+  criterio de aceptación —un agente sin contexto completa la tarea solo con
+  el repo— queda asentado; su primera ejecución formal se difiere a WP-O109.
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |
