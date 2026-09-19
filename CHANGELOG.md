@@ -5,6 +5,21 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Oasis 1.1.4 (WP-O105, 2026-09-19)
+
+Reporte `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`. Gates locales pasados sobre estado real de 1.1.2.
+
+- **`src/` = upstream 1.1.4** (`45a1cd4`) con **5 guards**: los cuatro de siempre más
+  `src/configs/snh-invite-code.json:url` (D-O22), base de los enlaces de «compartir en clearnet».
+- **Estado mudado por upstream a `~/.ssb/oasis/**`**: bot-2 deja de definir `OASIS_BANKING_DIR` y de montar
+  `/app/banking`; copia manual previa documentada en `docs/PUB/ECOIN-PROTOCOL.md` §5.4.
+- **Motor de RBU**: upstream eliminó `walletPub`; ahora depende de `pub: true` en el ssb-config. El nuestro
+  es `pub: false` = apagado. ECOIN §9 queda marcado obsoleto; interruptor nuevo en WP-O107 (D-O21).
+- **Cliente**: aviso en `docs/CLIENT-PROTOCOL.md` §8 — no reconstruir un cliente con cartera sobre 1.1.4
+  hasta WP-O108.
+- `docker-entrypoint.sh`: `gossip_unfollowed.json` vale también en `oasis/peers/`.
+- `HUB-PROTOCOL.md` §12: un bot de cartera se renombra con `vis_wallet=on` (ensayado).
+
 ### Added — Protocolo para agentes (WP-O104, 2026-09-19)
 
 Asientos D-O20, D-O21, D-O22, D-O23. Solo documentación.
