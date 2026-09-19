@@ -189,8 +189,8 @@ services:
       - "${OASIS_WALLET_BOT_SSB_CONFIG_FILE:-./config/wallet-bot/ssb-config}:/home/oasis/.ssb/config:ro"
       - "${OASIS_WALLET_BOT_OASIS_CONFIG_FILE:-../volumes-dev/oasis-wallet-bot/config/oasis-config.json}:/app/src/configs/oasis-config.json:ro"
     # sin ports y sin ruta en Caddy: 3000 y 8008 solo en oasis_pub_net. Motor de RBU (Oasis 1.1.4):
-    # corre solo si el ssb-config dice pub:true; el nuestro dice pub:false = APAGADO. OASIS_WALLET_BOT_PUB_ID
-    # y walletPub quedaron obsoletos (clave ignorada); el interruptor nuevo es WP-O107.
+    # corre solo si el ssb-config montado dice pub:true. Interruptor = OASIS_WALLET_BOT_SSB_CONFIG_FILE
+    # (ssb-config | ssb-config.engine-on); gestión: devops/scripts/hub-wallet.sh (ECOIN-PROTOCOL §9).
     mem_limit: ${OASIS_WALLET_BOT_MEM_LIMIT:-768m}
     cpus: 1.0
     logging:
