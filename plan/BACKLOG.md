@@ -623,7 +623,7 @@ Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertur
 
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
-**Estado** · 2026-09-19 en curso (rama `wp/O104-protocolo-agentes`). Asientos D-O20, D-O23.
+**Estado** · ✅ 2026-09-19 en `main`. Asientos D-O20, D-O23.
 `AGENTS.md` raíz → `docs/AGENTES.md` (árbol intención → protocolo, reglas
 universales, tabla de irreversibles, trampas agregadas, convención de
 nombres) · ficha de instancia `docs/PUB/INSTANCIA-SCRIPTORIUM.md` (método
@@ -632,6 +632,8 @@ renombrado) · `plan/PRACTICAS.md` · índices con los 8 protocolos.
 Dep: —. Relación: WP-O46, WP-O102, WP-O103.
 
 | **WP-O105** | **P1** | Upgrade mínimo Oasis 1.1.2 → 1.1.4 con pub, HUB y hub-wallet activos |
+
+**Estado** · ✅ 2026-09-19: gates locales pasados (`plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`).
 
 **BRIEF** · Overlay con `git rm -r src` + **5 guards** (D-O22). Estado de bot-2:
 retirar `OASIS_BANKING_DIR` y copiar antes `banking/*.json` a

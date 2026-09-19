@@ -1,5 +1,6 @@
 const { hr, div, h2, p, section, button, form, a, input, br, span, label, select, option, progress, table, tr, td } = require("../server/node_modules/hyperaxe")
-const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderModuleStatsBy, moduleIsEmpty } = require("./main_views")
+const { getConfig } = require('../configs/config-manager.js');
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderModuleStatsBy, moduleIsEmpty, renderWalletChip } = require("./main_views")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
@@ -146,6 +147,18 @@ const renderTransferStatusChip = (status) => {
   return renderStateChip(variant, icon, i18n[statusKey(up)] || up)
 }
 
+const ubiEpochLabel = (t) => {
+  const tags = safeArr(t.tags).map(x => String(x))
+  const fromTag = tags.find(x => /^epoch:\d{4}-\d{2}$/i.test(x))
+  const epoch = fromTag ? fromTag.slice(6) : ((String(t.concept || "").match(/(\d{4}-\d{2})/) || [])[1] || "")
+  return epoch ? `UBI - ${epoch}` : "UBI"
+}
+const transferTitle = (t) => {
+  const tags = safeArr(t.tags).map(x => String(x).toUpperCase())
+  if (tags.includes("UBI") && /UBI Payment|^UBI\b/.test(String(t.concept || ""))) return ubiEpochLabel(t)
+  return t.concept || i18n.transfersTitle
+}
+
 const renderTransferCategoryChip = (cat) =>
   renderStateChip("encrypted", "", categoryLabel(cat))
 
@@ -161,7 +174,7 @@ const generateTransferCard = (transfer, filter, params = {}) => {
 
   const chips = [
     renderTransferStatusChip(transfer.status),
-    isUbi ? renderStateChip("mutuals", "🎁", "UBI") : null,
+    isUbi ? renderStateChip("mutuals", "", "UBI") : null,
     isExpired ? renderStateChip("closed", "⏰", i18n.transfersExpiredBadge) : null,
     renderLifespanChip(transfer.lifetime, i18n)
   ].filter(Boolean)
@@ -180,7 +193,7 @@ const generateTransferCard = (transfer, filter, params = {}) => {
     div({ class: "card-section transfer-card-body" },
       div({ class: "shop-title-row" },
         h2({ class: "tribe-card-title" },
-          a({ href: `/transfers/${encodeURIComponent(transfer.id)}` }, transfer.concept || i18n.transfersTitle)
+          a({ href: `/transfers/${encodeURIComponent(transfer.id)}` }, transferTitle(transfer))
         )
       ),
       chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
@@ -188,11 +201,8 @@ const generateTransferCard = (transfer, filter, params = {}) => {
         ? p({ class: "time-chip" }, dl.format("YYYY/MM/DD HH:mm"))
         : null,
       cat !== "TRUST"
-        ? div({ class: "price-chip transfer-amount-centered" }, fmtAmountWithUnit(transfer))
-        : null,
-      div({ class: "tribe-card-members" },
-        span({ class: "tribe-members-count" }, `${i18n.transfersConfirmations}: ${confirmedCount}/${required}`)
-      )
+        ? div({ class: "tribe-card-members" }, span({ class: "price-chip" }, fmtAmountWithUnit(transfer)))
+        : null
     )
   )
 }
@@ -202,6 +212,8 @@ const trChipFor = (normalizedFilter, censusT) => (mode) => {
   if (!Array.isArray(censusT)) return true;
   const stT = (t) => String(t.status || "").toUpperCase()
   if (mode === "mine") return censusT.some(t => t.from === userId || t.to === userId)
+  if (mode === "mine-pending") return censusT.some(t => (t.from === userId || t.to === userId) && String(t.status || "").toUpperCase() === "UNCONFIRMED")
+  if (mode === "mine-confirmed") return censusT.some(t => (t.from === userId || t.to === userId) && String(t.status || "").toUpperCase() === "CLOSED")
   if (mode === "ubi") return censusT.some(t => safeArr(t.tags).some(tag => String(tag).toUpperCase() === "UBI"))
   if (mode === "economic") return censusT.some(t => categoryOf(t) === "ECONOMIC")
   if (mode === "time") return censusT.some(t => categoryOf(t) === "TIME")
@@ -230,6 +242,8 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
 
   let filtered =
     normalizedFilter === "mine"        ? list.filter(t => t.from === userId || t.to === userId) :
+    normalizedFilter === "mine-pending" ? list.filter(t => (t.from === userId || t.to === userId) && String(t.status || "").toUpperCase() === "UNCONFIRMED") :
+    normalizedFilter === "mine-confirmed" ? list.filter(t => (t.from === userId || t.to === userId) && String(t.status || "").toUpperCase() === "CLOSED") :
     normalizedFilter === "ubi"         ? list.filter(t => safeArr(t.tags).some(tag => String(tag).toUpperCase() === "UBI")) :
     normalizedFilter === "pending"     ? list.filter(t => String(t.status || "").toUpperCase() === "UNCONFIRMED" && t.to === userId && !safeArr(t.confirmedBy).includes(userId)) :
     normalizedFilter === "top"         ? list.filter(t => String(t.status || "").toUpperCase() === "CLOSED") :
@@ -285,7 +299,7 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
   return template(
     title,
     section(
-      div({ class: "tags-header module-header-line" }, h2(title), p(i18n.transfersDescription)),
+      div({ class: "tags-header module-header-line" }, h2(title), p(i18n.transfersDescription), renderWalletChip()),
       div(
         { class: "filters" },
         form(
@@ -309,7 +323,14 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
           ...(trChip("top") ? [button({ type: "submit", name: "filter", value: "top", class: normalizedFilter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.transfersFilterTop).toUpperCase())] : []),
           ]),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.transfersCreateButton)
-        )
+        ),
+        ["mine", "mine-pending", "mine-confirmed"].includes(normalizedFilter)
+          ? div({ class: "transfers-subfilters" },
+              span({ class: "activity-subchip-label" }, "\u21b3"),
+              ...[["mine", i18n.transfersFilterAll], ["mine-pending", i18n.transfersFilterMinePending], ["mine-confirmed", i18n.transfersFilterMineConfirmed]]
+                .map(([mode, label]) => a({ href: `/transfers?filter=${mode}`, class: normalizedFilter === mode ? "activity-chip active" : "activity-chip" }, String(label).toUpperCase()))
+            )
+          : null
       )
     ),
     section(
@@ -402,7 +423,7 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
               )
             ),
             filtered.length
-              ? div({ class: "jobs-grid" },
+              ? div({ class: "jobs-grid transfers-grid" },
                   filtered.map(t => generateTransferCard(t, normalizedFilter, { q, minAmount: minAmountRaw, maxAmount: maxAmountRaw, sort, spreadMap: params.spreadMap }))
                 )
               : div({ class: "no-content-box" }, p(q || String(minAmountRaw) || String(maxAmountRaw) ? i18n.transfersNoMatch : i18n.transfersNoItems))
@@ -426,7 +447,8 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
   const isExpired = dl && dl.isValid() ? dl.isBefore(moment()) : false
   const tags = Array.isArray(transfer.tags) ? transfer.tags.map(t => String(t).toUpperCase()) : []
   const isUbi = tags.includes("UBI")
-  const showConfirm = isUnconfirmed && transfer.to === userId && !confirmedBy.includes(userId) && !isExpired && !tags.includes("PENDING")
+  const settledUbi = isUbi && /^[0-9a-f]{64}$/i.test(String(transfer.txid || ""))
+  const showConfirm = isUnconfirmed && transfer.to === userId && !confirmedBy.includes(userId) && !isExpired && !tags.includes("PENDING") && !settledUbi
 
   const tagsNode = renderTags(transfer.tags)
   const cat = categoryOf(transfer)
@@ -439,6 +461,10 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
   ].filter(Boolean)
 
   const sideActions = []
+  const isPayer = String(transfer.from) === String(userId)
+  if (isPayer && String(transfer.status || "").toUpperCase() === "UNCONFIRMED" && getConfig().modules.walletMod === "on") {
+    sideActions.push(a({ href: `/wallet/send?transfer=${encodeURIComponent(transfer.id)}`, class: "filter-btn" }, i18n.transfersPayWithWallet))
+  }
   if (showConfirm) {
     sideActions.push(form({ method: "POST", action: `/transfers/confirm/${encodeURIComponent(transfer.id)}` },
       input({ type: "hidden", name: "returnTo", value: returnTo }),
@@ -490,7 +516,7 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
       })
     ),
     div({ class: "shop-title-row" },
-      h2({ class: "tribe-card-title" }, transfer.concept || i18n.transfersTitle)
+      h2({ class: "tribe-card-title" }, transferTitle(transfer))
     ),
     chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
     tagsNode,
@@ -538,7 +564,7 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
 
   return template(
     transfer.concept,
-    section(div({ class: "tags-header module-header-line" }, h2(i18n.transfersTitle), p(i18n.transfersDescription))),
+    section(div({ class: "tags-header module-header-line" }, h2(i18n.transfersTitle), p(i18n.transfersDescription), renderWalletChip())),
     section(
       div(
         { class: "filters" },

@@ -412,9 +412,16 @@ sin ángulos ni etiquetas (el saneado los elimina; el formulario no comprueba el
      http://localhost:3000/profile/edit
    ```
 
+   **Bot de cartera** (tiene dirección ECOin publicada): añadir `-F 'vis_wallet=on'`. Sin ese campo, y
+   mientras el bot no esté anunciado como pub de RBU, los clientes no pueden usar su dirección para
+   pagarle o donarle desde la UI (`sharedEcoAddress`, `backend.js`). No publica una segunda dirección:
+   esa rama comprueba antes `hasPublishedAddress` (ensayado en local el 2026-09-19: +1 `about`, `wallet`
+   sigue en 1). El resto de `vis_*` se quedan sin enviar.
+
    Esperado: `302`. Un 403 o 400 = Host/Referer; un 500 = descripción demasiado larga. **No reintentar
    a ciegas**: primero el paso 4, por si el mensaje sí salió.
-4. **Contar después**: exactamente +1 `about`, con el `name` nuevo. Si hay +2, se reporta; no se arregla
+4. **Contar después**: exactamente +1 `about`, con el `name` nuevo, y el mismo número de mensajes
+   `wallet` que antes. Si hay +2, se reporta; no se arregla
    publicando más.
 5. **Volver a público**: `*_PUBLIC=true` + `up -d --no-deps <servicio>` + el gate de modo público del
    protocolo del bot (HUB §4; ECOIN §3 paso 10). Cualquier 200 donde se espera 302 = parar.

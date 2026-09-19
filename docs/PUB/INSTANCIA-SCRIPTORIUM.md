@@ -62,7 +62,7 @@ description: Bot de soporte nº 1 de pub.escrivivir.co · tipo clearnet · piel 
              Antes: azofaifo-scriptorium-skin-bot-1.
 ```
 
-**Bot 2** — propuesto 2026-09-19 (WP-O106):
+**Bot 2** — propuesto 2026-09-19 (WP-O106); se publica con `vis_wallet=on` (HUB-PROTOCOL §12 paso 3):
 
 ```
 name:        ecoin.escrivivir.co
