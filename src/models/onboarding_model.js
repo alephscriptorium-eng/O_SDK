@@ -13,7 +13,13 @@ const ssbPathOf = (given) => {
   try { return require('../server/ssb_config').path; } catch (_) { return null; }
 };
 
-const flagPath = (dir) => path.join(dir, FLAG);
+const flagPath = (dir) => {
+  try {
+    const state = require('../configs/state-manager');
+    if (!dir || path.resolve(dir) === state.ssbDir()) return state.statePath(FLAG);
+  } catch (_) {}
+  return path.join(dir, FLAG);
+};
 
 function readFlag(dir) {
   if (!dir) return { exists: false, id: '', markers: new Set() };
@@ -56,7 +62,7 @@ module.exports = ({ cooler, ssbPath } = {}) => {
     const ssb = await cooler.open();
     const mine = ssb.id;
     const all = await new Promise((resolve, reject) =>
-      pull(ssb.createLogStream({ reverse: true, limit: 2000 }), pull.collect((err, msgs) => err ? reject(err) : resolve(msgs || [])))
+      pull(ssb.createUserStream({ id: mine, reverse: true, limit: 2000 }), pull.collect((err, msgs) => err ? reject(err) : resolve(msgs || [])))
     );
     return { mine, messages: all.filter(m => m && m.value && m.value.author === mine) };
   };

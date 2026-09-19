@@ -193,6 +193,8 @@ function buildActivityItemsWithPostThreads(deduped, allActions) {
       .slice()
       .sort((a, b) => (a.ts || 0) - (b.ts || 0));
 
+    if (!rootAction) continue;
+    const rootType = rootAction.type || 'post';
     out.push({
       id: `thread:${threadId}`,
       type: 'postThread',
@@ -200,10 +202,13 @@ function buildActivityItemsWithPostThreads(deduped, allActions) {
       ts: latest.ts,
       content: {
         threadId,
+        rootType,
+        rootHref: rootType === 'post' ? `/blogs/${encodeURIComponent(threadId)}` : getViewDetailsAction(rootType, rootAction),
         root: rootAction
           ? {
               id: safeMsgId(rootAction),
               author: rootAction.author,
+              subject: String((rootAction.value?.content || rootAction.content || {}).contentWarning || '').trim(),
               text: excerptPostText(rootAction.value?.content || rootAction.content || {}, 600)
             }
           : null,
@@ -345,10 +350,6 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       headerText = `[SHOP · PRODUCT]`;
     } else if (type === 'pad') {
       headerText = `[PAD · ${String(i18n.padNew || 'NEW').toUpperCase()}]`;
-    } else if (type === 'ubiClaim') {
-      headerText = `[UBI · CLAIM]`;
-    } else if (type === 'ubiclaimresult') {
-      headerText = `[UBI · RESULT]`;
     } else if (type === 'wikiPage') {
       headerText = `[${String(i18n.typeWiki || 'WIKI').toUpperCase()}]`;
     } else if (type === 'emergencyUpdate') {
@@ -430,7 +431,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
         div({ class: 'card-section transfer' },
           div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.concept + ':'), span({ class: 'card-value' }, concept)),
           div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.amount + ':'), span({ class: 'card-value' }, amount)),
-          div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.deadline + ':'), span({ class: 'card-value' }, deadline ? moment(deadline).format("YYYY/MM/DD HH:mm") : '')),
+          deadline ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.deadline + ':'), span({ class: 'card-value' }, moment(deadline).format("YYYY/MM/DD HH:mm"))) : null,
           div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.status + ':'), span({ class: 'card-value' }, status))
         )
       );
@@ -448,90 +449,8 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       );
     }
 
-    if (type === 'bankClaim') {
-      const { amount, epochId, allocationId, txid } = content;
-      const amt = Number(amount || 0);
-      cardBody.push(
-        div({ class: 'card-section banking-claim' },
-          div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankUbiReceived + ':' ),
-            span({ class: 'card-value' }, `${amt.toFixed(6)} ECO`)
-          ),
-          epochId ? div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankEpochShort + ':' ),
-            span({ class: 'card-value' }, epochId)
-          ) : "",
-          allocationId ? div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankAllocId + ':' ),
-            span({ class: 'card-value' }, allocationId)
-          ) : "",
-          txid ? div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankTx + ':' ),
-            a({ href: `https://ecoin.03c8.net/blockexplorer/search?q=${txid}`, target: '_blank' }, txid)
-          ) : ""
-        )
-      );
-    }
 
-    if (type === 'ubiClaim') {
-      const { pubId, amount, epochId, claimedAt } = content;
-      const amt = Number(amount || 0);
-      const inhabitantId = action.author || '';
-      cardBody.push(
-        div({ class: 'card-section banking-ubi' },
-          div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankUbiInhabitant + ':'),
-            span({ class: 'card-value' }, userLink(inhabitantId))
-          ),
-          pubId ? div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankUbiPub + ':'),
-            span({ class: 'card-value' }, userLink(pubId))
-          ) : "",
-          div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankUbiClaimedAmount + ':'),
-            span({ class: 'card-value' }, `${amt.toFixed(6)} ECO`)
-          ),
-          epochId ? div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankEpochShort + ':'),
-            span({ class: 'card-value' }, epochId)
-          ) : "",
-          div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.status + ':'),
-            span({ class: 'card-value' }, 'UNCONFIRMED')
-          ),
-          claimedAt ? div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.date + ':'),
-            span({ class: 'card-value' }, moment(claimedAt).format('YYYY-MM-DD HH:mm:ss'))
-          ) : ""
-        )
-      );
-    }
 
-    if (type === 'ubiclaimresult') {
-      const { txid, userId: inhabitantId, amount, epochId } = content;
-      const pubAuthor = action.author || action.value?.author || '';
-      const amt = Number(amount || 0);
-      cardBody.push(
-        div({ class: 'card-section banking-ubi' },
-          div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankUbiPub + ':'),
-            span({ class: 'card-value' }, pubAuthor)
-          ),
-          div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankUbiInhabitant + ':'),
-            span({ class: 'card-value' }, inhabitantId || '')
-          ),
-          div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankUbiClaimedAmount + ':'),
-            span({ class: 'card-value' }, `${amt.toFixed(6)} ECO`)
-          ),
-          txid ? div({ class: 'card-field' },
-            span({ class: 'card-label' }, i18n.bankTx + ':'),
-            a({ href: `https://ecoin.03c8.net/blockexplorer/search?q=${txid}`, target: '_blank' }, txid)
-          ) : ""
-        )
-      );
-    }
 
     if (type === 'pixelia') {
       const { author } = content;
@@ -870,25 +789,32 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
     if (type === 'postThread') {
         const c = action.content || {};
         const threadId = c.threadId;
-        const href = `/blogs/${encodeURIComponent(threadId)}`;
+        const rootType = c.rootType || 'post';
+        const isBlogThread = rootType === 'post';
+        const baseHref = c.rootHref || `/blogs/${encodeURIComponent(threadId)}`;
+        const href = isBlogThread ? baseHref : `${baseHref}${baseHref.includes('?') ? '&' : '?'}comments=open#comments-latest`;
+        const rootTypeLabel = isBlogThread
+          ? (i18n.typePost || 'BLOG')
+          : (i18n[`type${rootType.charAt(0).toUpperCase()}${rootType.slice(1)}`] || rootType);
         const root = c.root;
         const replies = Array.isArray(c.replies) ? c.replies : [];
         const repliesAsc = replies.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
         const latest = repliesAsc.length ? repliesAsc[repliesAsc.length - 1] : null;
-        const titleText = root && root.text
-          ? (root.text.length > 90 ? `${root.text.slice(0, 90)}…` : root.text)
+        const titleSource = root ? (root.subject || root.text || '') : '';
+        const titleText = titleSource
+          ? (titleSource.length > 90 ? `${titleSource.slice(0, 90)}…` : titleSource)
           : threadId;
         return div({ class: 'trending-card post-thread' + (String(action.author) === String(userId) ? ' own-content' : '') },
             div({ class: 'card-header activity-card-header' },
                 div({ class: 'card-chips-row' },
                     span({ class: 'pm-exposition-chip pm-exposition-whole' },
-                        span({ class: 'pm-exposition-text' }, `${String(i18n.typePost || 'BLOG').toUpperCase()} · ${String(i18n.activityUpdateLabel || 'UPDATE').toUpperCase()}`)
+                        span({ class: 'pm-exposition-text' }, `${String(rootTypeLabel).toUpperCase()} · ${String(i18n.activityUpdateLabel || 'UPDATE').toUpperCase()}`)
                     )
                 ),
-                renderContentActions(threadId, href, {
+                renderContentActions(threadId, baseHref, {
                   author: action.author,
                   spread: spreadMap.get(threadId) || null,
-                  ...favOptsFor('post', threadId, extras)
+                  ...favOptsFor(rootType, threadId, extras)
                 })
             ),
             div({ class: 'card-body' },
@@ -1127,9 +1053,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
           div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.marketItemStock + ':'), span({ class: 'card-value' }, stock)),
           div({ class: "price-chip" }, `${price} ECO`),
           br(),
-          image
-            ? renderMediaBlob(image, '/assets/images/default-market.png')
-            : img({ src: '/assets/images/default-market.png', alt: title, class: 'post-image' }),
+          image ? renderMediaBlob(image, '/assets/images/default-market.png') : null,
           item_type === 'auction' && status !== 'SOLD' && status !== 'DISCARDED' && !isSeller
             ? div({ class: "auction-info" },
                 auctions_poll && auctions_poll.length > 0
@@ -1375,11 +1299,11 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       cardBody.push(
         div({ class: 'card-section' },
           div({ class: 'card-field' }, cpKey ? a({ href: `/campaigns/${encodeURIComponent(cpKey)}`, class: 'card-value user-link' }, cpTitle || cpKey) : span({ class: 'card-value' }, cpTitle || '')),
-          content.goal ? div({ class: 'card-field' }, span({ class: 'card-label' }, String(i18n.campaignSignaturesLabel || 'Signatures').toUpperCase() + ':'), span({ class: 'card-value' }, `${new Set(all.filter(x => x && x.type === 'campaignSignature' && x.content && (x.content.target === cpKey || x.content.target === (action.rootId || cpKey))).map(x => x.author)).size} / ${content.goal}`)) : '',
           content.category ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.campaignCategoryLabel || 'Category') + ':'), span({ class: 'card-value' }, String(content.category).toUpperCase())) : '',
           content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.statusLabel || 'Status') + ':'), span({ class: 'card-value' }, String(content.status).toUpperCase())) : '',
           renderMediaBlob(content.text, null),
-          stripMediaMarkdown(content.text) ? p({ class: 'tribe-description' }, ...renderStyledText(stripMediaMarkdown(content.text))) : ''
+          stripMediaMarkdown(content.text) ? p({ class: 'tribe-description' }, ...renderStyledText(stripMediaMarkdown(content.text))) : '',
+          content.goal ? div({ class: 'card-field' }, span({ class: 'card-label' }, String(i18n.campaignSignaturesLabel || 'Signatures').toUpperCase() + ':'), span({ class: 'card-value' }, `${new Set(all.filter(x => x && x.type === 'campaignSignature' && x.content && (x.content.target === cpKey || x.content.target === (action.rootId || cpKey))).map(x => x.author)).size} / ${content.goal}`)) : ''
         )
       );
     }
@@ -2076,8 +2000,6 @@ function getViewDetailsAction(type, action) {
     case 'industryAllocation': return action.content?.target ? `/industry/build/${encodeURIComponent(action.content.target)}` : '/industry?filter=BUILDS';
     case 'report':     return `/reports/${id}`;
     case 'bankWallet': return `/wallet`;
-    case 'bankClaim':  return `/banking${action.content?.epochId ? `/epoch/${encodeURIComponent(action.content.epochId)}` : ''}`;
-    case 'ubiClaim':   return action.content?.transferId ? `/transfers/${encodeURIComponent(action.content.transferId)}` : `/transfers?filter=ubi`;
     default:           return `/activity`;
   }
 }
@@ -2116,7 +2038,6 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     { type: 'campaign',  label: i18n.typeCampaign },
     { type: 'forum',     label: i18n.typeForum },
     { type: 'map',       label: i18n.typeMap },
-    { type: 'banking',   label: i18n.typeBanking },
     { type: 'market',    label: i18n.typeMarket },
     { type: 'schoolCourse', label: i18n.typeSchool },
     { type: 'project',   label: i18n.typeProject },
@@ -2137,7 +2058,6 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
   const GROUP_SUBTYPES = {
     parliament: ['parliamentCandidature', 'parliamentTerm', 'parliamentProposal', 'parliamentRevocation', 'parliamentLaw'],
     courts:     ['courtsCase', 'courtsNomination', 'courtsNominationVote'],
-    banking:    ['bankWallet', 'bankClaim', 'ubiClaim'],
     task:       ['task', 'taskAssignment'],
     votes:      ['votes', 'poll'],
     shop:       ['shop', 'shopProduct'],
@@ -2168,7 +2088,7 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     const now = Date.now();
     filteredActions = actions.filter(action => action.type !== 'tombstone' && action.ts && now - action.ts < 24 * 60 * 60 * 1000);
   } else if (filter === 'banking') {
-    filteredActions = actions.filter(action => action.type !== 'tombstone' && (action.type === 'bankWallet' || action.type === 'bankClaim' || action.type === 'ubiClaim'));
+    filteredActions = [];
   } else if (filter === 'tribe') {
     filteredActions = actions.filter(action => action.type === 'tribe');
   } else if (filter === 'larp') {

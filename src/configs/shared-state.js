@@ -1,5 +1,7 @@
 let _inboxCount = 0;
 let _carbonHcT = 0;
+let _walletReady = false;
+let _donatableAuthors = new Set();
 let _carbonHcH = 0;
 let _lastRefresh = 0;
 let _onlinePeers = null;
@@ -22,6 +24,10 @@ module.exports = {
   setInboxCount: (n) => { _inboxCount = n; },
   getCarbonHcT: () => _carbonHcT,
   setCarbonHcT: (n) => { _carbonHcT = n; },
+  getDonatableAuthors: () => _donatableAuthors,
+  setDonatableAuthors: (set) => { _donatableAuthors = set instanceof Set ? set : new Set(); },
+  getWalletReady: () => _walletReady,
+  setWalletReady: (v) => { _walletReady = !!v; },
   getCarbonHcH: () => _carbonHcH,
   setCarbonHcH: (n) => { _carbonHcH = n; },
   getLastRefresh: () => _lastRefresh,

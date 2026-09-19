@@ -68,7 +68,7 @@ const configure = (...customOptions) =>
   Object.assign({}, defaultOptions, ...customOptions);
  
 const ebtDir = path.join(os.homedir(), '.ssb', 'ebt');
-const unfollowedPath = path.join(os.homedir(), '.ssb', 'gossip_unfollowed.json');
+const unfollowedPath = require('../configs/state-manager').statePath('gossip_unfollowed.json');
 
 async function loadPeersFromEbt() {
   let result = [];
@@ -2143,14 +2143,22 @@ const post = {
     inbox: async () => {
       const ssb = await cooler.open();
       const myFeedId = ssb.id;
-      const rawMessages = await readTyped(ssb, [], { limit: logLimit, withWindow: true });
-     const decryptedMessages = rawMessages.map(msg => {
-        try {
-          return ssb.private.unbox(msg);
-        } catch {
-          return null;
+      let decryptedMessages = [];
+      try {
+        if (ssb.private && typeof ssb.private.read === 'function') {
+          decryptedMessages = await new Promise((resolve, reject) => pull(ssb.private.read({ reverse: true, limit: logLimit * 10 }), pull.collect((err, arr) => err ? reject(err) : resolve(arr || []))));
         }
-      }).filter(Boolean);
+      } catch (_) { decryptedMessages = []; }
+      if (!decryptedMessages.length) {
+        const rawMessages = await readTyped(ssb, [], { limit: logLimit, withWindow: true });
+        decryptedMessages = rawMessages.map(msg => {
+          try {
+            return ssb.private.unbox(msg);
+          } catch {
+            return null;
+          }
+        }).filter(Boolean);
+      }
       const tombstoneTargets = buildValidatedTombstoneSet(decryptedMessages);
       return decryptedMessages.filter(msg => {
         if (tombstoneTargets.has(msg.key)) return false;
