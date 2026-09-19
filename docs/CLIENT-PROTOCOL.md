@@ -207,6 +207,196 @@ sus `*.nul-damaged-bak` (5,7 GB) son los primeros candidatos a borrar.
 > hace por ti. Doc hermana (el lado del banco): `PUB/ECOIN-PROTOCOL.md`. Asiento: D-O19.
 > Se escribió sobre Oasis 1.1.2.
 >
+> **Puesta al día para Oasis 1.1.4 (2026-09-19, WP-O108)**, ensayada con identidad desechable. Tres cosas
+> cambiaron respecto a 1.1.2 y gobiernan esta sección: **(1) con la cartera cableada, abrir la GUI publica
+> tu dirección sola** (§8.2); (2) el estado bancario vive en `~/.ssb/oasis/banking`, dentro de `ssb-data`
+> (§8.4); (3) el banco **se autodescubre** (§8.7).
+
+> **Modelo mental.** Solo hay **una cosa irremplazable: el `secret`**. Y una cosa que conviene no
+> perder: **tu propio log** (`flume/log.offset`), porque lo que el pub no tenga de tu feed no existe.
+> Todo lo demás (índices flume, `ebt/`, `conn.json`, `config`, blobs) es derivable. Oasis **no tiene
+> guardia contra la bifurcación del feed**: si la GUI arranca con tu `secret` y un log vacío, publica
+> (en 1.1.2, el PM de bienvenida a los 3 s) un mensaje con `sequence: 1` → fork irreversible frente a
+> lo que guarda el pub. Por eso importar = **ficheros con el cliente parado + sbot puro hasta
+> sincronizar + GUI al final**.
+
+## 0. Estado y convivencia con el pub local
+
+```bash
+docker compose -p o-sdk ps -a                    # cliente: oasis-client (+ ecoin-wallet con el perfil ecoin, §8)
+docker compose -p oasis-pub-scriptorium ps -a    # pub+HUB local: no debe ocupar 3000/8008 (usa 8009/8088/8443/8788 con pub/.env.local)
+ls volumes-dev/                                  # cliente: ssb-data ai-models logs client-state · pub: oasis-pub oasis-hub teatro
+docker volume inspect o-sdk_oasis-ssb-data-dev --format '{{index .Options "device"}}'   # = <repo>\volumes-dev\ssb-data (o no existe aún)
+docker volume ls --filter label=o-sdk.role=client-wallet   # o-sdk-client-ecoin-data: la wallet.dat del cliente (§8), si se creó
+```
+
+| | Cliente | Pub + HUB (local) |
+|---|---|---|
+| Compose / proyecto | `docker-compose.yml` · `o-sdk` | `pub/docker-compose.pub.yml` · `oasis-pub-scriptorium` |
+| Contenedores | `oasis-client`, `ecoin-wallet` | `oasis-pub-scriptorium`, `oasis-pub-hub`, `oasis-pub-hub-cache`, `oasis-pub-web`, `oasis-pub-panel-api` |
+| Puertos host | 3000, 8008 (`ecoin-wallet` **no publica ninguno**: RPC 7474 y P2P 7408 solo en la red del compose, §8) | con `pub/.env.local`: 8009, 8088, 8443, 8788, 3001 (maint-ui) |
+| `volumes-dev/` | `ssb-data`, `ai-models`, `logs`, `client-state` (la `wallet.dat` **no** vive aquí: volumen externo `o-sdk-client-ecoin-data`, §8) | `oasis-pub/*`, `oasis-hub/*`, `teatro` |
+| Red | `o-sdk_oasis-network` | `oasis-pub-scriptorium_oasis_pub_net` |
+| Imagen | `o-sdk-oasis-client` (mismo `Dockerfile`) | `oasis-pub-scriptorium:latest` |
+
+**Regla**: el pub local siempre con `npm run pub:local:*` (`--env-file .env.local`). Sin `--env-file`
+el compose del pub toma los defaults del VPS (8008/80/443) y choca con el cliente y con Windows.
+
+## 1. Alta fresca (identidad nueva)
+
+```bash
+npm run build                    # imagen o-sdk-oasis-client (10-20 min la primera vez)
+npm run setup                    # volumes-dev/{ssb-data,ai-models,logs,client-state/banking}; sin esto el bind falla
+# Modelo IA (4,08 GB): tres opciones
+#   a) copiar uno existente a volumes-dev/ai-models/oasis-42-1-chat.Q4_K_M.gguf (head -c4 = GGUF; sha256 igual)
+#   b) dejar que el entrypoint lo descargue (3,8 GB, solarnethub.com) en el primer arranque
+#   c) sin IA: OASIS_SKIP_AI_MODEL=true en un docker-compose.override.yml no versionado
+docker compose up -d oasis-client
+docker compose logs -f oasis-client   # parches 3/3 ✓ · [Version: X.Y.Z] · secret creado si no existía
+```
+
+Qué hace el primer arranque: el entrypoint (root) crea y chowna `.ssb`, `models`, `logs`; escribe
+`~/.ssb/config` si falta (cap aleatorio que `src/configs/server-config.json` pisa: el cap de red es
+el del repo); aplica 3 parches a `node_modules`; `backend.js` levanta el sbot embebido, que **crea
+`secret` si no existe**, la GUI en :3000 y (bajo demanda) la IA en :4001. La GUI publica el PM de
+bienvenida y crea `oasis-first-contact`.
+
+Healthcheck del alta: §5. El primer día: `npm run client:backup-keys` y guarda la copia **fuera**
+de la máquina. **`npm run up` = `setup` + `up -d`: no lo uses durante una importación (§2).**
+
+## 2. Importar una identidad existente
+
+Con el cliente **parado** (`docker compose stop oasis-client`) y `volumes-dev/ssb-data` vacío
+(o `--force`, que lo aparta a `ssb-data.pre-import-<ts>` sin borrar nada):
+
+```bash
+npm run client:import-identity -- --from "C:/ruta/al/.ssb/viejo" --with-blobs --dry-run   # verifica sin copiar
+npm run client:import-identity -- --from "C:/ruta/al/.ssb/viejo" --with-blobs [--force]
+```
+
+| Se copia (lista blanca) | Por qué |
+|---|---|
+| `secret` | la identidad |
+| `flume/log.offset` | tu feed completo (y el de tus pares): elimina la ventana de fork por construcción |
+| `gossip.json` | direcciones/claves de pubs conocidos: el cliente vuelve a encontrar al pub solo |
+| `keys/` | claves de tribus (no derivables) |
+| `blobs/` (opcional) | avatares/adjuntos; content-addressed, re-descargables |
+
+| **No** se copia | Por qué |
+|---|---|
+| `flume/*` (índices), `ebt/`, `blobs_push/` | vistas derivadas; las de otra versión hacen que el arranque muera con «Another Oasis instance is already running» (`isLockError` trata cualquier `OpenError` de leveldb como lock) o `isCorruptStoreError` |
+| `conn.json` | se regenera desde `gossip.json`; corrupto bloquea conexiones |
+| `config` | lo escribe el entrypoint; `server-config.json` manda (caps, connections, hops) |
+| `socket`, `manifest.json`, `node_modules`, `*.nul-damaged-bak` | residuos |
+
+El script además: verifica el origen (`secret` con `id` = `@public`, sin bytes NUL; `log.offset`
+por **frames** con `client/scripts/lib/inspect-log-offset.js` → `tailOk`, `badFrames: 0`, `mySeq`),
+guarda un **backup verificado** en `devops/backups/client/<ts>/` (sha256), copia, **crea
+`oasis-first-contact`** = `<feed>\n<ISO>\nwelcome=done\n` (formato `onboarding_model.adopt`; apaga el
+PM de bienvenida y el banner), verifica sha256 y frames tras la copia (y una muestra de blobs por
+hash) y deja el manifiesto `volumes-dev/ssb-data/.import-<ts>.txt`.
+
+Después **no arranques la GUI**: §3.
+
+> Solo `secret` (sin log): válido si no tienes el log (`RECOVERY-PROTOCOL.md` modelo mental: el pub
+> guarda tu feed). El script exige `log.offset`; para ese caso copia el `secret` a mano, crea el flag
+> igual y ve a §3: el sbot puro traerá tu feed del pub. Lo que el pub no tenga se pierde.
+
+## 3. Sincronizar con el pub antes de la GUI (sbot puro)
+
+```bash
+npm run client:sync-only -- start              # modo `server` del entrypoint: solo sbot, nada publica
+docker logs -f oasis-sync-only                 # CONNECTED net:pub.escrivivir.co:8008 · sin "Another Oasis"/"corrupt"
+npm run client:sync-only -- status --pub --watch   # cada 30 s hasta SYNC-OK
+npm run client:sync-only -- stop               # exige log.offset estable 60 s; verifica el frame final
+docker compose up -d oasis-client              # ahora sí. (El propio sbot puro ya publicó `oasisVersion` en seq N+1 a los 7 s:
+                                               #  SSB_server.js solo lo hace si el log NO está vacío; el pub lo acepta como continuación)
+```
+
+`start` tiene un **gate**: si el sbot no se identifica como el feed del `secret` (`ID-MISMATCH`), se
+para solo (habría creado otra identidad sobre un montaje equivocado). `status` compara el seq propio
+según el fichero, según el sbot y según el pub (`devops/scripts/pub-feed-seq.sh`, solo lectura):
+
+| Veredicto | Significa | Qué hacer |
+|---|---|---|
+| **SYNC-OK** | seq local = seq pub, `log.offset` estable ≥ 5 min, pub visto conectado | `stop` y arrancar la GUI |
+| AHEAD | local > pub (publicaste offline) | normal: el sbot empuja al pub (EBT es bidireccional); repetir |
+| BEHIND | local < pub | **no arrancar la GUI**; esperar; si no avanza en 10 min `docker restart oasis-sync-only` |
+| PUB-UNKNOWN | el pub no tiene el feed ni lo sigue | `npm run devops:invite -- 1` y `SSB_INVITE='…' npm run client:sync-only -- invite` (redime desde el sbot puro; publica un `contact`, legítimo porque local ≥ pub). Nunca `join-prod-client.sh` (necesita GUI) |
+| ID-MISMATCH | el sbot no es tu feed | parar; revisar `docker volume inspect o-sdk_oasis-ssb-data-dev` |
+
+La parada acaba en SIGKILL (PID 1 del contenedor es `su`): por eso `stop` exige estabilidad y
+comprueba el último frame con `inspect-log-offset.js`. `log.offset` es append-only: un kill sin
+escritura en curso es inocuo.
+
+## 4. Upgrade del cliente
+
+Misma imagen y mismo ciclo que el pub: `UPGRADE-PROTOCOL.md` §1-§3 (rama `upgrade/oasis-X.Y.Z`,
+overlay, guards). Para el cliente:
+
+```bash
+docker tag o-sdk-oasis-client o-sdk-oasis-client:<ver-vieja>     # rollback preparado
+npm run build && docker compose up -d oasis-client               # .ssb, ai-models y client-state son binds: se preservan
+```
+
+- Con el log intacto la GUI arranca directa: su `oasisVersion` cae en seq N+1.
+- Si el upgrade obligó a apartar `flume/` (índices corruptos): `Settings › Rebuild database`
+  (`POST /settings/rebuild`, no toca `log.offset`). Si se apartó el **log entero**, entonces §3 antes de la GUI.
+- La config de la GUI y el estado bancario viven en `volumes-dev/client-state` (§8.4): sobreviven al
+  rebuild, y las claves nuevas que traiga upstream en `oasis-config.json` entran por el default de la imagen.
+- Healthcheck: §5 (y `npm run client:ecoin:verify` si usas ECOin, §8). Journal: no aplica (el journal es del pub).
+
+## 5. Healthcheck
+
+```bash
+docker ps --filter name=oasis-client --format '{{.Status}}'                       # healthy
+curl -s http://localhost:3000/settings | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1   # versión
+grep -o '"id": *"[^"]*"' volumes-dev/ssb-data/secret                             # = tu feed
+npm run client:inspect-log -- '<tu-feed>'                                         # tailOk, mySeq
+npm run devops:pub-feed-seq -- '<tu-feed>'                                        # seq_pub ≤ seq local (+ oasisVersion)
+curl -s -X POST -H 'Referer: http://localhost:3000/settings' http://localhost:3000/settings/verify -o /dev/null && \
+  curl -s http://localhost:3000/settings | grep -i -A3 'verification'             # sin gaps / broken links / forks (mine)
+docker compose logs oasis-client | grep -c 'welcome-pm'                           # 0 tras una importación
+npm run client:test-ai                                                            # POST /ai dentro del contenedor
+```
+
+Perfil sin nombre/avatar tras importar **no** es pérdida de identidad: los `about` son mensajes del
+log; llegan con la replicación.
+
+## 6. Rollback
+
+- **Upgrade fallido**: `docker compose stop oasis-client` → `docker tag o-sdk-oasis-client:<ver-vieja> o-sdk-oasis-client` →
+  `docker compose up -d --no-build oasis-client`. `.ssb` intacto (binds).
+- **Importación fallida** (log corrupto al arrancar, `ID-MISMATCH`): `sync-only stop --now`; volver a
+  `volumes-dev/ssb-data.pre-import-<ts>` (si lo había) o re-importar desde el backup
+  `devops/backups/client/<ts>/`; en último caso solo `secret` + flag + §3.
+- **Nunca** truncar `log.offset` ni tocar `secret`. Ningún camino de este protocolo cambia el `secret`.
+
+## 7. Retirar instalaciones antiguas
+
+Solo tras §5 en verde unos días y con backup verificado fuera de la máquina:
+
+```bash
+docker rm oasis-server-dev                                   # contenedor del cliente antiguo (otro repo)
+docker rmi alephscript-clean-oasis-dev                       # su imagen (4,36 GB)
+docker volume rm alephscript-clean_oasis-ssb-data-dev alephscript-clean_oasis-ai-models-dev alephscript-clean_oasis-logs-dev \
+                 blockchaincomport_oasis-ssb-data-dev blockchaincomport_oasis-ai-models-dev blockchaincomport_oasis-logs-dev
+docker network rm alephscript-clean_oasis-network blockchaincomport_oasis-network
+```
+
+Los volúmenes con nombre son **punteros** a directorios bind: borrarlos no borra los datos. El
+directorio físico de origen se conserva como backup frío (solo lectura) hasta decisión del custodio;
+sus `*.nul-damaged-bak` (5,7 GB) son los primeros candidatos a borrar.
+
+## 8. ECOin en el cliente
+
+> **Estado · en `main` desde el 2026-09-18 (WP-O103).** Ensayado de punta a punta con una identidad
+> desechable (§8.9): montaje, publicación única, recreate, rebuild, `down -v`, backup y restore.
+> Es un **protocolo para cualquier habitante** que quiera su cartera: no depende de ninguna identidad
+> concreta. Publicar la dirección es siempre un acto **manual, único y tuyo**: nada de esta sección lo
+> hace por ti. Doc hermana (el lado del banco): `PUB/ECOIN-PROTOCOL.md`. Asiento: D-O19.
+> Se escribió sobre Oasis 1.1.2.
+>
 > **AVISO · Oasis 1.1.4 (2026-09-19).** El árbol `src/` de `main` ya es 1.1.4 y esta sección **todavía
 > no**: §8.3, §8.4 y §8.7 describen un cableado que upstream cambió (el estado bancario vive en
 > `~/.ssb/oasis/banking`, `src/configs/wallet-addresses.json` ya no existe, `walletPub.pubId`
@@ -215,12 +405,12 @@ sus `*.nul-damaged-bak` (5,7 GB) son los primeros candidatos a borrar.
 > direcciones y riesgo de publicar una segunda dirección. Un cliente sin cartera (`wallet.url` vacía)
 > no corre ese riesgo.
 
-> **Modelo mental.** Oasis 1.1.2 lee la cartera **solo** de `src/configs/oasis-config.json`
-> (`wallet.{url,user,pass,fee}` y `walletPub.pubId`); las variables `ECOIN_RPC_*` no las lee nadie
+> **Modelo mental.** Oasis lee la cartera **solo** de `src/configs/oasis-config.json`
+> (`wallet.{url,user,pass,fee}`); las variables `ECOIN_RPC_*` no las lee nadie
 > salvo el entrypoint, que las escribe ahí. Un mensaje SSB `wallet` con tu dirección es **permanente**
 > y solo sirve si conservas la `wallet.dat` que tiene su clave: **una dirección publicada sin copia de
-> su cartera queda huérfana para siempre**. Por eso el orden es siempre *cartera → backup → publicar*,
-> y publicar se hace **una vez**.
+> su cartera queda huérfana para siempre**. Por eso el orden es siempre *cartera → backup → publicar*.
+> En 1.1.4 «publicar» ocurre **al abrir la GUI**: el backup va antes de ese momento.
 
 El cliente tiene ECOin **independiente del VPS**, en dos niveles. El valor por defecto es el primero
 sin nada cableado: `wallet.url = ""`, ningún RPC saliente, `/banking` sin latencia.
@@ -266,24 +456,25 @@ npm run client:ecoin:init -- --mode own              # COMPOSE_PROFILES=ecoin ·
 npm run ecoin:up                                     # healthy (hasta ~70 s); sincroniza la cadena en segundo plano
 npm run client:wallet:backup                         # ANTES de abrir la GUI
 docker compose up -d oasis-client                    # recrea el cliente: el entrypoint cablea wallet.url/user/pass (§8.3)
-npm run client:ecoin:verify                          # RPC por DNS de servicio, config cableada, symlinks, nº de mensajes wallet
+npm run client:ecoin:verify                          # RPC por DNS de servicio, config cableada, estado, nº de mensajes wallet
 ```
 
-> **Aviso: abrir `/` llama a `getnewaddress`.** Con `wallet.url` respondiendo RPC, `GET /`
-> (→ `/activity`) y `GET /banking` ejecutan `ensureSelfAddressPublished()`: pide una dirección nueva
-> al `ecoind` y la guarda en el mapa `wallet-addresses.json`. En 1.1.2 la publicación automática
-> **falla en silencio** (un `ReferenceError` en `banking_model.js`), pero una 1.1.3 puede arreglarla y
-> **publicar de verdad** al abrir la GUI. Consecuencias: el backup va **antes** de abrir la GUI; tras
-> abrirla, otro `npm run client:wallet:backup`; y antes de un upgrade de Oasis con el nivel (ii)
-> activo, releer `PUB/ECOIN-PROTOCOL.md` (preflight de upgrades).
-
-Publicar la dirección sigue siendo un acto manual y único: la que muestra `/wallet`, dada de alta en
-`/banking?filter=addresses` **una vez** (misma advertencia de no idempotencia que en §8.1). Si ya
-publicaste una dirección en el nivel (i) con esta misma cartera, **no publiques otra**.
+> **Abrir la GUI publica tu dirección (medido en 1.1.4).** Con `wallet.url` respondiendo RPC, la primera
+> visita a `/`, `/banking` o `/wallet` pide una dirección a tu `ecoind` (`getnewaddress`), la guarda en
+> `~/.ssb/oasis/banking/wallet-addresses.json` **y publica el mensaje `wallet` en tu feed**: irreversible y sin
+> preguntar. Ensayo: 0 → 1 mensaje tras los primeros GET; **sigue en 1** tras más visitas, un
+> `--force-recreate` y nuevas visitas (upstream comprueba `hasPublishedAddress`). Consecuencias:
+>
+> - El `npm run client:wallet:backup` va **antes de abrir la GUI**. Vale: la dirección sale del *keypool* de
+>   la cartera (claves pregeneradas), así que ese backup ya contiene su clave. Haz **otro después**.
+> - **No des de alta la dirección a mano** en `/banking?filter=addresses`: ya está publicada y ese POST no es
+>   idempotente (publicaría un segundo mensaje).
+> - Si no quieres publicar todavía, no cablees la cartera: `wallet.url` vacía = nada de esto ocurre.
+> - Compruébalo: `npm run client:ecoin:verify -- --expect-wallet-msgs 1`.
 
 ### 8.3 Qué hace el entrypoint con cada variable
 
-`docker-entrypoint.sh` (raíz; `src/` sigue con exactamente 4 guards) solo actúa si
+`docker-entrypoint.sh` (raíz; zona *wholesale*, fuera de los guards de `src/`) solo actúa si
 `OASIS_CLIENT_STATE_DIR` está definido y el modo no es `server`. El pub, el HUB y bot-2 no lo
 definen: para ellos nada cambia. Orden: `persist_client_state` → `wire_wallet_config` →
 `setup_oasis_config`.
@@ -291,14 +482,14 @@ definen: para ellos nada cambia. Orden: `persist_client_state` → `wire_wallet_
 | Variable | Qué hace el entrypoint | Clave de `oasis-config.json` |
 |---|---|---|
 | `OASIS_CLIENT_STATE_DIR` (`/app/state`) | activa todo lo de esta tabla; crea y chowna el directorio; fusiona el default de la imagen con el `oasis-config.json` persistido (gana lo persistido) y deja `src/configs/oasis-config.json` como symlink al resultado | el fichero entero |
-| `OASIS_BANKING_DIR` (`/app/state/banking`) | crea y chowna el directorio; siembra `wallet-addresses.json` con `{}` y enlaza `src/configs/wallet-addresses.json` a él (los dos mapas de Oasis pasan a ser uno) | — (lo lee `banking_model.js`) |
+| `OASIS_BANKING_DIR` | **retirada en 1.1.4: no la definas.** `banking_model.js` la honra y `backend.js` no: tendrías dos mapas de direcciones. El entrypoint la desactiva (`unset`) y, si encuentra un `banking/` de 1.1.2 en el state dir, lo copia **una vez** a `~/.ssb/oasis/banking/` sin pisar | — |
 | `ECOIN_RPC_URL` | si está **definida, aunque vacía**, se asigna tal cual; pasa antes por la guarda anti-remoto | `wallet.url` |
 | `ECOIN_RPC_USER` | se asigna junto a la URL; nunca se imprime | `wallet.user` |
 | `ECOIN_RPC_PASS` | se asigna junto a la URL; nunca se imprime | `wallet.pass` |
 | `OASIS_WALLET_FEE` | opcional; si viene, se asigna | `wallet.fee` |
-| `OASIS_WALLET_PUB_ID` | si casa con el formato de feed ed25519 se asigna; vacía → no toca; inválida → aviso en el log y no toca | `walletPub.pubId` |
+| `OASIS_WALLET_PUB_ID` | **retirada en 1.1.4**: el banco se autodescubre (§8.7). Si queda una clave `walletPub` en la config persistida, el entrypoint la borra | — |
 | `ECOIN_RPC_ALLOW_REMOTE` | solo el valor `i-know` desactiva la guarda anti-remoto | — |
-| `OASIS_WALLET_WIRING` | `manual` → el entrypoint no toca `wallet.*` ni `walletPub.*` | — |
+| `OASIS_WALLET_WIRING` | `manual` → el entrypoint no toca `wallet.*` | — |
 | `ECOIN_MEM_LIMIT` | no la lee el entrypoint: es el `mem_limit` de `ecoin-wallet` en el compose (512m por defecto) | — |
 | `COMPOSE_PROFILES` | no la lee el entrypoint: `ecoin` hace que `docker compose up -d` levante también `ecoin-wallet` | — |
 
@@ -310,23 +501,21 @@ definen: para ellos nada cambia. Orden: `persist_client_state` → `wire_wallet_
   Escape: `OASIS_WALLET_WIRING=manual` y gestionas la cartera desde la GUI bajo tu responsabilidad.
 - El resto de la config de la GUI (tema, idioma, módulos) **no** se pisa: se persiste (§8.4).
 
-### 8.4 Estado persistente: `volumes-dev/client-state`
+### 8.4 Estado persistente: `client-state` y `ssb-data/oasis`
 
-Bind `./volumes-dev/client-state` → `/app/state`. Contiene `oasis-config.json` y `banking/`
-(`wallet-addresses.json`, `banking-*.json`). Por qué existe:
+Dos sitios, los dos persistentes:
 
-- Sin `OASIS_BANKING_DIR`, el estado bancario vive en la capa efímera de la imagen: **cada recreate
-  generaría otra dirección** (y, con una 1.1.3, otro mensaje `wallet`).
-- Oasis mantiene **dos mapas** de direcciones (uno en `banking_model.js`, otro fijo en
-  `src/configs/` para las rutas `/wallet*`); el symlink los unifica.
-- La GUI reescribe `oasis-config.json` entero desde 11 rutas (tema, idioma, módulos…): un bind de
-  solo lectura rompería la GUI, y `src/configs/` contiene código y guards, así que no se puede
-  persistir el directorio. Se persiste **solo el fichero**, por symlink, y `setup_oasis_config` se
-  reescribió en node porque `sed -i` rompe los symlinks.
+- **`./volumes-dev/client-state` → `/app/state`**: solo `oasis-config.json` (config de la GUI + cableado de la
+  cartera). La GUI lo reescribe entero desde 11 rutas: un bind de solo lectura la rompería, y `src/configs/`
+  contiene código y guards, así que se persiste **solo el fichero**, por symlink; `setup_oasis_config` está
+  en node porque `sed -i` rompe los symlinks. Lleva las credenciales RPC: `volumes-dev/` está ignorado por git.
+- **`ssb-data/oasis/**`** (desde Oasis 1.1.3, `src/configs/state-manager.js`): `banking/` (mapa de direcciones,
+  épocas, libro de pagos), `flags/`, `content/`, `peers/`, `keys/`… Upstream lo migra solo al arrancar desde
+  `~/.ssb/` y `src/configs/`. Viaja con tu identidad: **el backup de `ssb-data` ya lo incluye**, y
+  `client:import-identity -- --force` lo aparta junto con ella. La cartera no se toca.
 
-`npm run setup` crea `client-state/banking`. `client:import-identity -- --force` aparta
-`client-state/banking/wallet-addresses.json` (el mapa va por feed) y **no toca la cartera**.
-`oasis-config.json` persistido lleva las credenciales RPC: `volumes-dev/` está ignorado por git; no lo compartas.
+Si vienes de un cliente 1.1.2 con `client-state/banking/`, el entrypoint lo copia una vez al sitio nuevo y
+conserva el original.
 
 ### 8.5 La `wallet.dat`: volumen nombrado externo
 
@@ -368,25 +557,18 @@ Docker. El restore exige que el contenedor exista (`npm run ecoin:up` al menos u
 - Cuándo: antes de publicar la dirección, antes de un upgrade, antes de cualquier `down`.
 - `npm run client:backup-keys` respalda la identidad **SSB**, no la cartera (avisa si el volumen existe).
 
-### 8.7 Tu banco: el bot wallet de tu pub
+### 8.7 Tu banco: se descubre solo
 
-En Oasis cada habitante declara **quién es su banco** en `walletPub.pubId`: el feed cuyo motor de RBU
-le asigna y le paga. Sin ese valor no aparece el botón de reclamar. El banco no es el feed del pub
-sino la cuenta que corre el motor junto a él; pregunta a quien opera tu pub cuál es.
+Desde Oasis 1.1.3 **no se configura ningún banco**. Tu cliente mira los anuncios `pubAvailability` que ha
+replicado y elige: primero el pub del invite de SolarNetHub si está disponible y reciente; si no, el anuncio
+disponible más nuevo (caducan a los 3 días). `/banking` muestra la lista de pubs con su pool y un botón
+para donar. `OASIS_WALLET_PUB_ID` y `--pub-id` ya no hacen nada.
 
-En **`pub.escrivivir.co`** es **`azofaifo-scriptorium-wallet-bot-2`**, feed
-`@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` (`PUB/ECOIN-PROTOCOL.md`). Se fija con:
-
-```bash
-npm run client:ecoin:init -- --pub-id '@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519'
-docker compose up -d oasis-client          # OASIS_WALLET_PUB_ID → walletPub.pubId; aparece el botón de claim
-```
-
-- **Cada claim es un mensaje `ubiClaim`: irreversible**, como todo en SSB. Pulsar el botón publica.
-- **Hoy el banco tiene el motor APAGADO**: bot-2 está desplegado con el motor de RBU armado y sin
-  encender hasta la dote. Un claim hecho ahora **no se paga**; solo deja el mensaje. Espera al aviso
-  de encendido (`PUB/ECOIN-PROTOCOL.md` §9).
-- Quien paga es el `ecoind` del banco hacia tu dirección publicada: para cobrar basta el nivel (i).
+- Para ver un pub en la lista tienes que **replicar su anuncio**: síguelo o ten a alguien a tus saltos que lo siga.
+  El de la casa es `@ecoin.escrivivir.co` (`PUB/INSTANCIA-SCRIPTORIUM.md`), encendido desde el 2026-09-19.
+- **Cada claim es un mensaje `ubiClaim`: irreversible.** Lo paga cualquier pub con el motor encendido y
+  fondos que te vea y te considere elegible: feed con ≥ 30 días, dirección publicada y actividad.
+- Quien paga es el `ecoind` del pub hacia tu dirección publicada: para cobrar basta el nivel (i).
 
 ### 8.8 Avisos
 
