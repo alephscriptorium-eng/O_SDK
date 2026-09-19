@@ -103,6 +103,7 @@ varios, «sin decisión»): **<https://o-sdk.escrivivir.co/ROADMAP/>** · en el 
 | [Colectivizaciones](docs/ROADMAP/colectivizaciones/00-dictamen.md) · [Res publica](docs/ROADMAP/res-publica/00-dictamen.md) | Dos modelos políticos llevados al editor |
 | [Oasis · FairCoin](docs/ROADMAP/oasis-faircoin/00-informe.md) | Informe aguas arriba |
 | [Publicidad y redes](docs/ROADMAP/publicidad-rrss/00-indice.md) | Cómo se anuncia una obra del Teatro · call4obras |
+| [P2P](docs/ROADMAP/p2p/00-indice.md) | Las obras a la escena p2p (BitTorrent + aMule 3): qué trae Oasis de fábrica y qué añade el pub |
 
 ---
 

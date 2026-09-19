@@ -672,6 +672,38 @@ Dep: WP-O105.
 `inventory.md` de upstream.
 Dep: WP-O106.
 
+| **WP-O110** | **P2** | Teatro P2P · las obras salen a la red (torrent + eD2k/Kad) con cartelera |
+
+**Estado** · 📋 2026-09-19: **planificado**; plan aprobado por el custodio, sin
+ejecutar. Dosier con lo explorado, las opciones y el plan verbatim:
+`docs/ROADMAP/p2p/` (el plan, en `06-plan-wp-o110.md`). Asiento D-O24.
+
+**BRIEF** · El pub es un hub: lanza obras y las suelta. Añadir a o-sdk, en
+paralelo al Teatro y sin tocar `src/`: (A) **artefactos por generación
+inmutable** generados en el VPS tras el zip —`.torrent` con **semilla web**
+(BEP 19, el HTTPS con `Range` que ya existe), magnet, enlace ed2k con AICH,
+metalink, `p2p.json` firmado—, con las herramientas en un contenedor efímero;
+(B) **fichas P2P** en el sitio sin JS y en el catálogo; (C) **semillas
+opcionales** en un stack compose independiente (`seed-bt` transmission,
+`seed-ed2k` amuled 3.0.1 Kad-only), solo-semilla, con topes por env; (D)
+**cartelera** por obra (`cartelera` · `red` · `retirada`) y
+`devops/scripts/teatro-p2p.sh` para publicar, cambiar de estado, medir y
+podar; (E) anuncio en el módulo Torrents de Oasis, manual y con GO.
+Protocolo genérico `docs/PUB/TEATRO-P2P-PROTOCOL.md`; datos de Scriptorium
+en su ficha de instancia.
+**CA** · tests del sidecar y guardas verdes con `p2p/` presente · un segundo
+cliente completa la descarga solo con la semilla web y el sha256 coincide ·
+aMule en HighID con Kad conectado y el enlace ed2k publicado = `rhash` ·
+ciclo `cartelera → red → cartelera → retirada` con HTTPS 200/404 coherente y
+fichas al día · firma de `p2p.json` verifica · pub, HUB y los 6 vhosts
+intactos · RAM y tráfico dentro del tope medido.
+**Hostil-omite** · obra sin firma no se publica ni se siembra · estado ausente
+= `retirada` · `TEATRO_DELETE=1` no borra `p2p/` ni `gen/` · UI/RPC de los
+demonios inalcanzable desde fuera · `seed down` no afecta al pub · un deploy
+del pub no levanta las semillas · nada de esto en el camino de arranque.
+Dep: WP-O99, WP-O100. Relación: WP-O93 (contenido pesado direccionable),
+WP-O50 (blobstore), WP-O47 (disco), WP-O78 (capacidad medida).
+
 | **WP-O103** | **P1** | Cliente · ECOin en la app (dirección o cartera propia) |
 
 **Estado** · ✅ 2026-09-18: protocolo asentado en `main`; gate G1 y drill con
@@ -1120,6 +1152,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-18: +WP-O99 P1 en L4 — Teatro: sidecar de RRSS, asiento D-O16.)
 (2026-09-18: +WP-O100 P1 en L4 — Teatro: puerta semántica, asiento D-O17.)
 (2026-09-18: +WP-O101 P2 en L4 — Roadmap: dosieres de trabajo en docs/ROADMAP, asiento D-O18.)
+(2026-09-19: +WP-O110 P2 en L4 — Teatro P2P con cartelera, planificado; dosier en docs/ROADMAP/p2p, asiento D-O24.)
 (2026-09-18: +WP-O102 P1 en L5 — hub-wallet del pub (ecoind + wallet-bot-2), +WP-O103 P1 en L4 — ECOin en el cliente, asiento D-O19.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08

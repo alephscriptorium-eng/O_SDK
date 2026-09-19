@@ -270,6 +270,24 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   (3) Cada aplicación en el VPS devuelve **correcciones al protocolo**. (4) El
   criterio de aceptación —un agente sin contexto completa la tarea solo con
   el repo— queda asentado; su primera ejecución formal se difiere a WP-O109.
+- **D-O24 · 2026-09-19 · Las obras salen a la red p2p; el pub las sostiene solo
+  mientras están en cartelera.** Decidido con el custodio al planificar
+  WP-O110: (1) el pub es un **hub, no un almacén**: cada obra tiene un estado
+  —`cartelera` (zip por HTTPS + semillas), `red` (zip retirado de HTTPS),
+  `retirada` (sin semillas; las fichas con hashes y enlaces quedan)— que se
+  cambia con un comando; los recursos se moderan con ajustes por env, no con
+  objeciones. (2) Oasis **anuncia** torrents (mensaje SSB + blob), no los
+  siembra: el pub extiende **al lado**, sin tocar `src/`. (3) El HTTPS con
+  `Range` que ya existe es la **semilla web** (BEP 19) del torrent: fuente
+  permanente sin demonio, con **URL inmutable por generación**. (4) La escena
+  aMule exige demonio real (aMule ignora fuentes HTTP): `amuled` 3.0.1 por
+  imagen fijada, **Kad-only**; nunca el paquete 2.3.3 de Debian. (5) Las
+  semillas viven en un **stack compose independiente**: puertos propios y
+  cortafuegos, no vhost (criterio de D-O3); ningún deploy del pub las arrastra
+  y nada de esto entra en el camino de arranque (D-O8). (6) El manifiesto
+  firmado del Teatro es la **raíz de confianza**; torrent, magnet y ed2k son
+  caminos hacia los mismos bytes verificables. (7) El anuncio en el módulo
+  Torrents de Oasis es un mensaje SSB: irreversible, manual y con GO.
 
 ## Índice de dependencias externas vivas
 

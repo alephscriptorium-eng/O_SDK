@@ -5,6 +5,14 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Roadmap: dosier P2P (WP-O110, planificado; 2026-09-19)
+
+- `docs/ROADMAP/p2p/`: el soporte nativo de Oasis a torrents (catálogo SSB, sin siembra), las
+  opciones miradas (semilla web BEP 19, aMule 3.0.1/Kad, metalink; IPFS y otras descartadas), la
+  extensión del pub (artefactos por generación, fichas P2P, semillas opcionales, **cartelera**) y
+  el plan aprobado, verbatim.
+- `scripts/roadmap-import.py --only <slug>`: reimporta un dosier sin tocar los demás ni `index.md`.
+
 ### Changed — Oasis 1.1.4 (WP-O105, 2026-09-19)
 
 Reporte `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`. Gates locales pasados sobre estado real de 1.1.2.

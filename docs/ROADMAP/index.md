@@ -5,7 +5,7 @@
 > explora hacia dónde va la red: cada uno lleva su fecha y su estado, varios dicen expresamente «sin
 > decisión», y un dato de aquí que contradiga el código pierde contra el código.
 
-Qué hay: seis dosieres escritos entre el 10 y el 18 de septiembre de 2026. Nacen fuera del repo y aquí
+Qué hay: siete dosieres escritos entre el 10 y el 19 de septiembre de 2026. Nacen fuera del repo y aquí
 se publica su **copia saneada** (sin rutas de disco locales, sin recursos externos). Las citas
 `repo/fichero:línea` se refieren a los repos de la casa —`o-sdk` (este), `s-sdk`, `m-sdk`, `n-sdk`,
 `a-sdk`, `scriptorium`—, no todos públicos todavía.
@@ -17,6 +17,7 @@ se publica su **copia saneada** (sin rutas de disco locales, sin recursos extern
 3. **[Colectivizaciones](./colectivizaciones/00-dictamen.md)** y **[Res publica](./res-publica/00-dictamen.md)** — dos modelos políticos llevados al editor.
 4. **[Oasis · FairCoin](./oasis-faircoin/00-informe.md)** — lo que se le cuenta a upstream.
 5. **[Publicidad y redes](./publicidad-rrss/00-indice.md)** — cómo se anuncia una obra, y el call4obras.
+6. **[P2P](./p2p/00-indice.md)** — cómo salen las obras a la escena p2p: lo que Oasis ya trae y lo que añade el pub.
 
 ## Los dosieres
 
@@ -28,6 +29,7 @@ se publica su **copia saneada** (sin rutas de disco locales, sin recursos extern
 | [Res publica](./res-publica/00-dictamen.md) | 2026-09-10 | decisión pendiente | Lo mismo para `res_publica`: forma institucional pura; la fricción es tiempo e infraestructura |
 | [Oasis · FairCoin](./oasis-faircoin/00-informe.md) | 2026-09-10 | informe aguas arriba | Cómo usa el catálogo del modelador el código de Oasis y FairCoin, qué reglas se dio y qué **no** pide a upstream |
 | [Publicidad y redes](./publicidad-rrss/00-indice.md) | 2026-09-18 | protocolo + propuestas | Anunciar una generación del Teatro: dato sin relato, checksums, delta fijado, call4obras |
+| [P2P](./p2p/00-indice.md) | 2026-09-19 | opciones + plan aprobado, sin ejecutar | Sacar las obras a BitTorrent y eD2k/Kad (aMule 3): el soporte nativo de Oasis a torrents, las opciones miradas, y la extensión del pub — semilla web, semillas opcionales y **cartelera** para moderar el hardware |
 
 ## Todas las piezas
 
@@ -42,6 +44,8 @@ se publica su **copia saneada** (sin rutas de disco locales, sin recursos extern
 **Oasis · FairCoin** — [informe](./oasis-faircoin/00-informe.md) · <a href="/dosieres/oasis-faircoin/preview.html" target="_blank">preview (funcional)</a> · <a href="/dosieres/oasis-faircoin/preview-tecnico.html" target="_blank">preview (técnico)</a>
 
 **Publicidad y redes** — [índice](./publicidad-rrss/00-indice.md) · [01 ficha de la obra](./publicidad-rrss/01-ficha-obra.md) · [02 protocolo](./publicidad-rrss/02-protocolo-publicidad.md) · [03 call4obras](./publicidad-rrss/03-call4obras.md) · [04 hitos en el timeline](./publicidad-rrss/04-hitos-timeline.md) · [05 propuestas](./publicidad-rrss/05-propuestas.md) · banners: <a href="/dosieres/publicidad-rrss/banners/banner-01-ficha.html" target="_blank">1 ficha</a> · <a href="/dosieres/publicidad-rrss/banners/banner-02-delta.html" target="_blank">2 delta</a> · <a href="/dosieres/publicidad-rrss/banners/banner-03-tres-puertas.html" target="_blank">3 tres puertas</a> · <a href="/dosieres/publicidad-rrss/banners/banner-04-call4obras.html" target="_blank">4 call4obras</a> · <a href="/dosieres/publicidad-rrss/banners/banner-05-terminal.html" target="_blank">5 terminal</a>
+
+**P2P** — [índice](./p2p/00-indice.md) · [01 lo que Oasis ya trae](./p2p/01-oasis-nativo.md) · [02 las opciones](./p2p/02-opciones.md) · [03 lo que añade el pub](./p2p/03-extension-pub.md) · [04 infra y reglas](./p2p/04-infra-y-reglas.md) · [05 el hilo](./p2p/05-conversacion.md) · [06 el plan WP-O110](./p2p/06-plan-wp-o110.md)
 
 ## Lo que no está aquí, y dónde está
 
