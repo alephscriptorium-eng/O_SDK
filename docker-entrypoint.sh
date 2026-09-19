@@ -29,10 +29,9 @@ if [ "$(id -u)" = "0" ] && [ "${OASIS_ENTRYPOINT_REEXEC:-0}" != "1" ]; then
     # WP-O103: estado persistente del cliente (solo si OASIS_CLIENT_STATE_DIR está
     # definido y el modo no es server). Pub, HUB y wallet-bot no lo definen.
     if [ -n "${OASIS_CLIENT_STATE_DIR:-}" ] && [ "${1:-full}" != "server" ]; then
-        CLIENT_BANKING_DIR="${OASIS_BANKING_DIR:-$OASIS_CLIENT_STATE_DIR/banking}"
-        mkdir -p "$OASIS_CLIENT_STATE_DIR" "$CLIENT_BANKING_DIR" 2>/dev/null || true
-        chown -R oasis:oasis "$OASIS_CLIENT_STATE_DIR" "$CLIENT_BANKING_DIR" 2>/dev/null || true
-        chmod u+rwx "$OASIS_CLIENT_STATE_DIR" "$CLIENT_BANKING_DIR" 2>/dev/null || true
+        mkdir -p "$OASIS_CLIENT_STATE_DIR" 2>/dev/null || true
+        chown -R oasis:oasis "$OASIS_CLIENT_STATE_DIR" 2>/dev/null || true
+        chmod u+rwx "$OASIS_CLIENT_STATE_DIR" 2>/dev/null || true
     fi
 
     REEXEC_ARGS=$(printf '%q ' "$@")
@@ -322,21 +321,24 @@ client_state_enabled() {
 #   - oasis-config.json: default de la imagen + deep-merge de lo persistido
 #     (gana lo persistido; las claves nuevas de upstream entran por el default),
 #     escrito en $OASIS_CLIENT_STATE_DIR y enlazado desde src/configs.
-#   - wallet-addresses.json: un único mapa en $OASIS_BANKING_DIR, enlazado desde
-#     src/configs (backend.js tiene esa ruta fija; banking_model usa la variable).
+#   - Estado bancario: desde Oasis 1.1.3 vive en ~/.ssb/oasis/banking (state-manager.js),
+#     dentro del bind de ssb-data: ya persiste solo. NO se define OASIS_BANKING_DIR
+#     (backend.js la ignora y banking_model.js no: habría dos mapas de direcciones) ni
+#     se enlaza nada en src/configs (state-manager migraría el symlink). Si queda un
+#     banking/ de 1.1.2 en el state dir, se copia UNA vez al sitio nuevo.
 # Corre como usuario oasis (dueño de /app; el state dir lo prepara el bloque root).
 # =============================================================================
 persist_client_state() {
     local state_dir="$OASIS_CLIENT_STATE_DIR"
-    export OASIS_BANKING_DIR="${OASIS_BANKING_DIR:-$state_dir/banking}"
+    unset OASIS_BANKING_DIR
     local state_cfg="$state_dir/oasis-config.json"
     local default_cfg="$CURRENT_DIR/src/configs/.oasis-config.image-default.json"
-    local bank_map="$OASIS_BANKING_DIR/wallet-addresses.json"
-    local cfg_map="$CURRENT_DIR/src/configs/wallet-addresses.json"
+    local legacy_bank="$state_dir/banking"
+    local new_bank="${SSB_PATH:-/home/oasis/.ssb}/oasis/banking"
 
     echo "Persistiendo estado del cliente en $state_dir ..."
 
-    mkdir -p "$state_dir" "$OASIS_BANKING_DIR" 2>/dev/null || true
+    mkdir -p "$state_dir" 2>/dev/null || true
     if [ ! -d "$state_dir" ] || [ ! -w "$state_dir" ]; then
         echo "  ⚠ $state_dir no existe o no es escribible: el estado NO se persiste en este arranque"
         return 0
@@ -383,17 +385,17 @@ persist_client_state() {
         echo "  ⚠ Sin default de la imagen para oasis-config.json: no se toca"
     fi
 
-    # Mapa de direcciones único (sembrado con {}).
-    if [ ! -s "$bank_map" ]; then
-        printf '{}\n' > "$bank_map" 2>/dev/null || echo "  ⚠ No se pudo sembrar $bank_map"
-    fi
-    if [ -f "$bank_map" ]; then
-        if [ "$(readlink "$cfg_map" 2>/dev/null)" != "$bank_map" ]; then
-            ln -sfn "$bank_map" "$cfg_map" 2>/dev/null || \
-                echo "  ⚠ No se pudo enlazar $cfg_map → $bank_map"
+    # Estado bancario de un cliente 1.1.2 (state dir) → sitio de 1.1.4, una sola vez y sin pisar.
+    if [ -s "$legacy_bank/wallet-addresses.json" ] && [ "$(tr -d ' 
+' < "$legacy_bank/wallet-addresses.json")" != "{}" ]        && [ ! -e "$new_bank/wallet-addresses.json" ]; then
+        mkdir -p "$new_bank" 2>/dev/null || true
+        if cp -n "$legacy_bank"/*.json "$new_bank"/ 2>/dev/null; then
+            echo "  → estado bancario de 1.1.2 copiado a $new_bank (el original se conserva en $legacy_bank)"
+        else
+            echo "  ⚠ No se pudo copiar $legacy_bank a $new_bank: NO abras /banking hasta resolverlo"
         fi
-        [ -L "$cfg_map" ] && echo "    ✓ $cfg_map → $bank_map"
     fi
+    [ -e "$new_bank/wallet-addresses.json" ] && echo "    ✓ mapa de direcciones: $new_bank/wallet-addresses.json"
     return 0
 }
 
@@ -401,7 +403,7 @@ persist_client_state() {
 # FUNCIÓN: Cablear la cartera ECOin desde el entorno (el entorno manda)
 #   ECOIN_RPC_URL definida (aunque vacía) → wallet.url/user/pass
 #   OASIS_WALLET_FEE (opcional)           → wallet.fee
-#   OASIS_WALLET_PUB_ID (feed válido)     → walletPub.pubId
+#   (el banco ya no se configura: desde 1.1.3 el cliente lo descubre por pubAvailability)
 #   OASIS_WALLET_WIRING=manual            → no se toca nada
 # Nunca imprime usuario ni contraseña.
 # =============================================================================
@@ -409,7 +411,7 @@ wire_wallet_config() {
     echo "Cableando la cartera ECOin desde el entorno..."
 
     if [ "${OASIS_WALLET_WIRING:-}" = "manual" ]; then
-        echo "  → OASIS_WALLET_WIRING=manual: no se toca wallet.* ni walletPub.* (manda /settings/wallet)"
+        echo "  → OASIS_WALLET_WIRING=manual: no se toca wallet.* (manda /settings/wallet)"
         return 0
     fi
     if [ ! -f "$OASIS_CONFIG_FILE" ]; then
@@ -429,7 +431,7 @@ wire_wallet_config() {
           process.exit(0);
         }
         if (!isObj(cfg.wallet)) cfg.wallet = {};
-        if (!isObj(cfg.walletPub)) cfg.walletPub = {};
+        if ("walletPub" in cfg) { delete cfg.walletPub; console.log("  → walletPub retirado (clave obsoleta desde Oasis 1.1.3)"); }
 
         const LOCAL_HOSTS = ["ecoin-wallet", "localhost", "127.0.0.1", "host.docker.internal"];
         const safeUrl = (u) => u.protocol + "//" + u.host + (u.pathname === "/" ? "" : u.pathname);
@@ -477,16 +479,6 @@ wire_wallet_config() {
             console.log("  ⚠ OASIS_WALLET_FEE no es un número: se ignora (wallet.fee sin cambios)");
           }
         }
-
-        const pubId = String(env.OASIS_WALLET_PUB_ID || "").trim();
-        if (pubId) {
-          if (/^@[A-Za-z0-9+/]{43}=\.ed25519$/.test(pubId)) {
-            cfg.walletPub.pubId = pubId;
-          } else {
-            console.log("  ⚠ OASIS_WALLET_PUB_ID no es un feed SSB válido (@…=.ed25519): se ignora (walletPub.pubId sin cambios)");
-          }
-        }
-        console.log("  → walletPub.pubId: " + (cfg.walletPub.pubId || "(sin banco configurado)"));
 
         try {
           const wrote = writeJson(cfgPath, cfg);

@@ -58,10 +58,10 @@ services:
       - ECOIN_RPC_USER=${ECOIN_RPC_USER-}
       - ECOIN_RPC_PASS=${ECOIN_RPC_PASS-}
       - ECOIN_RPC_ALLOW_REMOTE=${ECOIN_RPC_ALLOW_REMOTE-}
-      - OASIS_WALLET_PUB_ID=${OASIS_WALLET_PUB_ID-}
       - OASIS_WALLET_FEE=${OASIS_WALLET_FEE-}
       - OASIS_WALLET_WIRING=${OASIS_WALLET_WIRING-}
-      - OASIS_BANKING_DIR=/app/state/banking
+      # Sin OASIS_BANKING_DIR (Oasis 1.1.4): el estado bancario vive en ~/.ssb/oasis/banking, dentro del bind
+      # de ssb-data. Con la variable habría dos mapas de direcciones (CLIENT-PROTOCOL §8.3).
       - OASIS_CLIENT_STATE_DIR=/app/state
     
     # ✅ GPU habilitada con runtime nvidia y configuración dual
