@@ -399,8 +399,14 @@ sin ángulos ni etiquetas (el saneado los elimina; el formulario no comprueba el
    la variable `*_PUBLIC` del bot a `false` (`OASIS_HUB_PUBLIC`, `OASIS_WALLET_BOT_PUBLIC`) y
    `up -d --no-deps <servicio>`. En un bot con ruta pública, durante la ventana el edge sigue sirviendo
    lo que tenga en caché; mantenerla corta.
-2. **Contar antes**: mensajes `about` del propio feed en su log
-   (`grep -a -o '"type":"about"' flume/log.offset | wc -l`, dentro del contenedor o en el volumen).
+2. **Contar antes** los mensajes **del propio feed**, por tipo. Un bot con `hops` > 0 replica los `about`
+   de media red: contar `"type":"about"` a secas no sirve (corrección del 2026-09-19, WP-O106). El autor
+   va antes del contenido en cada registro:
+
+   ```bash
+   sudo grep -a -o '"author":"<feed id>[^{]*{"type":"[a-zA-Z]*"' <datos>/<servicio>/ssb-data/flume/log.offset \
+     | sed 's/.*"type"://' | sort | uniq -c
+   ```
 3. **Publicar, una vez**, desde el loopback del contenedor, multipart, **sin ningún campo `vis_*`**
    (el handler los reconstruye todos: sin ellos quedan en falso, que es lo querido en un bot) y con
    `Host` y el host del `Referer` idénticos:
