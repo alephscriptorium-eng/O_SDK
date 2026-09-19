@@ -652,8 +652,11 @@ check_and_recover_ssb() {
     local required_files=(
         "$SSB_PATH/conn.json"
         "$SSB_PATH/gossip.json"
-        "$SSB_PATH/gossip_unfollowed.json"
     )
+    # Oasis 1.1.3+ muda gossip_unfollowed.json a oasis/peers/ (state-manager.js): vale en cualquiera de los dos sitios
+    if [ ! -f "$SSB_PATH/gossip_unfollowed.json" ] && [ ! -f "$SSB_PATH/oasis/peers/gossip_unfollowed.json" ]; then
+        required_files+=("$SSB_PATH/gossip_unfollowed.json")
+    fi
     
     for file in "${required_files[@]}"; do
         if [ ! -f "$file" ]; then
