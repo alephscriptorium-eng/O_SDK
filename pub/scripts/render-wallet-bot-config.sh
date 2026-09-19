@@ -7,7 +7,8 @@
 #
 # Lee del env-file SOLO estas claves (no hace source del fichero):
 #   OASIS_ECOIN_RPC_USER, OASIS_ECOIN_RPC_PASS   hex, `openssl rand -hex 32`
-#   OASIS_WALLET_BOT_PUB_ID                      vacio = motor de RBU APAGADO; feed del bot = ENCENDIDO
+#   OASIS_WALLET_BOT_PUB_ID                      OBSOLETO desde Oasis 1.1.4: walletPub es una clave ignorada (dejar vacio).
+#                                                El motor lo gobierna pub:true/false del ssb-config; interruptor nuevo: WP-O107
 #   OASIS_WALLET_BOT_OASIS_CONFIG_FILE           destino (relativo a pub/ si no es absoluto)
 #
 # El destino es un bind de FICHERO del contenedor oasis-pub-wallet-bot: se escribe IN PLACE

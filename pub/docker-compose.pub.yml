@@ -179,16 +179,18 @@ services:
       OASIS_PUBLIC: ${OASIS_WALLET_BOT_PUBLIC:-true}   # false SOLO durante el bootstrap del invite
       OASIS_OPEN: "false"
       OASIS_ALLOW_HOST: localhost
-      OASIS_BANKING_DIR: /app/banking
+      # Sin OASIS_BANKING_DIR (retirado en 1.1.4): el estado bancario vive en ~/.ssb/oasis/banking, dentro
+      # del bind de ssb-data. backend.js ignora esa variable y banking_model.js no: con ella habría dos
+      # mapas de direcciones y riesgo de publicar una segunda dirección (ECOIN-PROTOCOL.md §5.4).
       NODE_OPTIONS: ${OASIS_WALLET_BOT_NODE_OPTIONS:---max-old-space-size=512}
     volumes:
       - "${OASIS_WALLET_BOT_SSB_DATA_DIR:-../volumes-dev/oasis-wallet-bot/ssb-data}:/home/oasis/.ssb"
       - "${OASIS_WALLET_BOT_LOGS_DIR:-../volumes-dev/oasis-wallet-bot/logs}:/app/logs"
-      - "${OASIS_WALLET_BOT_BANKING_DIR:-../volumes-dev/oasis-wallet-bot/banking}:/app/banking"
       - "${OASIS_WALLET_BOT_SSB_CONFIG_FILE:-./config/wallet-bot/ssb-config}:/home/oasis/.ssb/config:ro"
       - "${OASIS_WALLET_BOT_OASIS_CONFIG_FILE:-../volumes-dev/oasis-wallet-bot/config/oasis-config.json}:/app/src/configs/oasis-config.json:ro"
-    # sin ports y sin ruta en Caddy: 3000 y 8008 solo en oasis_pub_net. El interruptor del motor
-    # de RBU es OASIS_WALLET_BOT_PUB_ID (vacío = apagado) vía pub/scripts/render-wallet-bot-config.sh.
+    # sin ports y sin ruta en Caddy: 3000 y 8008 solo en oasis_pub_net. Motor de RBU (Oasis 1.1.4):
+    # corre solo si el ssb-config dice pub:true; el nuestro dice pub:false = APAGADO. OASIS_WALLET_BOT_PUB_ID
+    # y walletPub quedaron obsoletos (clave ignorada); el interruptor nuevo es WP-O107.
     mem_limit: ${OASIS_WALLET_BOT_MEM_LIMIT:-768m}
     cpus: 1.0
     logging:
