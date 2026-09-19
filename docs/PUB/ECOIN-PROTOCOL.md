@@ -511,6 +511,11 @@ Leídos en 1.1.2 (`src/models/banking_model.js`); ninguno se parchea en el fork 
    **sin** publicarse y aun así devolver `published`. Verificar en G3 que el mensaje `wallet` existe
    de verdad en el feed (por eso §3 paso 7 prevé `POST /banking/addresses`).
 
+5. **`isLoopbackRequest` y despliegues con proxy o contenedor** (2026-09-19): las rutas de Banking, Wallet y
+   Settings exigen IP de origen `127.0.0.1`. Detrás de un mapeo de puertos de Docker o de un proxy inverso
+   local la GUI del propio dueño recibe 403. En o-sdk se resuelve fuera de `src/` con un puente de loopback
+   (`CLIENT-PROTOCOL.md` §8.10); a upstream le serviría una lista de orígenes de confianza por configuración.
+
 ## 13. Registro
 
 **Activación 2026-09-18.** `ecoind` arrancado 17:44 UTC, sincronizado 17:58 (51.766 bloques, 13,5 min

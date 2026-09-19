@@ -92,6 +92,7 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | El pub anuncia para donaciones una dirección que no es la publicada | cada `pubAvailability` pide `getnewaddress`: es de la misma cartera (keypool). Backup semanal de `wallet.dat` con el motor encendido | ECOIN §9 |
 | Un torrent o un enlace ed2k publicado deja de completar | los bytes detrás de la URL cambiaron: una obra con enlaces publicados se **congela**; la edición nueva sale con sufijo | TEATRO-P2P §1 |
 | Activar una casilla de visibilidad deja el perfil sin nombre | `POST /profile/edit` publica un `about` entero con lo que llegue: solo desde el formulario del navegador | TEATRO-P2P §4 |
+| La GUI del cliente da **403 vacío** en Banking, Wallet o Settings | Oasis exige que esas acciones lleguen desde `127.0.0.1`; en Docker el navegador del host entra por el mapeo de puertos. Puente de loopback del entrypoint + puerto publicado **solo** en `127.0.0.1` | CLIENT §8.10 |
 | El backend arranca sin sbot embebido | `OASIS_TEST` definido en el entorno (desde 1.1.3) | UPGRADE §1 |
 | El nombre nuevo de un feed no aparece | `nameCache` es memoria del proceso: reiniciar el nodo que lo muestra | HUB §12 |
 | El build del portal rompe | tokens entre ángulos fuera de código (Vue los lee como etiquetas) o enlaces muertos (`ignoreDeadLinks: false`) | `docs/proyecto.md` |
