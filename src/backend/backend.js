@@ -45,7 +45,9 @@ function startAI() {
     aiProcess.unref();
   } catch (e) {}
 }
-const ADDR_PATH = path.join(__dirname, '..', 'configs', 'wallet-addresses.json');
+const { statePath: stateFilePath, keysDir: stateKeysDir } = require('../configs/state-manager');
+require('../configs/state-manager').migrateAll();
+const ADDR_PATH = stateFilePath('wallet-addresses.json');
 const readAddrMap = () => { try { return JSON.parse(fs.readFileSync(ADDR_PATH, 'utf8')); } catch { return {}; } };
 const writeAddrMap = (map) => { fs.mkdirSync(path.dirname(ADDR_PATH), { recursive: true }); fs.writeFileSync(ADDR_PATH, JSON.stringify(map, null, 2)); };
 
@@ -180,6 +182,36 @@ const isLoopbackRequest = (ctx) => {
   const ip = raw.replace(/^::ffff:/, '');
   return ip === '127.0.0.1' || ip === '::1' || ip === 'localhost';
 };
+const WALLET_CHIP_PATHS = ['/wallet', '/banking', '/shops', '/school', '/market', '/transfers'];
+const refreshDonatableAuthors = async () => {
+  try {
+    const wallets = await bankingModel.scanAllWalletsSSB().catch(() => ({}));
+    const me = getViewerId();
+    const out = new Set(Object.keys(wallets || {}).filter(id => id !== me && ECO_ADDRESS_RE.test(String(wallets[id] || ''))));
+    sharedState.setDonatableAuthors(out);
+  } catch (_) {}
+};
+let lastWalletReadyCheck = 0;
+const refreshWalletReady = async (force = false) => {
+  const ready = sharedState.getWalletReady ? sharedState.getWalletReady() : false;
+  if (!force && ready && Date.now() - lastWalletReadyCheck < 60000) return ready;
+  if (!force && !ready && Date.now() - lastWalletReadyCheck < 5000) return ready;
+  lastWalletReadyCheck = Date.now();
+  try {
+    const me = getViewerId();
+    const walletUrl = !!(getConfig().wallet && getConfig().wallet.url);
+    let addr = await bankingModel.getUserAddress(me).catch(() => null);
+    if (!addr && walletUrl) {
+      try { const res = await bankingModel.ensureSelfAddressPublished(); if (res && res.address) addr = res.address; } catch (_) {}
+      if (!addr) addr = await bankingModel.getUserAddress(me).catch(() => null);
+    }
+    const published = addr ? await bankingModel.hasPublishedAddress(me).catch(() => false) : false;
+    const next = !!(addr && published && walletUrl);
+    sharedState.setWalletReady(next);
+    return next;
+  } catch (_) { return ready; }
+};
+
 const checkMod = (ctx, mod) => {
   const cfg = getConfig();
   const serverValue = cfg.modules?.[mod];
@@ -456,6 +488,53 @@ const attachCommentMeta = async (actions) => {
   return list;
 };
 const settingsReports = { verification: null, rebuild: null };
+const wikiSnippet = (body, cover) => {
+  const text = String(body || '');
+  if (!cover) return text;
+  return text.replace(/!\[image:[^\]]*\]\((&[^)]+)\)/, (m, blob) => (blob === cover ? '' : m)).trim();
+};
+let clearnetIndexCache = { ts: 0, data: null, building: null };
+const CLEARNET_INDEX_TTL_MS = 60 * 1000;
+const buildClearnetIndex = async () => {
+  const all = await inhabitantsModel.listInhabitants({ filter: 'all', includeInactive: true }).catch(() => []);
+  const out = [];
+  for (const u of all) {
+    const feedId = u && (u.id || u.feedId || u.key);
+    if (!feedId || !ssbRef.isFeedId(feedId)) continue;
+    const prefs = await about.visibilityPrefs(feedId).catch(() => null);
+    if (!prefs || prefs.clearnet !== true) continue;
+    const name = await about.name(feedId).catch(() => '');
+    const items = await collectClearnetItems(feedId, prefs, { max: 500 });
+    out.push({ feedId, name: name || '', items });
+  }
+  return out;
+};
+const getClearnetIndex = async (force = false) => {
+  if (!force && clearnetIndexCache.data && Date.now() - clearnetIndexCache.ts < CLEARNET_INDEX_TTL_MS) return clearnetIndexCache.data;
+  if (!clearnetIndexCache.building) {
+    clearnetIndexCache.building = buildClearnetIndex().then(data => { clearnetIndexCache = { ts: Date.now(), data, building: null }; return data; }).catch(() => { clearnetIndexCache.building = null; return clearnetIndexCache.data || []; });
+  }
+  return clearnetIndexCache.building;
+};
+const clearnetIdFor = async (kind, param) => {
+  let raw = String(param || '');
+  try { raw = decodeURIComponent(raw); } catch (_) {}
+  if (!raw || /^[%&@]/.test(raw)) return raw;
+  const { clearnetShortId, clearnetSlugFor } = require('../views/main_views');
+  const short = raw.split('-').pop().toLowerCase();
+  const find = (index) => {
+    for (const entry of index) {
+      for (const it of (entry.items[kind] || [])) {
+        if (it.slug && it.slug === raw) return it.id;
+        if (clearnetSlugFor(it.title, it.id) === raw || clearnetShortId(it.id) === short) return it.id;
+      }
+    }
+    return null;
+  };
+  let hit = find(await getClearnetIndex());
+  if (!hit) hit = find(await getClearnetIndex(true));
+  return hit || raw;
+};
 const collectClearnetItems = async (feedId, prefs, { max = 5 } = {}) => {
     const MAX_PER_SECTION = max;
   const items = { shops: [], jobs: [], events: [], projects: [], posts: [], audios: [], videos: [], images: [], documents: [], torrents: [], podcasts: [], school: [], market: [], feed: [], wiki: [], bookmarks: [] };
@@ -628,9 +707,10 @@ const collectClearnetItems = async (feedId, prefs, { max = 5 } = {}) => {
       const pages = await wikiModel.listPages({ filter: 'all' }).catch(() => []);
       items.wiki = (pages || []).filter(w => w.author === feedId && !w.tribeId).slice(0, MAX_PER_SECTION).map(w => dated({
         id: w.id,
+        slug: w.slug || null,
         title: w.title || 'Untitled',
         image: w.image || null,
-        snippet: w.body || '',
+        snippet: wikiSnippet(w.body, w.image),
         tags: tagsOf(w)
       }, tsOf(w.updatedAt, w.createdAt, w.ts)));
     } catch (_) {}
@@ -814,15 +894,12 @@ process.on("uncaughtException", function (err) {
           }
           process.exit(0);
         } else {
-          throw new Error(`Another server is already running at ${url}.
-It might be another copy of Oasis or another program on your computer.
-You can run Oasis on a different port number with this option:
-    oasis --port ${config.port + 1}
-Alternatively, you can set the default port in ${defaultConfigFile} with:
-    {
-      "port": ${config.port + 1}
-    }
-`);
+          console.log("");
+          console.log(`Another server is already running at ${url}. It might be another copy of Oasis or another program on your computer.`);
+          console.log(`You can run Oasis on a different port number: sh oasis.sh --port ${config.port + 1}`);
+          console.log(`Or set the default port in ${defaultConfigFile}.`);
+          console.log("");
+          process.exit(1);
         }
       });
     });
@@ -1278,7 +1355,15 @@ const schoolModel = require('../models/school_model')({ cooler, transfersModel, 
 const agendaModel = require("../models/agenda_model")({ cooler, isPublic: config.public, calendarsModel, eventsModel, tasksModel, marketModel, jobsModel, projectsModel, industryModel, housingModel, schoolModel, campaignsModel, logisticsModel });
 const mapsModel = require("../models/maps_model")({ cooler, isPublic: config.public, tribeCrypto, mapCrypto, tribesModel });
 const gamesModel = require('../models/games_model')({ cooler });
-const bankingModel = require("../models/banking_model")({ services: { cooler }, isPublic: config.public });
+const notifyUbiPaid = async ({ to, amount, epochId, txid, transferKey }) => {
+  const { i18n: i18nB } = require('../views/main_views');
+  const concept = `UBI - ${epochId}`;
+  const links = transferKey
+    ? ` → [${concept}](/transfers/${encodeURIComponent(transferKey)}) · [PDF](/transfers/contract/${encodeURIComponent(transferKey)})`
+    : ` → ${concept}`;
+  await pmModel.sendMessage([to], 'BANKING_UBI_PAID', `${i18nB.bankingBotUbiPaidText}: ${amount} ECO${links} · tx ${txid}`);
+};
+const bankingModel = require("../models/banking_model")({ services: { cooler, notifyUbiPaid, transfers: transfersModel }, isPublic: config.public });
 const favoritesModel = require("../models/favorites_model")({ services: { cooler }, audiosModel, bookmarksModel, documentsModel, imagesModel, videosModel, mapsModel, padsModel, chatsModel, calendarsModel, torrentsModel, marketModel, shopsModel, eventsModel, tasksModel, reportsModel, votesModel, jobsModel, housingModel, projectsModel, transfersModel, forumModel, blogsModel: blogModel, pollsModel, schoolModel, wikiModel, emergenciesModel, mailingModel, logisticsModel, podcastsModel, campaignsModel });
 const logsModel = require("../models/logs_model")({ cooler });
 const parliamentModel = require('../models/parliament_model')({ cooler, services: { tribes: tribesModel, votes: votesModel, inhabitants: inhabitantsModel, banking: bankingModel } });
@@ -1920,6 +2005,52 @@ const isMissingContentError = (err) => {
     msg.includes('undecodable');
 };
 
+const ECO_ADDRESS_RE = /^[A-Za-z0-9]{20,64}$/;
+const sharedEcoAddress = async (userId) => {
+  try {
+    const ubiPubs = await bankingModel.listUbiPubs().catch(() => []);
+    const isUbiPub = ubiPubs.some(p => String(p.pubId) === String(userId));
+    const prefs = isUbiPub ? null : await about.visibilityPrefs(userId).catch(() => null);
+    if (!isUbiPub && (!prefs || prefs.wallet !== true)) return null;
+    const address = await bankingModel.getUserAddress(userId).catch(() => null);
+    return address && ECO_ADDRESS_RE.test(String(address)) ? String(address) : null;
+  } catch (_) { return null; }
+};
+const redirectToPayment = async (ctx, { sellerId, amount, fallback, transferId = null, concept = '', href = '' }) => {
+  try {
+    if (!checkMod(ctx, 'walletMod') || !sellerId || !(Number(amount) > 0)) { ctx.redirect(fallback); return; }
+    const me = getViewerId();
+    if (String(sellerId) === String(me)) { ctx.redirect(fallback); return; }
+    const myAddress = await bankingModel.getUserAddress(me).catch(() => null);
+    if (!myAddress) { ctx.redirect('/wallet'); return; }
+    const sellerAddress = await sharedEcoAddress(sellerId);
+    if (!sellerAddress) { ctx.redirect(fallback); return; }
+    const q = new URLSearchParams({ to: sellerAddress, amount: Number(amount).toFixed(6) });
+    if (transferId) q.set('transfer', transferId);
+    else { q.set('payee', sellerId); if (concept) q.set('concept', String(concept).slice(0, 120)); if (href && String(href).startsWith('/')) q.set('ref', href); }
+    ctx.redirect(`/wallet/send?${q.toString()}`);
+  } catch (_) { ctx.redirect(fallback); }
+};
+const loadTransferForWallet = async (ctx, transferId) => {
+  if (!transferId || !checkMod(ctx, 'transfersMod')) return null;
+  try {
+    const t = await transfersModel.getTransferById(transferId);
+    if (!t || String(t.status || '').toUpperCase() !== 'UNCONFIRMED') return null;
+    const me = getViewerId();
+    if (String(t.from) !== String(me)) return null;
+    const address = await sharedEcoAddress(t.to);
+    return { id: t.id || transferId, concept: t.concept || '', amount: t.amount, other: t.to, address };
+  } catch (_) { return null; }
+};
+const loadPaymentRef = async (ctx, { payee, concept, ref, to, tag }) => {
+  const payeeId = String(payee || '').trim();
+  if (!payeeId || !/^@[A-Za-z0-9+/]+={0,2}\.ed25519$/.test(payeeId) || String(payeeId) === String(getViewerId())) return null;
+  const address = await sharedEcoAddress(payeeId);
+  if (!address || (to && String(to) !== address)) return null;
+  const href = String(ref || '').trim();
+  const safeTag = String(tag || '').toUpperCase() === 'UBI' ? 'UBI' : 'WALLET';
+  return { payeeId, address, concept: String(concept || '').replace(/[\[\]()]/g, '').trim().slice(0, 120), href: /^\/[^\s]*$/.test(href) ? href : '', tag: safeTag };
+};
 const isBlankText = (value) => !String(value == null ? '' : value)
   .replace(/<[^>]*>/g, '')
   .replace(/[\u200B-\u200D\uFEFF\u2060\u00A0]/g, '')
@@ -2354,7 +2485,7 @@ const publishFediverseTempMedia = async (names) => {
   return ids;
 };
 const gossipPath = path.join(homeDir, '.ssb', 'gossip.json');
-const unfollowedPath = path.join(homeDir, '.ssb', 'gossip_unfollowed.json');
+const unfollowedPath = stateFilePath('gossip_unfollowed.json');
 const ensureJSONFile = (p, init = []) => { fs.mkdirSync(path.dirname(p), { recursive: true }); if (!fs.existsSync(p)) fs.writeFileSync(p, JSON.stringify(init, null, 2), 'utf8'); };
 const readJSON = p => { ensureJSONFile(p, []); try { return JSON.parse(fs.readFileSync(p, 'utf8') || '[]'); } catch { return []; } };
 const writeJSON = (p, d) => { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(d, null, 2), 'utf8'); };
@@ -2623,7 +2754,7 @@ router
   .get('/ai', async (ctx) => {
     if (!checkMod(ctx, 'aiMod')) return ctx.redirect('/modules');
     startAI();
-    const lang = ctx.cookies.get('language') || getConfig().language || 'en', historyPath = path.join(__dirname, '..', '..', 'src', 'configs', 'AI-history.json');
+    const lang = ctx.cookies.get('language') || getConfig().language || 'en', historyPath = stateFilePath('AI-history.json');
     require('../views/main_views').setLanguage(lang);
     let chatHistory = []; try { chatHistory = JSON.parse(fs.readFileSync(historyPath, 'utf-8')); } catch {}
     ctx.body = aiView(chatHistory, getConfig().ai?.prompt?.trim() || '');
@@ -2720,11 +2851,19 @@ router
   .post('/school/enroll/:id', koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
     await schoolModel.enroll(ctx.params.id);
+    let enrolledCourse = null;
     try {
       const course = await schoolModel.getCourseById(ctx.params.id, getViewerId());
+      enrolledCourse = course;
       await pmModel.sendMessage([course.author], 'SCHOOL_ENROLLED', `${await actorLink(getViewerId())} has enrolled in your course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
     } catch (_) {}
-    ctx.redirect(`/school/course/${encodeURIComponent(ctx.params.id)}`);
+    const courseHref = `/school/course/${encodeURIComponent(ctx.params.id)}`;
+    if (enrolledCourse && Number(enrolledCourse.price) > 0) {
+      const mine = (Array.isArray(enrolledCourse.pending) ? enrolledCourse.pending : []).find(p => String(p.author) === String(getViewerId()));
+      await redirectToPayment(ctx, { sellerId: enrolledCourse.author, amount: enrolledCourse.price, fallback: courseHref, transferId: mine && mine.transferId ? mine.transferId : null, concept: enrolledCourse.title, href: courseHref });
+      return;
+    }
+    ctx.redirect(courseHref);
   })
   .post('/school/unenroll/:id', koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'schoolMod')) { ctx.redirect('/modules'); return; }
@@ -3113,7 +3252,7 @@ router
     const deviceSource = await about.deviceSource(feedId).catch(() => null);
     const stats = await inhabitantsModel.getInhabitantStats(feedId, getViewerId()).catch(() => ({}));
     const rawPrefs = visibilityPrefs || {};
-    const needsBanking = (rawPrefs.karma !== false) || rawPrefs.ubi === true;
+    const needsBanking = (rawPrefs.karma !== false);
     const needsWallet  = rawPrefs.wallet === true;
     const needsCarbon = rawPrefs.ecoTax !== false;
     const needsLarp = rawPrefs.larpSign === true;
@@ -4539,7 +4678,7 @@ router
     if (lt > 0 && gt > 0 && gt >= lt) throw new Error("Given search range is empty");
     const visibilityPrefs = await about.visibilityPrefs(myFeedId).catch(() => null);
     const rawPrefs = visibilityPrefs || {};
-    const needsBanking = (rawPrefs.karma !== false) || rawPrefs.ubi === true;
+    const needsBanking = (rawPrefs.karma !== false);
     const needsWallet  = rawPrefs.wallet === true;
     const needsCarbon  = rawPrefs.ecoTax !== false;
     const needsLarp    = rawPrefs.larpSign === true;
@@ -4617,7 +4756,7 @@ router
         gpgKeyFingerprint = String(parsed.getFingerprint() || '').toUpperCase();
         gpgKeyBlob = Buffer.from(armored, 'utf8');
         const myFeedId = await meta.myFeedId();
-        const keysDir = path.join(ssbConfig.path, 'keys');
+        const keysDir = stateKeysDir();
         await promisesFs.mkdir(keysDir, { recursive: true }).catch(() => {});
         const safeName = encodeURIComponent(myFeedId) + '.asc';
         await promisesFs.writeFile(path.join(keysDir, safeName), armored, 'utf8');
@@ -4710,11 +4849,19 @@ router
       gpgFingerprint: gpgKeyFingerprint,
       gpgBlob: gpgKeyBlob
     });
+    if (visibilityPrefs.wallet) {
+      try {
+        const me = getViewerId();
+        const local = readAddrMap()[me];
+        const localAddress = typeof local === 'string' ? local : (local && local.address) || null;
+        if (localAddress && !(await bankingModel.hasPublishedAddress(me))) await bankingModel.addAddress({ userId: me, address: localAddress });
+      } catch (_) {}
+    }
     ctx.redirect("/profile");
   })
   .post("/profile/gpg/remove", koaBody(), async (ctx) => {
     const myFeedId = await meta.myFeedId();
-    const keyPath = path.join(ssbConfig.path, 'keys', encodeURIComponent(myFeedId) + '.asc');
+    const keyPath = path.join(stateKeysDir(), encodeURIComponent(myFeedId) + '.asc');
     await promisesFs.unlink(keyPath).catch(() => {});
     await post.publishProfileEdit({ gpgFingerprint: '', gpgBlobId: '' });
     ctx.redirect("/profile");
@@ -4738,7 +4885,7 @@ router
       });
     }
     if (!armored) {
-      const keyPath = path.join(ssbConfig.path, 'keys', encodeURIComponent(feedId) + '.asc');
+      const keyPath = path.join(stateKeysDir(), encodeURIComponent(feedId) + '.asc');
       armored = await promisesFs.readFile(keyPath, 'utf8').catch(() => '');
     }
     if (!armored) { ctx.status = 404; ctx.body = ''; return; }
@@ -6047,6 +6194,7 @@ router
     ctx.body = await singleEventView(await withFavorite(withCount(event, comments), 'events'), filter, comments, { censusList: singleCensus, mapData, baseUrl: resolveExternalBaseUrl(ctx), authorPrefs: evAuthorPrefs2, linkedCalendarId, spreads: await spreads.forMessage(event.id).catch(() => null) });
   })
   .get('/c/events/:eventId', async (ctx) => {
+    ctx.params.eventId = await clearnetIdFor('events', ctx.params.eventId);
     let event;
     try { event = await eventsModel.getEventById(ctx.params.eventId); } catch (_) {}
     if (!event || String(event.status || '').toUpperCase() === 'CLOSED' || event.isPublic === 'private') {
@@ -6286,6 +6434,7 @@ router
     ctx.body = await singleHousingView(await withFavorite(withCount(item, comments), 'housing'), filter, comments, { ...params, mapData, spreads: await spreads.forMessage(item.id).catch(() => null) })
   })
   .get('/c/jobs/:jobId', async (ctx) => {
+    ctx.params.jobId = await clearnetIdFor('jobs', ctx.params.jobId);
     let job;
     try { job = await jobsModel.getJobById(ctx.params.jobId); } catch (_) {}
     if (!job || String(job.status || '').toUpperCase() === 'CLOSED' || String(job.visibility || 'PUBLIC').toUpperCase() === 'HIDDEN') {
@@ -6359,6 +6508,7 @@ router
     ctx.body = await singleProductView({ ...withCount(product, comments), isFavorite: productFav.has(String(product.rootId || product.key)) }, shop, comments, { shopId: product.shopId, canRate, returnTo: safeReturnTo(ctx, `/shops/${encodeURIComponent(product.shopId)}`, ['/shops']), spreads: await spreads.forMessage(product.key).catch(() => null), modesAvail: await shopModesAvailFor((await shopsModel.listMyPurchases().catch(() => [])).length > 0) });
   })
   .get("/c/audios/:id", async (ctx) => {
+    ctx.params.id = await clearnetIdFor('audios', ctx.params.id);
     let item; try { item = await audiosModel.getAudioById(ctx.params.id); } catch (_) {}
     const p = item && item.author ? await about.visibilityPrefs(item.author).catch(() => null) : null;
     if (!item || !p || p.clearnetAudios !== true) {
@@ -6370,6 +6520,7 @@ router
     ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'audio', item });
   })
   .get("/c/market/:id", async (ctx) => {
+    ctx.params.id = await clearnetIdFor('market', ctx.params.id);
     let item; try { item = await marketModel.getItemById(ctx.params.id); } catch (_) {}
     const seller = item && (item.seller || item.author);
     const p = seller ? await about.visibilityPrefs(seller).catch(() => null) : null;
@@ -6382,6 +6533,7 @@ router
     ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'market', item: { ...item, author: seller, url: item.image || null, details: clearnetDetails('market', item) } });
   })
   .get("/c/feed/:id", async (ctx) => {
+    ctx.params.id = await clearnetIdFor('feed', ctx.params.id);
     let entry; try { entry = await feedModel.getFeedById(ctx.params.id); } catch (_) {}
     const author = entry && (entry.author || (entry.value && entry.value.author));
     const p = author ? await about.visibilityPrefs(author).catch(() => null) : null;
@@ -6399,6 +6551,7 @@ router
     });
   })
   .get("/c/wiki/:id", async (ctx) => {
+    ctx.params.id = await clearnetIdFor('wiki', ctx.params.id);
     let page; try { page = await wikiModel.getPage(ctx.params.id); } catch (_) {}
     const p = page && page.author ? await about.visibilityPrefs(page.author).catch(() => null) : null;
     if (!page || page.tribeId || !p || p.clearnetWiki !== true) {
@@ -6433,6 +6586,7 @@ router
     });
   })
   .get("/c/bookmarks/:id", async (ctx) => {
+    ctx.params.id = await clearnetIdFor('bookmarks', ctx.params.id);
     let item; try { item = await bookmarksModel.getBookmarkById(ctx.params.id); } catch (_) {}
     const p = item && item.author ? await about.visibilityPrefs(item.author).catch(() => null) : null;
     if (!item || !item.url || !p || p.clearnetBookmarks !== true) {
@@ -6447,6 +6601,7 @@ router
     });
   })
   .get("/c/podcasts/:id", async (ctx) => {
+    ctx.params.id = await clearnetIdFor('podcasts', ctx.params.id);
     let channel; try { channel = await podcastsModel.getChannelById(ctx.params.id); } catch (_) {}
     const p = channel && channel.author ? await about.visibilityPrefs(channel.author).catch(() => null) : null;
     if (!channel || !(channel.episodeCount > 0) || !p || p.clearnetPodcasts !== true) {
@@ -6458,6 +6613,7 @@ router
     ctx.body = require('../views/clearnet_view').renderClearnetPodcastView({ channel });
   })
   .get("/c/videos/:id", async (ctx) => {
+    ctx.params.id = await clearnetIdFor('videos', ctx.params.id);
     let item; try { item = await videosModel.getVideoById(ctx.params.id); } catch (_) {}
     const p = item && item.author ? await about.visibilityPrefs(item.author).catch(() => null) : null;
     if (!item || !p || p.clearnetVideos !== true) {
@@ -6469,6 +6625,7 @@ router
     ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'video', item });
   })
   .get("/c/images/:id", async (ctx) => {
+    ctx.params.id = await clearnetIdFor('images', ctx.params.id);
     let item; try { item = await imagesModel.getImageById(ctx.params.id); } catch (_) {}
     const p = item && item.author ? await about.visibilityPrefs(item.author).catch(() => null) : null;
     if (!item || !p || p.clearnetImages !== true) {
@@ -6480,6 +6637,7 @@ router
     ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'image', item });
   })
   .get("/c/documents/:id", async (ctx) => {
+    ctx.params.id = await clearnetIdFor('documents', ctx.params.id);
     let item; try { item = await documentsModel.getDocumentById(ctx.params.id); } catch (_) {}
     const p = item && item.author ? await about.visibilityPrefs(item.author).catch(() => null) : null;
     if (!item || !p || p.clearnetDocuments !== true) {
@@ -6491,6 +6649,7 @@ router
     ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'document', item: { ...item, details: detailsOf(await blobSizeOf(item.url)).map(v => `⇩ ${v}`) } });
   })
   .get("/c/torrents/:id", async (ctx) => {
+    ctx.params.id = await clearnetIdFor('torrents', ctx.params.id);
     let item; try { item = await torrentsModel.getTorrentById(ctx.params.id); } catch (_) {}
     const p = item && item.author ? await about.visibilityPrefs(item.author).catch(() => null) : null;
     if (!item || !p || p.clearnetTorrents !== true) {
@@ -6502,6 +6661,7 @@ router
     ctx.body = require('../views/clearnet_view').renderClearnetMediaView({ kind: 'torrent', item: { ...item, details: detailsOf(await blobSizeOf(item.url)).map(v => `⇩ ${v}`) } });
   })
   .get("/c/blog/:msgKey", async (ctx) => {
+    ctx.params.msgKey = await clearnetIdFor('posts', ctx.params.msgKey);
     const msgKey = String(ctx.params.msgKey || '');
     let msg;
     try {
@@ -6534,22 +6694,16 @@ router
   })
   .get("/clearnet", async (ctx) => { ctx.redirect("/c"); })
   .get("/c", async (ctx) => {
-    const all = await inhabitantsModel.listInhabitants({ filter: 'all', includeInactive: true }).catch(() => []);
+    const index = await getClearnetIndex();
     const authors = [];
     const items = {};
-    for (const u of all) {
-      const feedId = u && (u.id || u.feedId || u.key);
-      if (!feedId || !ssbRef.isFeedId(feedId)) continue;
-      const prefs = await about.visibilityPrefs(feedId).catch(() => null);
-      if (!prefs || prefs.clearnet !== true) continue;
-      const name = await about.name(feedId).catch(() => '');
-      const own = await collectClearnetItems(feedId, prefs, { max: 20 });
+    for (const entry of index) {
       let count = 0;
-      for (const k of Object.keys(own)) {
+      for (const k of Object.keys(entry.items)) {
         if (!items[k]) items[k] = [];
-        for (const it of own[k]) { items[k].push({ ...it, authorName: name || '' }); count++; }
+        for (const it of entry.items[k].slice(0, 20)) { items[k].push({ ...it, authorName: entry.name || '' }); count++; }
       }
-      authors.push({ feedId, name: name || '', count });
+      authors.push({ feedId: entry.feedId, name: entry.name || '', count });
     }
     ctx.type = 'text/html';
     ctx.body = await clearnetHubView({ authors, items, filterType: String(ctx.query.type || '').toLowerCase(), query: String(ctx.query.q || '').trim() });
@@ -6592,6 +6746,7 @@ router
     ctx.body = await clearnetInhabitantView({ feedId, name, description, image: safeImage, prefs, items, filterType });
   })
   .get("/c/school/:courseId", async (ctx) => {
+    ctx.params.courseId = await clearnetIdFor('school', ctx.params.courseId);
     let course;
     try { course = await schoolModel.getCourseById(ctx.params.courseId, null); } catch (_) {}
     if (!course || course.visibility !== 'PUBLIC' || Number(course.price) > 0) {
@@ -6610,6 +6765,7 @@ router
     ctx.body = await require('../views/school_view').clearnetCourseView(course, lessons);
   })
   .get("/c/shops/:shopId", async (ctx) => {
+    ctx.params.shopId = await clearnetIdFor('shops', ctx.params.shopId);
     const shop = await shopsModel.getShopById(ctx.params.shopId).catch(() => null);
     if (!shop || String(shop.visibility || '').toUpperCase() === 'CLOSED') {
       ctx.type = 'text/html';
@@ -6997,6 +7153,7 @@ router
     ctx.body = await singleProjectView(await withFavorite(withCount(project, comments), 'projects'), filter, comments, { mapData, zoom, baseUrl: resolveExternalBaseUrl(ctx), spreads: await spreads.forMessage(project.id).catch(() => null) })
   })
   .get("/c/projects/:projectId", async (ctx) => {
+    ctx.params.projectId = await clearnetIdFor('projects', ctx.params.projectId);
     let project;
     try { project = await projectsModel.getProjectById(ctx.params.projectId); } catch (_) {}
     if (!project || String(project.status || '').toUpperCase() === 'CANCELLED') {
@@ -7265,19 +7422,23 @@ router
     const q = (query.q || '').trim();
     const msg = (query.msg || '').trim();
     await bankingModel.ensureSelfAddressPublished();
-    const data = await bankingModel.listBanking(filter, userId);
+    const data = await bankingModel.listBanking(filter, userId, { range: query.range ? String(query.range) : null });
     data.isPub = bankingModel.isPubNode();
     data.alreadyClaimed = data.summary?.alreadyClaimed || false;
-    if (filter === 'overview') {
+    if (filter === 'overview' || filter === 'ubi' || filter === 'exchange') {
       const pending = (data.allocations || []).find(a => a.to === userId && (a.status === "UNCLAIMED" || a.status === "UNCONFIRMED"));
       data.pendingUBI = pending || null;
     }
-    if (filter === 'addresses' && q) {
-      data.addresses = (data.addresses || []).filter(x =>
-        String(x.id).toLowerCase().includes(q.toLowerCase()) ||
-        String(x.address).toLowerCase().includes(q.toLowerCase())
-      );
-      data.search = q;
+    if (filter === 'addresses') {
+      data.addresses = [...bankingModel.listAddressBook(), ...(data.addresses || [])];
+      if (q) {
+        data.addresses = data.addresses.filter(x =>
+          String(x.id || '').toLowerCase().includes(q.toLowerCase()) ||
+          String(x.label || '').toLowerCase().includes(q.toLowerCase()) ||
+          String(x.address || '').toLowerCase().includes(q.toLowerCase())
+        );
+        data.search = q;
+      }
     }
     data.flash = msg || '';
     const { ecoValue, inflationFactor, inflationMonthly, ecoTimeMs, currentSupply, isSynced } = await bankingModel.calculateEcoinValue();
@@ -7374,7 +7535,7 @@ router
   .get("/banking/epoch/:id", async (ctx) => {
     const epoch = await bankingModel.getEpochById(ctx.params.id);
     const allocations = await bankingModel.listEpochAllocations(ctx.params.id);
-    ctx.body = renderEpochView(epoch, allocations);
+    ctx.body = renderEpochView(epoch, allocations, getViewerId());
   })
   .get("/favorites", async (ctx) => {
     const filter = qf(ctx), q = String(ctx.query.q || '').trim();
@@ -7511,10 +7672,9 @@ router
       if (address && typeof address === "string") {
         const map = readAddrMap();
         const was = map[userId];
-        if (was !== address) {
-          map[userId] = address;
-          writeAddrMap(map);
-          try { await publishActivity({ type: 'bankWallet', address }); } catch (e) {}
+        const published = await bankingModel.hasPublishedAddress(userId).catch(() => false);
+        if (was !== address || !published) {
+          try { await bankingModel.addAddress({ userId, address }); } catch (_) {}
         }
       }
       ctx.body = await walletView(balance, address);
@@ -7532,10 +7692,9 @@ router
       if (address && typeof address === "string") {
         const map = readAddrMap();
         const was = map[userId];
-        if (was !== address) {
-          map[userId] = address;
-          writeAddrMap(map);
-          try { await publishActivity({ type: 'bankWallet', address }); } catch (e) {}
+        const published = await bankingModel.hasPublishedAddress(userId).catch(() => false);
+        if (was !== address || !published) {
+          try { await bankingModel.addAddress({ userId, address }); } catch (_) {}
         }
       }
       ctx.body = await walletHistoryView(balance, transactions, address);
@@ -7552,16 +7711,27 @@ router
       if (address && typeof address === "string") {
         const map = readAddrMap();
         const was = map[userId];
-        if (was !== address) {
-          map[userId] = address;
-          writeAddrMap(map);
-          try { await publishActivity({ type: 'bankWallet', address }); } catch (e) {}
+        const published = await bankingModel.hasPublishedAddress(userId).catch(() => false);
+        if (was !== address || !published) {
+          try { await bankingModel.addAddress({ userId, address }); } catch (_) {}
         }
       }
       ctx.body = await walletReceiveView(balance, address);
     } catch (error) {
       ctx.body = await walletErrorView(error);
     }
+  })
+  .get("/wallet/qr/:address", async (ctx) => {
+    if (!checkMod(ctx, 'walletMod')) { ctx.status = 404; ctx.body = ''; return; }
+    const address = decodeURIComponent(ctx.params.address || '');
+    if (!ECO_ADDRESS_RE.test(address)) { ctx.status = 404; ctx.body = ''; return; }
+    try {
+      const QRCode = require('../server/node_modules/qrcode');
+      const buf = await QRCode.toBuffer(address, { type: 'png', width: 320, margin: 1, errorCorrectionLevel: 'M' });
+      ctx.set('Content-Type', 'image/png');
+      ctx.set('Cache-Control', 'no-store');
+      ctx.body = buf;
+    } catch (_) { ctx.status = 500; ctx.body = ''; }
   })
   .get("/wallet/send", async (ctx) => {
     const { url, user, pass, fee } = getConfig().wallet;
@@ -7572,13 +7742,20 @@ router
       if (address && typeof address === "string") {
         const map = readAddrMap();
         const was = map[userId];
-        if (was !== address) {
-          map[userId] = address;
-          writeAddrMap(map);
-          try { await publishActivity({ type: 'bankWallet', address }); } catch (e) {}
+        const published = await bankingModel.hasPublishedAddress(userId).catch(() => false);
+        if (was !== address || !published) {
+          try { await bankingModel.addAddress({ userId, address }); } catch (_) {}
         }
       }
-      ctx.body = await walletSendFormView(balance, null, null, fee, null, address);
+      let prefillTo = ECO_ADDRESS_RE.test(String(ctx.query.to || '')) ? String(ctx.query.to) : null;
+      let prefillAmount = Number(ctx.query.amount) > 0 ? String(Number(ctx.query.amount)) : null;
+      const transferCtx = await loadTransferForWallet(ctx, String(ctx.query.transfer || '').trim());
+      if (transferCtx) {
+        if (transferCtx.address) prefillTo = transferCtx.address;
+        if (Number(transferCtx.amount) > 0) prefillAmount = String(Number(transferCtx.amount));
+      }
+      const paymentRef = transferCtx ? null : await loadPaymentRef(ctx, { payee: ctx.query.payee, concept: ctx.query.concept, ref: ctx.query.ref, to: prefillTo, tag: ctx.query.tag });
+      ctx.body = await walletSendFormView(balance, prefillTo, prefillAmount, fee, null, address, { transfer: transferCtx ? { id: transferCtx.id, concept: transferCtx.concept } : null, payment: paymentRef, createTransfer: !!paymentRef && checkMod(ctx, 'transfersMod') });
     } catch (error) {
       ctx.body = await walletErrorView(error);
     }
@@ -7708,7 +7885,7 @@ router
     const translations = i18nAll[lang] || i18nAll['en'];
     const { setLanguage } = require('../views/main_views');
     setLanguage(lang);
-    const historyPath = path.join(__dirname, '..', '..', 'src', 'configs', 'AI-history.json');
+    const historyPath = stateFilePath('AI-history.json');
     let chatHistory = [];
     try {
       const fileData = fs.readFileSync(historyPath, 'utf-8');
@@ -7763,7 +7940,7 @@ router
     const rating = Number.isFinite(ratingRaw) ? Math.max(0, Math.min(5, ratingRaw)) : 0;
     const cfg = getConfig();
     const lang = ctx.cookies.get('language') || cfg.language || '';
-    const historyPath = path.join(__dirname, '..', '..', 'src', 'configs', 'AI-history.json');
+    const historyPath = stateFilePath('AI-history.json');
     let chatHistory = [];
     try {
       const fileData = fs.readFileSync(historyPath, 'utf-8');
@@ -7821,7 +7998,7 @@ router
     const { setLanguage } = require('../views/main_views');
     setLanguage(lang);
     const ts = String(ctx.request.body.ts || '');
-    const historyPath = path.join(__dirname, '..', '..', 'src', 'configs', 'AI-history.json');
+    const historyPath = stateFilePath('AI-history.json');
     let chatHistory = [];
     try {
         const fileData = fs.readFileSync(historyPath, 'utf-8');
@@ -7843,7 +8020,7 @@ router
     const lang = ctx.cookies.get('language') || getConfig().language || 'en';
     const { setLanguage } = require('../views/main_views');
     setLanguage(lang);
-    const historyPath = path.join(__dirname, '..', '..', 'src', 'configs', 'AI-history.json');
+    const historyPath = stateFilePath('AI-history.json');
     fs.writeFileSync(historyPath, '[]', 'utf-8');
     const config = getConfig();
     const userPrompt = config.ai?.prompt?.trim() || '';
@@ -9922,7 +10099,7 @@ router
     if (item.shopProductId && checkMod(ctx, 'shopsMod')) {
       try { await shopsModel.buyProduct(item.shopProductId); } catch (_) {}
     }
-    ctx.redirect(safeReturnTo(ctx, "/inbox?filter=sent", ["/inbox", "/market"]));
+    await redirectToPayment(ctx, { sellerId: item.seller, amount: item.price, fallback: safeReturnTo(ctx, "/inbox?filter=sent", ["/inbox", "/market"]), concept: item.title, href: `/market/${encodeURIComponent(ctx.params.id)}` });
   })
   .post("/market/status/:id", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'marketMod')) { ctx.redirect('/modules'); return; }
@@ -10267,7 +10444,8 @@ router
     if (checkMod(ctx, 'marketMod')) {
       try { const mi = await marketModel.getItemByShopProductId(ctx.params.id); if (mi) await marketModel.decrementStock(mi.id); } catch (_) {}
     }
-    ctx.redirect(safeReturnTo(ctx, `/shops/product/${encodeURIComponent(ctx.params.id)}`, ['/shops']));
+    const boughtProduct = await shopsModel.getProductById(ctx.params.id).catch(() => null);
+    await redirectToPayment(ctx, { sellerId: boughtProduct && boughtProduct.author, amount: boughtProduct && boughtProduct.price, fallback: safeReturnTo(ctx, `/shops/product/${encodeURIComponent(ctx.params.id)}`, ['/shops']), concept: boughtProduct && boughtProduct.title, href: `/shops/product/${encodeURIComponent(ctx.params.id)}` });
   })
   .post("/shops/product/opinions/:productId/:category", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'shopsMod')) { ctx.redirect('/modules'); return; }
@@ -10951,12 +11129,49 @@ router
     ctx.redirect(safeReturnTo(ctx, `/projects/${encodeURIComponent(id)}`, ["/projects"]));
   })
   .post("/projects/:projectId/comments", koaBodyMiddleware, async ctx => commentAction(ctx, 'projects', 'projectId'))
+  .get("/wallet/donate/:feedId", async (ctx) => {
+    const backTo = safeReturnTo(ctx, '/activity', ['/']);
+    if (!checkMod(ctx, 'walletMod')) { ctx.redirect(backTo); return; }
+    try {
+      const feedId = decodeURIComponent(ctx.params.feedId || '');
+      if (!ssbRef.isFeedId(feedId) || String(feedId) === String(getViewerId())) { ctx.redirect(backTo); return; }
+      const { i18n: i18nD } = require('../views/main_views');
+      const mine = await bankingModel.getUserAddress(getViewerId()).catch(() => null);
+      if (!mine) { ctx.redirect('/wallet'); return; }
+      const address = await bankingModel.getUserAddress(feedId).catch(() => null);
+      if (!address || !ECO_ADDRESS_RE.test(String(address))) { ctx.redirect(`${backTo}${backTo.includes('?') ? '&' : '?'}error=${encodeURIComponent(i18nD.bankNoUserAddress)}`); return; }
+      const q = new URLSearchParams({ to: address, payee: feedId, ref: backTo });
+      ctx.redirect(`/wallet/send?${q.toString()}`);
+    } catch (_) { ctx.redirect(backTo); }
+  })
+  .get("/banking/fund", async (ctx) => {
+    if (!checkMod(ctx, 'walletMod')) { ctx.redirect('/banking?filter=overview'); return; }
+    try {
+      const wanted = String(ctx.query.pub || '').trim();
+      const pubs = await bankingModel.listUbiPubs();
+      const connectedId = String((await bankingModel.discoverUbiPub()).pubId || '');
+      const pub = wanted ? pubs.find(p => String(p.pubId) === wanted) : (pubs.find(p => String(p.pubId) === connectedId) || null);
+      const address = pub ? (pub.address || await bankingModel.getUserAddress(pub.pubId).catch(() => null)) : null;
+      if (!address || !ECO_ADDRESS_RE.test(String(address))) { ctx.redirect('/banking?filter=ubi&msg=no_pub_address'); return; }
+      const q = new URLSearchParams({ to: address, payee: pub.pubId, concept: 'OASIS UBI Fund', ref: '/banking?filter=ubi', tag: 'UBI' });
+      ctx.redirect(`/wallet/send?${q.toString()}`);
+    } catch (_) { ctx.redirect('/banking?filter=overview'); }
+  })
   .post("/banking/claim-ubi", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
     const userId = getViewerId();
     try {
       await bankingModel.claimUBI(userId);
       ctx.redirect("/banking?filter=overview&msg=claimed_pending");
+    } catch (e) {
+      ctx.redirect(`/banking?filter=overview&msg=${encodeURIComponent(e.message || "error")}`);
+    }
+  })
+  .post("/banking/refuse-ubi", koaBody(), async (ctx) => {
+    if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
+    try {
+      await bankingModel.refuseUBI(getViewerId());
+      ctx.redirect("/banking?filter=overview&msg=refused");
     } catch (e) {
       ctx.redirect(`/banking?filter=overview&msg=${encodeURIComponent(e.message || "error")}`);
     }
@@ -10991,16 +11206,19 @@ router
     const b = ctx.request.body || {};
     const viewerId = getViewerId();
     const submittedId = (b.userId || "").trim();
-    if (submittedId && submittedId !== viewerId) {
-      ctx.redirect(`/banking?filter=addresses&msg=forbidden`);
-      return;
-    }
-    const res = await bankingModel.addAddress({ userId: viewerId, address: (b.address || "").trim() });
+    const address = (b.address || "").trim();
+    const label = (b.label || "").trim();
+    const res = submittedId === viewerId && !label
+      ? await bankingModel.addAddress({ userId: viewerId, address })
+      : bankingModel.addAddressBookEntry({ label, address, userId: submittedId });
     ctx.redirect(`/banking?filter=addresses&msg=${encodeURIComponent(res.status)}`);
   })
   .post("/banking/addresses/delete", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
-    const res = await bankingModel.removeAddress({ userId: getViewerId() });
+    const b = ctx.request.body || {};
+    const res = String(b.source || '') === 'book'
+      ? bankingModel.removeAddressBookEntry(String(b.entryId || ''))
+      : await bankingModel.removeAddress({ userId: getViewerId() });
     ctx.redirect(`/banking?filter=addresses&msg=${encodeURIComponent(res.status)}`);
   })
   .post("/favorites/remove/:kind/:id", koaBody(), async (ctx) => {
@@ -11055,7 +11273,7 @@ router
         const os = require('os'), fsx = require('fs'), px = require('path');
         const gossip = JSON.parse(fsx.readFileSync(px.join(os.homedir(), '.ssb', 'gossip.json'), 'utf8') || '[]');
         let unfollowed = [];
-        try { unfollowed = JSON.parse(fsx.readFileSync(px.join(os.homedir(), '.ssb', 'gossip_unfollowed.json'), 'utf8') || '[]'); } catch (_) {}
+        try { unfollowed = JSON.parse(fsx.readFileSync(stateFilePath('gossip_unfollowed.json'), 'utf8') || '[]'); } catch (_) {}
         const activePub = Array.isArray(gossip) && gossip.some(p => p && p.key === pubKey) && !unfollowed.some(u => u && u.key === pubKey);
         if (activePub) { ctx.redirect('/invites?flash=alreadyFederated'); return; }
       } catch (_) {}
@@ -11576,15 +11794,57 @@ router
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
     if (!checkMod(ctx, 'walletMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body, action = String(b.action), dest = String(b.destination), amt = Number(b.amount), fee = Number(b.fee);
+    const transferId = String(b.transferId || '').trim();
+    const wantsTransfer = [].concat(b.createTransfer || []).includes('1');
+    const transferCtx = await loadTransferForWallet(ctx, transferId);
+    const paymentRef = transferCtx ? null : await loadPaymentRef(ctx, { payee: b.payeeId, concept: b.concept, ref: b.refHref, to: dest, tag: b.refTag });
+    const walletOptions = { transfer: transferCtx ? { id: transferCtx.id, concept: transferCtx.concept } : null, payment: paymentRef, createTransfer: wantsTransfer && !transferCtx };
     const { url, user, pass } = getConfig().wallet;
     let balance = null;
     try { balance = await walletModel.getBalance(url, user, pass); } catch (error) { ctx.body = await walletErrorView(error); return; }
     if (action === 'confirm') {
       const v = await walletModel.validateSend(url, user, pass, dest, amt, fee);
-      try { ctx.body = v.isValid ? await walletSendConfirmView(balance, dest, amt, fee) : await walletSendFormView(balance, dest, amt, fee, { type: 'error', title: 'validation_errors', messages: v.errors }); }
+      try { ctx.body = v.isValid ? await walletSendConfirmView(balance, dest, amt, fee, walletOptions) : await walletSendFormView(balance, dest, amt, fee, { type: 'error', title: 'validation_errors', messages: v.errors }, null, walletOptions); }
       catch (error) { ctx.body = await walletErrorView(error); }
     } else if (action === 'send') {
-      try { ctx.body = await walletSendResultView(balance, dest, amt, await walletModel.sendToAddress(url, user, pass, dest, amt)); }
+      try {
+        const txId = await walletModel.sendToAddress(url, user, pass, dest, amt);
+        const { i18n: i18nW } = require('../views/main_views');
+        const me = getViewerId();
+        let note = null;
+        const paidLine = `${await actorLink(me)} ${i18nW.walletPaymentPmText}: ${Number(amt).toFixed(6)} ECO`;
+        if (transferCtx) {
+          try { await pmModel.sendMessage([transferCtx.other], 'WALLET_PAYMENT', `${paidLine} → [${transferCtx.concept || transferCtx.id}](/transfers/${encodeURIComponent(transferCtx.id)}) · tx ${txId}`); } catch (_) {}
+          note = i18nW.walletTransferNotifiedNote;
+        } else {
+          let payeeId = paymentRef ? paymentRef.payeeId : null;
+          if (!payeeId) {
+            try {
+              const rows = await bankingModel.listAddressesMerged();
+              const payee = (rows || []).find(r => String(r.address) === String(dest));
+              if (payee && String(payee.id) !== String(me)) payeeId = payee.id;
+            } catch (_) {}
+          }
+          const refLink = paymentRef && paymentRef.concept ? (paymentRef.href ? `[${paymentRef.concept}](${paymentRef.href})` : paymentRef.concept) : '';
+          let receiptLink = '';
+          if (payeeId && wantsTransfer && checkMod(ctx, 'transfersMod')) {
+            try {
+              const deadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+              const concept = `${paymentRef && paymentRef.concept ? paymentRef.concept : i18nW.walletTransferReceiptConcept} · tx ${txId}`;
+              const created = await transfersModel.createTransfer(payeeId, concept, amt, deadline, [paymentRef && paymentRef.tag ? paymentRef.tag : 'WALLET'], 'ECONOMIC');
+              if (created && created.key) receiptLink = ` → [${i18nW.walletTransferReceiptConcept}](/transfers/${encodeURIComponent(created.key)})`;
+              note = i18nW.walletTransferCreatedNote;
+            } catch (_) {}
+          }
+          if (payeeId) {
+            try { await pmModel.sendMessage([payeeId], 'WALLET_PAYMENT', `${paidLine}${refLink ? ` → ${refLink}` : ''} · tx ${txId}${receiptLink}`); } catch (_) {}
+            if (!note) note = i18nW.walletTransferNotifiedNote;
+          } else if (wantsTransfer) {
+            note = i18nW.walletTransferNoPayeeNote;
+          }
+        }
+        ctx.body = await walletSendResultView(balance, dest, amt, txId, note);
+      }
       catch (error) { ctx.body = await walletErrorView(error); }
     }
   });
@@ -11600,6 +11860,14 @@ const middleware = [
     await next();
   },
   async (ctx, next) => {
+    if (ctx.method === 'GET' && WALLET_CHIP_PATHS.some(p => ctx.path === p || ctx.path.startsWith(`${p}/`))) {
+      try { await refreshWalletReady(); } catch (_) {}
+      if (ctx.path === '/transfers' || ctx.path.startsWith('/transfers/')) { try { await runWalletWork('transfers'); } catch (_) {} }
+      else if (ctx.path === '/banking' || ctx.path.startsWith('/banking/')) { try { await runWalletWork('banking'); } catch (_) {} }
+    }
+    await next();
+  },
+  async (ctx, next) => {
     await next();
     const flash = ctx.method === 'GET' ? String(ctx.query.error || '').trim() : '';
     if (!flash || typeof ctx.body !== 'string' || !/html/.test(String(ctx.type || ''))) return;
@@ -11611,7 +11879,7 @@ const middleware = [
     ctx.body = ctx.body.slice(0, at + marker.length) + renderInlineError(flash, cleanUrl) + ctx.body.slice(at + marker.length);
   },
   async (ctx, next) => {
-    const isBinary = ctx.path.startsWith('/qr') || ctx.path.startsWith('/image/') || ctx.path.startsWith('/blob/') || ctx.path.startsWith('/assets/');
+    const isBinary = ctx.path.startsWith('/qr') || ctx.path.startsWith('/wallet/qr/') || ctx.path.startsWith('/image/') || ctx.path.startsWith('/blob/') || ctx.path.startsWith('/assets/');
     if (isBinary) {
       try { await next(); } catch (err) {
         ctx.status = err.status || 500;
@@ -11669,6 +11937,7 @@ const middleware = [
           const top = (dataRes.matches || [])[0] || null;
           sharedState.setBestMatch(top ? { href: top.href, title: top.title || top.id, kind: top.kind, score: top.score } : null);
         } catch (_) {}
+        try { await refreshDonatableAuthors(); } catch (_) {}
         try { sharedState.setFeaturedEmergency(await emergenciesModel.featured()); } catch (_) {}
         try { await refreshInboxCount(); } catch (_) {}
         try { await refreshMentionsCount(); } catch (_) {}
@@ -11735,13 +12004,64 @@ const middleware = [
 const app = http({ host, port, middleware, allowHost: config.allowHost });
 
 let pubEngineTimer = null;
+let pubAddressEnsured = false;
 async function runPubEngineTick() {
   if (!bankingModel.isPubNode()) return;
+  if (!pubAddressEnsured) { try { const r = await bankingModel.ensureSelfAddressPublished(); pubAddressEnsured = r && r.status !== 'skipped'; } catch (_) {} }
   try { await bankingModel.executeEpoch({}); } catch (_) {}
   try { await bankingModel.processPendingClaims(); } catch (_) {}
+  try { await bankingModel.confirmIncomingTransfers(); } catch (_) {}
+  try { await bankingModel.rebalanceUbiPools(); } catch (_) {}
   try { await bankingModel.publishPubAvailability(); } catch (_) {}
 }
+const ubiNoticePath = process.env.OASIS_BANKING_DIR ? path.join(process.env.OASIS_BANKING_DIR, 'banking-ubi-notice.json') : stateFilePath('banking-ubi-notice.json');
+const confirmNoticePath = process.env.OASIS_BANKING_DIR ? path.join(process.env.OASIS_BANKING_DIR, 'banking-confirm-notice.json') : stateFilePath('banking-confirm-notice.json');
+async function notifyPendingConfirmations() {
+  if (getConfig().modules?.transfersMod === 'off') return;
+  try {
+    const me = getViewerId();
+    const list = await transfersModel.listAll('all', me).catch(() => []);
+    const pending = (list || []).filter(t => {
+      const tags = Array.isArray(t.tags) ? t.tags.map(x => String(x).toUpperCase()) : [];
+      const settledUbi = tags.includes('UBI') && /^[0-9a-f]{64}$/i.test(String(t.txid || ''));
+      return String(t.status || '').toUpperCase() === 'UNCONFIRMED'
+        && String(t.to) === String(me)
+        && !(Array.isArray(t.confirmedBy) ? t.confirmedBy : []).includes(me)
+        && !tags.includes('PENDING')
+        && !settledUbi;
+    });
+    if (!pending.length) return;
+    let notified = [];
+    try { notified = JSON.parse(fs.readFileSync(confirmNoticePath, 'utf8')) || []; } catch (_) {}
+    const fresh = pending.filter(t => !notified.includes(t.id));
+    if (!fresh.length) return;
+    const { i18n: i18nB } = require('../views/main_views');
+    const lines = fresh.slice(0, 5).map(t => `· [${t.concept || t.id}](/transfers/${encodeURIComponent(t.id)}) — ${Number(t.amount || 0).toFixed(6)} ECO`).join('\n');
+    await pmModel.sendMessage([me], 'BANKING_CONFIRM_PENDING', `${i18nB.bankingBotConfirmText} (${fresh.length}):\n${lines}\n\n[${i18nB.transfersFilterPending}](/transfers?filter=pending)`);
+    fs.writeFileSync(confirmNoticePath, JSON.stringify([...notified, ...fresh.map(t => t.id)].slice(-500)));
+  } catch (_) {}
+}
+
+const lastWalletWork = { transfers: 0, banking: 0 };
+async function runWalletWork(kind) {
+  if (bankingModel.isPubNode()) return;
+  if (Date.now() - (lastWalletWork[kind] || 0) < 60000) return;
+  lastWalletWork[kind] = Date.now();
+  try { await bankingModel.confirmIncomingTransfers(); } catch (_) {}
+  if (kind === 'transfers') { try { await notifyPendingConfirmations(); } catch (_) {} return; }
+  try {
+    const avail = await bankingModel.claimAvailability(getViewerId());
+    if (!avail.available) return;
+    let notified = {};
+    try { notified = JSON.parse(fs.readFileSync(ubiNoticePath, 'utf8')) || {}; } catch (_) {}
+    if (notified.epochId === avail.epochId) return;
+    const { i18n: i18nB } = require('../views/main_views');
+    await pmModel.sendMessage([getViewerId()], 'BANKING_UBI_AVAILABLE', `${i18nB.bankingBotUbiAvailableText}: [${i18nB.bankClaimUBI}](/banking?filter=exchange) · ${avail.epochId}`);
+    fs.writeFileSync(ubiNoticePath, JSON.stringify({ epochId: avail.epochId, at: new Date().toISOString() }));
+  } catch (_) {}
+}
 if (bankingModel.isPubNode()) {
+  console.log(`[UBI] PUB engine on: paying UBI through ecoind at ${getConfig().wallet.url}`);
   setTimeout(() => { runPubEngineTick(); }, 15000);
   pubEngineTimer = setInterval(runPubEngineTick, 30 * 60 * 1000);
 }
@@ -11752,7 +12072,7 @@ let welcomePmAttempted = false;
 async function sendWelcomePmIfFirstLaunch() {
   if (welcomePmAttempted) return;
   welcomePmAttempted = true;
-  const flagPath = path.join(ssbConfig.path, 'oasis-first-contact');
+  const flagPath = stateFilePath('oasis-first-contact');
   try {
     const ssbClient = await cooler.open();
     if (!ssbClient || !ssbClient.id) { welcomePmAttempted = false; return; }
