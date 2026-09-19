@@ -621,6 +621,25 @@ verde · 0 rutas `C:\S…`, 0 `fonts.googleapis`, 0 `claude.ai/code/artifact` y
 origen de los dosieres no se modifica · reimportar es idempotente.
 Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertura).
 
+| **WP-O111** | **P1** | Seguimientos con fecha tras la puesta en marcha del 2026-09-19 |
+
+**Estado** · 📋 abierto. Cada punto es pequeño; se agrupan para que no dependan de la memoria de nadie.
+
+| Cuándo | Qué | Dónde está el cómo |
+|---|---|---|
+| **≥ 2026-10-18** | **El bot `ecoin.escrivivir.co` cumple 30 días de feed**: decidir si reclama la RBU que otros pubs le asignan (en 2026-09 La Plaza le asignó ~50 ECO). Es un `ubiClaim` del bot, irreversible: ventana no pública + GUI del bot, con GO | ECOIN §9 · HUB §12 (ventana) |
+| 2026-10-01 | Época nueva: `hub-wallet.sh status` — la de octubre se abre con el saldo real (la de septiembre quedó fijada con pool 0) | ECOIN §9 |
+| al llegar la **dote** | `backup-ecoin.sh` inmediato; comprobar pool y primer pago; avisar a upstream de que estamos en la lista | ECOIN §8, §9 |
+| semanal | `backup-ecoin.sh` (cada anuncio usa una dirección nueva del keypool) + `hub-wallet.sh status` + `hub-disk.sh status --json` | ECOIN §9 · HUB §6 |
+| 2026-09-20 | Memoria de HUB y bot-2 en 1.1.4 con el motor encendido; si va bien, retirar en el VPS la imagen `:1.1.2`, `src.old` y `/srv/oasis/src-1.1.2.tgz` | reporte WP-O106 |
+| cuanto antes | **Backups de hoy a almacenamiento cifrado fuera de la máquina**: `devops/backups/{oasis-pub,ecoin,client,client-wallet}/2026091*` (llevan `secret` y `wallet.dat` sin cifrar) | AGENTES §2.7 |
+| custodio, en el navegador | Casilla «Torrents» en clearnet de su perfil → `/c/torrents/…` en el HUB; opcional «wallet» visible para recibir pagos desde la UI. Cada una es un `about` | TEATRO-P2P §4.4 |
+| custodio | Comprobar en Banking el cobro del `ubiClaim` de 2026-09 (dirigido a La Plaza) | CLIENT §8.7 |
+| siguiente sesión | WP-O110: puerta «P2P» en el sitio de la obra y en el catálogo; `backup-teatro.sh` debe respaldar `p2p/` y `CONGELADO.json`; semillas propias, cartelera y medición | dosier P2P `06`/`07` |
+| siguiente sesión | WP-O109: prueba de agente en frío del protocolo; `limit_req` en `/c`; docs de upstream | AGENTES, D-O23 |
+| horizonte | Carteras en los 2 clientes Android del custodio: protocolo propio (la app trae su cartera); en 1.1.4 abrir la app con cartera publica la dirección | CLIENT §8.2 |
+| a upstream | Hallazgos de ECOIN §12 (suelo de 1 ECO sin fondos y época fijada, `isLoopbackRequest` tras proxy/contenedor, alta no idempotente…) | ECOIN §12 |
+
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
 **Estado** · ✅ 2026-09-19 en `main`. Asientos D-O20, D-O23.
