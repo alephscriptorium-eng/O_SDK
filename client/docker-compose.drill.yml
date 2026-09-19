@@ -37,7 +37,7 @@ services:
   oasis-client:
     container_name: oasis-client-drill
     ports: !override
-      - "3100:3000"   # GUI
+      - "127.0.0.1:3100:3001"   # GUI por el puente de loopback (ver compose raíz)
       - "8108:8008"   # sbot
     environment:
       - OASIS_SKIP_AI_MODEL=true

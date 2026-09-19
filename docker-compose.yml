@@ -27,7 +27,10 @@ services:
     container_name: oasis-client
     ports:
       - "8008:8008"   # Puerto SSB
-      - "3000:3000"   # Puerto cliente web
+      # GUI: atada a 127.0.0.1 del host y servida por el puente de loopback (3001 → 127.0.0.1:3000 dentro).
+      # Oasis exige que Banking/Wallet/Settings lleguen desde el loopback; con "3000:3000" el backend ve la
+      # IP del bridge y responde 403. NUNCA publicar este puerto en 0.0.0.0: daría esos poderes a la LAN.
+      - "127.0.0.1:3000:3001"
     volumes:
       # Volumenes persistentes para datos críticos
       - oasis-ssb-data-dev:/home/oasis/.ssb
@@ -63,6 +66,7 @@ services:
       # Sin OASIS_BANKING_DIR (Oasis 1.1.4): el estado bancario vive en ~/.ssb/oasis/banking, dentro del bind
       # de ssb-data. Con la variable habría dos mapas de direcciones (CLIENT-PROTOCOL §8.3).
       - OASIS_CLIENT_STATE_DIR=/app/state
+      - OASIS_LOOPBACK_PROXY_PORT=3001
     
     # ✅ GPU habilitada con runtime nvidia y configuración dual
     runtime: nvidia
