@@ -639,6 +639,25 @@ real, en este orden: `client:backup-keys` → `client:ecoin:init` → `ecoin:up`
 antes de publicar** → publicar una vez → 1 mensaje `wallet` en el feed y replicado al pub → después,
 `--pub-id` de bot-2. El primer claim real es otra confirmación aparte.
 
+### 8.10 La GUI desde el navegador del host: el puente de loopback
+
+Oasis solo acepta las acciones sensibles (reclamar o rechazar la RBU, Wallet, Settings, update) si la
+petición llega desde `127.0.0.1` (`isLoopbackRequest`, `src/backend/backend.js`): upstream da por hecho que
+la GUI corre en la misma máquina que el backend. En el cliente dockerizado el navegador del host entra por el
+mapeo de puertos y el backend ve la IP del bridge: **403 con el cuerpo vacío** («Se denegó el acceso a
+localhost»). Apareció el 2026-09-19 con el primer «Claim UBI» pulsado en la UI; hasta entonces esas
+peticiones se habían hecho siempre desde dentro del contenedor.
+
+Sin tocar `src/`: con `OASIS_LOOPBACK_PROXY_PORT=3001` el entrypoint arranca un reenviador TCP
+`:3001 → 127.0.0.1:3000`, y el compose publica la GUI como **`127.0.0.1:3000:3001`**. El backend ve un cliente
+local y la garantía de «solo esta máquina» se conserva en el host. **Nunca publiques ese puerto en `0.0.0.0`**:
+darías a toda la LAN las acciones que Oasis reserva al dueño del nodo. Pub, HUB y bots no definen la variable.
+
+Comprobar: `docker port oasis-client` → `3001/tcp -> 127.0.0.1:3000`; el log dice «Puente de loopback»; y en
+Banking → UBI, «Claim UBI» deja de dar 403. Un reclamo es **un mensaje `ubiClaim` al mes**, irreversible; el botón
+de al lado, «Refuse UBI», renuncia a la del mes y tampoco se deshace. Tras pulsar, la página puede no
+refrescarse: cuenta el mensaje en el feed antes de volver a pulsar.
+
 ## 9. Piezas
 
 | Pieza | Fichero |

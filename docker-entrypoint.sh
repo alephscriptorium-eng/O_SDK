@@ -783,6 +783,34 @@ if [ -d "/root/.ssb" ]; then
     rm -rf /root/.ssb 2>/dev/null || true
 fi
 
+# =============================================================================
+# FUNCIÓN: puente de loopback para la GUI del cliente dockerizado
+# Oasis solo acepta las acciones sensibles (Banking, Wallet, Settings…) si la petición llega desde
+# 127.0.0.1 (isLoopbackRequest). En Docker el navegador del host entra por el mapeo de puertos y el
+# backend ve la IP del bridge: 403. Este reenviador TCP escucha en OASIS_LOOPBACK_PROXY_PORT y entrega
+# en 127.0.0.1:3000, así que el backend ve un cliente local. La garantía de «solo esta máquina» se
+# conserva en el compose: el puerto del host se publica atado a 127.0.0.1, NUNCA a 0.0.0.0.
+# Solo con la variable definida y fuera del modo server: pub, HUB y bots no lo usan.
+# =============================================================================
+start_loopback_proxy() {
+    local port="${OASIS_LOOPBACK_PROXY_PORT:-}"
+    [ -n "$port" ] && [ "$MODE" != "server" ] || return 0
+    case "$port" in ''|*[!0-9]*) echo "  ⚠ OASIS_LOOPBACK_PROXY_PORT no es un puerto: puente de loopback desactivado"; return 0 ;; esac
+    echo "🔁 Puente de loopback: :$port → 127.0.0.1:3000 (publica el puerto del host SOLO en 127.0.0.1)"
+    LOOPBACK_PROXY_PORT="$port" node -e '
+      const net = require("net");
+      const port = Number(process.env.LOOPBACK_PROXY_PORT);
+      net.createServer((c) => {
+        const u = net.connect(3000, "127.0.0.1");
+        const end = () => { c.destroy(); u.destroy(); };
+        c.on("error", end); u.on("error", end);
+        c.pipe(u); u.pipe(c);
+      }).listen(port, "0.0.0.0");
+    ' &
+}
+
+start_loopback_proxy
+
 case "$MODE" in
     "server")
         echo "🚀 Iniciando solo servidor SSB..."

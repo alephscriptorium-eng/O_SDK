@@ -13,6 +13,13 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
   el plan aprobado, verbatim.
 - `scripts/roadmap-import.py --only <slug>`: reimporta un dosier sin tocar los demás ni `index.md`.
 
+### Fixed — La GUI del cliente dockerizado daba 403 en Banking (2026-09-19)
+
+- **Puente de loopback** en `docker-entrypoint.sh` (`OASIS_LOOPBACK_PROXY_PORT`) y GUI publicada como
+  `127.0.0.1:3000:3001`: Oasis exige que Banking, Wallet y Settings lleguen desde el loopback. Sin tocar `src/`.
+  `docs/CLIENT-PROTOCOL.md` §8.10; trampa en `docs/AGENTES.md` §4; hallazgo para upstream en ECOIN §12.
+- Ficha P2P de la obra con la piel del sitio (`obra.css`) y banner 06 de publicidad.
+
 ### Added — Teatro P2P, fase 0 (WP-O110, 2026-09-19)
 
 *Aleph Cero* sale a la red sin demonios nuevos. Reporte `plan/REPORTES/WP-O110-teatro-p2p-fase0.md`.
