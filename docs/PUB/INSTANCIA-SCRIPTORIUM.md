@@ -41,8 +41,9 @@ nombre puede cambiar.
 | 2 | `ecoin.escrivivir.co` | ecoin (cartera) · scriptorium | hub-wallet: cartera ECOin del pub, custodia la dote y reparte la RBU; **sin ruta pública** | `oasis-pub-wallet-bot` + `oasis-pub-ecoin` · `/srv/oasis/oasis-wallet-bot`, `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
-Oasis **1.1.4** en pub, HUB y bot-2 desde el 2026-09-19 (WP-O106). Motor de RBU: **apagado**
-(`pub: false`; interruptor nuevo en WP-O107), así que la casa **no sale todavía** en la lista de pubs de Banking.
+Oasis **1.1.4** en pub, HUB y bot-2 desde el 2026-09-19 (WP-O106). Motor de RBU: **encendido**
+desde el 2026-09-19 17:09 UTC (WP-O107; `hub-wallet.sh status`): la casa sale en la lista de pubs de Banking,
+sin fondos (✗, pool 0) hasta la dote. Época `2026-09` fijada con pool 0.
 
 Nombres anteriores (siguen en el log de cada feed; D-O14): `azofaifo-scriptorium-skin-bot-1`,
 `azofaifo-scriptorium-wallet-bot-2`.

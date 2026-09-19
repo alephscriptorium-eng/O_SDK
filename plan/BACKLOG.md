@@ -653,6 +653,8 @@ Dep: WP-O105.
 
 | **WP-O107** | **P2** | Motor de RBU en 1.1.4: interruptor `pub: true` y gestión de admin |
 
+**Estado** · ✅ 2026-09-19: motor encendido en el VPS (`plan/REPORTES/WP-O107-motor-rbu.md`).
+
 **BRIEF** · D-O21. `ssb-config.engine-on` vía `OASIS_WALLET_BOT_SSB_CONFIG_FILE`;
 limpiar `walletPub`, marcador y `OASIS_WALLET_BOT_PUB_ID`;
 `devops/scripts/hub-wallet.sh status|ready|on|pause`; gate con `pub: true`

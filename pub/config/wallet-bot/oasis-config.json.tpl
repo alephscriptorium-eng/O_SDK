@@ -68,9 +68,6 @@
     "pass": "__ECOIN_RPC_PASS__",
     "fee": "5"
   },
-  "walletPub": {
-    "pubId": "__WALLET_BOT_PUB_ID__"
-  },
   "ai": {
     "prompt": "Provide an informative and precise response."
   },
