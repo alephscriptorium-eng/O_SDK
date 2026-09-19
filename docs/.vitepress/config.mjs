@@ -71,6 +71,7 @@ export default defineConfig({
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
           { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' },
           { text: 'Protocolo del sidecar de RRSS', link: '/PUB/RRSS-SIDECAR-PROTOCOL' },
+          { text: 'Protocolo del Teatro P2P', link: '/PUB/TEATRO-P2P-PROTOCOL' },
           { text: 'Protocolo de curaduría del Teatro', link: '/PUB/TEATRO-CURADURIA-PROTOCOL' },
           { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' },
           { text: 'Protocolo de ECOin (hub-wallet)', link: '/PUB/ECOIN-PROTOCOL' },

@@ -15,6 +15,9 @@
 #   TEATRO_DRY_RUN=1     solo enseña lo que rsync haría (incluido lo que --delete borraría)
 #   TEATRO_DELETE=1      espejo exacto DENTRO de <obra>/ (nunca fuera). Revisa antes un DRY_RUN
 #   TEATRO_SKIP_ZIP=1    no (re)generar los zips remotos
+#   TEATRO_ZIP_SUFIJO    obra CONGELADA (<obra>/CONGELADO.json en el host, lo escribe teatro-p2p.sh congelar):
+#                        los zips congelados NO se tocan nunca; con esta variable la edición nueva sale como
+#                        <obra>-<sufijo>.zip y <obra>-cerebro-<sufijo>.zip; sin ella no se genera ningún zip.
 #   TEATRO_SKIP_VERIFY=1 no ejecutar la verificación post-deploy
 set -euo pipefail
 
@@ -77,7 +80,8 @@ rssh "
 
 # ── 2. rsync: solo la portada y ESTA obra ────────────────────────────────────
 RSYNC_FLAGS=(-a --partial --chmod=D755,F644 --info=progress2
-  --exclude "/$OBRA.zip" --exclude "/$OBRA-cerebro.zip" --exclude '/*.zip.sha256*'
+  --exclude "/$OBRA.zip" --exclude "/$OBRA-cerebro.zip" --exclude "/$OBRA-*.zip" --exclude '/*.zip.sha256*'
+  --exclude '/CONGELADO.json' --exclude '/p2p/'
   --exclude '/MANIFEST.sha256.sig' --exclude '/allowed_signers' --exclude '__pycache__/' --exclude '*.pyc')
 [[ "${TEATRO_DELETE:-0}" = "1" ]] && RSYNC_FLAGS+=(--delete)
 if [[ "${TEATRO_DRY_RUN:-0}" = "1" ]]; then
@@ -102,39 +106,59 @@ echo "[deploy-teatro] verificando el árbol remoto contra MANIFEST.sha256 ($N_LO
 rssh "cd '$REMOTE_OBRA' && sha256sum -c --quiet MANIFEST.sha256"
 
 # ── 4. zips remotos: el COMPLETO (descarga principal) y el ligero (inspección) ─
+# Obra congelada: sus zips tienen enlaces publicados para siempre (torrent con semilla web, anuncio en
+# Oasis). No se regeneran. Una edición nueva sale con otro nombre, nunca encima.
+ZIP_FULL="$OBRA.zip"; ZIP_LIGHT="$OBRA-cerebro.zip"; CONGELADA=0
+if rssh "[ -f '$REMOTE_OBRA/CONGELADO.json' ]"; then
+  CONGELADA=1
+  NOTA="$LOCAL_TEATRO_DIR/$OBRA.CONGELADO.md"
+  echo "[deploy-teatro] ❄ $OBRA está CONGELADA: $OBRA.zip y $OBRA-cerebro.zip no se tocan."
+  [[ -f "$NOTA" ]] && sed 's/^/    /' "$NOTA"
+  if [[ -n "${TEATRO_ZIP_SUFIJO:-}" ]]; then
+    [[ "$TEATRO_ZIP_SUFIJO" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || { echo "ERROR: TEATRO_ZIP_SUFIJO no válido ([a-z0-9.-])"; exit 2; }
+    ZIP_FULL="$OBRA-$TEATRO_ZIP_SUFIJO.zip"; ZIP_LIGHT="$OBRA-cerebro-$TEATRO_ZIP_SUFIJO.zip"
+    rssh "[ ! -e '$REMOTE_OBRA/$ZIP_FULL' ] && [ ! -e '$REMOTE_OBRA/$ZIP_LIGHT' ]" || { echo "ERROR: ya existe una edición con sufijo «$TEATRO_ZIP_SUFIJO»: elige otro (tampoco se pisa)"; exit 3; }
+    echo "[deploy-teatro]   la edición nueva sale como $ZIP_FULL y $ZIP_LIGHT"
+  else
+    echo "[deploy-teatro]   sin TEATRO_ZIP_SUFIJO: se publican las páginas, no se genera ningún zip."
+    TEATRO_SKIP_ZIP=1
+  fi
+fi
 if [[ "${TEATRO_SKIP_ZIP:-0}" != "1" ]]; then
   echo "[deploy-teatro] generando zips remotos…"
   rssh "
     set -e
     cd '$REMOTE_TEATRO_DIR'
-    rm -f '$OBRA/$OBRA.zip.tmp' '$OBRA/$OBRA-cerebro.zip.tmp'
+    rm -f '$OBRA/$ZIP_FULL.tmp' '$OBRA/$ZIP_LIGHT.tmp'
     if command -v zip >/dev/null 2>&1; then
       # completo: todo el árbol, sin comprimir (mp4/jpg no comprimen) y sin los propios artefactos
-      zip -0 -rq '$OBRA/$OBRA.zip.tmp' '$OBRA' -x '$OBRA/*.zip' '$OBRA/*.zip.tmp' '$OBRA/*.zip.sha256*' '$OBRA/MANIFEST.sha256.sig' '$OBRA/allowed_signers'
-      ( cd '$OBRA' && zip -rq '$OBRA-cerebro.zip.tmp' corpus indexes tools AGENTS.md MANIFEST.sha256 data/external_tweets.v2.json data/external_worklist.json data/links_store.json 2>/dev/null || true )
+      zip -0 -rq '$OBRA/$ZIP_FULL.tmp' '$OBRA' -x '$OBRA/*.zip' '$OBRA/*.zip.tmp' '$OBRA/*.zip.sha256*' '$OBRA/MANIFEST.sha256.sig' '$OBRA/allowed_signers' '$OBRA/CONGELADO.json' '$OBRA/p2p/*'
+      ( cd '$OBRA' && zip -rq '$ZIP_LIGHT.tmp' corpus indexes tools AGENTS.md MANIFEST.sha256 data/external_tweets.v2.json data/external_worklist.json data/links_store.json 2>/dev/null || true )
     else
       python3 - <<'PY'
 import os, zipfile
 obra = '$OBRA'
-skip = ('.zip', '.zip.tmp', '.sha256.sig', 'allowed_signers')
+skip = ('.zip', '.zip.tmp', '.sha256.sig', 'allowed_signers', 'CONGELADO.json')
 brain = ('corpus/', 'indexes/', 'tools/', 'AGENTS.md', 'MANIFEST.sha256', 'data/external_', 'data/links_')
-with zipfile.ZipFile(f'{obra}/{obra}.zip.tmp', 'w', zipfile.ZIP_STORED, allowZip64=True) as full, \
-     zipfile.ZipFile(f'{obra}/{obra}-cerebro.zip.tmp', 'w', zipfile.ZIP_DEFLATED, allowZip64=True) as light:
+with zipfile.ZipFile(f'{obra}/$ZIP_FULL.tmp', 'w', zipfile.ZIP_STORED, allowZip64=True) as full, \
+     zipfile.ZipFile(f'{obra}/$ZIP_LIGHT.tmp', 'w', zipfile.ZIP_DEFLATED, allowZip64=True) as light:
     for root, _dirs, files in os.walk(obra):
         for name in sorted(files):
             path = os.path.join(root, name)
             rel = os.path.relpath(path, obra).replace(os.sep, '/')
             if '/' not in rel and (rel.endswith(skip) or '.zip.sha256' in rel):
                 continue
+            if rel.startswith('p2p/'):
+                continue
             full.write(path, f'{obra}/{rel}')
             if rel.startswith(brain):
                 light.write(path, rel)
 PY
     fi
-    mv '$OBRA/$OBRA.zip.tmp' '$OBRA/$OBRA.zip'
-    mv '$OBRA/$OBRA-cerebro.zip.tmp' '$OBRA/$OBRA-cerebro.zip'
-    chmod 644 '$OBRA/$OBRA.zip' '$OBRA/$OBRA-cerebro.zip'
-    ls -lh '$OBRA/$OBRA.zip' '$OBRA/$OBRA-cerebro.zip'
+    mv '$OBRA/$ZIP_FULL.tmp' '$OBRA/$ZIP_FULL'
+    mv '$OBRA/$ZIP_LIGHT.tmp' '$OBRA/$ZIP_LIGHT'
+    chmod 644 '$OBRA/$ZIP_FULL' '$OBRA/$ZIP_LIGHT'
+    ls -lh '$OBRA/$ZIP_FULL' '$OBRA/$ZIP_LIGHT'
   "
 fi
 
@@ -143,9 +167,11 @@ echo "[deploy-teatro] checksums + letrero…"
 ZIP_SHA="$(rssh "
   set -e
   cd '$REMOTE_OBRA'
-  sha256sum '$OBRA.zip' > '$OBRA.zip.sha256'
-  sha256sum '$OBRA-cerebro.zip' > '$OBRA-cerebro.zip.sha256'
-  chmod 644 *.sha256
+  # los .sha256 de una obra congelada están firmados y publicados: no se reescriben
+  for z in '$ZIP_FULL' '$ZIP_LIGHT'; do
+    if [ -f \"\$z\" ] && { [ '$CONGELADA' = 0 ] || [ ! -f \"\$z.sha256\" ]; }; then sha256sum \"\$z\" > \"\$z.sha256\"; fi
+  done
+  chmod 644 *.sha256 2>/dev/null || true
   cut -d' ' -f1 '$OBRA.zip.sha256'
 ")"
 echo "[deploy-teatro] SHA-256 de $OBRA.zip: $ZIP_SHA"
@@ -154,7 +180,10 @@ rssh "sed -i 's/__ZIP_SHA256__/$ZIP_SHA/g' '$REMOTE_TEATRO_DIR/index.html' '$REM
 # ── 6. firma ed25519 en local (la privada no viaja) ──────────────────────────
 if [[ -f "$PUB_KEY_PATH" ]]; then
   echo "[deploy-teatro] firmando checksums y manifiesto…"
-  for f in "$OBRA.zip.sha256" "$OBRA-cerebro.zip.sha256" "MANIFEST.sha256"; do
+  SIGN_LIST=("$ZIP_FULL.sha256" "$ZIP_LIGHT.sha256" "MANIFEST.sha256")
+  # congelada y sin edición nueva: las firmas de los zips ya están publicadas; solo el manifiesto
+  [[ "$CONGELADA" = 1 && -z "${TEATRO_ZIP_SUFIJO:-}" ]] && SIGN_LIST=("MANIFEST.sha256")
+  for f in "${SIGN_LIST[@]}"; do
     rssh "cat '$REMOTE_OBRA/$f'" > "$TMP_WORK/$f"
     ssh-keygen -Y sign -f "$KEY_PATH" -n file -q "$TMP_WORK/$f"
   done

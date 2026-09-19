@@ -23,6 +23,7 @@
 | Dar de alta o **renombrar un bot** de soporte | HUB-PROTOCOL [§11-§12](./PUB/HUB-PROTOCOL.md) | §5 de esta página (nombres) |
 | App cliente: alta, importar identidad, cartera | [`CLIENT-PROTOCOL.md`](./CLIENT-PROTOCOL.md) | — |
 | Acoger y desplegar una obra del Teatro | [`TEATRO-PROTOCOL.md`](./PUB/TEATRO-PROTOCOL.md) · [curaduría](./PUB/TEATRO-CURADURIA-PROTOCOL.md) · [sidecar RRSS](./PUB/RRSS-SIDECAR-PROTOCOL.md) | — |
+| Sacar una obra a la escena P2P (torrent, ed2k) y anunciarla en Oasis | [`TEATRO-P2P-PROTOCOL.md`](./PUB/TEATRO-P2P-PROTOCOL.md) | §3 de esta página: el anuncio es irreversible |
 | Algo se ha roto (disco, repo, identidad) | [`RECOVERY-PROTOCOL.md`](./PUB/RECOVERY-PROTOCOL.md) | **no toques nada antes de §0** |
 
 Cómo se trabaja en el repo (ramas, commits, gates, reportes): `plan/PRACTICAS.md`. Por qué las cosas
@@ -89,6 +90,8 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | `src/` llega al host con CRLF | en Windows `git archive` aplica `autocrlf` al empaquetar: `git -c core.autocrlf=false archive …` | UPGRADE §4 |
 | Un contador de mensajes da cientos en un bot recién nacido | con `hops` > 0 el log trae los mensajes de media red: contar **por autor** | HUB §12 |
 | El pub anuncia para donaciones una dirección que no es la publicada | cada `pubAvailability` pide `getnewaddress`: es de la misma cartera (keypool). Backup semanal de `wallet.dat` con el motor encendido | ECOIN §9 |
+| Un torrent o un enlace ed2k publicado deja de completar | los bytes detrás de la URL cambiaron: una obra con enlaces publicados se **congela**; la edición nueva sale con sufijo | TEATRO-P2P §1 |
+| Activar una casilla de visibilidad deja el perfil sin nombre | `POST /profile/edit` publica un `about` entero con lo que llegue: solo desde el formulario del navegador | TEATRO-P2P §4 |
 | El backend arranca sin sbot embebido | `OASIS_TEST` definido en el entorno (desde 1.1.3) | UPGRADE §1 |
 | El nombre nuevo de un feed no aparece | `nameCache` es memoria del proceso: reiniciar el nodo que lo muestra | HUB §12 |
 | El build del portal rompe | tokens entre ángulos fuera de código (Vue los lee como etiquetas) o enlaces muertos (`ignoreDeadLinks: false`) | `docs/proyecto.md` |

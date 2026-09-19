@@ -44,7 +44,8 @@ Base de código: o-sdk `main` en `74d5c6a` (2026-09-19), con `src/` = **Oasis 1.
 
 ## Estado
 
-- Plan WP-O110 aprobado [C]; ejecución pendiente de abrir la rama. **Leer `07` antes de ejecutar.**
+- **Fase 0 ejecutada el 2026-09-19** con *Aleph Cero* (congelada, artefactos P2P, anuncio en Oasis): protocolo
+  `docs/PUB/TEATRO-P2P-PROTOCOL.md`. Semillas propias, cartelera y medición siguen pendientes; leer `07` antes de seguir.
 - `pendiente` medir el tráfico saliente real del VPS antes de fijar el tope de subida de las semillas
   (no hay dato de cuota en ningún repo de la casa [E]).
 - Siguiente paso anotado, fuera de este WP: paquetes delta por generación (la media de una obra solo crece).
