@@ -460,7 +460,7 @@ npm run client:ecoin:verify                          # RPC por DNS de servicio, 
 ```
 
 > **Abrir la GUI publica tu dirección (medido en 1.1.4).** Con `wallet.url` respondiendo RPC, la primera
-> visita a `/`, `/banking` o `/wallet` pide una dirección a tu `ecoind` (`getnewaddress`), la guarda en
+> visita a `/` o `/wallet` (en el cliente real `/banking` sola no bastó) pide una dirección a tu `ecoind` (`getnewaddress`), la guarda en
 > `~/.ssb/oasis/banking/wallet-addresses.json` **y publica el mensaje `wallet` en tu feed**: irreversible y sin
 > preguntar. Ensayo: 0 → 1 mensaje tras los primeros GET; **sigue en 1** tras más visitas, un
 > `--force-recreate` y nuevas visitas (upstream comprueba `hasPublishedAddress`). Consecuencias:

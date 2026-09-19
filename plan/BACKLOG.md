@@ -664,6 +664,8 @@ Dep: WP-O106.
 
 | **WP-O108** | **P2** | Cliente en 1.1.4: entrypoint, scripts y CLIENT-PROTOCOL §8 |
 
+**Estado** · ✅ 2026-09-19: hecho y aplicado al cliente del custodio (`plan/REPORTES/WP-O108-cliente-1.1.4.md`).
+
 **BRIEF** · Symlink muerto de `wallet-addresses.json` y cableado de `walletPub`
 en `docker-entrypoint.sh`; `client/scripts/*`; banco autodescubierto (§8.7);
 drill. **Hasta entonces no reconstruir el cliente con 1.1.4.**

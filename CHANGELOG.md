@@ -13,6 +13,17 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
   el plan aprobado, verbatim.
 - `scripts/roadmap-import.py --only <slug>`: reimporta un dosier sin tocar los demás ni `index.md`.
 
+### Changed — Cliente en Oasis 1.1.4 con cartera propia (WP-O108, 2026-09-19)
+
+Reporte `plan/REPORTES/WP-O108-cliente-1.1.4.md`. Ensayado con identidad desechable y aplicado al cliente del custodio.
+
+- **En 1.1.4, con la cartera cableada, abrir la GUI publica sola la dirección ECOin** (medido; idempotente).
+  `docs/CLIENT-PROTOCOL.md` §8 reordenado: backup **antes** de abrir la GUI; no dar de alta a mano.
+- `docker-entrypoint.sh`: sin `OASIS_BANKING_DIR` ni symlink del mapa (el estado vive en `ssb-data/oasis/banking`),
+  copia única del `banking/` de 1.1.2, retirada de `walletPub`. El banco se autodescubre: fuera `OASIS_WALLET_PUB_ID`.
+- `client/scripts/*` al día; `ecoin-verify.sh` comprueba el estado nuevo.
+- Dosier P2P: `docs/ROADMAP/p2p/07-revision-y-secuencia.md` (revisión del plan WP-O110 contra 1.1.4).
+
 ### Added — Motor de RBU en 1.1.4: interruptor y gestión de admin (WP-O107, 2026-09-19)
 
 **Motor ENCENDIDO en `pub.escrivivir.co` desde el 2026-09-19 17:09 UTC**: la casa se anuncia como pub de RBU
