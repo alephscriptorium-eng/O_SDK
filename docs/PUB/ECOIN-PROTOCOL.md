@@ -432,6 +432,13 @@ lista de pubs de Banking** de todos los clientes 1.1.3+. Sin fondos sale con ✗
 0: es lo esperado hasta la dote. `on` hace backup del env-file (`*.bak-hubwallet-<fecha>`), verifica
 `pub=true` y `[UBI] PUB engine on` en el log, y si no, lo dice y propone `pause`.
 
+**Encender sin fondos tiene un coste, y no es solo la ✗.** En su primer tick el motor **abre la época del
+mes** con el saldo que haya. Con saldo ≤ 500 la fija con **pool 0** y, por el suelo de upstream
+(`floor_user: 1`), publica una `ubiAllocation` de **1 ECO sin respaldo** por cada habitante elegible que
+vea, incluido él mismo. La época **no se recalcula** aunque la dote llegue ese mes: hasta el mes siguiente
+nadie cobra de este pub más que ese 1 ECO. `ready` lo avisa. Regla: **si se puede elegir, primero la dote
+y después `on`**; si se enciende antes para aparecer en Banking, se hace sabiéndolo.
+
 **Pausar** no publica nada: deja de anunciar, y la tarjeta de Banking **caduca sola a los 3 días**.
 Pausar antes de cualquier duda (upgrade del bot, cartera en mantenimiento, saldo que no cuadra).
 
@@ -443,6 +450,11 @@ Pausar antes de cualquier duda (upgrade del bot, cartera en mantenimiento, saldo
   **`backup-ecoin.sh` semanal mientras el motor esté encendido**, y siempre tras recibir fondos.
 - **Paga cualquier `ubiClaim` elegible que vea**, no solo los dirigidos a él (§12): a hops 3, eso es media
   red. La cartera es caliente y pequeña por diseño (§8); si el saldo se mueve de forma que no entiendes, `pause`.
+
+Registro del encendido en la casa (VPS, 2026-09-19 17:09 UTC, GO del custodio «encender»): `pub=true`,
+1 × `[UBI] PUB engine on`, `pubAvailability` 1 (`available:false, balance:0, pool:0`), `wallet` sigue en 1,
+2 reclamos `skipped: PUB wallet balance is 0`, **época 2026-09 fijada con pool 0 y 6 `ubiAllocation` de
+1 ECO** (lo descrito arriba; el aviso de `ready` se añadió a raíz de esto).
 
 Registro del ensayo (local, 2026-09-19): `on` → `pub=true`, 1 × `[UBI] PUB engine on`, `pubAvailability`
 +1 (`available:false, balance:0, pool:0`), `wallet` sigue en 1, el pub lo ve `CONNECTED`; `pause` →
@@ -538,6 +550,10 @@ la comunidad quiénes son los bots Azofaifo, qué firma cada uno y por qué la R
 0 × `[UBI] PUB engine on`). `ecoin` no se recreó. La cuenta pasa a llamarse `ecoin.escrivivir.co` con
 `visibilityPrefs.wallet: true` (HUB §12). La carpeta vieja `/srv/oasis/oasis-wallet-bot/banking` se conserva
 como backup. Reporte `plan/REPORTES/WP-O106-aplicacion-vps-1.1.4.md`.
+
+**Encendido 2026-09-19 17:09 UTC (registro, WP-O107).** `hub-wallet.sh on --yes` con GO del custodio: detalle
+en §9 y en `plan/REPORTES/WP-O107-motor-rbu.md`. Backup posterior de `wallet.dat`:
+`devops/backups/ecoin/20260919T171116Z`. Journal `--mode server+hub+wallet-engine-on`.
 
 ## 14. Hallazgos de los gates locales G1-G6 (2026-09-18)
 

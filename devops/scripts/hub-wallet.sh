@@ -139,6 +139,11 @@ ready() {
   last="\$(docker logs --tail 2000 "\$PUBC" 2>&1 | grep -a -F "\$KEY" | grep -a -o 'CONNECTED\|DISCONNECTED' | tail -1)"
   [ "\$last" = CONNECTED ] && ok "conectado al pub" || ko "el pub no lo ve conectado (último: \${last:-nada})"
   [ -f "\$CFG_ON" ] && grep -q '"pub": *true' "\$CFG_ON" && ok "\$CFG_ON presente (pub:true)" || ko "falta \$CFG_ON"
+  if awk -v b="\${BAL:-0}" 'BEGIN{exit !(b<=500)}'; then
+    echo "  AVISO saldo \${BAL:-0} <= 500 ECO: al encender, el motor FIJA la época del mes con pool 0 y publica una"
+    echo "        ubiAllocation de 1 ECO sin respaldo por cada habitante elegible (irreversible; la época no se"
+    echo "        recalcula aunque llegue la dote ese mes). Si puedes, enciende DESPUÉS de la dote (ECOIN §9)."
+  fi
   [ "\$fail" = 0 ] && echo "LISTO para encender." || echo "NO listo."
   return \$fail
 }
