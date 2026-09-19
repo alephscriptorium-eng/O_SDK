@@ -204,11 +204,7 @@ else
   env_has COMPOSE_PROFILES || env_set COMPOSE_PROFILES ""
   env_has ECOIN_RPC_URL    || env_set ECOIN_RPC_URL ""
 fi
-if [ $PUB_ID_SET = 1 ]; then
-  env_set OASIS_WALLET_PUB_ID "$PUB_ID"
-else
-  env_has OASIS_WALLET_PUB_ID || env_set OASIS_WALLET_PUB_ID ""
-fi
+[ $PUB_ID_SET = 1 ] && warn "--pub-id ya no hace nada: desde Oasis 1.1.3 el cliente descubre el banco por los anuncios de los pubs"
 chmod 600 "$ENV_FILE" 2>/dev/null || true
 
 # ---------------------------------------------------------------- 3. volumen externo de la cartera
@@ -234,5 +230,4 @@ case "$(current_mode)" in
     echo "de una wallet.dat propia: npm run ecoin:up → npm run ecoin:address → npm run client:wallet:backup."
     echo "Para saldo/envíos/historial en la GUI: bash client/scripts/ecoin-init.sh --mode own" ;;
 esac
-[ -n "$(env_get OASIS_WALLET_PUB_ID)" ] || echo "Banco sin definir: --pub-id <feed del banco> (sin él no aparece el botón de claim de la RBU)."
 warn "la cartera vive en el volumen docker $VOLUME: PROHIBIDO «docker volume prune» / «docker system prune --volumes»."

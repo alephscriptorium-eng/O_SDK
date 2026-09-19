@@ -152,10 +152,7 @@ if (e.ECOIN_RPC_URL !== undefined) {
 } else {
   r.push('KO ECOIN_RPC_URL no está definida en el contenedor (el entrypoint no cablea)');
 }
-const pid = e.OASIS_WALLET_PUB_ID || '';
-const have = (c.walletPub && c.walletPub.pubId) || '';
-if (pid) r.push(have === pid ? 'OK walletPub.pubId=' + have : 'KO walletPub.pubId=' + JSON.stringify(have) + ' (entorno: ' + pid + ')');
-else r.push('NA walletPub.pubId=' + JSON.stringify(have) + ' (OASIS_WALLET_PUB_ID vacía: no se toca)');
+r.push(c.walletPub ? 'KO queda la clave obsoleta walletPub en oasis-config.json (recrea el contenedor: el entrypoint la retira)' : 'OK sin walletPub (el banco se autodescubre desde Oasis 1.1.3)');
 if (e.OASIS_WALLET_FEE) r.push(String(w.fee) === String(e.OASIS_WALLET_FEE) ? 'OK fee=' + w.fee : 'KO fee=' + JSON.stringify(w.fee) + ' (entorno: ' + e.OASIS_WALLET_FEE + ')');
 console.log(r.join('\n'));
 NODE
@@ -172,15 +169,16 @@ NODE
   fi
 
   V5="$(cexec sh -c '
-    s="${OASIS_CLIENT_STATE_DIR-}"; b="${OASIS_BANKING_DIR-}"
+    s="${OASIS_CLIENT_STATE_DIR-}"
     [ -n "$s" ] || { echo "KO OASIS_CLIENT_STATE_DIR no definida en el contenedor"; exit 0; }
-    [ -n "$b" ] || b="$s/banking"
+    [ -z "${OASIS_BANKING_DIR-}" ] && echo "OK OASIS_BANKING_DIR no definida (estado bancario en ~/.ssb/oasis/banking)" || echo "KO OASIS_BANKING_DIR definida: en Oasis 1.1.4 parte el estado en dos mapas de direcciones"
     chk() { t="$(readlink "$1" 2>/dev/null || true)"
       if [ "$t" = "$2" ] && [ -f "$2" ]; then echo "OK $1 → $2"
       elif [ -z "$t" ]; then echo "KO $1 no es un symlink (estado en la capa efímera)"
       else echo "KO $1 → $t (esperado $2$([ -f "$2" ] || echo "; el destino no existe"))"; fi; }
     chk /app/src/configs/oasis-config.json "$s/oasis-config.json"
-    chk /app/src/configs/wallet-addresses.json "$b/wallet-addresses.json"' || true)"
+    [ ! -e /app/src/configs/wallet-addresses.json ] && [ ! -L /app/src/configs/wallet-addresses.json ] && echo "OK sin mapa de direcciones en src/configs" || echo "KO queda /app/src/configs/wallet-addresses.json (resto de 1.1.2: state-manager lo migraría)"
+    m=/home/oasis/.ssb/oasis/banking/wallet-addresses.json; [ -L "$m" ] && echo "KO $m es un symlink" || true' || true)"
   [ -n "$V5" ] || fail "V5 no se pudieron inspeccionar los symlinks dentro de $CLIENT"
   while IFS= read -r line; do
     [ -n "$line" ] || continue
