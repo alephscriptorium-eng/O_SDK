@@ -40,5 +40,5 @@ propia y replicable, y que esa infraestructura admite más obras y más pubs (`0
 
 - Generación 2026-09-18 en producción, verificada [V]. Checksums en `01`.
 - Post a recitar localizado [V]: `04`.
-- 5 banners renderizados [V]: `banners/png/`.
+- 6 banners renderizados [V]: `banners/png/` (el 6, P2P, añadido el 2026-09-19 tras congelar la edición y publicar torrent, ed2k y metalink: `pub.escrivivir.co/teatro/aleph-cero/p2p/`).
 - El custodio se queda con los banners 1-4 [C]; publica él (pantallazo como último mensaje del timeline).

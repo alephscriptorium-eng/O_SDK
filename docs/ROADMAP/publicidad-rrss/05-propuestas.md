@@ -1,4 +1,4 @@
-# 05 · Propuestas — cinco banners y el texto del post
+# 05 · Propuestas — seis banners y el texto del post
 
 Todos: 1200 px de ancho, B/N sobre papel, Courier, colofón de la casa, **checksums completos**,
 delta fijado, tres salidas y call4obras. HTML en `banners/`, PNG en `banners/png/`. Datos: un solo
@@ -11,6 +11,7 @@ delta fijado, tres salidas y call4obras. HTML en `banners/`, PNG en `banners/png
 | 3 | `banner-03-tres-puertas` | **Tres maneras de entrar**: leer sin JS · navegar con el visor de X · llevárselo offline | Para quien llega de nuevas y no sabe qué es el Teatro |
 | 4 | `banner-04-call4obras` | **«Tu archivo es una obra».** Aleph Cero como prueba; vía A (te acogemos), vía B (DIY oficial + o-sdk), federar (connect + caps) | Segundo post, o respuesta al primero: la convocatoria |
 | 5 | `banner-05-terminal` | **«No te fíes: comprueba».** Sesión de terminal en negro: `curl`, `sha256sum -c`, `ssh-keygen -Y verify`, `ls` de la obra | call4cypherpunks; para público técnico |
+| 6 | `banner-06-p2p` | **La obra sale a la red** (2026-09-19). Edición **congelada**; cuatro caminos: torrent con semilla web · eD2k/Kad · metalink · anuncio en Oasis; infohash y hash ed2k de cada fichero, checksums, «el pub es un hub, no un almacén» | Anuncio de la vía P2P: como post propio o como respuesta al anuncio de la obra. Datos de `p2p.json` |
 
 Combinación sugerida: **1 (o 2) como anuncio**, **4 como respuesta** con la convocatoria, y una
 segunda respuesta con los checksums en texto.
