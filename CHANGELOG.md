@@ -13,6 +13,19 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
   el plan aprobado, verbatim.
 - `scripts/roadmap-import.py --only <slug>`: reimporta un dosier sin tocar los demás ni `index.md`.
 
+### Added — Motor de RBU en 1.1.4: interruptor y gestión de admin (WP-O107, 2026-09-19)
+
+**Motor ENCENDIDO en `pub.escrivivir.co` desde el 2026-09-19 17:09 UTC**: la casa se anuncia como pub de RBU
+(`@ecoin.escrivivir.co`, sin fondos hasta la dote). Reporte `plan/REPORTES/WP-O107-motor-rbu.md`.
+
+- Interruptor = qué ssb-config se monta: `ssb-config` (`pub:false`) o `ssb-config.engine-on` (`pub:true`).
+- **`devops/scripts/hub-wallet.sh`** `status · ready · on --yes · pause` (`--local`): la gestión de admin que
+  Oasis no trae. Las credenciales RPC no salen del contenedor de `ecoind`.
+- Retirados `walletPub` y `OASIS_WALLET_BOT_PUB_ID` (upstream los eliminó).
+- `docs/PUB/ECOIN-PROTOCOL.md` §9 reescrito: qué reparte el motor (no crea dinero), coste de encender sin
+  fondos (época del mes fijada con pool 0 y asignaciones de 1 ECO sin respaldo), dirección nueva en cada
+  anuncio → backup semanal de `wallet.dat`.
+
 ### Deployed — Oasis 1.1.4 y bots renombrados en `pub.escrivivir.co` (WP-O106, 2026-09-19)
 
 Reporte `plan/REPORTES/WP-O106-aplicacion-vps-1.1.4.md`. Pub, HUB y bot-2 en 1.1.4, mismos feed ids, misma
