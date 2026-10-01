@@ -629,7 +629,9 @@ Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertur
 |---|---|---|
 | **≥ 2026-10-18** | **El bot `ecoin.escrivivir.co` cumple 30 días de feed**: decidir si reclama la RBU que otros pubs le asignan (en 2026-09 La Plaza le asignó ~50 ECO). Es un `ubiClaim` del bot, irreversible: ventana no pública + GUI del bot, con GO | ECOIN §9 · HUB §12 (ventana) |
 | ~~2026-10-01~~ ✅ | Época nueva: `hub-wallet.sh status` — la de octubre se abre con el saldo real (la de septiembre quedó fijada con pool 0). **Medido el 2026-10-01**: saldo 0 → pool 0; épocas abiertas `2026-09,2026-10`; `pubAvailability` 24, `ubiAllocation` 16 | ECOIN §9 |
-| siguiente sesión | **Qué son los cifrados propios** que el control viejo no veía: 4 en el feed del HUB, 1 en el del bot, 1 en el del pub (medidos el 2026-10-01 con `upgrade-gates.sh --remote snapshot`). Solo se pueden leer desde cada nodo. Hipótesis: PM de bienvenida o avisos de banca a sí mismo. No se pueden retirar; hay que saber qué los causó para que no se repita | HUB §1 |
+| ~~siguiente sesión~~ ✅ | **Qué son los cifrados propios** que el control viejo no veía: 4 en el feed del HUB, 1 en el del bot, 1 en el del pub. **Resuelto el 2026-10-01 (WP-O113)**: avisos automáticos del backend a sí mismo (reproducido en local: `LARP_RULING`); desde 1.1.10 se silencian con `inboxMutedBots` | HUB §1, §2 |
+| al subir el cliente | **Modelo de IA**: upstream cambió de Llama-2 7B (3,8 GB) a Qwen2.5-3B (2,1 GB) con el mismo nombre de fichero y añadió un modelo de embeddings (~60 MB). El cliente funciona con el antiguo (medido); decidir si se descarga el nuevo, y si el entrypoint debe traer los embeddings y pasar `OASIS_AI_MODEL` en vez del enlace | reporte WP-O113 §7 |
+| a upstream | `Vary` en `/c` e idioma global por proceso; `GET /wallet` republica la dirección; avisos a uno mismo en un nodo `--public` | reporte WP-O113 §7 |
 | al llegar la **dote** | `backup-ecoin.sh` inmediato; comprobar pool y primer pago; avisar a upstream de que estamos en la lista | ECOIN §8, §9 |
 | semanal | `backup-ecoin.sh` (cada anuncio usa una dirección nueva del keypool) + `hub-wallet.sh status` + `hub-disk.sh status --json` | ECOIN §9 · HUB §6 |
 | 2026-09-20 → **WP-O114** | Memoria de HUB y bot-2 en 1.1.4 con el motor encendido; si va bien, retirar en el VPS la imagen `:1.1.2`, `src.old` y `/srv/oasis/src-1.1.2.tgz`. **Sin hacer a 2026-10-01** (`deploy-status.sh`, restos de rollback: `src.old`, `:1.1.2` y los tgz de 0.9.6, 1.0.8 y 1.1.2): pasa al paso 2 de WP-O114, porque `src.old` rompe el `mv` del deploy | reporte WP-O106 · UPGRADE §4 |
@@ -657,7 +659,9 @@ Dep: —. Relación: WP-O109 (agente en frío), D-O23.
 
 | **WP-O113** | **P1** | Upgrade de Oasis 1.1.4 → 1.1.10 en local, con el protocolo nuevo |
 
-**Estado** · 🟡 en curso. Rama `upgrade/oasis-1.1.10` (overlay y guards hechos: `cc21d0d`, `b6b1828`).
+**Estado** · ✅ 2026-10-01 en `main` (`plan/REPORTES/WP-O113-upgrade-oasis-1.1.10.md`). Gates U0-U7 en
+verde con identidades desechables: cada nodo publica un `oasisVersion` y nada más. Pendiente el host
+(WP-O114) y el cliente real.
 
 **BRIEF** · Ejecutar `UPGRADE-PROTOCOL.md` de punta a punta como un agente en frío; cada tropiezo se
 corrige en el protocolo. Adaptaciones del ciclo: D-O25 en `nginx.conf.template` (sin `Accept-Language`
@@ -670,7 +674,9 @@ Dep: WP-O112.
 
 | **WP-O114** | **P1** | Aplicación en el VPS: Oasis 1.1.10 en pub, HUB y bot de cartera |
 
-**Estado** · ⬜ pendiente de WP-O113 y del **GO del custodio** en cada puerta (`UPGRADE-PROTOCOL.md` §4).
+**Estado** · ⬜ listo para empezar; espera el **GO del custodio** en cada puerta (`UPGRADE-PROTOCOL.md` §4).
+Qué viaja al host y qué delta se espera: reporte de WP-O113 §4 y §6. Para decidir en el GO: idioma
+por defecto del visor (`en` hoy, propuesta `es`).
 
 **BRIEF** · Secuencia de UPGRADE §4 con sus cuatro puertas. Incluye retirar el rollback de 1.1.2 que
 quedó de WP-O106 (`src.old`, `:1.1.2`, tres tgz), comprobar si `.env.prod` y `src.old` están entrando

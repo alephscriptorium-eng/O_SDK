@@ -101,7 +101,8 @@ después cliente (WP-O103).
   `ubiAllocation`, `ubiClaimResult`, `bankClaim`, `transfer` (con tag `UBI`). **Nunca** cifrados
   ni `post`. Se mide con `upgrade-gates.sh snapshot` (cuenta por autor; los cifrados salen como
   `(cifrado)`; el antiguo `grep '"private":true'` daba 0 siempre, `HUB-PROTOCOL.md` §1). Medido el
-  2026-10-01 en el host: **1 cifrado propio** en el feed de bot-2, anterior a este control.
+  2026-10-01 en el host: **1 cifrado propio** en el feed de bot-2, anterior a este control (un aviso
+  automático del backend a sí mismo; desde 1.1.10 van silenciados con `inboxMutedBots`).
 - **Identidad propia y nombre de serie** (D-O14): `secret` nacido en
   `/srv/oasis/oasis-wallet-bot/ssb-data`; fila 2 del registro de `HUB-PROTOCOL.md` §11.
 - **Delta del fork en `src/`: cero.** Todo vive en la zona *wholesale* (`ecoin/**`, `pub/**`,
@@ -199,16 +200,29 @@ sin cambios), con `oasis-wallet-bot` donde dice `oasis-hub`:
 7. Con `ecoind` healthy y **sincronizado** (`blocks` ≥ altura que anuncian los pares, que sale de las
    líneas `receive version message … blocks=N` de `docker logs oasis-pub-ecoin`; **no** de `height=`,
    que es la altura propia y da un falso «sincronizado»; `healthy` solo
-   dice que el RPC responde): `GET /banking` **desde el loopback** (`Host: localhost:3000`) guarda la
-   dirección en `banking/wallet-addresses.json`. **No la publica**: el camino automático falla en
-   silencio por el `ReferenceError` de §12.4 (comprobado en G3). Ese primer GET crea dos direcciones
-   en la cartera; la válida es la que queda en `wallet-addresses.json`.
-8. Publicarla: `POST /banking/addresses` (solo loopback, Referer y Host con el **mismo** host:puerto)
-   **EXACTAMENTE UNA VEZ**. No es idempotente: responde «exists» y aun así publica otro `wallet`.
-   Comprobar: un mensaje `wallet` con `author` = bot y `validateaddress` → `ismine: true`.
-9. **Backup de `wallet.dat` DESPUÉS de generar la dirección y ANTES de comunicarla a nadie** (§8).
-   Un backup anterior al paso 7 no contiene esa clave. Una dirección publicada sin copia de su clave
-   es una dote que se puede perder.
+   dice que el RPC responde): **contar** los mensajes `wallet` propios (deben ser 0;
+   `upgrade-gates.sh snapshot` o `hub-wallet.sh status`) y hacer `GET /banking` **desde el loopback**
+   (`Host: localhost:3000`). Eso pide una dirección a la cartera y la guarda en
+   `oasis/banking/wallet-addresses.json`. **Qué más hace depende de la versión, así que se mide**:
+   - **Oasis 1.1.10** (medido el 2026-10-01 con una identidad nueva): ese primer GET **ya publica**
+     el `wallet` (0 → 1). Un segundo GET no publica otro.
+   - Oasis 1.1.2-1.1.4: guardaba la dirección sin publicarla (el camino automático fallaba en
+     silencio, §12.4).
+   - Con el feed no vacío, el propio sbot llama a `ensureSelfAddressPublished` a los 5 s de
+     **cada arranque** (`SSB_server.js`): un reinicio también puede publicarla.
+   Ese primer GET puede crear más de una dirección en la cartera; la válida es la que queda en
+   `wallet-addresses.json`.
+8. **Volver a contar.** Si hay **1** `wallet` propio, está publicada: **no hagas nada más**. Solo si
+   sigue habiendo **0**: `POST /banking/addresses` (solo loopback, Referer y Host con el **mismo**
+   host:puerto) **EXACTAMENTE UNA VEZ**, y contar otra vez. El POST no es idempotente: responde
+   «exists» y aun así publica otro `wallet`; hacerlo después de un GET que ya publicó deja dos
+   mensajes permanentes. Comprobar: **un** mensaje `wallet` con `author` = bot y
+   `validateaddress` → `ismine: true`.
+9. **Backup de `wallet.dat` inmediatamente después del paso 7** (§8). Un backup anterior no
+   contiene esa clave. Desde 1.1.10 ya no hay hueco entre «generar» y «publicar»: la dirección
+   sale a la red en el mismo GET, así que el backup va pegado a él, antes de anunciar el pub
+   (§9) y antes de que nadie pueda pagar a esa dirección. Una dirección publicada sin copia de
+   su clave es una dote que se puede perder.
 10. `OASIS_WALLET_BOT_PUBLIC=true` + `up -d --no-deps`; gate con `Host: localhost:3000` y
     `Referer: http://localhost:3000/invites`: 302 con `?error=` de modo público. Si el host del
     Referer no coincide exactamente con `Host` devuelve 403 con el mismo texto; sin Referer, 400.
@@ -273,8 +287,11 @@ repite el gate G3 en local (bootstrap + motor apagado + ensayo del interruptor).
 **5.2 Ficheros derivados de upstream que se regeneran en cada upgrade.**
 
 - `pub/config/wallet-bot/oasis-config.json.tpl` **es una copia** de `src/configs/oasis-config.json`
-  con las claves fijadas de §2. Tras el overlay: copiar el nuevo, re-aplicar las claves y los tres
-  marcadores, **re-renderizar** y comprobar que el diff contra el original son solo esas claves.
+  con las claves fijadas de §2 más, desde 1.1.10, `inboxMutedBots` (los avisos automáticos del
+  backend silenciados: sin eso el bot se envía cifrados a sí mismo, `HUB-PROTOCOL.md` §1). Tras el
+  overlay: `node pub/scripts/regen-node-configs.js` la regenera con sus marcadores e imprime qué
+  claves difieren del original; después, **re-renderizar** (`pub/scripts/render-wallet-bot-config.sh`)
+  y recrear el bot.
 - `pub/config/wallet-bot/ssb-config`: mismas reglas que el del HUB (arrays enteros; `caps.shs` en el
   lockstep de rotación, `HUB-PROTOCOL.md` §5.2).
 - Orden de deploy: pub → HUB → **bot al final** (`UPGRADE-PROTOCOL.md` §4, paso 9); `ecoin` no
@@ -459,6 +476,13 @@ Pausar antes de cualquier duda (upgrade del bot, cartera en mantenimiento, saldo
 
 **Dos cosas que hay que saber con el motor encendido:**
 
+- **No abras `/wallet` en el bot.** `GET /wallet` (y `/wallet/history`) pide a la cartera su dirección
+  «actual» y, si no es la del mapa local, **la republica** (`backend.js`, `addAddress`). Con el motor
+  encendido no coinciden nunca, porque cada anuncio ha pedido una nueva. Medido el 2026-10-01 con una
+  identidad desechable, en 1.1.4 y en 1.1.10: un GET deja dos mensajes `wallet` y otra dirección
+  publicada (es de la misma cartera, pero `hub-wallet.sh ready` exige un único `wallet` y deja de
+  dar listo). `/banking` y las demás páginas no lo hacen. El bot no tiene ruta pública y su
+  healthcheck pide `/c/inhabitant/…`: solo lo dispara un operador.
 - **Cada anuncio lleva una dirección nueva.** `pubAvailability.address` sale de `getnewaddress`, no de la
   dirección publicada como `wallet`. Es de la misma cartera (`ismine: true`) y sale del *keypool* (100
   claves pregeneradas): un backup de `wallet.dat` cubre las ~100 direcciones siguientes. Regla:
@@ -524,7 +548,10 @@ Leídos en 1.1.2 (`src/models/banking_model.js`); ninguno se parchea en el fork 
    (`:232`). El `try/catch` que la envuelve se traga el error y `ssb` queda `null` salvo que exista
    `global.ssb` o el `require` de `SSB_server.js`: la dirección puede guardarse en el mapa local
    **sin** publicarse y aun así devolver `published`. Verificar en G3 que el mensaje `wallet` existe
-   de verdad en el feed (por eso §3 paso 7 prevé `POST /banking/addresses`).
+   de verdad en el feed. **En 1.1.10 el fallo ya no se nota**: `refreshWalletReady` añade una rama
+   que, si hay dirección local sin publicar, la publica (`setUserAddress(me, addr, true)`); medido,
+   el primer `GET /banking` de un nodo nuevo deja 1 `wallet`. Por eso §3 pasos 7-8 son «contar →
+   actuar solo si 0» y no dependen de la versión.
 
 5. **`isLoopbackRequest` y despliegues con proxy o contenedor** (2026-09-19): las rutas de Banking, Wallet y
    Settings exigen IP de origen `127.0.0.1`. Detrás de un mapeo de puertos de Docker o de un proxy inverso

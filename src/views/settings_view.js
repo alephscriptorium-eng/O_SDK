@@ -2,7 +2,7 @@ const { form, button, div, h2, h3, p, section, select, option, input, br, a, lab
 const fs = require('fs');
 const path = require('path');
 const { getConfig } = require('../configs/config-manager.js');
-const { template, selectedLanguage, i18n, setLanguage } = require('./main_views');
+const { template, selectedLanguage, i18n, setLanguage, INBOX_BOT_ORDER, inboxBotLabel } = require('./main_views');
 const i18nBase = require("../client/assets/translations/i18n");
 const { WORKFLOWS, currentWorkflow } = require('../models/workflows_model');
 const { renderVerificationReport, renderRebuildReport } = require('./backup_view');
@@ -20,7 +20,7 @@ const getThemeConfig = () => {
   }
 };
 
-const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError, telegramAccount = null, telegramLogin = null, telegramError = "", verification = null, rebuild = null }) => {
+const settingsView = ({ version, aiPrompt, aiExportCount = 0, fediverseAccount, fediverseError, telegramAccount = null, telegramLogin = null, telegramError = "", verification = null, rebuild = null }) => {
   const currentThemeConfig = getThemeConfig();
   const theme = currentThemeConfig.themes?.current || "Dark-SNH";
   const currentConfig = getConfig();
@@ -100,6 +100,8 @@ const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError, tel
             languageOption("Español", "es"),
             languageOption("Français", "fr"),
             languageOption("Euskara", "eu"),
+            languageOption("Català", "ca"),
+            languageOption("Galego", "gl"),
             languageOption("Deutsch", "de"),
             languageOption("Italiano", "it"),
             languageOption("Português", "pt"),
@@ -224,7 +226,8 @@ const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError, tel
             span({ class: "lan-checkbox-text" }, i18n.aiSuggestionsEnable)
           ),
           br(),
-          button({ type: "submit" }, i18n.saveSettings)
+          button({ type: "submit" }, i18n.saveSettings),
+          Number(aiExportCount) > 0 ? button({ type: "submit", formaction: "/ai/export", formmethod: "GET", class: "ai-export-btn" }, `${i18n.aiExportFineTuning} (${aiExportCount})`) : null
         )
       )
     ) : null,
@@ -303,6 +306,30 @@ const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError, tel
         )
       )
     ),
+    modOn('inbox') ? section({ id: "inbox-bots" },
+      div({ class: "tags-header" },
+        h2(i18n.settingsInboxBotsTitle),
+        p(i18n.settingsInboxBotsDesc),
+        form(
+          { action: "/settings/inbox-bots", method: "POST" },
+          ...INBOX_BOT_ORDER.map(bot =>
+            label({ for: `inbox-bot-${bot}`, class: "lan-checkbox-label inbox-bot-label" },
+              input({
+                type: "checkbox",
+                id: `inbox-bot-${bot}`,
+                name: "bots",
+                value: bot,
+                class: "lan-checkbox-input",
+                checked: (Array.isArray(currentConfig.inboxMutedBots) && currentConfig.inboxMutedBots.includes(bot)) ? undefined : true
+              }),
+              span({ class: "lan-checkbox-text" }, inboxBotLabel(bot))
+            )
+          ),
+          br(),
+          button({ type: "submit" }, i18n.saveSettings)
+        )
+      )
+    ) : null,
     modOn('wallet') ? section(
       { id: "wallet" },
       div({ class: "tags-header" },
@@ -312,15 +339,17 @@ const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError, tel
 	),
         form(
           { action: "/settings/wallet", method: "POST" },
-          label({ for: "wallet_url" }, i18n.walletAddress), br(),
-          input({ type: "text", id: "wallet_url", name: "wallet_url", placeholder: walletUrl, value: walletUrl }), br(),
+          label({ for: "wallet_url" }, i18n.walletRpcUrl), br(),
+          input({ type: "text", id: "wallet_url", name: "wallet_url", placeholder: "http://localhost:7474", value: walletUrl || "http://localhost:7474" }), br(),
           label({ for: "wallet_user" }, i18n.walletUser), br(),
-          input({ type: "text", id: "wallet_user", name: "wallet_user", placeholder: walletUser, value: walletUser }), br(),
+          input({ type: "text", id: "wallet_user", name: "wallet_user", placeholder: "ecoinrpc", value: walletUser }), br(),
           label({ for: "wallet_pass" }, i18n.walletPass), br(),
           input({ type: "password", id: "wallet_pass", name: "wallet_pass" }), br(),
           label({ for: "wallet_fee" }, i18n.walletFee), br(),
-          input({ type: "text", id: "wallet_fee", name: "wallet_fee", placeholder: walletFee, value: walletFee }), br(),
-          button({ type: "submit" }, i18n.walletConfiguration)
+          input({ type: "text", id: "wallet_fee", name: "wallet_fee", placeholder: "5", value: walletFee || "5" }), br(),
+          button({ type: "submit" }, i18n.walletConfiguration),
+          walletUser ? " " : null,
+          walletUser ? button({ type: "submit", class: "delete-btn", formaction: "/settings/wallet/disconnect", formmethod: "POST" }, i18n.walletDisconnectButton) : null
         )
       )
     ) : null,
@@ -432,7 +461,8 @@ const settingsView = ({ version, aiPrompt, fediverseAccount, fediverseError, tel
           button({ type: "submit" }, i18n.removePanicButton)
         )
       )
-    )
+    ),
+    section({ class: "settings-anchor-space" })
   );
 };
 

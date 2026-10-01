@@ -68,8 +68,13 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
   > siempre: un mensaje cifrado se guarda como `"content":"….box"`, sin ese campo. La primera
   > medida buena (2026-10-01) encontró **4 cifrados propios en el feed del HUB** del host (y 1 en
   > el del bot de cartera y 1 en el del pub). Son anteriores a este control y no se pueden
-  > retirar; qué son está por investigar (seguimiento en el backlog). El invariante sigue siendo
-  > la meta: **ningún cifrado nuevo**, y `upgrade-gates.sh check` lo comprueba en cada upgrade.
+  > retirar. **Qué son** (reproducido en local el 2026-10-01): el backend trae avisos automáticos
+  > —el «bot político» (`checkPoliticalChanges`), el de empleo, recordatorios— que corren con
+  > cualquier petición, también la del healthcheck, y cuando cambia el gobierno o el ciclo **se
+  > envían a sí mismos un mensaje cifrado**. Hasta 1.1.4 no se podían apagar. Desde 1.1.10
+  > `notifyBot` respeta `inboxMutedBots` de la config: en un nodo de soporte van todos silenciados
+  > (§2). El invariante vuelve a ser alcanzable: **ningún cifrado nuevo**, y `upgrade-gates.sh
+  > check` lo comprueba en cada upgrade.
 - **El pub solo publica el `contact` del follow-back** al redimir el invite (función
   normal de un pub). Secuencia del feed del pub antes/después = +1, una vez.
 - **Todo el estado nuevo bajo `/srv/oasis/oasis-hub/*`** (volumen de datos, 40 GB).
@@ -91,8 +96,8 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
 | Servicios `oasis-hub` + `hub-cache` | `pub/docker-compose.pub.yml` | misma imagen, `command: ["backend"]`, env `OASIS_*`, `mem_limit`, healthcheck a `/c/inhabitant/@AAAA…=.ed25519` (**no** a `/c`, que es O(N·k)), sin `ports`, sin `profiles` | ⏳ WP-O46 |
 | Identidad y replicación | `pub/config/hub/ssb-config` (bind `:ro` a `~/.ssb/config`) | `caps.shs` del ciclo, `pub:false`, `friends.hops:3` (D-O15: con 2 el HUB solo alcanzaba los 3 seguidos directos del pub y `/c` quedaba vacío; los habitantes con Clearnet están a 3 saltos, seguidos por La Plaza), **sin `seeds`** (un seed al pub mete su clave en `gossip.json` antes del invite y el backend responde `alreadyFederated` sin redimirlo; la conexión persistente la deja `hub-conn-fix.js` en `conn.json`), `connections` **completo** (`mergeDeep` reemplaza arrays enteros) con `incoming.net.host: 0.0.0.0` **obligatorio** (el entrypoint pasa `--host 0.0.0.0`; otro valor = crash loop «conflicting connection settings») | ✅ G2 |
 | Normalizar `conn.json` tras el invite | `pub/tools/hub-conn-fix.js` (se copia al HUB con `docker cp`; `pub/tools` no está montado allí) | tras `invite.accept`, ssb-invite deja la dirección del pub **con el seed y sin `key`**: el HUB reconecta con la identidad desechable y el pub no replica; sin `key` nunca reconecta tras un reinicio. El script hace forget `addr:SEED` · remember `{key,type:pub,autoconnect}` · connect | ✅ G3 |
-| Visor | `pub/config/hub/oasis-config.json` (bind `:ro`) | copia del de `src/configs/` con 6 claves fijadas: `aiMod/aiNavMod:off`, `walletPub.pubId:""`, `ssbLogStream.limit:20000`, `lanBroadcasting:false`, `themes.current:"Dark-SNH"` (en 1.0.8 el original ya trae `pubId:""` y `Dark-SNH` → **4 diferencias efectivas**) | ✅ escrito (G1) |
-| Caché HTTP | `pub/config/hub/nginx.conf.template` | `proxy_cache_path … max_size=${HUB_CACHE_MAX_SIZE} inactive=7d`, caché negativa (404 30 s, 5xx 5 s, WP-O53), `proxy_hide_header` de las cabeceras del backend, `limit_req` por XFF, `location / { return 404; }`; en `/assets/*` y en `/c/assets/*` (visor 1.1.2) `proxy_ignore_headers Cache-Control` (koa-static manda `max-age=0`). En **local Windows** el cache dir es el volumen nombrado `hub_http_cache` (los bind mounts rompen `proxy_cache`); en el VPS es la ruta bind | ✅ G4 |
+| Visor | `pub/config/hub/oasis-config.json` (bind `:ro`) | copia del de `src/configs/` con 7 claves fijadas: `aiMod/aiNavMod:off`, `ssbLogStream.limit:20000`, `lanBroadcasting:false`, `inboxMutedBots` (todos los avisos automáticos silenciados: sin esto el HUB se envía cifrados a sí mismo, §1) y, por D-O25, `themes.current` y `language` (tema e idioma por defecto del visor; valores de instancia, hoy `Dark-SNH` y `en`, iguales al original → **5 diferencias efectivas** en 1.1.10). `walletPub` salió en 1.1.10. Se regenera con `node pub/scripts/regen-node-configs.js`, no se parchea (§5.2) | ✅ regenerado en 1.1.10 |
+| Caché HTTP | `pub/config/hub/nginx.conf.template` | `proxy_cache_path … max_size=${HUB_CACHE_MAX_SIZE} inactive=7d`, caché negativa (404 30 s, 5xx 5 s, WP-O53), `proxy_hide_header` de las cabeceras del backend, `limit_req` por XFF, `location / { return 404; }`; en `/assets/*` y en `/c/assets/*` (visor 1.1.2) `proxy_ignore_headers Cache-Control` (koa-static manda `max-age=0`). **D-O25 (1.1.10)**: `Accept-Language`, `Cookie` y `Accept-Encoding` no se reenvían al HUB; `location` propia para `/c/sitemap.xml` y `/c/rss/*` que corrige las URLs a `https` con `sub_filter`. En **local Windows** el cache dir es el volumen nombrado `hub_http_cache` (los bind mounts rompen `proxy_cache`); en el VPS es la ruta bind | ✅ G4 · U4 |
 | Edge | `pub/caddy/Caddyfile` (bloque `@hub` del vhost del pub) | `reverse_proxy hub-cache:80`; `transport http {…}` en multilínea; `/qr/*` **fuera**; `/assets/*` entero **no** (`fanzine.css` es de la landing); desde 1.1.2 el visor usa `/c/assets/*`, ya cubierto por `/c/*`; `header {}` global intacto | ✅ G1/G4 |
 | Variables | `pub/.env.vps.example`, `.env.local.example`, `.env.example`; `.env.prod` del VPS | `OASIS_HUB_{SSB_DATA,LOGS,HTTP_CACHE}_DIR`, `OASIS_HUB_{SSB_CONFIG,OASIS_CONFIG}_FILE`, `OASIS_HUB_ALLOW_HOST`, `HUB_CACHE_MAX_SIZE`, `OASIS_HUB_MEM_LIMIT`, `OASIS_HUB_NODE_OPTIONS`, `OASIS_HUB_PUBLIC` (comentada) | ⏳ |
 | Validación de rutas | `pub/scripts/common.sh` (`validate_vps_persistent_paths`, `ensure_runtime_dirs`) · `devops/scripts/verify-debian13-base.sh` (`check_layout`) | las tres rutas `OASIS_HUB_*_DIR` absolutas bajo `/srv/oasis` en layout canónico | ⏳ |
@@ -216,10 +221,12 @@ tema, dispositivo).
 **5.2 Ficheros derivados de upstream que se regeneran en cada upgrade.**
 
 - `pub/config/hub/oasis-config.json` **es una copia** de `src/configs/oasis-config.json` con unas
-  pocas claves fijadas (la lista vigente, en la fila «Visor» de §2). Tras el overlay: copiar el
-  nuevo, re-aplicar las claves fijadas y comprobar que el diff son **solo** esas claves:
-  `diff <(node -e 'console.log(JSON.stringify(require("./src/configs/oasis-config.json"),null,1))') <(node -e 'console.log(JSON.stringify(require("./pub/config/hub/oasis-config.json"),null,1))')`.
-  Una clave que upstream retira debe desaparecer también de la copia: regenerar, no parchear.
+  pocas claves fijadas (la lista vigente, en la fila «Visor» de §2). Tras el overlay:
+  `node pub/scripts/regen-node-configs.js` la regenera (y la plantilla del bot de cartera) e imprime
+  qué claves difieren del original: deben ser **solo** las fijadas. `--check` sale 1 si no está al
+  día. Una clave que upstream retira desaparece sola de la copia: se regenera, no se parchea. La
+  lista de `inboxMutedBots` sale de `INBOX_BOTS` en `src/models/pm_model.js`: si upstream añade un
+  aviso nuevo, entra al regenerar.
 - `pub/config/hub/ssb-config` reemplaza **arrays enteros** de `src/configs/server-config.json`
   (`mergeDeep`): si upstream cambia `connections.incoming/outgoing`, replicar el cambio.
 - `pub/config/hub/nginx.conf.template`: lo que digan `routes` y `headers`. Se renderiza con

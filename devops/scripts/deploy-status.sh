@@ -52,7 +52,7 @@ echo "-- Piezas vivas y deriva host↔repo (SSH, solo lectura) --"
 # entrypoint, compose, configs) son los del repo. Nunca fatal.
 if [ "${SKIP_LIVE:-0}" != "1" ] && node_run_setup 0 2>/dev/null; then
   REPO_FILES="Dockerfile docker-entrypoint.sh .dockerignore"
-  PUB_FILES="docker-compose.pub.yml caddy/Caddyfile config/hub/nginx.conf.template config/hub/oasis-config.json config/hub/ssb-config"
+  PUB_FILES="docker-compose.pub.yml caddy/Caddyfile config/hub/nginx.conf.template config/hub/oasis-config.json config/hub/ssb-config config/wallet-bot/oasis-config.json.tpl config/wallet-bot/ssb-config config/wallet-bot/ssb-config.engine-on scripts/render-wallet-bot-config.sh"
   live="$({ node_remote_preamble; node_remote_lib
     printf 'ROOT=%q; PUBDIR=%q; REPO_FILES=%q; PUB_FILES=%q\n' "${REMOTE_REPO_ROOT:-}" "${REMOTE_REPO_DIR:-}" "$REPO_FILES" "$PUB_FILES"
     cat <<'EOS'
@@ -87,7 +87,7 @@ EOS
       if [ "$h" = "-" ]; then verdict="no existe en el host"
       elif [ "$h" = "$(git -C "$REPO_ROOT" rev-parse "HEAD:$f" 2>/dev/null)" ]; then verdict="igual que HEAD"
       elif git -C "$REPO_ROOT" cat-file -e "$h" 2>/dev/null; then
-        verdict="DISTINTO de HEAD; es una versión anterior del repo ($(git -C "$REPO_ROOT" log --all --format=%h -1 --find-object="$h" 2>/dev/null || echo '?'))"
+        verdict="DISTINTO de HEAD; es una versión que el repo tuvo (último commit que la toca: $(git -C "$REPO_ROOT" log --all --format=%h -1 --find-object="$h" 2>/dev/null || echo '?'))"
       else verdict="DISTINTO de HEAD y no está en la historia del repo (editado en el host o pre-refactor)"; fi
       printf '    %-38s %s\n' "$f" "$verdict"
     done

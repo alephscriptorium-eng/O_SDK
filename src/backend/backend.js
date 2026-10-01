@@ -23,10 +23,9 @@ if (config.debug) {
 }
 const axiosMod = require('../server/node_modules/axios');
 const axios = axiosMod.default || axiosMod;
-const { spawn } = require('child_process');
-let fieldsForSnippet, buildContext, clip, publishExchange, publishExchangeVote, getBestTrainedAnswer;
+let fieldsForSnippet, buildContext, clip, publishExchange, publishExchangeVote, getBestTrainedAnswer, rankContext, exportFineTuning, listAiExchanges;
 try {
-  ({ fieldsForSnippet, buildContext, clip, publishExchange, publishExchangeVote, getBestTrainedAnswer } = require('../AI/buildAIContext.js'));
+  ({ fieldsForSnippet, buildContext, clip, publishExchange, publishExchangeVote, getBestTrainedAnswer, rankContext, exportFineTuning, listExchanges: listAiExchanges } = require('../AI/buildAIContext.js'));
 } catch (e) {
   const noop = () => {};
   fieldsForSnippet = noop;
@@ -35,16 +34,126 @@ try {
   publishExchange = noop;
   publishExchangeVote = noop;
   getBestTrainedAnswer = () => null;
+  rankContext = async () => [];
+  exportFineTuning = async () => '';
+  listAiExchanges = async () => ({ exchanges: [], votes: new Map() });
 }
-let aiStarted = false;
-function startAI() {
-  if (aiStarted) return;
-  aiStarted = true;
+let aiLazy = null;
+const loadAi = () => {
+  if (aiLazy !== null) return aiLazy || null;
   try {
-    const aiProcess = spawn('node', [path.resolve(__dirname, '../AI/ai_service.mjs')], { detached: true, stdio: 'ignore' });
-    aiProcess.unref();
-  } catch (e) {}
-}
+    aiLazy = { client: require('../AI/ai_client'), intents: require('../AI/intents'), embedder: require('../AI/embedder'), semantic: require('../AI/semantic_search') };
+  } catch (_) { aiLazy = false; }
+  return aiLazy || null;
+};
+const aiClient = {
+  start: () => { const a = loadAi(); if (a) a.client.start(); },
+  status: async () => { const a = loadAi(); return a ? a.client.status() : { installed: false, ready: false, loading: false, error: 'model_missing' }; },
+  ask: async (opts) => { const a = loadAi(); if (!a) throw new Error('model_missing'); return a.client.ask(opts); }
+};
+const aiIntents = {
+  detect: async (q, opts) => { const a = loadAi(); return a ? a.intents.detect(q, opts) : null; },
+  run: async (key, deps) => { const a = loadAi(); return a ? a.intents.run(key, deps) : null; }
+};
+const aiEmbedder = {
+  isInstalled: () => { const a = loadAi(); return !!(a && a.embedder.isInstalled()); },
+  embed: (text, opts) => { const a = loadAi(); return a ? a.embedder.embed(text, opts) : Promise.resolve(null); },
+  cosine: (x, y) => { const a = loadAi(); return a ? a.embedder.cosine(x, y) : 0; }
+};
+const semanticSearch = {
+  search: (...args) => { const a = loadAi(); return a ? a.semantic.search(...args) : Promise.resolve([]); }
+};
+const aiModOn = () => (getConfig().modules || {}).aiMod === 'on';
+function startAI() { if (aiModOn()) aiClient.start(); }
+const AI_HREF_BY_TYPE = {
+  event: '/events', task: '/tasks', transfer: '/transfers', job: '/jobs', market: '/market', tribe: '/tribe', emergency: '/emergencies',
+  project: '/projects', housing: '/housing', shop: '/shops', schoolCourse: '/school/course', calendar: '/calendars', campaign: '/campaigns',
+  logisticsRoute: '/logistics', industry: '/industry', poll: '/polls', vote: '/votes', forum: '/forum', wikiPage: '/wiki', podcast: '/podcasts',
+  shopProduct: '/shops/product', chat: '/chats', mailingList: '/mailing', report: '/reports'
+};
+const aiHrefFor = (type, id) => (type && id && AI_HREF_BY_TYPE[type]) ? `${AI_HREF_BY_TYPE[type]}/${encodeURIComponent(id)}` : null;
+const AI_LANG_NAMES = { en: 'English', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese', ru: 'Russian', zh: 'Chinese', ar: 'Arabic', eu: 'Basque', ca: 'Catalan', gl: 'Galician', hi: 'Hindi' };
+const aiSystemPrompt = (lang) => {
+  const custom = (getConfig().ai?.prompt || '').trim() || 'Provide an informative and precise response.';
+  return [
+    'You are "42", the collective assistant of Oasis, a distributed, encrypted and federated social network with its own currency (ECO, also called ECOin), a universal basic income (UBI, "RBU" in Spanish) paid monthly by PUB nodes to inhabitants who claim it, tribes, a parliament, courts and many modules (market, shops, school, jobs, projects, transfers, events, chats).',
+    custom,
+    `Always answer in the same language the question is written in (Spanish question, Spanish answer; English question, English answer), whatever language earlier turns used. If the language is unclear, use ${AI_LANG_NAMES[lang] || 'English'}. Be concise. Do not invent facts about the user or the network: if you do not know, say so.`
+  ].join(' ');
+};
+const aiHistoryTurns = (chatHistory) => chatHistory.filter(e => e && e.question && e.answer && e.source === 'model' && e.trainStatus !== 'rejected' && e.trainStatus !== 'thinking').slice(0, 6).reverse().flatMap(e => [{ type: 'user', text: String(e.question) }, { type: 'model', text: String(e.answer) }]);
+const readAiHistory = (historyPath) => { try { const h = JSON.parse(fs.readFileSync(historyPath, 'utf-8')); return Array.isArray(h) ? h : []; } catch (_) { return []; } };
+const writeAiHistory = (historyPath, history) => { try { fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8'); } catch (_) {} };
+const aiFailureText = (e, translations) => {
+  const msg = String((e && e.message) || e || '');
+  const data = e && e.response && e.response.data;
+  const reason = (data && data.error) || msg;
+  if (/model_missing/.test(reason)) return translations.aiStatusMissingModel || 'The AI model is not installed.';
+  if (/not_ready|ECONNREFUSED|timeout|ECONNRESET|forbidden/i.test(reason)) return translations.aiStatusLoading || 'The AI is still loading the model. Please try again in a moment.';
+  return translations.aiServerError || 'The AI could not answer. Please try again.';
+};
+const AI_DEBUG = process.env.OASIS_DEBUG === '1' || process.env.OASIS_DEBUG === 'true';
+const aiDebug = (msg) => { if (AI_DEBUG) console.error(`[ai] ${msg}`); };
+const answerAiEntry = async (entry, input, lang, previous) => {
+  const i18nAll = require('../client/assets/translations/i18n');
+  const translations = i18nAll[lang] || i18nAll['en'];
+  const t0 = Date.now();
+  const step = (name) => aiDebug(`${name} (${Date.now() - t0} ms)`);
+  const embedOpts = aiEmbedder.isInstalled() ? { embed: (t) => aiEmbedder.embed(t, { timeoutMs: 8000 }), cosine: aiEmbedder.cosine } : {};
+  const result = { answer: '', snippets: [], facts: [], intent: null, source: 'model', trainStatus: 'pending' };
+  try {
+    const me = getViewerId();
+    step('detecting intent');
+    const intent = await aiIntents.detect(input, embedOpts).catch(() => null);
+    step(`intent: ${intent || 'none'}`);
+    const facts = intent ? await aiIntents.run(intent, {
+      models: {
+        banking: bankingModel, agenda: agendaModel, events: eventsModel, tasks: tasksModel, transfers: transfersModel, inhabitants: inhabitantsModel, friend, parliament: parliamentModel, larp: larpModel, emergencies: emergenciesModel, jobs: jobsModel, market: marketModel, tribes: tribesModel,
+        shops: shopsModel, school: schoolModel, projects: projectsModel, housing: housingModel, industry: industryModel, campaigns: campaignsModel, logistics: logisticsModel, calendars: calendarsModel, votes: votesModel, polls: pollsModel, wiki: wikiModel, chats: chatsModel, mailing: mailingModel, podcasts: podcastsModel,
+        audios: audiosModel, videos: videosModel, images: imagesModel, documents: documentsModel, torrents: torrentsModel, blog: blogModel, reports: reportsModel, games: gamesModel, tags: tagsModel, favorites: favoritesModel
+      },
+      config: getConfig(), sharedState, me, hrefFor: aiHrefFor, nameOf: async (id) => { try { return await about.name(id); } catch (_) { return String(id || '').slice(0, 9); } }, version: OASIS_VERSION
+    }) : null;
+    if (Array.isArray(facts) && facts.length) {
+      result.intent = intent;
+      result.facts = facts;
+      result.source = 'data';
+      const factLines = facts.map(f => f.text);
+      try {
+        result.answer = await aiClient.ask({
+          system: aiSystemPrompt(lang) + ` The following facts come from the live data of this node and are true right now. Answer the question using only these facts, in plain sentences, without adding anything that is not in them. Write your whole answer in the language the question is written in (fall back to ${AI_LANG_NAMES[lang] || 'English'} if unclear), even though the facts are written in English.`,
+          context: factLines, history: [], input, lang, maxTokens: 300
+        });
+      } catch (_) {
+        result.answer = factLines.join('\n');
+      }
+      if (!result.answer.trim()) result.answer = factLines.join('\n');
+    } else {
+      step('looking for an approved answer');
+      const trained = await getBestTrainedAnswer(input, embedOpts).catch(() => null);
+      step(trained ? 'approved answer found' : 'no approved answer');
+      if (trained && trained.answer) {
+        result.answer = trained.answer;
+        result.snippets = trained.ctx || [];
+        result.source = 'network';
+        result.trainStatus = 'approved';
+      } else {
+        const context = await rankContext(input, { ...embedOpts, k: 5 }).catch(() => []);
+        result.snippets = context;
+        step(`context: ${context.length} snippets, asking the model`);
+        result.answer = await aiClient.ask({ system: aiSystemPrompt(lang), history: aiHistoryTurns(previous || []), context, input, lang });
+        step('model answered');
+      }
+    }
+  } catch (e) {
+    const data = e && e.response && e.response.data;
+    aiDebug(`answer failed: ${String((data && data.error) || (e && e.message) || e || '').slice(0, 300)}`);
+    result.answer = aiFailureText(e, translations);
+    result.trainStatus = 'rejected';
+    result.source = 'error';
+  }
+  return { ...entry, ...result };
+};
 const { statePath: stateFilePath, keysDir: stateKeysDir } = require('../configs/state-manager');
 require('../configs/state-manager').migrateAll();
 const ADDR_PATH = stateFilePath('wallet-addresses.json');
@@ -111,7 +220,7 @@ async function buildLeaderMeta(leader) {
 
 const safeArr = v => Array.isArray(v) ? v : [];
 const safeText = v => String(v || '').trim();
-const safeReturnTo = (ctx, fb, ap) => { const rt = ctx.request?.body?.returnTo || ctx.query?.returnTo; return typeof rt === 'string' && ap?.some(p => rt.startsWith(p)) ? rt : fb; };
+const { safeReturnTo, safeRefererRedirect, pickMsgKeys, isMsgKey, publicModeGuard, isClearnetPath } = require('./request_guards');
 
 const { stripDangerousTags, sanitizeHtml } = require('./sanitizeHtml');
 
@@ -163,20 +272,6 @@ const exceedsSsbLimit = (content, extraOverhead = 0) => {
 
 const isSsbTooLargeError = (e) => e && /8192|must not be larger/i.test(String(e && e.message));
 
-const safeRefererRedirect = (ctx, fallback = '/') => {
-  const ref = ctx.request.header.referer;
-  if (!ref) { ctx.redirect(fallback); return; }
-  try {
-    const u = new URL(ref);
-    if ((u.protocol !== 'http:' && u.protocol !== 'https:') || u.host !== ctx.host) {
-      ctx.redirect(fallback);
-      return;
-    }
-    ctx.redirect(u.pathname + u.search + u.hash);
-  } catch (_) {
-    ctx.redirect(fallback);
-  }
-};
 const isLoopbackRequest = (ctx) => {
   const raw = String((ctx.request && ctx.request.ip) || ctx.ip || (ctx.socket && ctx.socket.remoteAddress) || '');
   const ip = raw.replace(/^::ffff:/, '');
@@ -199,15 +294,20 @@ const refreshWalletReady = async (force = false) => {
   lastWalletReadyCheck = Date.now();
   try {
     const me = getViewerId();
-    const walletUrl = !!(getConfig().wallet && getConfig().wallet.url);
+    const walletUrl = bankingModel.hasWalletCredentials();
+    if (!walletUrl) { sharedState.setWalletReady(false); return false; }
     let addr = await bankingModel.getUserAddress(me).catch(() => null);
     if (!addr && walletUrl) {
       try { const res = await bankingModel.ensureSelfAddressPublished(); if (res && res.address) addr = res.address; } catch (_) {}
       if (!addr) addr = await bankingModel.getUserAddress(me).catch(() => null);
     }
-    const published = addr ? await bankingModel.hasPublishedAddress(me).catch(() => false) : false;
+    let published = addr ? await bankingModel.hasPublishedAddress(me).catch(() => false) : false;
+    if (addr && !published && walletUrl) {
+      try { await bankingModel.setUserAddress(me, addr, true); published = await bankingModel.hasPublishedAddress(me).catch(() => false); } catch (_) {}
+    }
     const next = !!(addr && published && walletUrl);
     sharedState.setWalletReady(next);
+    if (next) { try { await bankingModel.sampleUserFunds(); } catch (_) {} }
     return next;
   } catch (_) { return ready; }
 };
@@ -437,19 +537,20 @@ const blobSizeOf = async (value) => {
 const detailsOf = (...parts) => parts.map(p => String(p == null ? '' : p).trim()).filter(Boolean).slice(0, 4);
 const clearnetDetails = (kind, x) => {
   if (!x) return [];
+  const { i18n } = require('../views/main_views');
   if (kind === 'market') {
     const type = String(x.item_type || '').toLowerCase();
-    return detailsOf(type === 'auction' ? '🔨 AUCTION' : type === 'exchange' ? '🔁 EXCHANGE' : type.toUpperCase());
+    return detailsOf(type === 'auction' ? `🔨 ${i18n.cnAuction}` : type === 'exchange' ? `🔁 ${i18n.cnExchange}` : type.toUpperCase());
   }
   if (kind === 'events') return detailsOf(x.location ? `📍 ${x.location}` : '');
   if (kind === 'jobs') {
     const time = String(x.job_time || '').toLowerCase();
     return detailsOf(
       x.job_type ? `💼 ${String(x.job_type).toUpperCase()}` : '',
-      time === 'partial' ? '⏱ PART TIME' : time === 'complete' ? '⏱ FULL TIME' : ''
+      time === 'partial' ? `⏱ ${String(i18n.jobTimePartial).toUpperCase()}` : time === 'complete' ? `⏱ ${String(i18n.jobTimeComplete).toUpperCase()}` : ''
     );
   }
-  if (kind === 'podcasts') return detailsOf(Number(x.episodeCount) > 0 ? `🎙 ${Number(x.episodeCount)} EPISODES` : '');
+  if (kind === 'podcasts') return detailsOf(Number(x.episodeCount) > 0 ? `🎙 ${Number(x.episodeCount)} ${String(i18n.podcastEpisodesLabel).toUpperCase()}` : '');
   if (kind === 'projects') {
     const progress = Number(x.progress);
     return detailsOf(Number.isFinite(progress) ? `📈 ${Math.max(0, Math.min(100, Math.round(progress)))}%` : '');
@@ -523,13 +624,14 @@ const clearnetIdFor = async (kind, param) => {
   const { clearnetShortId, clearnetSlugFor } = require('../views/main_views');
   const short = raw.split('-').pop().toLowerCase();
   const find = (index) => {
-    for (const entry of index) {
-      for (const it of (entry.items[kind] || [])) {
-        if (it.slug && it.slug === raw) return it.id;
-        if (clearnetSlugFor(it.title, it.id) === raw || clearnetShortId(it.id) === short) return it.id;
-      }
-    }
-    return null;
+    const all = [];
+    for (const entry of index) for (const it of (entry.items[kind] || [])) all.push(it);
+    const exact = all.find(it => clearnetSlugFor(it.title, it.id) === raw);
+    if (exact) return exact.id;
+    const byShort = all.find(it => clearnetShortId(it.id) === short);
+    if (byShort) return byShort.id;
+    const bySlug = all.find(it => it.slug && it.slug === raw);
+    return bySlug ? bySlug.id : null;
   };
   let hit = find(await getClearnetIndex());
   if (!hit) hit = find(await getClearnetIndex(true));
@@ -807,11 +909,23 @@ const refreshInboxCount = async (messagesOpt) => {
   const userId = getViewerId();
   const isToUser = m => Array.isArray(m?.value?.content?.to) && m.value.content.to.includes(userId);
   const filtered = messages.filter(m => m && m.key && m.value && m.value.content && m.value.content.type === 'post' && m.value.content.private === true);
-  sharedState.setInboxCount(filtered.filter(isToUser).length);
+  const read = pmModel.readKeys();
+  const archived = pmModel.archivedKeys();
+  const muted = pmModel.mutedBots(getConfig());
+  const unread = filtered.filter(isToUser).filter(m => !read.has(String(m.key)) && !archived.has(String(m.key)));
+  const notif = unread.filter(m => { const b = pmModel.botOf(m.value.content); return b && !muted.has(b); });
+  const pms = unread.filter(m => !pmModel.botOf(m.value.content));
+  sharedState.setInboxPmCount(pms.length);
+  sharedState.setInboxNotifCount(notif.length);
+  sharedState.setInboxCount(pms.length + notif.length);
 };
 
 const refreshMentionsCount = async () => {
-  try { sharedState.setMentionsCount(await mentionsModel.countUnseen()); } catch (_) {}
+  try {
+    const all = await mentionsModel.listMentions('ALL');
+    sharedState.setMentionsTotal(all.length);
+    sharedState.setMentionsCount(mentionsModel.unseenOf(all).length);
+  } catch (_) {}
 };
 
 const PM_CRYPTER_MAX = 4600;
@@ -1055,6 +1169,29 @@ const backupModel = require('../models/backup_model')({ cooler });
 const devModel = require('../models/dev_model');
 const walletModel = require('../models/wallet_model')
 const pmModel = require('../models/pm_model')({ cooler, isPublic: config.public });
+const recentBotNotices = new Map();
+const BOT_NOTICE_DEDUPE_MS = 60 * 1000;
+const notifyBot = async (subject, recipients, text, opts = {}) => {
+  const subj = String(subject || '');
+  const bot = pmModel.botOf({ subject: subj });
+  const me = getViewerId();
+  const list = (Array.isArray(recipients) ? recipients : [recipients]).filter(id => typeof id === 'string' && id.startsWith('@'));
+  let targets = list.length ? Array.from(new Set(list)) : [me];
+  if (bot && pmModel.mutedBots(getConfig()).has(bot)) targets = targets.filter(id => id !== me);
+  const now = Date.now();
+  for (const [k, ts] of recentBotNotices) if (now - ts > BOT_NOTICE_DEDUPE_MS) recentBotNotices.delete(k);
+  targets = targets.filter(id => {
+    const k = `${subj}|${id}|${text}`;
+    if (recentBotNotices.has(k)) return false;
+    recentBotNotices.set(k, now);
+    return true;
+  });
+  if (!targets.length) return null;
+  const others = targets.filter(id => id !== me);
+  if (!others.length) return pmModel.sendMessage([], subj, text, false, opts.ref || '');
+  if (others.length > 6) return pmModel.sendToMany(others, subj, text, false, opts.ref || '');
+  return pmModel.sendMessage(others, subj, text, false, opts.ref || '');
+};
 const subscriptionsModel = require('../models/subscriptions_model')({ cooler });
 const mailingModel = require('../models/mailing_model')({ cooler, subscriptionsModel });
 
@@ -1198,7 +1335,7 @@ const notifyCampaignWatchers = async (rootId, subject) => {
     const text = subject === 'CAMPAIGN_RAISED'
       ? `${await actorLink(actor)} has raised the campaign ${link} to Parliament: [see the proposal](/parliament?filter=proposals)`
       : `${await actorLink(actor)} has ${subject === 'CAMPAIGN_ACHIEVED' ? 'reached the goal of' : 'posted an update on'} the campaign: ${link}`;
-    await pmModel.sendToMany(recipients, subject, text);
+    await notifyBot(subject, recipients, text);
   } catch (_) {}
 };
 
@@ -1209,7 +1346,7 @@ const notifyPodcastWatchers = async (channelId, episode) => {
     const actor = getViewerId();
     const recipients = (await listRecipientsFor({ target: ch.id, owner: ch.author })).filter(id => String(id) !== String(actor));
     if (!recipients.length) return;
-    await pmModel.sendToMany(recipients, 'PODCAST_EPISODE', `${await actorLink(actor)} has published a new episode of [${ch.title || 'a podcast'}](/podcasts/${encodeURIComponent(ch.id)}): [#${episode.number || ''} ${episode.title || ''}](/podcasts/episode/${encodeURIComponent(episode.id)})`);
+    await notifyBot('PODCAST_EPISODE', recipients, `${await actorLink(actor)} has published a new episode of [${ch.title || 'a podcast'}](/podcasts/${encodeURIComponent(ch.id)}): [#${episode.number || ''} ${episode.title || ''}](/podcasts/episode/${encodeURIComponent(episode.id)})`);
   } catch (_) {}
 };
 
@@ -1221,7 +1358,7 @@ const notifyEmergencyWatchers = async (rootId, subject) => {
     const recipients = (await listRecipientsFor({ target: emergency.id, owner: emergency.author })).filter(id => String(id) !== String(actor));
     if (!recipients.length) return;
     const verb = subject === 'EMERGENCY_RESOLVED' ? 'resolved' : 'posted an update on';
-    await pmModel.sendMessage(recipients, subject, `${await actorLink(actor)} has ${verb} the emergency: [${emergency.title || 'an emergency'}](/emergencies/${encodeURIComponent(emergency.id)})`);
+    await notifyBot(subject, recipients, `${await actorLink(actor)} has ${verb} the emergency: [${emergency.title || 'an emergency'}](/emergencies/${encodeURIComponent(emergency.id)})`);
   } catch (_) {}
 };
 
@@ -1241,7 +1378,7 @@ const notifyWikiWatchers = async (rootId, subject, tribeId = null) => {
     if (!recipients.length) return;
     const href = `/wiki/${encodeURIComponent(page.id)}${page.tribeId ? `?tribeId=${encodeURIComponent(page.tribeId)}` : ''}`;
     const verb = subject === 'WIKI_RESTORED' ? 'restored an earlier version of' : 'edited';
-    await pmModel.sendMessage(recipients, subject, `${await actorLink(actor)} has ${verb} the wiki page: [${page.title || 'a page'}](${href})`);
+    await notifyBot(subject, recipients, `${await actorLink(actor)} has ${verb} the wiki page: [${page.title || 'a page'}](${href})`);
   } catch (_) {}
 };
 
@@ -1254,7 +1391,7 @@ const notifyRouteBookers = async (rootId, subject) => {
     const recipients = Array.from(new Set(active)).filter(id => id && String(id) !== String(actor));
     if (!recipients.length) return;
     const verb = subject === 'LOGISTICS_CLOSED' ? 'closed' : 'updated';
-    await pmModel.sendToMany(recipients, subject, `${await actorLink(actor)} has ${verb} the route: [${route.title || 'a route'}](/logistics/${encodeURIComponent(route.id)})`);
+    await notifyBot(subject, recipients, `${await actorLink(actor)} has ${verb} the route: [${route.title || 'a route'}](/logistics/${encodeURIComponent(route.id)})`);
   } catch (_) {}
 };
 
@@ -1267,7 +1404,7 @@ const notifyBookingParty = async (info, subject) => {
     const target = subject === 'LOGISTICS_BOOKED' || subject === 'LOGISTICS_CANCELLED' ? info.owner : info.booker;
     if (!target || String(target) === String(actor)) return;
     const verbs = { LOGISTICS_BOOKED: 'booked', LOGISTICS_CANCELLED: 'cancelled a booking on', LOGISTICS_CONFIRMED: 'confirmed your booking on', LOGISTICS_REJECTED: 'rejected your booking on', LOGISTICS_DELIVERED: 'marked as delivered' };
-    await pmModel.sendMessage([target], subject, `${await actorLink(actor)} has ${verbs[subject] || 'updated'} the route: [${route.title || 'a route'}](/logistics/${encodeURIComponent(route.id)})`);
+    await notifyBot(subject, [target], `${await actorLink(actor)} has ${verbs[subject] || 'updated'} the route: [${route.title || 'a route'}](/logistics/${encodeURIComponent(route.id)})`);
   } catch (_) {}
 };
 
@@ -1361,7 +1498,7 @@ const notifyUbiPaid = async ({ to, amount, epochId, txid, transferKey }) => {
   const links = transferKey
     ? ` → [${concept}](/transfers/${encodeURIComponent(transferKey)}) · [PDF](/transfers/contract/${encodeURIComponent(transferKey)})`
     : ` → ${concept}`;
-  await pmModel.sendMessage([to], 'BANKING_UBI_PAID', `${i18nB.bankingBotUbiPaidText}: ${amount} ECO${links} · tx ${txid}`);
+  await notifyBot('BANKING_UBI_PAID', [to], `${i18nB.bankingBotUbiPaidText}: ${amount} ECO${links}`);
 };
 const bankingModel = require("../models/banking_model")({ services: { cooler, notifyUbiPaid, transfers: transfersModel }, isPublic: config.public });
 const favoritesModel = require("../models/favorites_model")({ services: { cooler }, audiosModel, bookmarksModel, documentsModel, imagesModel, videosModel, mapsModel, padsModel, chatsModel, calendarsModel, torrentsModel, marketModel, shopsModel, eventsModel, tasksModel, reportsModel, votesModel, jobsModel, housingModel, projectsModel, transfersModel, forumModel, blogsModel: blogModel, pollsModel, schoolModel, wikiModel, emergenciesModel, mailingModel, logisticsModel, podcastsModel, campaignsModel });
@@ -1760,7 +1897,7 @@ const notifyHousingRequesters = async (item, reason) => {
   const label = reason === 'deleted' ? 'has been removed' : 'is no longer available';
   for (const requester of requesters) {
     try {
-      await pmModel.sendMessage([requester], 'HOUSING_UNAVAILABLE', `The place [${item.title || 'a place'}](/housing/${encodeURIComponent(item.id)}) you requested ${label}`);
+      await notifyBot('HOUSING_UNAVAILABLE', [requester], `The place [${item.title || 'a place'}](/housing/${encodeURIComponent(item.id)}) you requested ${label}`);
     } catch (_) {}
   }
 };
@@ -2028,7 +2165,7 @@ const redirectToPayment = async (ctx, { sellerId, amount, fallback, transferId =
     const q = new URLSearchParams({ to: sellerAddress, amount: Number(amount).toFixed(6) });
     if (transferId) q.set('transfer', transferId);
     else { q.set('payee', sellerId); if (concept) q.set('concept', String(concept).slice(0, 120)); if (href && String(href).startsWith('/')) q.set('ref', href); }
-    ctx.redirect(`/wallet/send?${q.toString()}`);
+    ctx.redirect(`/wallet/send?${q.toString()}#wallet-send`);
   } catch (_) { ctx.redirect(fallback); }
 };
 const loadTransferForWallet = async (ctx, transferId) => {
@@ -2753,11 +2890,14 @@ router
   })
   .get('/ai', async (ctx) => {
     if (!checkMod(ctx, 'aiMod')) return ctx.redirect('/modules');
+    if (config.public) { ctx.body = aiView([], '', { status: null }); return; }
     startAI();
     const lang = ctx.cookies.get('language') || getConfig().language || 'en', historyPath = stateFilePath('AI-history.json');
     require('../views/main_views').setLanguage(lang);
-    let chatHistory = []; try { chatHistory = JSON.parse(fs.readFileSync(historyPath, 'utf-8')); } catch {}
-    ctx.body = aiView(chatHistory, getConfig().ai?.prompt?.trim() || '');
+    const chatHistory = readAiHistory(historyPath).filter(e => e && e.trainStatus !== 'thinking');
+    try { await about.name(getViewerId()); } catch (_) {}
+    const status = await aiClient.status().catch(() => ({ installed: false, ready: false }));
+    ctx.body = aiView(chatHistory, getConfig().ai?.prompt?.trim() || '', { status });
   })
   .get('/games', async (ctx) => {
     if (!checkMod(ctx, 'gamesMod')) { ctx.redirect('/modules'); return; }
@@ -2855,7 +2995,7 @@ router
     try {
       const course = await schoolModel.getCourseById(ctx.params.id, getViewerId());
       enrolledCourse = course;
-      await pmModel.sendMessage([course.author], 'SCHOOL_ENROLLED', `${await actorLink(getViewerId())} has enrolled in your course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
+      await notifyBot('SCHOOL_ENROLLED', [course.author], `${await actorLink(getViewerId())} has enrolled in your course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
     } catch (_) {}
     const courseHref = `/school/course/${encodeURIComponent(ctx.params.id)}`;
     if (enrolledCourse && Number(enrolledCourse.price) > 0) {
@@ -2878,7 +3018,7 @@ router
       const course = await schoolModel.getCourseById(courseId, getViewerId());
       const invited = String(ctx.request.body.students || '').split(/[\s,]+/).filter(x => x.startsWith('@'));
       for (const student of invited) {
-        await pmModel.sendMessage([student], 'SCHOOL_INVITED', `You have been invited to the course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(courseId)})`);
+        await notifyBot('SCHOOL_INVITED', [student], `You have been invited to the course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(courseId)})`);
       }
     } catch (_) {}
     ctx.redirect(`/school/course/${encodeURIComponent(m && m.key ? m.key : ctx.params.id)}`);
@@ -2891,7 +3031,7 @@ router
     try {
       const course = await schoolModel.getCourseById(ctx.params.id, getViewerId());
       for (const student of (course.students || [])) {
-        await pmModel.sendMessage([student], 'SCHOOL_LESSON_NEW', `New lesson "${stripDangerousTags(b.title)}" in the course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
+        await notifyBot('SCHOOL_LESSON_NEW', [student], `New lesson "${stripDangerousTags(b.title)}" in the course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
       }
     } catch (_) {}
     ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.id)}`, ['/school']));
@@ -2927,7 +3067,7 @@ router
       if (student.startsWith('@')) {
         const pdfPart = issued && issued.key ? ` — [Download your diploma (PDF)](/school/certificate/pdf/${encodeURIComponent(ctx.params.id)}/${encodeURIComponent(issued.key)})` : '';
         const notePart = String(b.text || '').trim() ? `\n\n${stripDangerousTags(String(b.text).trim())}` : '';
-        await pmModel.sendMessage([student], 'SCHOOL_CERTIFICATE', `You have received a certificate 🎓 for the course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})${pdfPart}${notePart}`);
+        await notifyBot('SCHOOL_CERTIFICATE', [student], `You have received a certificate 🎓 for the course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})${pdfPart}${notePart}`);
       }
     } catch (_) {}
     ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.id)}`, ['/school']));
@@ -2945,7 +3085,7 @@ router
     try {
       if (!passedBefore && await schoolModel.hasPassedCourse(ctx.params.courseId, getViewerId())) {
         const course = await schoolModel.getCourseById(ctx.params.courseId, getViewerId());
-        await pmModel.sendMessage([course.author], 'SCHOOL_PASSED', `${await actorLink(getViewerId())} has passed your course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.courseId)})`);
+        await notifyBot('SCHOOL_PASSED', [course.author], `${await actorLink(getViewerId())} has passed your course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.courseId)})`);
       }
     } catch (_) {}
     ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.courseId)}`, ['/school']));
@@ -2978,7 +3118,7 @@ router
     try {
       if (!passedBefore && await schoolModel.hasPassedCourse(ctx.params.courseId, getViewerId())) {
         const course = await schoolModel.getCourseById(ctx.params.courseId, getViewerId());
-        await pmModel.sendMessage([course.author], 'SCHOOL_PASSED', `${await actorLink(getViewerId())} has passed your course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.courseId)})`);
+        await notifyBot('SCHOOL_PASSED', [course.author], `${await actorLink(getViewerId())} has passed your course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.courseId)})`);
       }
     } catch (_) {}
     ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.courseId)}`, ['/school']));
@@ -3069,7 +3209,7 @@ router
     try {
       const course = await schoolModel.getCourseById(ctx.params.id, getViewerId());
       const student = String(ctx.request.body.student || '').trim();
-      if (student.startsWith('@')) await pmModel.sendMessage([student], 'SCHOOL_ADMITTED', `You have been admitted to the course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
+      if (student.startsWith('@')) await notifyBot('SCHOOL_ADMITTED', [student], `You have been admitted to the course: [${course.title || 'a course'}](/school/course/${encodeURIComponent(ctx.params.id)})`);
     } catch (_) {}
     ctx.redirect(safeReturnTo(ctx, `/school/course/${encodeURIComponent(ctx.params.id)}`, ['/school']));
   })
@@ -3317,6 +3457,18 @@ router
       return true;
     });
     const results = await searchModel.search({ query, types: [] });
+    try {
+      if (checkMod(ctx, 'aiMod') && aiEmbedder.isInstalled()) {
+        const ssbSem = await cooler.open();
+        const sem = await semanticSearch.search(ssbSem, query, { embed: aiEmbedder.embed, cosine: aiEmbedder.cosine, limit: getConfig().ssbLogStream?.limit || 1000 });
+        for (const { msg } of sem) {
+          const t = msg && msg.value && msg.value.content && msg.value.content.type;
+          if (!t) continue;
+          if (!Array.isArray(results[t])) results[t] = [];
+          if (!results[t].some(m => m && m.key === msg.key)) results[t].push(msg);
+        }
+      }
+    } catch (_) {}
     const cfgNow = getConfig();
     const wishMutuals = cfgNow.wish === 'mutuals';
     const wishOnlyLan = cfgNow.wish === 'only-lan';
@@ -3655,7 +3807,56 @@ router
     await refreshInboxCount(messages);
     const notice = ctx.query.filestatus === 'unavailable' ? 'unavailable' : (ctx.query.filekey === 'bad' ? 'badkey' : '');
     const listTitles = await inboxListTitles(messages);
-    ctx.body = await privateView({ messages, listTitles }, ctx.query.filter || undefined, null, notice, String(ctx.query.q || ''));
+    ctx.body = await privateView({
+      messages,
+      listTitles,
+      readKeys: Array.from(pmModel.readKeys()),
+      archivedKeys: Array.from(pmModel.archivedKeys()),
+      mutedBots: Array.from(pmModel.mutedBots(getConfig())),
+      bot: String(ctx.query.bot || ''),
+      sort: String(ctx.query.sort || '')
+    }, ctx.query.filter || undefined, null, notice, String(ctx.query.q || ''));
+  })
+  .post('/inbox/read/:key', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'inboxMod')) { ctx.redirect('/modules'); return; }
+    if (!isMsgKey(ctx.params.key)) { ctx.throw(400, 'Invalid message key'); return; }
+    pmModel.markRead(ctx.params.key);
+    try { await refreshInboxCount(); } catch (_) {}
+    safeRefererRedirect(ctx, '/inbox');
+  })
+  .post('/inbox/unread/:key', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'inboxMod')) { ctx.redirect('/modules'); return; }
+    if (!isMsgKey(ctx.params.key)) { ctx.throw(400, 'Invalid message key'); return; }
+    pmModel.markUnread(ctx.params.key);
+    try { await refreshInboxCount(); } catch (_) {}
+    safeRefererRedirect(ctx, '/inbox');
+  })
+  .post('/inbox/read-all', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'inboxMod')) { ctx.redirect('/modules'); return; }
+    pmModel.markReadMany(pickMsgKeys((ctx.request.body || {}).keys));
+    try { await refreshInboxCount(); } catch (_) {}
+    safeRefererRedirect(ctx, '/inbox');
+  })
+  .post('/inbox/archive/:key', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'inboxMod')) { ctx.redirect('/modules'); return; }
+    if (!isMsgKey(ctx.params.key)) { ctx.throw(400, 'Invalid message key'); return; }
+    pmModel.archive(ctx.params.key);
+    try { await refreshInboxCount(); } catch (_) {}
+    safeRefererRedirect(ctx, '/inbox');
+  })
+  .post('/inbox/unarchive/:key', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'inboxMod')) { ctx.redirect('/modules'); return; }
+    if (!isMsgKey(ctx.params.key)) { ctx.throw(400, 'Invalid message key'); return; }
+    pmModel.unarchive(ctx.params.key);
+    try { await refreshInboxCount(); } catch (_) {}
+    safeRefererRedirect(ctx, '/inbox');
+  })
+  .post('/inbox/delete-many', koaBody(), async ctx => {
+    if (!checkMod(ctx, 'inboxMod')) { ctx.redirect('/modules'); return; }
+    const keys = pickMsgKeys((ctx.request.body || {}).keys);
+    for (const k of keys) { try { await pmModel.deleteMessageById(k); } catch (_) {} }
+    try { await refreshInboxCount(); } catch (_) {}
+    safeRefererRedirect(ctx, '/inbox');
   })
   .post('/inbox/decrypt', koaBody(), async ctx => {
     if (!checkMod(ctx, 'inboxMod')) { ctx.redirect('/modules'); return; }
@@ -4188,10 +4389,27 @@ router
       return m;
     };
     const [historicalMetas, leadersMetas] = await Promise.all([buildMetas(historical, 12), buildMetas(leaders, 20)]);
+    let hemicycle = null;
+    if (filter === 'government') {
+      try {
+        const termForSeats = await parliamentModel.getCurrentTerm().catch(() => null);
+        hemicycle = await parliamentModel.getHemicycle(termForSeats);
+        if (hemicycle && Array.isArray(hemicycle.seats)) {
+          const memberships = await larpModel.listAllMemberships().catch(() => new Map());
+          const houseOf = (id) => { const v = memberships && memberships.get ? memberships.get(id) : null; return typeof v === 'string' ? v : (v && v.house) || null; };
+          hemicycle.houses = {};
+          for (const seat of hemicycle.seats) { seat.house = houseOf(seat.id); if (seat.house) hemicycle.houses[seat.house] = (hemicycle.houses[seat.house] || 0) + 1; }
+        }
+      } catch (_) { hemicycle = null; }
+    }
+    const houseNames = Object.fromEntries(Object.entries(larpModel.HOUSES || {}).map(([k, h]) => [k, (h && h.name) || k]));
     ctx.body = await parliamentView({
       filter,
       inhabitantsTotal,
       governmentCard,
+      hemicycle,
+      seatsMode: String(ctx.query.seats || '') === 'houses' ? 'houses' : 'election',
+      houseNames,
       candidatures,
       proposals: proposalsLive,
       futureLaws: futureLawsLive,
@@ -5045,7 +5263,9 @@ router
     const rebuild = settingsReports.rebuild;
     settingsReports.verification = null;
     settingsReports.rebuild = null;
-    ctx.body = await settingsView({ theme, version: version.toString(), aiPrompt: cfg.ai?.prompt || "", fediverseAccount: fediverseModel.getAccount(), fediverseError: typeof ctx.query.fediverseError === "string" ? ctx.query.fediverseError : "", telegramAccount: fediverseModel.telegram.getAccount(), telegramLogin: fediverseModel.telegram.loginState(), telegramError: typeof ctx.query.telegramError === "string" ? ctx.query.telegramError : (fediverseModel.telegram.loginState() && fediverseModel.telegram.loginState().error) || "", verification, rebuild });
+    let aiExportCount = 0;
+    if (cfg.modules?.aiMod === 'on') { try { aiExportCount = ((await listAiExchanges()).exchanges || []).length; } catch (_) { aiExportCount = 0; } }
+    ctx.body = await settingsView({ theme, version: version.toString(), aiPrompt: cfg.ai?.prompt || "", aiExportCount, fediverseAccount: fediverseModel.getAccount(), fediverseError: typeof ctx.query.fediverseError === "string" ? ctx.query.fediverseError : "", telegramAccount: fediverseModel.telegram.getAccount(), telegramLogin: fediverseModel.telegram.loginState(), telegramError: typeof ctx.query.telegramError === "string" ? ctx.query.telegramError : (fediverseModel.telegram.loginState() && fediverseModel.telegram.loginState().error) || "", verification, rebuild });
   })
   .get("/peers", async (ctx) => {
     const { discoveredPeers, unknownPeers } = await meta.discovered();
@@ -5427,9 +5647,25 @@ router
     const counts = await mentionsModel.countTypes(all);
     const items = filter === 'ALL' ? all : all.filter(x => x.type === filter);
     await warmAuthorNames(items);
-    try { mentionsModel.markSeen(all); } catch (_) {}
-    sharedState.setMentionsCount(0);
-    ctx.body = await mentionsView(items, filter, { counts, total: all.length, q });
+    try { sharedState.setMentionsTotal(all.length); sharedState.setMentionsCount(mentionsModel.unseenOf(all).length); } catch (_) {}
+    ctx.body = await mentionsView(items, filter, { counts, total: all.length, q, readKeys: Array.from(mentionsModel.readKeys()) });
+  })
+  .post('/mentions/read/:key', koaBody(), async ctx => {
+    if (!isMsgKey(ctx.params.key)) { ctx.throw(400, 'Invalid message key'); return; }
+    mentionsModel.markRead(ctx.params.key);
+    try { await refreshMentionsCount(); } catch (_) {}
+    safeRefererRedirect(ctx, '/mentions');
+  })
+  .post('/mentions/unread/:key', koaBody(), async ctx => {
+    if (!isMsgKey(ctx.params.key)) { ctx.throw(400, 'Invalid message key'); return; }
+    mentionsModel.markUnread(ctx.params.key);
+    try { await refreshMentionsCount(); } catch (_) {}
+    safeRefererRedirect(ctx, '/mentions');
+  })
+  .post('/mentions/read-all', koaBody(), async ctx => {
+    mentionsModel.markReadMany(pickMsgKeys((ctx.request.body || {}).keys));
+    try { await refreshMentionsCount(); } catch (_) {}
+    safeRefererRedirect(ctx, '/mentions');
   })
   .get('/opinions', async (ctx) => {
     const filter = qf(ctx, 'ALL');
@@ -5875,6 +6111,16 @@ router
       { subscription: await subscriptionStateFor(blog.author, blog.author), spreads: await spreads.forMessage(blog.id).catch(() => null), censusList: await blogModel.listAll('ALL', { q: '', favorites: [...fav] }).catch(() => []) }
     );
   })
+  .post('/blogs/preview', koaBody({ multipart: true, urlencoded: true, formidable: { multiples: true, maxFileSize: maxSize } }), async ctx => {
+    if (!checkMod(ctx, 'blogsMod')) { ctx.redirect('/modules'); return; }
+    const b = ctx.request.body;
+    let text = stripDangerousTags((b.text || '').toString().trim());
+    const subject = stripDangerousTags((b.subject || '').toString().trim());
+    const blobMarkdown = await handleBlobUploads(ctx, 'blob', 9);
+    if (blobMarkdown.length) text += blobMarkdown.join('');
+    const allowComments = [].concat(b.allowComments).includes('1');
+    ctx.body = await blogView([], 'CREATE', { draft: { text, subject, allowComments } });
+  })
   .post('/blogs/create', koaBody({ multipart: true, urlencoded: true, formidable: { multiples: true, maxFileSize: maxSize } }), async ctx => {
     if (!checkMod(ctx, 'blogsMod')) { ctx.redirect('/modules'); return; }
     const b = ctx.request.body;
@@ -5895,7 +6141,7 @@ router
       const subs = (await subscriptionsModel.listSubscribers(me)).filter(id => id !== me);
       if (subs.length) {
         const blogHref = createdBlog && createdBlog.key ? `/blogs/${encodeURIComponent(createdBlog.key)}` : '/blogs';
-        await pmModel.sendToMany(subs, 'BLOG_NEW', `[${subject || 'New blog entry'}](${blogHref})`);
+        await notifyBot('BLOG_NEW', subs, `[${subject || 'New blog entry'}](${blogHref})`);
       }
     } catch (_) {}
     ctx.redirect('/blogs?filter=MINE');
@@ -6559,9 +6805,10 @@ router
       ctx.body = require('../views/clearnet_view').renderClearnetNotFound();
       return;
     }
-    const wikiLinks = new Set();
+    const wikiLinks = new Map();
     try {
       const { extractWikiLinks } = require('../models/wiki_model');
+      const { clearnetItemHref } = require('../views/main_views');
       const slugs = extractWikiLinks(page.body || '');
       if (slugs.length) {
         const all = await wikiModel.listPages({ filter: 'all' }).catch(() => []);
@@ -6575,7 +6822,7 @@ router
             prefsByAuthor.set(target.author, await about.visibilityPrefs(target.author).catch(() => null));
           }
           const targetPrefs = prefsByAuthor.get(target.author);
-          if (targetPrefs && targetPrefs.clearnetWiki === true) wikiLinks.add(slug);
+          if (targetPrefs && targetPrefs.clearnetWiki === true) wikiLinks.set(slug, clearnetItemHref('wiki', target.title, target.id));
         }
       }
     } catch (_) {}
@@ -6707,6 +6954,44 @@ router
     }
     ctx.type = 'text/html';
     ctx.body = await clearnetHubView({ authors, items, filterType: String(ctx.query.type || '').toLowerCase(), query: String(ctx.query.q || '').trim() });
+  })
+  .get("/c/sitemap.xml", async (ctx) => {
+    const { escapeHtml: esc } = require('../views/clearnet_view');
+    const { CLEARNET_MODULES, clearnetSlugFor } = require('../views/main_views');
+    const base = resolveExternalBaseUrl(ctx);
+    const index = await getClearnetIndex();
+    const urls = [`${base}/c`];
+    for (const entry of index) {
+      urls.push(`${base}/c/inhabitant/${encodeURIComponent(entry.feedId)}`);
+      for (const m of CLEARNET_MODULES) {
+        for (const it of (entry.items[m.key] || [])) {
+          urls.push(`${base}/c/${m.modulePath || m.key}/${encodeURIComponent(clearnetSlugFor(it.title, it.id))}`);
+        }
+      }
+    }
+    ctx.type = 'application/xml';
+    ctx.body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Array.from(new Set(urls)).map(u => `  <url><loc>${esc(u)}</loc></url>`).join('\n')}\n</urlset>\n`;
+  })
+  .get("/c/rss/:module", async (ctx) => {
+    const { escapeHtml: esc } = require('../views/clearnet_view');
+    const { CLEARNET_MODULES, clearnetSlugFor, cnModuleLabel, i18n } = require('../views/main_views');
+    const wanted = String(ctx.params.module || '').replace(/\.xml$/i, '').toLowerCase();
+    const mod = CLEARNET_MODULES.find(m => m.key === wanted || (m.modulePath || m.key) === wanted);
+    if (!mod) { ctx.status = 404; ctx.body = require('../views/clearnet_view').renderClearnetNotFound(); return; }
+    const base = resolveExternalBaseUrl(ctx);
+    const index = await getClearnetIndex();
+    const items = [];
+    for (const entry of index) {
+      for (const it of (entry.items[mod.key] || [])) items.push({ ...it, authorName: entry.name || '', feedId: entry.feedId });
+    }
+    items.sort((a, b) => (Number(b.ts) || 0) - (Number(a.ts) || 0));
+    const rssItems = items.slice(0, 50).map(it => {
+      const link = `${base}/c/${mod.modulePath || mod.key}/${encodeURIComponent(clearnetSlugFor(it.title, it.id))}`;
+      const date = new Date(Number(it.ts) || Date.now()).toUTCString();
+      return `    <item>\n      <title>${esc(it.title || i18n.cnUntitled)}</title>\n      <link>${esc(link)}</link>\n      <guid isPermaLink="false">${esc(String(it.id || link))}</guid>\n      <pubDate>${date}</pubDate>\n      <author>${esc(it.authorName || it.feedId || '')}</author>\n      <description>${esc(String(it.snippet || '').slice(0, 500))}</description>\n    </item>`;
+    }).join('\n');
+    ctx.type = 'application/rss+xml';
+    ctx.body = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0">\n  <channel>\n    <title>Oasis HUB · ${esc(cnModuleLabel(mod))}</title>\n    <link>${esc(`${base}/c?type=${mod.key}`)}</link>\n    <description>${esc(`${cnModuleLabel(mod)} ${i18n.cnRssDescription}`)}</description>\n${rssItems}\n  </channel>\n</rss>\n`;
   })
   .get("/c/inhabitant/:feedId", async (ctx) => {
     const feedId = decodeURIComponent(ctx.params.feedId || '');
@@ -7291,7 +7576,7 @@ router
       await industryModel.joinFacility(ctx.params.id)
       if (before && before.membershipPolicy === 'vote') {
         const me = getViewerId()
-        for (const m of (before.members || [])) { if (m !== me) { try { await pmModel.sendMessage([m], "INDUSTRY_APPLICATION", `A new habitant requested to join [${before.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)})`); } catch (_) {} } }
+        for (const m of (before.members || [])) { if (m !== me) { try { await notifyBot("INDUSTRY_APPLICATION", [m], `A new habitant requested to join [${before.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)})`); } catch (_) {} } }
       }
       safeRefererRedirect(ctx, `/industry/${encodeURIComponent(ctx.params.id)}`)
     } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
@@ -7306,7 +7591,7 @@ router
     const invitee = ctx.request.body.invitee
     try {
       await industryModel.inviteToFacility(ctx.params.id, invitee)
-      try { const fc = await industryModel.getFacilityById(ctx.params.id); await pmModel.sendMessage([invitee], "INDUSTRY_INVITED", `You have been invited to join [${fc.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)})`); } catch (_) {}
+      try { const fc = await industryModel.getFacilityById(ctx.params.id); await notifyBot("INDUSTRY_INVITED", [invitee], `You have been invited to join [${fc.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)})`); } catch (_) {}
       safeRefererRedirect(ctx, `/industry/${encodeURIComponent(ctx.params.id)}`)
     } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
   })
@@ -7319,10 +7604,10 @@ router
       const after = await industryModel.getFacilityById(ctx.params.id).catch(() => null)
       const me = getViewerId()
       if (subject === 'admit' && ref && before && after && !before.members.includes(ref) && after.members.includes(ref)) {
-        try { await pmModel.sendMessage([ref], "INDUSTRY_ADMITTED", `You have been admitted to [${after.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)})`); } catch (_) {}
+        try { await notifyBot("INDUSTRY_ADMITTED", [ref], `You have been admitted to [${after.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)})`); } catch (_) {}
       }
       if (subject === 'dissolve' && before && after && before.status !== 'DISSOLVED' && after.status === 'DISSOLVED') {
-        for (const m of (after.members || [])) { if (m !== me) { try { await pmModel.sendMessage([m], "INDUSTRY_DISSOLVED", `The facility [${after.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)}) has been dissolved by collective vote`); } catch (_) {} } }
+        for (const m of (after.members || [])) { if (m !== me) { try { await notifyBot("INDUSTRY_DISSOLVED", [m], `The facility [${after.name || 'a facility'}](/industry/${encodeURIComponent(ctx.params.id)}) has been dissolved by collective vote`); } catch (_) {} } }
       }
       safeRefererRedirect(ctx, `/industry/${encodeURIComponent(ctx.params.id)}`)
     } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
@@ -7384,7 +7669,7 @@ router
       await industryModel.voteBuild(ctx.params.id, ctx.request.body.choice)
       const after = await industryModel.getBuild(ctx.params.id).catch(() => null)
       if (before && after && before.status !== 'APPROVED' && after.status === 'APPROVED' && after.proposer !== getViewerId()) {
-        try { await pmModel.sendMessage([after.proposer], "INDUSTRY_BUILD_APPROVED", `Your build [${after.title || 'a build'}](/industry/build/${encodeURIComponent(ctx.params.id)}) has been approved`); } catch (_) {}
+        try { await notifyBot("INDUSTRY_BUILD_APPROVED", [after.proposer], `Your build [${after.title || 'a build'}](/industry/build/${encodeURIComponent(ctx.params.id)}) has been approved`); } catch (_) {}
       }
       safeRefererRedirect(ctx, `/industry/build/${encodeURIComponent(ctx.params.id)}`)
     } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
@@ -7409,7 +7694,7 @@ router
       const res = await industryModel.distributeBuild(ctx.params.id, { outputValue: ctx.request.body.outputValue })
       for (const alloc of res.plan.allocations) {
         if (!alloc || !alloc.to || alloc.to === viewer || !(alloc.amount > 0)) continue
-        try { await pmModel.sendMessage([alloc.to], "INDUSTRY_DISTRIBUTED", `Build [${res.build.title || 'a build'}](/industry/build/${encodeURIComponent(ctx.params.id)}) allocated you ${alloc.amount.toFixed(2)} ECO`) } catch (_) {}
+        try { await notifyBot("INDUSTRY_DISTRIBUTED", [alloc.to], `Build [${res.build.title || 'a build'}](/industry/build/${encodeURIComponent(ctx.params.id)}) allocated you ${alloc.amount.toFixed(2)} ECO`) } catch (_) {}
       }
       safeRefererRedirect(ctx, `/industry/build/${encodeURIComponent(ctx.params.id)}`)
     } catch (e) { sendErrorPage(ctx, e.message || String(e), { status: 400 }) }
@@ -7441,16 +7726,6 @@ router
       }
     }
     data.flash = msg || '';
-    const { ecoValue, inflationFactor, inflationMonthly, ecoTimeMs, currentSupply, isSynced } = await bankingModel.calculateEcoinValue();
-    data.exchange = {
-      ecoValue,
-      inflationFactor,
-      inflationMonthly,
-      ecoTimeMs,
-      currentSupply,
-      totalSupply: 25500000,
-      isSynced
-    };
     if (filter === 'taxes') {
       const inspectBlock = async (blockId) => {
         if (!blockId) return null;
@@ -7869,65 +8144,54 @@ router
     await enrichItemLifetime(transfer, { author: transfer.from });
     const comments = await getVoteComments(transfer.id);
     const fav = await contentFavorites.getFavoriteSet('transfers');
-    await warmAuthorNames([transfer], comments);
+    await warmAuthorNames([transfer, { author: transfer.from }, { author: transfer.to }], comments);
     const singleCensus = await transfersModel.listAll('all', getViewerId()).catch(() => []);
     ctx.body = await singleTransferView({ ...transfer, isFavorite: fav.has(String(transfer.id)) }, filter, { censusList: singleCensus, q: ctx.query.q || '', minAmount: ctx.query.minAmount ?? '', maxAmount: ctx.query.maxAmount ?? '', sort: ctx.query.sort || 'recent', returnTo: safeReturnTo(ctx, `/transfers?filter=${encodeURIComponent(filter)}`, ['/transfers']), block, comments, spreads: await spreads.forMessage(transfer.id).catch(() => null) });
   })
   .post('/ai', koaBody(), async (ctx) => {
-    const { input } = ctx.request.body;
+    if (!checkMod(ctx, 'aiMod')) return ctx.redirect('/modules');
+    const input = String((ctx.request.body || {}).input || '').trim().slice(0, 5000);
     if (!input) {
       sendErrorPage(ctx, 'No input provided', { status: 400 });
       return;
     }
     startAI();
-    const i18nAll = require('../client/assets/translations/i18n');
     const lang = ctx.cookies.get('language') || getConfig().language || 'en';
-    const translations = i18nAll[lang] || i18nAll['en'];
-    const { setLanguage } = require('../views/main_views');
-    setLanguage(lang);
+    require('../views/main_views').setLanguage(lang);
+    const { SPLIT_MARKER } = require('../views/AI_view');
+    try { await about.name(getViewerId()); } catch (_) {}
     const historyPath = stateFilePath('AI-history.json');
-    let chatHistory = [];
-    try {
-      const fileData = fs.readFileSync(historyPath, 'utf-8');
-      chatHistory = JSON.parse(fileData);
-    } catch {
-      chatHistory = [];
-    }
-    const config = getConfig();
-    const userPrompt = config.ai?.prompt?.trim() || 'Provide an informative and precise response.';
-    try {
-      let aiResponse = '';
-      let snippets = [];
-      const trained = await getBestTrainedAnswer(input);
-      if (trained && trained.answer) {
-        aiResponse = trained.answer;
-        snippets = Array.isArray(trained.ctx) ? trained.ctx : [];
-      } else {
-        const response = await axios.post('http://localhost:4001/ai', { input });
-        aiResponse = response.data.answer;
-        snippets = Array.isArray(response.data.snippets) ? response.data.snippets : [];
-      }
-      chatHistory.unshift({
-        prompt: userPrompt,
-        question: input,
-        answer: aiResponse,
-        timestamp: Date.now(),
-        trainStatus: 'pending',
-        snippets
-      });
-    } catch (e) {
-      chatHistory.unshift({
-        prompt: userPrompt,
-        question: input,
-        answer: translations.aiServerError || 'The AI could not answer. Please try again.',
-        timestamp: Date.now(),
-        trainStatus: 'rejected',
-        snippets: []
-      });
-    }
-    chatHistory = chatHistory.slice(0, 20);
-    fs.writeFileSync(historyPath, JSON.stringify(chatHistory, null, 2), 'utf-8');
-    ctx.body = aiView(chatHistory, userPrompt);
+    const previous = readAiHistory(historyPath);
+    const userPrompt = getConfig().ai?.prompt?.trim() || 'Provide an informative and precise response.';
+    const entry = { prompt: userPrompt, question: input, answer: '', timestamp: Date.now(), trainStatus: 'thinking', snippets: [], facts: [], intent: null, source: 'model' };
+    const status = await aiClient.status().catch(() => null);
+    const thinkingPage = String(aiView([entry, ...previous].slice(0, 20), userPrompt, { status, split: true }));
+    const cut = thinkingPage.indexOf(SPLIT_MARKER);
+    const { PassThrough } = require('stream');
+    const stream = new PassThrough();
+    ctx.status = 200;
+    ctx.type = 'html';
+    ctx.set('Cache-Control', 'no-store');
+    ctx.set('X-Accel-Buffering', 'no');
+    ctx.body = stream;
+    if (cut >= 0) stream.write(thinkingPage.slice(0, cut));
+    answerAiEntry(entry, input, lang, previous).then((done) => {
+      const finalHistory = [done, ...previous].slice(0, 20);
+      if (done.source !== 'error') writeAiHistory(historyPath, finalHistory);
+      const finalPage = String(aiView(finalHistory, userPrompt, { status, split: true }));
+      const cut2 = finalPage.indexOf(SPLIT_MARKER);
+      if (cut < 0 || cut2 < 0) { stream.end(finalPage); return; }
+      stream.end(finalPage.slice(cut2 + SPLIT_MARKER.length));
+    }).catch(() => { try { stream.end(); } catch (_) {} });
+  })
+  .get('/ai/export', async (ctx) => {
+    if (!checkMod(ctx, 'aiMod') || config.public) return ctx.redirect('/modules');
+    const lang = ctx.cookies.get('language') || getConfig().language || 'en';
+    const jsonl = await exportFineTuning({ system: aiSystemPrompt(lang) }).catch(() => '');
+    if (!jsonl.trim()) { ctx.redirect('/settings#ai'); return; }
+    ctx.set('Content-Type', 'application/jsonl; charset=utf-8');
+    ctx.set('Content-Disposition', `attachment; filename="oasis-42-finetuning-${new Date().toISOString().slice(0, 10)}.jsonl"`);
+    ctx.body = jsonl;
   })
   .post('/ai/approve', koaBody(), async (ctx) => {
     const ts = String(ctx.request.body.ts || '');
@@ -7948,7 +8212,7 @@ router
     } catch {
       chatHistory = [];
     }
-    const item = chatHistory.find(e => String(e.timestamp) === ts);
+    const item = chatHistory.find(e => String(e.timestamp) === ts && e.source === 'model' && e.trainStatus === 'pending');
     if (item) {
       try {
         if (custom) item.answer = stripDangerousTags(custom);
@@ -7980,7 +8244,7 @@ router
     }
     const config = getConfig();
     const userPrompt = config.ai?.prompt?.trim() || '';
-    ctx.body = aiView(chatHistory, userPrompt);
+    ctx.body = aiView(chatHistory, userPrompt, { status: await aiClient.status().catch(() => null) });
   })
   .post('/ai/exchange/vote', koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'aiMod')) return ctx.redirect('/modules');
@@ -8013,7 +8277,7 @@ router
     }
     const config = getConfig();
     const userPrompt = config.ai?.prompt?.trim() || '';
-    ctx.body = aiView(chatHistory, userPrompt);  
+    ctx.body = aiView(chatHistory, userPrompt, { status: await aiClient.status().catch(() => null) });
   })
   .post('/ai/clear', async (ctx) => {
     const i18nAll = require('../client/assets/translations/i18n');
@@ -8024,7 +8288,7 @@ router
     fs.writeFileSync(historyPath, '[]', 'utf-8');
     const config = getConfig();
     const userPrompt = config.ai?.prompt?.trim() || '';
-    ctx.body = aiView([], userPrompt);
+    ctx.body = aiView([], userPrompt, { status: await aiClient.status().catch(() => null) });
   })
   .get('/ai/ask', async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
@@ -8365,6 +8629,18 @@ router
       return true;
     });
     const results = await searchModel.search({ query, types });
+    try {
+      if (checkMod(ctx, 'aiMod') && aiEmbedder.isInstalled()) {
+        const ssbSem = await cooler.open();
+        const sem = await semanticSearch.search(ssbSem, query, { embed: aiEmbedder.embed, cosine: aiEmbedder.cosine, limit: getConfig().ssbLogStream?.limit || 1000 });
+        for (const { msg } of sem) {
+          const t = msg && msg.value && msg.value.content && msg.value.content.type;
+          if (!t) continue;
+          if (!Array.isArray(results[t])) results[t] = [];
+          if (!results[t].some(m => m && m.key === msg.key)) results[t].push(msg);
+        }
+      }
+    } catch (_) {}
     ctx.body = await searchView({ results: Object.entries(results).reduce((acc, [type, msgs]) => {
       const filtered = applySearchPrivacy(msgs).map(msg => (!msg.value?.content) ? {} : { ...msg, content: msg.value.content, author: msg.value.content.author || 'Unknown' });
       if (filtered.length > 0) acc[type] = filtered;
@@ -10091,7 +10367,7 @@ router
     if (String(item.status || "").toUpperCase() === "SOLD") ctx.throw(400, "Item already sold");
     if (Number(item.stock || 0) <= 0) ctx.throw(400, "Out of stock");
     try {
-      await pmModel.sendMessage([item.seller], "MARKET_SOLD", `${await actorLink(getViewerId())} has bought your item: [${item.title}](/market/${encodeURIComponent(ctx.params.id)}) for: ${item.price} ECO`);
+      await notifyBot("MARKET_SOLD", [item.seller], `${await actorLink(getViewerId())} has bought your item: [${item.title}](/market/${encodeURIComponent(ctx.params.id)}) for: ${item.price} ECO`);
     } catch (_) {}
     if (item.item_type === "exchange") await marketModel.setItemAsSold(ctx.params.id);
     else await marketModel.decrementStock(ctx.params.id);
@@ -10229,7 +10505,7 @@ router
     try {
       const res = await housingModel.requestHousing(ctx.params.id)
       if (!res || !res.alreadyRequested) {
-        try { await pmModel.sendMessage([item.author], 'HOUSING_REQUESTED', `A new habitant has requested your place [${item.title || 'a place'}](/housing/${encodeURIComponent(item.id)})`) } catch (_) {}
+        try { await notifyBot('HOUSING_REQUESTED', [item.author], `A new habitant has requested your place [${item.title || 'a place'}](/housing/${encodeURIComponent(item.id)})`) } catch (_) {}
       }
     } catch (_) {}
     ctx.redirect(safeReturnTo(ctx, '/housing', ['/housing']))
@@ -10242,7 +10518,7 @@ router
     try {
       const res = await housingModel.cancelRequest(ctx.params.id)
       if (!res || !res.notRequested) {
-        try { await pmModel.sendMessage([item.author], 'HOUSING_CANCELLED', `A habitant has cancelled the request on your place [${item.title || 'a place'}](/housing/${encodeURIComponent(item.id)})`) } catch (_) {}
+        try { await notifyBot('HOUSING_CANCELLED', [item.author], `A habitant has cancelled the request on your place [${item.title || 'a place'}](/housing/${encodeURIComponent(item.id)})`) } catch (_) {}
       }
     } catch (_) {}
     ctx.redirect(safeReturnTo(ctx, '/housing', ['/housing']))
@@ -10299,7 +10575,7 @@ router
       return;
     }
     try { await jobsModel.subscribeToJob(ctx.params.id, userId); } catch (_) {}
-    try { await pmModel.sendMessage([job.author], 'JOB_SUBSCRIBED', `${await actorLink(getViewerId())} has subscribed to your job offer: [${job.title || 'a job'}](/jobs/${encodeURIComponent(job.id)})`); } catch (_) {}
+    try { await notifyBot('JOB_SUBSCRIBED', [job.author], `${await actorLink(getViewerId())} has subscribed to your job offer: [${job.title || 'a job'}](/jobs/${encodeURIComponent(job.id)})`); } catch (_) {}
     ctx.redirect(safeReturnTo(ctx, '/jobs', ['/jobs']));
   })
   .post('/jobs/unsubscribe/:id', koaBody(), async (ctx) => {
@@ -10314,7 +10590,7 @@ router
       return;
     }
     try { await jobsModel.unsubscribeFromJob(ctx.params.id, userId); } catch (_) {}
-    try { await pmModel.sendMessage([job.author], 'JOB_UNSUBSCRIBED', `${await actorLink(getViewerId())} has unsubscribed from your job offer: [${job.title || 'a job'}](/jobs/${encodeURIComponent(job.id)})`); } catch (_) {}
+    try { await notifyBot('JOB_UNSUBSCRIBED', [job.author], `${await actorLink(getViewerId())} has unsubscribed from your job offer: [${job.title || 'a job'}](/jobs/${encodeURIComponent(job.id)})`); } catch (_) {}
     ctx.redirect(safeReturnTo(ctx, '/jobs', ['/jobs']));
   })
   .post('/jobs/:jobId/comments', koaBodyMiddleware, async ctx => commentAction(ctx, 'jobs', 'jobId'))
@@ -10436,7 +10712,7 @@ router
       const pr = await shopsModel.getProductById(ctx.params.id).catch(() => null);
       if (pr && pr.author && String(pr.author) !== String(getViewerId())) {
         try {
-          await pmModel.sendMessage([pr.author], "SHOP_SOLD", `${await actorLink(getViewerId())} has bought your product: [${pr.title}](/shops/product/${encodeURIComponent(ctx.params.id)}) for: ${pr.price} ECO`);
+          await notifyBot("SHOP_SOLD", [pr.author], `${await actorLink(getViewerId())} has bought your product: [${pr.title}](/shops/product/${encodeURIComponent(ctx.params.id)}) for: ${pr.price} ECO`);
         } catch (_) {}
       }
       await contentFavorites.addFavorite('shopProducts', (pr && pr.rootId) || ctx.params.id);
@@ -11056,7 +11332,7 @@ router
     if (rejectPastDates(ctx, [[b.deadline]], '/transfers?filter=create')) return;
     const transfer = await transfersModel.createTransfer(project.author, "Project Pledge", pledgeAmount, moment().add(14, "days").toISOString(), ["backer-pledge", `project:${latestId}`]);
     await projectsModel.pledgeToProject(latestId, uid, pledgeAmount, { transferId: transfer.key || transfer.id, milestoneIndex, bountyIndex });
-    await pmModel.sendMessage([project.author], "PROJECT_PLEDGE", `${await actorLink(getViewerId())} has pledged ${pledgeAmount} ECO to your project: [${project.title || 'a project'}](/projects/${encodeURIComponent(latestId)})`);
+    await notifyBot("PROJECT_PLEDGE", [project.author], `${await actorLink(getViewerId())} has pledged ${pledgeAmount} ECO to your project: [${project.title || 'a project'}](/projects/${encodeURIComponent(latestId)})`);
     ctx.redirect(safeReturnTo(ctx, `/projects/${encodeURIComponent(latestId)}`, ["/projects"]));
   })
   .post("/projects/confirm-transfer/:id", koaBody(), async (ctx) => {
@@ -11074,14 +11350,14 @@ router
     if (!checkMod(ctx, 'projectsMod')) { ctx.redirect('/modules'); return; }
     const latestId = await projectsModel.getProjectTipId(ctx.params.id), project = await projectsModel.getProjectById(latestId);
     await projectsModel.followProject(ctx.params.id, getViewerId());
-    await pmModel.sendMessage([project.author], "PROJECT_FOLLOWED", `${await actorLink(getViewerId())} has followed your project: [${project.title || 'a project'}](/projects/${encodeURIComponent(latestId)})`);
+    await notifyBot("PROJECT_FOLLOWED", [project.author], `${await actorLink(getViewerId())} has followed your project: [${project.title || 'a project'}](/projects/${encodeURIComponent(latestId)})`);
     ctx.redirect(safeReturnTo(ctx, "/projects", ["/projects"]));
   })
   .post("/projects/unfollow/:id", koaBody(), async (ctx) => {
     if (!checkMod(ctx, 'projectsMod')) { ctx.redirect('/modules'); return; }
     const latestId = await projectsModel.getProjectTipId(ctx.params.id), project = await projectsModel.getProjectById(latestId);
     await projectsModel.unfollowProject(ctx.params.id, getViewerId());
-    await pmModel.sendMessage([project.author], "PROJECT_UNFOLLOWED", `${await actorLink(getViewerId())} has unfollowed your project: [${project.title || 'a project'}](/projects/${encodeURIComponent(latestId)})`);
+    await notifyBot("PROJECT_UNFOLLOWED", [project.author], `${await actorLink(getViewerId())} has unfollowed your project: [${project.title || 'a project'}](/projects/${encodeURIComponent(latestId)})`);
     ctx.redirect(safeReturnTo(ctx, "/projects", ["/projects"]));
   })
   .post("/projects/milestones/add/:id", koaBody(), async (ctx) => {
@@ -11141,7 +11417,7 @@ router
       const address = await bankingModel.getUserAddress(feedId).catch(() => null);
       if (!address || !ECO_ADDRESS_RE.test(String(address))) { ctx.redirect(`${backTo}${backTo.includes('?') ? '&' : '?'}error=${encodeURIComponent(i18nD.bankNoUserAddress)}`); return; }
       const q = new URLSearchParams({ to: address, payee: feedId, ref: backTo });
-      ctx.redirect(`/wallet/send?${q.toString()}`);
+      ctx.redirect(`/wallet/send?${q.toString()}#wallet-send`);
     } catch (_) { ctx.redirect(backTo); }
   })
   .get("/banking/fund", async (ctx) => {
@@ -11154,7 +11430,7 @@ router
       const address = pub ? (pub.address || await bankingModel.getUserAddress(pub.pubId).catch(() => null)) : null;
       if (!address || !ECO_ADDRESS_RE.test(String(address))) { ctx.redirect('/banking?filter=ubi&msg=no_pub_address'); return; }
       const q = new URLSearchParams({ to: address, payee: pub.pubId, concept: 'OASIS UBI Fund', ref: '/banking?filter=ubi', tag: 'UBI' });
-      ctx.redirect(`/wallet/send?${q.toString()}`);
+      ctx.redirect(`/wallet/send?${q.toString()}#wallet-send`);
     } catch (_) { ctx.redirect('/banking?filter=overview'); }
   })
   .post("/banking/claim-ubi", koaBody(), async (ctx) => {
@@ -11254,6 +11530,7 @@ router
   })
   .post("/language", koaBody(), async (ctx) => {
     const lang = String(ctx.request.body.language || "en");
+    if (!supportedLanguages().includes(lang)) return safeRefererRedirect(ctx, '/settings');
     const cfg = getConfig();
     cfg.language = lang;
     fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2));
@@ -11706,6 +11983,16 @@ router
     saveConfig(cfg);
     ctx.redirect("/settings#wish");
   })
+  .post("/settings/inbox-bots", koaBody(), async (ctx) => {
+    const cfg = getConfig();
+    const b = ctx.request.body || {};
+    const on = new Set((Array.isArray(b.bots) ? b.bots : (b.bots ? [b.bots] : [])).map(String));
+    const known = Object.keys(pmModel.INBOX_BOTS).concat(['reminders']);
+    cfg.inboxMutedBots = known.filter(k => !on.has(k));
+    saveConfig(cfg);
+    try { await refreshInboxCount(); } catch (_) {}
+    ctx.redirect("/settings#inbox-bots");
+  })
   .post("/settings/pm-visibility", koaBody(), async (ctx) => {
     const cfg = getConfig();
     const v = String(ctx.request.body.pmVisibility || '').trim();
@@ -11782,13 +12069,25 @@ router
   .post("/settings/wallet", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
     const b = ctx.request.body, cfg = getConfig();
-    if (b.wallet_url) cfg.wallet.url = String(b.wallet_url);
-    if (b.wallet_user) cfg.wallet.user = String(b.wallet_user);
+    if (b.wallet_url) cfg.wallet.url = String(b.wallet_url).trim();
+    if (b.wallet_user) cfg.wallet.user = String(b.wallet_user).trim();
     if (b.wallet_pass) cfg.wallet.pass = String(b.wallet_pass);
     if (b.wallet_fee) cfg.wallet.fee = String(b.wallet_fee);
     saveConfig(cfg);
-    const res = await bankingModel.ensureSelfAddressPublished();
-    ctx.redirect(`/banking?filter=addresses&msg=${encodeURIComponent(res.status)}`);
+    if (bankingModel.hasWalletCredentials()) { try { await bankingModel.ensureSelfAddressPublished(); } catch (_) {} }
+    try { await refreshWalletReady(true); } catch (_) {}
+    ctx.redirect('/banking?filter=overview');
+  })
+  .post("/settings/wallet/disconnect", koaBody(), async (ctx) => {
+    if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
+    const cfg = getConfig();
+    cfg.wallet.url = '';
+    cfg.wallet.user = '';
+    cfg.wallet.pass = '';
+    saveConfig(cfg);
+    try { await bankingModel.removeAddress({ userId: getViewerId() }); } catch (_) {}
+    try { await refreshWalletReady(true); } catch (_) {}
+    ctx.redirect('/banking?filter=overview');
   })
   .post("/wallet/send", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
@@ -11814,7 +12113,7 @@ router
         let note = null;
         const paidLine = `${await actorLink(me)} ${i18nW.walletPaymentPmText}: ${Number(amt).toFixed(6)} ECO`;
         if (transferCtx) {
-          try { await pmModel.sendMessage([transferCtx.other], 'WALLET_PAYMENT', `${paidLine} → [${transferCtx.concept || transferCtx.id}](/transfers/${encodeURIComponent(transferCtx.id)}) · tx ${txId}`); } catch (_) {}
+          try { await notifyBot('WALLET_PAYMENT', [transferCtx.other], `${paidLine} → [${transferCtx.concept || transferCtx.id}](/transfers/${encodeURIComponent(transferCtx.id)}) · tx ${txId}`); } catch (_) {}
           note = i18nW.walletTransferNotifiedNote;
         } else {
           let payeeId = paymentRef ? paymentRef.payeeId : null;
@@ -11837,7 +12136,7 @@ router
             } catch (_) {}
           }
           if (payeeId) {
-            try { await pmModel.sendMessage([payeeId], 'WALLET_PAYMENT', `${paidLine}${refLink ? ` → ${refLink}` : ''} · tx ${txId}${receiptLink}`); } catch (_) {}
+            try { await notifyBot('WALLET_PAYMENT', [payeeId], `${paidLine}${refLink ? ` → ${refLink}` : ''} · tx ${txId}${receiptLink}`); } catch (_) {}
             if (!note) note = i18nW.walletTransferNotifiedNote;
           } else if (wantsTransfer) {
             note = i18nW.walletTransferNoPayeeNote;
@@ -11850,11 +12149,12 @@ router
   });
 const routes = router.routes();
 const middleware = [
-  async (ctx, next) => {
-    if (config.public && ctx.method !== "GET") { sendErrorPage(ctx, "Sorry, many actions are unavailable when Oasis is running in public mode. Please run Oasis in the default mode and try again.", { status: 403 }); return; }
-    await next();
-  },
-  async (ctx, next) => { setLanguage(ctx.cookies.get("language") || getConfig().language || "en"); await next(); },
+  async (ctx, next) => { await require('../models/typed_log').requestScope.run({ capped: false, limit: 0, path: ctx.path, query: ctx.querystring }, next); },
+  publicModeGuard({
+    isPublic: !!config.public,
+    onBlocked: (ctx) => sendErrorPage(ctx, "Sorry, many actions are unavailable when Oasis is running in public mode. Please run Oasis in the default mode and try again.", { status: 403 })
+  }),
+  async (ctx, next) => { applyFirstRunLanguage(ctx); setLanguage(isClearnetPath(ctx.request) ? clearnetLanguage(ctx) : (ctx.cookies.get("language") || getConfig().language || "en")); await next(); },
   async (ctx, next) => {
     try { require('../views/comments_view').setCommentsOpen(ctx.method === 'GET' && String(ctx.query.comments || '') === 'open'); } catch (_) {}
     await next();
@@ -12037,7 +12337,7 @@ async function notifyPendingConfirmations() {
     if (!fresh.length) return;
     const { i18n: i18nB } = require('../views/main_views');
     const lines = fresh.slice(0, 5).map(t => `· [${t.concept || t.id}](/transfers/${encodeURIComponent(t.id)}) — ${Number(t.amount || 0).toFixed(6)} ECO`).join('\n');
-    await pmModel.sendMessage([me], 'BANKING_CONFIRM_PENDING', `${i18nB.bankingBotConfirmText} (${fresh.length}):\n${lines}\n\n[${i18nB.transfersFilterPending}](/transfers?filter=pending)`);
+    await notifyBot('BANKING_CONFIRM_PENDING', [me], `${i18nB.bankingBotConfirmText} (${fresh.length}):\n${lines}\n\n[${i18nB.transfersFilterPending}](/transfers?filter=pending)`);
     fs.writeFileSync(confirmNoticePath, JSON.stringify([...notified, ...fresh.map(t => t.id)].slice(-500)));
   } catch (_) {}
 }
@@ -12056,7 +12356,7 @@ async function runWalletWork(kind) {
     try { notified = JSON.parse(fs.readFileSync(ubiNoticePath, 'utf8')) || {}; } catch (_) {}
     if (notified.epochId === avail.epochId) return;
     const { i18n: i18nB } = require('../views/main_views');
-    await pmModel.sendMessage([getViewerId()], 'BANKING_UBI_AVAILABLE', `${i18nB.bankingBotUbiAvailableText}: [${i18nB.bankClaimUBI}](/banking?filter=exchange) · ${avail.epochId}`);
+    await notifyBot('BANKING_UBI_AVAILABLE', [getViewerId()], `${i18nB.bankingBotUbiAvailableText}: [${i18nB.bankClaimUBI}](/banking?filter=exchange) · ${avail.epochId}`);
     fs.writeFileSync(ubiNoticePath, JSON.stringify({ epochId: avail.epochId, at: new Date().toISOString() }));
   } catch (_) {}
 }
@@ -12107,9 +12407,47 @@ async function sendWelcomePmIfFirstLaunch() {
     welcomePmAttempted = false;
   }
 }
+let firstRunLanguageSettled = false;
+const supportedLanguages = () => Object.keys(require('../client/assets/translations/i18n'));
+function clearnetLanguage(ctx) {
+  const supported = supportedLanguages();
+  const wanted = String(ctx.query.lang || '').trim().toLowerCase();
+  if (supported.includes(wanted)) {
+    const store = require('../models/typed_log').requestScope.getStore();
+    if (store) store.cnLang = wanted;
+    return wanted;
+  }
+  const detected = require('../models/onboarding_model').browserLanguage(ctx.get('accept-language'), supported);
+  return detected || getConfig().language || 'en';
+}
+function applyFirstRunLanguage(ctx) {
+  if (firstRunLanguageSettled || isClearnetPath(ctx.request)) return;
+  const cfg = getConfig();
+  const decision = require('../models/onboarding_model').firstRunLanguage({
+    fresh: !onboardingModel.firstContactSeen(),
+    isPublic: !!config.public,
+    configured: cfg.language,
+    cookie: ctx.cookies.get('language'),
+    header: ctx.get('accept-language'),
+    supported: supportedLanguages()
+  });
+  if (!decision.settled) return;
+  firstRunLanguageSettled = true;
+  if (decision.language && decision.language !== cfg.language) {
+    cfg.language = decision.language;
+    saveConfig(cfg);
+  }
+  setTimeout(welcomePmTick, 0);
+}
 let welcomePmRetries = 0;
 const welcomePmTick = async () => {
   if (onboardingModel.firstContactSeen()) return;
+  if (!firstRunLanguageSettled) {
+    const cfg = getConfig();
+    const decision = require('../models/onboarding_model').firstRunLanguage({ fresh: true, isPublic: !!config.public, configured: cfg.language, supported: supportedLanguages() });
+    if (!decision.settled) return;
+    firstRunLanguageSettled = true;
+  }
   await sendWelcomePmIfFirstLaunch();
   if (onboardingModel.firstContactSeen()) return;
   if (welcomePmRetries++ >= 30) return;
@@ -12210,7 +12548,7 @@ async function checkJobMatches() {
         (t.jobsBotMatchHint || 'You receive this because your curriculum is AI managed. You can turn it off in your CV.')
       ].filter(Boolean).join('\n');
       try {
-        await pmModel.sendMessage([], 'JOB_MATCH', body, false, ref);
+        await notifyBot('JOB_MATCH', [], body, false, ref);
         announced.add(`JOB_MATCH|${ref}`);
       } catch (e) {
         if (config.debug) console.error('[jobs-bot] send failed:', e && e.message);
@@ -12244,7 +12582,7 @@ async function checkPoliticalChanges() {
         return;
       }
       try {
-        await pmModel.sendMessage([], subject, body, false, ref);
+        await notifyBot(subject, [], body, { ref });
         announced.add(`${subject}|${ref}`);
         seen[subject] = String(ref);
         pmPolicy.writeAnnounceSeen(seen);

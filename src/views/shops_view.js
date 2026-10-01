@@ -1,6 +1,6 @@
 const { div, h2, p, section, button, form, a, span, textarea, br, input, label, select, option, img, progress, video, table, tr, td } = require("../server/node_modules/hyperaxe")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton, renderOpinionsVoting, renderEngagement, renderInviteQrCard , renderSpreadEditWarning, renderContentActions, renderSubscriptionBox, renderModuleStats, renderModuleStatsBy, moduleIsEmpty, renderWalletChip } = require("./main_views")
+const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton, renderOpinionsVoting, renderEngagement, renderInviteQrCard , renderSpreadEditWarning, renderContentActions, renderSubscriptionBox, renderModuleStats, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, renderWalletChip } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderStyledText } = require("../backend/renderStyledText")
@@ -28,7 +28,7 @@ const renderMediaBlob = (value, fallbackSrc = null, attrs = {}) => {
   if (!s) return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
   if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}`, ...attrs })
   const mVideo = s.match(/\[video:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
-  if (mVideo) return video({ controls: true, class: attrs.class || 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}` })
+  if (mVideo) return video({ controls: true, class: attrs.class || 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}`, preload: 'metadata' })
   const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
   if (mImg) return img({ src: `/blob/${encodeURIComponent(mImg[1])}`, ...attrs })
   return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
@@ -185,7 +185,7 @@ const renderProductForm = (shopId, product = {}, isEdit = false, returnTo = "", 
       label(i18n.description || "Description"), br,
       textarea({ maxlength: "5000", name: "description", rows: 4 }, product.description || ""), br,
       label(i18n.shopProductPrice), br,
-      input({ type: "number", name: "price", step: "0.000001", min: "0.000001", required: true, value: product.price || "" }), br(), br(),
+      input({ type: "number", name: "price", step: "0.000001", min: "0.000001", required: true, value: product.price || "" }), renderEcoValueChip(), br(), br(),
       label(i18n.shopProductStock), br,
       input({ type: "number", name: "stock", min: "0", value: product.stock !== undefined ? product.stock : 1 }), br(), br(),
       label(i18n.blogImage || "Upload media (max-size: 50MB)"), br,
@@ -277,7 +277,7 @@ exports.singleShopView = async (shop, filter, products = [], comments = [], para
         : renderStateChip("mutuals", "✓", i18n.shopOpen),
       shop.encrypted ? renderStateChip("encrypted", "🔒", i18n.encryptedChipLabel || "E2E") : null,
       renderLifespanChip(shop.lifetime, i18n),
-      renderReachChip(isClearnet, i18n, `/c/shops/${encodeURIComponent(shop.rootId || shop.key)}`),
+      renderReachChip(isClearnet, i18n, clearnetItemHref('shops', shop.title, shop.rootId || shop.key)),
       shop.subscription
         ? ((isAuthor || shop.subscription.subscribed === true)
             ? renderStateChip("mutuals", "✉", i18n.subscriptionOn)
@@ -664,8 +664,8 @@ exports.clearnetShopView = async (shop, products = []) => {
     </div>
   </div>
   <hr class="cn-sep"/>
-  <h2 class="cn-section">Products</h2>
-  ${productCards ? `<div class="cn-products">${productCards}</div>` : '<div class="cn-empty">No products available.</div>'}
+  <h2 class="cn-section">${cnEscapeHtml(i18n.shopProducts)}</h2>
+  ${productCards ? `<div class="cn-products">${productCards}</div>` : `<div class="cn-empty">${cnEscapeHtml(i18n.shopNoProducts)}</div>`}
 `;
   return renderClearnetPage({
     title: `${shop.title || 'Shop'} | Oasis`,

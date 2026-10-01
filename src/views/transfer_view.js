@@ -1,6 +1,6 @@
 const { hr, div, h2, p, section, button, form, a, input, br, span, label, select, option, progress, table, tr, td } = require("../server/node_modules/hyperaxe")
 const { getConfig } = require('../configs/config-manager.js');
-const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderModuleStatsBy, moduleIsEmpty, renderWalletChip } = require("./main_views")
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, renderWalletChip } = require("./main_views")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
@@ -164,7 +164,8 @@ const renderTransferCategoryChip = (cat) =>
 
 const generateTransferCard = (transfer, filter, params = {}) => {
   const confirmedBy = safeArr(transfer.confirmedBy)
-  const required = transfer.from === transfer.to ? 1 : 2
+  const settledUbiTx = (Array.isArray(transfer.tags) ? transfer.tags : []).some(t => String(t).toUpperCase() === "UBI") && /^[0-9a-f]{64}$/i.test(String(transfer.txid || ""))
+  const required = (transfer.from === transfer.to || settledUbiTx) ? 1 : 2
   const confirmedCount = confirmedBy.length
   const dl = transfer.deadline ? moment(transfer.deadline) : null
   const isExpired = dl && dl.isValid() ? dl.isBefore(moment()) : false
@@ -386,6 +387,7 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
                     label(`${i18n.transfersAmount} (${amountUnitLabel})`),
                     br(),
                     input({ type: "number", name: "amount", step: "0.000001", required: true, min: "0.000001", value: transferToEdit.amount || "" }),
+                    renderEcoValueChip(),
                     br(), br()
                   ],
               label(i18n.transfersDeadline),
@@ -440,7 +442,8 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
   const returnTo = safeText(params.returnTo) || buildReturnTo(normalizedFilter, { ...params, q, sort })
 
   const confirmedBy = safeArr(transfer.confirmedBy)
-  const required = transfer.from === transfer.to ? 1 : 2
+  const settledUbiTx = (Array.isArray(transfer.tags) ? transfer.tags : []).some(t => String(t).toUpperCase() === "UBI") && /^[0-9a-f]{64}$/i.test(String(transfer.txid || ""))
+  const required = (transfer.from === transfer.to || settledUbiTx) ? 1 : 2
   const confirmedCount = confirmedBy.length
   const isUnconfirmed = String(transfer.status || "").toUpperCase() === "UNCONFIRMED"
   const dl = transfer.deadline ? moment(transfer.deadline) : null
@@ -455,7 +458,7 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
   const otherParty = transfer.from === userId ? transfer.to : transfer.from
   const chips = [
     renderTransferStatusChip(transfer.status),
-    isUbi ? renderStateChip("mutuals", "🎁", "UBI") : null,
+    isUbi ? renderStateChip("mutuals", "", "UBI") : null,
     isExpired ? renderStateChip("closed", "⏰", i18n.transfersExpiredBadge) : null,
     renderLifespanChip(transfer.lifetime, i18n)
   ].filter(Boolean)

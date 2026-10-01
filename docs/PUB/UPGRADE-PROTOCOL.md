@@ -207,8 +207,8 @@ rama** y se repite su gate.
 
 | Fichero | Se regenera cuando | Cómo llega al host |
 |---|---|---|
-| `pub/config/hub/oasis-config.json` | cambia `src/configs/oasis-config.json` (`config`). Copia con claves fijadas: `HUB-PROTOCOL.md` §5.2 | bind de fichero: **in place** (`cat >`) + recrear el HUB |
-| `pub/config/wallet-bot/oasis-config.json.tpl` | ídem. `ECOIN-PROTOCOL.md` §5.2 | re-render en el host + recrear el bot |
+| `pub/config/hub/oasis-config.json` | **siempre**: `node pub/scripts/regen-node-configs.js` (copia de `src/configs/oasis-config.json` con claves fijadas, entre ellas la lista de avisos silenciados, que sale de `pm_model.js`). `HUB-PROTOCOL.md` §5.2 | bind de fichero: **in place** (`cat >`) + recrear el HUB |
+| `pub/config/wallet-bot/oasis-config.json.tpl` | ídem, mismo script. `ECOIN-PROTOCOL.md` §5.2 | re-render en el host + recrear el bot |
 | `pub/config/hub/ssb-config`, `pub/config/wallet-bot/ssb-config*` | cambia `src/configs/server-config.json` (arrays enteros) o rota el ciclo (§5) | in place + recrear el nodo |
 | `pub/config/hub/nginx.conf.template` | `routes` o `headers` traen algo nuevo bajo `/c/` | in place + **recrear** `hub-cache` (la plantilla se renderiza al arrancar: un `reload` no la relee) |
 | `pub/caddy/Caddyfile` | una ruta nueva del visor fuera de los prefijos que ya enruta | in place + `validate` + `reload` (`../AGENTES.md` §2.6) |
@@ -248,9 +248,9 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 | **U2** | Imagen nueva | etiquetar la vieja (`docker tag …:latest …:X.Y.Z-vieja`) · `npm run build` (o el build del compose del pub) | build limpio; `node --check` dentro de la imagen |
 | **U3** | Recrear en orden pub → HUB → bot y medir **qué publica cada uno** | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre --expect '…'` | `GATE OK` con el delta declarado (abajo) |
 | **U4** | Visor por delante de la caché | recrear `hub-cache` si cambió la plantilla · `$G hub --strict` | `GATE OK`: MISS→HIT, idioma independiente del visitante, sin cruce, rutas nuevas |
-| **U5** | Peor caso del bot: las páginas que autopublican la dirección | `$G snapshot u5` · `$G worst` · `$G check u5 --expect 'bot:karmaScore=+0..1'` | `wallet` no se mueve; misma dirección |
+| **U5** | Peor caso del bot: las páginas donde el backend refresca la cartera por su cuenta (`/banking`, `/transfers`, `/shops`, `/market`, `/school`) | `$G snapshot u5` · `$G worst` · `$G check u5 --expect 'bot:karmaScore=+0..1'` | `wallet` y `(cifrado)` no se mueven; misma dirección. **`/wallet` queda fuera a propósito**: en cualquier versión, con el motor encendido, republica la dirección (`../AGENTES.md` §4) |
 | **U6** | Gates propios de las piezas que el diff ha tocado | invite (`HUB-PROTOCOL.md` §3, si cambian `ssb-*`) · bootstrap de un bot nuevo (`ECOIN-PROTOCOL.md` §3, si cambia la publicación de la dirección) · drill del cliente (`../CLIENT-PROTOCOL.md` §5) | los de cada anexo |
-| **U7** | Repetible | parar nodos · `$G restore pre --yes` | el estado vuelve a la línea base |
+| **U7** | Repetible | parar nodos · `$G restore pre --yes` · **volver a renderizar** la config del bot (`restore` repone también la renderizada vieja, que vive en `volumes-dev/`) · repetir U3 | mismo delta que la primera vez |
 
 **El delta declarado (U3).** Lo normal:
 
@@ -267,6 +267,18 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 - `ubiAllocation` no se nombra: debe ser 0. Solo es 0 si la **época del mes ya está abierta** antes
   de subir (`épocas=` en la foto). Si no lo está, la abriría la versión nueva con sus reglas:
   irreversible y distinto; decídelo con el custodio antes.
+
+- `(cifrado)` no se nombra: debe ser 0. El backend trae avisos automáticos (el «bot político», el
+  de empleo, recordatorios) que se disparan con cualquier petición, también la del healthcheck, y
+  se envían **a sí mismos un mensaje cifrado**. En un nodo de soporte van silenciados por config
+  (`inboxMutedBots`, desde 1.1.10; `HUB-PROTOCOL.md` §2). Si aparece un cifrado, esa lista está
+  incompleta o el nodo corre una versión que aún no la entiende.
+
+**Cuándo medir.** Un nodo no publica todo «al arrancar»: el sbot anuncia versión a los 7 s, el motor
+hace su primer tick a los 15 s, y los avisos automáticos esperan a la primera petición con los
+índices listos (más de un minuto). `upgrade-gates.sh up` espera 90 s con una petición en medio. En
+el host, el `check` que cuenta es el que se hace **al menos 5 minutos después** de recrear el
+último nodo, y se repite en el cierre (`snapshot post`).
 
 `check` exige además que el feed de cada nodo sea el mismo, que `Δsequence` == suma de Δ por tipo
 (cifrados incluidos) y que el sbot vivo dé el mismo `sequence`. Si eso no cuadra responde
@@ -296,15 +308,33 @@ R="bash devops/scripts/upgrade-gates.sh --remote"                     # en la m�
 | 3 | **Rollback de este ciclo** | `docker tag <imagen>:latest <imagen>:<ver-vieja>` · `tar -czf <datos>/src-<ver-vieja>.tgz src` | |
 | 4 | **Subir `src/`** | ver abajo | |
 | 5 | **Lo demás que viaja** (§3.2) que sea inocuo en la versión vieja: se sube y se aplica **ahora**, con los nodos todavía en la versión vieja, y se comprueba | p. ej. plantilla nginx: in place · `nginx -t` en un contenedor desechable · `$C up -d --no-deps --force-recreate hub-cache` · `$R hub` | |
-| 6 | **Build y humo** | `$C build oasis-pub` (el pub sigue sirviendo) · contenedor efímero con la imagen nueva, sin red y con un `.ssb` temporal, en modo `server` y en modo `backend`: arranca y no escupe errores · `df -h /` | |
+| 6 | **Build y humo** | `$C build oasis-pub` (el pub sigue sirviendo) · humo de la imagen nueva (abajo) · `df -h /` | |
 | 7 | **Pub** | `$C up -d --no-deps oasis-pub` · `$R check pre --expect 'pub:oasisVersion=+1'` · invite · `/public/status` | **GO-2** (el pub se reinicia y publica `oasisVersion`) |
-| 8 | **HUB** | sus configs in place · `$C up -d --no-deps oasis-hub` · `$R check …` · `$R hub --strict` · `hub-disk.sh prune-cache` | **GO-3** (publica `oasisVersion`) |
+| 8 | **HUB** | sus configs in place · `$C up -d --no-deps oasis-hub` · `$R check …` · `hub-disk.sh prune-cache` · `$R hub --strict` (en ese orden: la caché guarda 404 de las rutas que la versión vieja no tenía) | **GO-3** (publica `oasisVersion`) |
 | 9 | **Bot de cartera** | motor encendido: `hub-wallet.sh pause` (lo recrea en la versión nueva con el motor **apagado**) · `$R check …` (misma dirección, `wallet` sin cambios) · y entonces `hub-wallet.sh on --yes` · `$R check …` · `backup-ecoin.sh`. Motor apagado: `$C up -d --no-deps oasis-wallet-bot` · `$R check …` | **GO-4a** (`oasisVersion`) · **GO-4b** (encender: `pubAvailability`) |
 | 10 | **Cierre** | `$R snapshot post` · `deploy-status.sh` · `deploy-log.sh` (abajo) · ficha de instancia | |
 
 Orden fijo: **pub → HUB → bots**. La imagen es compartida y un retag no recrea contenedores:
 mientras no se recrea, cada nodo sigue en la versión vieja. `ecoind` no depende de la imagen de
 Oasis y **no se recrea**.
+
+**Paso 6, humo de la imagen.** El `Dockerfile` y el entrypoint del host pueden no ser los del repo
+(§0.3): la imagen que se acaba de construir **allí** se prueba allí, antes de recrear a nadie, en
+un contenedor que no toca nada: sin red, sin volúmenes (identidad y `.ssb` desechables dentro del
+contenedor) y que se borra al acabar.
+
+```bash
+IMG=<imagen>:latest
+docker run --rm --network none --entrypoint sh $IMG -c 'grep -m1 "\"version\"" /app/src/server/package.json; node --check /app/src/backend/backend.js && echo ok'
+for mode in server backend; do
+  cid=$(docker run -d --network none -e OASIS_SKIP_AI_MODEL=true -e OASIS_PUBLIC=true -e OASIS_OPEN=false -e HOME=/home/oasis -e SSB_PATH=/home/oasis/.ssb $IMG $mode)
+  sleep 45
+  docker inspect -f '{{.State.Status}}' $cid                                             # running
+  docker logs $cid 2>&1 | grep -a -E 'Version: |patcheado|EROFS|Cannot find module|Error'  # versión nueva, 3 parches, ningún error
+  [ $mode = backend ] && docker exec $cid curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/c   # 200
+  docker rm -f $cid
+done
+```
 
 **Paso 4, subir `src/`.** El host no es un checkout git. Desde la rama, solo ficheros trackeados:
 
@@ -404,7 +434,7 @@ Ciclos registrados (lo que cada uno cambió en el protocolo):
 |---|---|---|
 | 1.0.8 → 1.1.2 | `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md` · `HUB-PROTOCOL.md` §5.5 | primer ciclo con el HUB activo: `/c/assets`, rutas de detalle nuevas |
 | 1.1.2 → 1.1.4 | `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`, `WP-O106-aplicacion-vps-1.1.4.md` · `ECOIN-PROTOCOL.md` §5.4 | `state-manager.js` y la mudanza de estado; quinto guard; `git archive` y CRLF |
-| 1.1.4 → 1.1.10 | WP-O112 (este protocolo), WP-O113, WP-O114 | el protocolo no medía comportamiento ni publicación; idioma por visitante en `/c` (D-O25); `oasisVersion` |
+| 1.1.4 → 1.1.10 | `plan/REPORTES/WP-O112-protocolo-upgrade.md` (este protocolo), `WP-O113-upgrade-oasis-1.1.10.md` (local), WP-O114 (host) | el protocolo no medía comportamiento ni publicación. Todo nodo anuncia su versión (`oasisVersion`), también al volver atrás. Idioma por visitante en `/c` (D-O25). Avisos automáticos que se envían cifrados a uno mismo (`inboxMutedBots`). `GET /wallet` republica la dirección en un bot con el motor encendido. El primer `GET /banking` publica la dirección. El modelo de IA cambia bajo el mismo nombre |
 
 ## 8. HUB clearnet — ver `HUB-PROTOCOL.md`
 

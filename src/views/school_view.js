@@ -1,6 +1,6 @@
 const { div, h2, h3, p, section, button, form, a, span, textarea, br, input, label, select, option, table, tr, td, th, details, summary, datalist, progress } = require("../server/node_modules/hyperaxe")
 const moment = require("../server/node_modules/moment");
-const { template, i18n, userLink, renderStateChip, renderContentActions, renderOpinionsVoting, renderEngagement, renderInviteQrCard, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty, renderWalletChip } = require("./main_views")
+const { template, i18n, userLink, renderStateChip, renderContentActions, renderOpinionsVoting, renderEngagement, renderInviteQrCard, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, renderWalletChip } = require("./main_views")
 const opinionCategories = require("../backend/opinion_categories")
 const { config } = require("../server/SSB_server.js")
 const { renderStyledText, renderStyledHtml } = require("../backend/renderStyledText")
@@ -122,7 +122,7 @@ const renderCourseForm = (filter, course = {}) => {
         )
       })(), br(), br(),
       label(i18n.schoolPrice), br,
-      input({ type: "number", name: "price", step: "0.000001", min: "0", value: course.price && Number(course.price) > 0 ? course.price : "0" }), br(), br(),
+      input({ type: "number", name: "price", step: "0.000001", min: "0", value: course.price && Number(course.price) > 0 ? course.price : "0" }), renderEcoValueChip(), br(), br(),
       label(i18n.schoolStartDate), br,
       input({ type: "datetime-local", name: "startDate", min: moment().format("YYYY-MM-DDTHH:mm"), value: course.startDate ? moment(course.startDate).format("YYYY-MM-DDTHH:mm") : "" }), br(),
       isEdit
@@ -711,7 +711,7 @@ exports.singleCourseView = async (course, lessons = [], certificates = [], param
 
 exports.clearnetCourseView = async (course, lessons = []) => {
   const { escapeHtml: esc, blobUrl: cnBlob, renderRichText, renderKindTag, renderClearnetPage } = require("./clearnet_view")
-  const title = esc(course.title || "Course")
+  const title = esc(course.title || i18n.cnKindCourse)
   const desc = renderRichText(course.description || "")
   const courseImg = cnBlob(course.image)
   const visibleLessons = safeArr(lessons).filter(lesson => !lesson.locked)
@@ -731,14 +731,14 @@ exports.clearnetCourseView = async (course, lessons = []) => {
   <h1 class="cn-course-title">${title}</h1>
   <div class="cn-course-meta">
     <span class="cn-course-meta-item">${renderKindTag('course')}</span>
-    <span class="cn-course-meta-item">🎓 Open course</span>
+    <span class="cn-course-meta-item">🎓 ${esc(i18n.cnOpenCourse)}</span>
     ${course.startDate ? `<span class="cn-course-meta-item">📅 ${esc(new Date(course.startDate).toISOString().slice(0, 10))}</span>` : ""}
-    <span class="cn-course-meta-item">👥 ${safeArr(course.students).length} students</span>
+    <span class="cn-course-meta-item">👥 ${safeArr(course.students).length} ${esc(i18n.schoolStudents)}</span>
   </div>
   <hr class="cn-sep"/>
   ${courseImg ? `<img class="cn-course-img" src="${courseImg}" alt="${title}">` : ""}
-  ${desc ? `<div class="cn-course-section"><h2>Description</h2><p>${desc}</p></div>` : ""}
-  ${visibleLessons.length ? `<div class="cn-course-section"><h2>Lessons (${visibleLessons.length})</h2>${visibleLessons.map(lesson => `
+  ${desc ? `<div class="cn-course-section"><h2>${esc(i18n.description)}</h2><p>${desc}</p></div>` : ""}
+  ${visibleLessons.length ? `<div class="cn-course-section"><h2>${esc(i18n.schoolLessons)} (${visibleLessons.length})</h2>${visibleLessons.map(lesson => `
   <div class="cn-lesson">
     <h3>${esc(lesson.title || "")}</h3>
     <p>${esc(lesson.text || "")}</p>
@@ -767,7 +767,7 @@ const renderMaterial = (material, course, isTeacher) => {
     const url = `/blob/${encodeURIComponent(blobId)}`
     if (kind === "pdf") body = div({ class: "pdf-viewer-container", id: `pdf-${material.id.slice(1, 9)}`, "data-pdf-url": url }, a({ href: url }, `📎 ${name || "PDF"}`))
     else if (kind === "image") body = img({ src: url, alt: name, class: "school-material-image" })
-    else if (kind === "video") body = video({ controls: true, src: url, class: "post-video" })
+    else if (kind === "video") body = video({ controls: true, src: url, class: "post-video", preload: 'metadata' })
     else if (kind === "audio") body = audio({ controls: true, src: url })
     else body = p(a({ href: url }, `📎 ${name || blobId}`))
   } else if (ref) {

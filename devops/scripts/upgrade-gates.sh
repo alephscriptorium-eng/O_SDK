@@ -33,9 +33,11 @@
 #                       volumes-dev/.gates/<tag>/ con los contenedores PARADOS.
 #   restore <tag> --yes (local) Repone esa copia. Sin esto el gate no es repetible: tras una pasada el
 #                       log ya tiene el oasisVersion nuevo y la segunda daría delta 0 (falso verde).
-#   up <pub|hub|bot>    (local) Recrea un nodo con la imagen actual y espera a healthy.
-#   worst               (local) Peor caso del bot: GET /banking y /wallet por loopback (las páginas que
-#                       autopublican la dirección). Después: check … con wallet sin cambios.
+#   up <pub|hub|bot>    (local) Recrea un nodo con la imagen actual, espera a healthy y deja pasar
+#                       GATE_SETTLE segundos (90) con una petición en medio: lo que un nodo publica
+#                       solo no sale todo en el arranque.
+#   worst               (local) Peor caso del bot: GET por loopback a las páginas donde el backend refresca
+#                       la cartera solo (/banking, /transfers…; /wallet no: ver el código). Después: check.
 #
 # Códigos de salida: 0 ok · 1 desviación · 3 no medible o precondición · 64 uso.
 # Nodos: GATE_NODES="alias:contenedor:servicio …" (por defecto pub, hub y bot de esta casa).
@@ -95,6 +97,7 @@ for n in $GATE_NODES; do
   echo "$a|state|$(node_state "$c")"
   echo "$a|version|$(node_version "$c")"
   echo "$a|image|$(node_image "$c")"
+  echo "$a|mode|$(docker inspect -f '{{join .Config.Cmd " "}}' "$c" 2>/dev/null)"
   d="$(node_ssb_dir "$c")"
   f="$(node_feed "$d")"
   echo "$a|feed|$f"
@@ -141,12 +144,14 @@ show_snapshot() {
     $2=="state"{st[$1]=$3} $2=="version"{v[$1]=$3} $2=="feed"{f[$1]=$3} $2=="seq"{s[$1]=$3} $2=="records"{r[$1]=$3}
     $2=="seq_probe"{p[$1]=$3} $2 ~ /^type:/{t[$1]=t[$1] " " substr($2,6) "=" $3}
     $2=="address"{x[$1]=x[$1] " dirección=" $3} $2=="epochs"{x[$1]=x[$1] " épocas=" $3} $2=="engine"{x[$1]=x[$1] " motor:" $3}
-    $2=="first_contact_flag"{x[$1]=x[$1] " flag-primer-contacto=" $3}
+    $2=="mode"{md[$1]=$3}
+    $2=="first_contact_flag"{x[$1]=x[$1] " flag-primer-contacto=" $3; if ($3=="ausente") noflag[$1]=1}
     $1!="meta" && !seen[$1]++ {order[++n]=$1}
     END { for (i=1;i<=n;i++) { a=order[i]
       ok = (s[a]==r[a]) ? "cuadra" : "NO CUADRA (medida no válida)"
       pr = (p[a]=="" ) ? "" : ((p[a]==s[a]) ? " · sbot=" p[a] : " · sbot=" p[a] " ≠ log")
-      printf "  %-4s %-16s v%-7s feed %s\n       seq=%s registros=%s → %s%s\n       tipos:%s\n      %s\n", a, st[a], v[a], f[a], s[a], r[a], ok, pr, t[a], x[a] } }' "$1"
+      printf "  %-4s %-16s v%-7s %-8s feed %s\n       seq=%s registros=%s → %s%s\n       tipos:%s\n      %s\n", a, st[a], (v[a]==""?"?":v[a]), md[a], f[a], s[a], r[a], ok, pr, t[a], x[a]
+      if (noflag[a] && md[a] ~ /backend|full/) printf "       AVISO: sin flag de primer contacto en un nodo con backend: al arrancar enviaría el PM de bienvenida (un cifrado).\n" } }' "$1"
 }
 
 case "$CMD" in
@@ -236,6 +241,8 @@ case "$CMD" in
     code="$(get "$BASE/c")"; [ "$code" = 200 ] && ok "/c → 200" || ko "/c → $code"
     get "$BASE/c?$stamp=a" >/dev/null; c1="$(cache_of)"; get "$BASE/c?$stamp=a" >/dev/null; c2="$(cache_of)"
     case "$c2" in HIT|STALE|UPDATING) ok "caché: $c1 → $c2" ;; *) ko "caché: $c1 → $c2 (se esperaba HIT en la segunda)" ;; esac
+    ncsp="$(grep -i -c '^content-security-policy:' "$tmp/hdr")"
+    [ "$ncsp" = 1 ] && ok "una sola cabecera Content-Security-Policy" || ko "$ncsp cabeceras Content-Security-Policy (se espera 1: el backend o el edge, no los dos)"
     # D-O25: lo que depende del visitante no puede cambiar la página. Cada petición lleva una
     # URL distinta para que la respuesta salga del backend y no de la caché.
     get -H 'Accept-Language: de' "$BASE/c?$stamp=b1" >/dev/null; l1="$(lang_of "$tmp/body")"
@@ -259,10 +266,15 @@ case "$CMD" in
     for path in "/c/sitemap.xml" "/c/rss/$RSS_MODULE"; do
       code="$(get "$BASE$path")"
       if [ "$code" != 200 ]; then soft "$path → $code (ruta nueva de 1.1.10)"; continue; fi
+      # En local el backend ve Host=localhost y construye las URLs con la IP de la LAN: no sirve para
+      # probar la reescritura a https. Se pregunta a la caché desde dentro, con un Host de mentira.
+      if [ "$MODE" = local ]; then
+        MSYS_NO_PATHCONV=1 docker exec "${HUB_CACHE_CONTAINER:-oasis-pub-hub-cache}" wget -qO- --header 'Host: gate.example.org' "http://127.0.0.1$path" > "$tmp/body" 2>/dev/null
+      fi
       plain="$(grep -o '<\(loc\|link\)>http://[^<]*' "$tmp/body" | head -1)"
-      n="$(grep -o '<\(loc\|link\)>https\{0,1\}://' "$tmp/body" | wc -l | tr -d ' ')"
-      if [ "$MODE" = local ]; then ok "$path → 200, $n URLs (en local no hay TLS: no se exige https)"
-      elif [ -z "$plain" ]; then ok "$path → 200, $n URLs, todas https"
+      n="$(grep -o '<\(loc\|link\)>https://' "$tmp/body" | wc -l | tr -d ' ')"
+      if [ -z "$plain" ] && [ "$n" -gt 0 ]; then ok "$path → 200, $n URLs, todas https"
+      elif [ -z "$plain" ]; then ok "$path → 200, sin URLs todavía (nadie ha publicado de ese tipo)"
       else ko "$path publica URLs http:// (${plain#*>})"; fi
     done
     rm -rf "$tmp"
@@ -294,16 +306,28 @@ case "$CMD" in
     n=0; until [ "$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null)" = healthy ] || [ $n -ge 60 ]; do sleep 5; n=$((n + 1)); done
     st="$(docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' "$c" 2>/dev/null)"
     echo "$alias ($c): $st · v$(docker exec "$c" sh -c 'grep -m1 "\"version\"" /app/src/server/package.json' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/')"
-    case "$st" in *healthy) sleep 25 ;; *) echo "DESVIACIÓN: $c no llegó a healthy" >&2; exit 1 ;; esac   # 25 s: primer tick de arranque (oasisVersion, motor)
+    case "$st" in *healthy) ;; *) echo "DESVIACIÓN: $c no llegó a healthy" >&2; exit 1 ;; esac
+    # Un nodo no publica solo «al arrancar»: el sbot anuncia versión a los 7 s, el motor hace su
+    # primer tick a los 15 s, y los avisos automáticos del backend se disparan con una PETICIÓN
+    # (la del healthcheck vale) cuando los índices ya están: pueden tardar más de un minuto.
+    # Se espera GATE_SETTLE segundos (90) y se provoca una petición a mitad.
+    settle="${GATE_SETTLE:-90}"; sleep $((settle / 2))
+    MSYS_NO_PATHCONV=1 docker exec "$c" sh -c 'curl -s -o /dev/null --max-time 20 http://127.0.0.1:3000/c/inhabitant/@AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=.ed25519' 2>/dev/null || true
+    sleep $((settle - settle / 2))
     ;;
 
   worst)
     c="$(container_of bot)"
-    for p in /banking /wallet; do
+    # Las páginas donde el backend refresca la cartera por su cuenta (WALLET_CHIP_PATHS de backend.js).
+    # /wallet NO entra por defecto: en CUALQUIER versión, con el motor encendido, republica la
+    # dirección con la última que haya emitido la cartera (cada pubAvailability pide una nueva).
+    # No es una regresión que medir en cada upgrade: es una trampa (AGENTES §4, ECOIN §9).
+    # GATE_WORST_PATHS permite pedir otras rutas a propósito.
+    for p in ${GATE_WORST_PATHS:-/banking /transfers /shops /market /school}; do
       code="$(MSYS_NO_PATHCONV=1 docker exec "$c" curl -s -o /dev/null -w '%{http_code}' --max-time 60 -H 'Host: localhost:3000' "http://127.0.0.1:3000$p")"
       echo "GET $p por loopback en el bot → $code"
     done
-    sleep 10
-    echo "Ahora: upgrade-gates.sh --local check <tag> --expect '…' (wallet no debe moverse; karmaScore puede)."
+    sleep 30
+    echo "Ahora: upgrade-gates.sh --local check <tag> --expect 'bot:karmaScore=+0..1' (wallet y (cifrado) no deben moverse)."
     ;;
 esac
