@@ -75,9 +75,8 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, fediverseAccount, 
   const updateFlagPath = path.join(__dirname, '../server/.update_required');
   let updateButton = null;
   if (fs.existsSync(updateFlagPath)) {
-    updateButton = form(
-      { action: "/update", method: "post" },
-      button({ type: "submit" }, i18n.updateit)
+    updateButton = p(
+      "Upstream Oasis updates are available. For this Dockerized deployment, update from the host repository and rebuild the container. In-app auto-update is disabled."
     );
   }
 

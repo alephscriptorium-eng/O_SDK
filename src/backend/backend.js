@@ -11504,12 +11504,7 @@ router
   })
   .post("/update", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
-    const exec = require("node:util").promisify(require("node:child_process").exec);
-    const repoRoot = path.resolve(__dirname, '..', '..');
-    const { stdout, stderr } = await exec("git reset --hard && git pull", { cwd: repoRoot });
-    console.log("oasis@version: updating Oasis...", stdout, stderr);
-    const { stdout: shOut, stderr: shErr } = await exec("sh install.sh", { cwd: repoRoot });
-    console.log("oasis@version: running install.sh...", shOut, shErr);
+    console.warn("oasis@version: in-app auto-update is disabled for this Dockerized deployment. Update from the host repository and rebuild the container.");
     safeRefererRedirect(ctx, '/settings');
   })
   .post("/settings/workflow", koaBody(), async (ctx) => {
