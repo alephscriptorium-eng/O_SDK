@@ -5,7 +5,13 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
-### Changed — Oasis 1.1.10 (WP-O113, 2026-10-01; en local, pendiente el host)
+### Changed — Oasis 1.1.10 desplegado en el pub (WP-O114, 2026-10-01)
+
+Reporte `plan/REPORTES/WP-O114-aplicacion-vps-1.1.10.md`. Pub, HUB y bot de cartera en 1.1.10 con
+el motor de RBU encendido; cada nodo publicó un `oasisVersion` y nada más. Visor clearnet en
+español por defecto, con sitemap y RSS. El `.env.prod` deja de entrar en la imagen del host.
+
+### Changed — Oasis 1.1.10 (WP-O113, 2026-10-01; en local)
 
 Reporte `plan/REPORTES/WP-O113-upgrade-oasis-1.1.10.md`. Primera ejecución del protocolo de WP-O112.
 
