@@ -26,8 +26,8 @@ Cada encargo lleva el estado **medido**, no el deseado.
 | Sello | Qué garantiza |
 |---|---|
 | **probado en frío** | Un agente sin contexto, solo con el repo y el encargo, lo completó. Cita el reporte. |
-| **ejercido en la demo** | Se ha hecho de verdad en el pub de demostración, siguiendo el protocolo, por quien lo escribió. Cita el reporte. Falta la prueba en frío. |
-| **en obras** | Hoy no se cumple entero. Dice qué falta. El agente puede avanzar hasta ahí y debe decírtelo. |
+| **ejercido en la demo** | Se ha hecho de verdad en la demo, siguiendo el protocolo, por quien lo escribió, y sigue funcionando. Cita el reporte. Dice con qué condiciones (lo que tu máquina o tu caso tienen que cumplir) y que falta la prueba en frío. |
+| **en obras** | Nadie lo ha hecho todavía, tampoco en la demo. Dice qué falta. El agente puede avanzar hasta ahí y debe decírtelo. |
 
 Hoy ningún encargo está «probado en frío». Lo que hay es un pub de demostración en producción que
 ejerce cada pieza, y un protocolo por pieza. Las pruebas en frío son el trabajo siguiente.

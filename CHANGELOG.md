@@ -12,7 +12,8 @@ Reporte `plan/REPORTES/WP-O115-portal-roles.md`. Asiento D-O26.
 - **«¿Quién llega?»** (`docs/roles/`): cliente, pub, economía, «hazlo tuyo» y mantener. Cada página
   es la receta que lee el agente: el encargo literal, lo que hace falta, los pasos con sus puntos de
   DECISIÓN y PERMISO, y un **sello** por encargo (`probado en frío` · `ejercido en la demo` ·
-  `en obras`). Hoy ninguno está probado en frío; tres están en obras (WP-O116, WP-O117).
+  `en obras`). Hoy ninguno está probado en frío; nueve están ejercidos en la demo y uno, la
+  instancia propia, en obras (WP-O117).
 - **`docs/AGENTES.md` §0** «¿Quién te manda?» y `AGENTS.md`: el agente entra por la receta de la puerta.
 - **`docs/PUB/INSTANCIA-PLANTILLA.md`**: ficha de instancia vacía. La demo no es requisito de nada.
 - **Portada**: sección de puertas; «Empezar» pasa a «Llévatela» (encargo al agente o a mano), con
