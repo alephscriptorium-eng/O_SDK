@@ -95,6 +95,7 @@ for n in $GATE_NODES; do
   echo "$a|state|$(node_state "$c")"
   echo "$a|version|$(node_version "$c")"
   echo "$a|image|$(node_image "$c")"
+  echo "$a|mode|$(docker inspect -f '{{join .Config.Cmd " "}}' "$c" 2>/dev/null)"
   d="$(node_ssb_dir "$c")"
   f="$(node_feed "$d")"
   echo "$a|feed|$f"
@@ -141,12 +142,14 @@ show_snapshot() {
     $2=="state"{st[$1]=$3} $2=="version"{v[$1]=$3} $2=="feed"{f[$1]=$3} $2=="seq"{s[$1]=$3} $2=="records"{r[$1]=$3}
     $2=="seq_probe"{p[$1]=$3} $2 ~ /^type:/{t[$1]=t[$1] " " substr($2,6) "=" $3}
     $2=="address"{x[$1]=x[$1] " dirección=" $3} $2=="epochs"{x[$1]=x[$1] " épocas=" $3} $2=="engine"{x[$1]=x[$1] " motor:" $3}
-    $2=="first_contact_flag"{x[$1]=x[$1] " flag-primer-contacto=" $3}
+    $2=="mode"{md[$1]=$3}
+    $2=="first_contact_flag"{x[$1]=x[$1] " flag-primer-contacto=" $3; if ($3=="ausente") noflag[$1]=1}
     $1!="meta" && !seen[$1]++ {order[++n]=$1}
     END { for (i=1;i<=n;i++) { a=order[i]
       ok = (s[a]==r[a]) ? "cuadra" : "NO CUADRA (medida no válida)"
       pr = (p[a]=="" ) ? "" : ((p[a]==s[a]) ? " · sbot=" p[a] : " · sbot=" p[a] " ≠ log")
-      printf "  %-4s %-16s v%-7s feed %s\n       seq=%s registros=%s → %s%s\n       tipos:%s\n      %s\n", a, st[a], v[a], f[a], s[a], r[a], ok, pr, t[a], x[a] } }' "$1"
+      printf "  %-4s %-16s v%-7s %-8s feed %s\n       seq=%s registros=%s → %s%s\n       tipos:%s\n      %s\n", a, st[a], (v[a]==""?"?":v[a]), md[a], f[a], s[a], r[a], ok, pr, t[a], x[a]
+      if (noflag[a] && md[a] ~ /backend|full/) printf "       AVISO: sin flag de primer contacto en un nodo con backend: al arrancar enviaría el PM de bienvenida (un cifrado).\n" } }' "$1"
 }
 
 case "$CMD" in
@@ -236,6 +239,8 @@ case "$CMD" in
     code="$(get "$BASE/c")"; [ "$code" = 200 ] && ok "/c → 200" || ko "/c → $code"
     get "$BASE/c?$stamp=a" >/dev/null; c1="$(cache_of)"; get "$BASE/c?$stamp=a" >/dev/null; c2="$(cache_of)"
     case "$c2" in HIT|STALE|UPDATING) ok "caché: $c1 → $c2" ;; *) ko "caché: $c1 → $c2 (se esperaba HIT en la segunda)" ;; esac
+    ncsp="$(grep -i -c '^content-security-policy:' "$tmp/hdr")"
+    [ "$ncsp" = 1 ] && ok "una sola cabecera Content-Security-Policy" || ko "$ncsp cabeceras Content-Security-Policy (se espera 1: el backend o el edge, no los dos)"
     # D-O25: lo que depende del visitante no puede cambiar la página. Cada petición lleva una
     # URL distinta para que la respuesta salga del backend y no de la caché.
     get -H 'Accept-Language: de' "$BASE/c?$stamp=b1" >/dev/null; l1="$(lang_of "$tmp/body")"
@@ -259,10 +264,15 @@ case "$CMD" in
     for path in "/c/sitemap.xml" "/c/rss/$RSS_MODULE"; do
       code="$(get "$BASE$path")"
       if [ "$code" != 200 ]; then soft "$path → $code (ruta nueva de 1.1.10)"; continue; fi
+      # En local el backend ve Host=localhost y construye las URLs con la IP de la LAN: no sirve para
+      # probar la reescritura a https. Se pregunta a la caché desde dentro, con un Host de mentira.
+      if [ "$MODE" = local ]; then
+        MSYS_NO_PATHCONV=1 docker exec "${HUB_CACHE_CONTAINER:-oasis-pub-hub-cache}" wget -qO- --header 'Host: gate.example.org' "http://127.0.0.1$path" > "$tmp/body" 2>/dev/null
+      fi
       plain="$(grep -o '<\(loc\|link\)>http://[^<]*' "$tmp/body" | head -1)"
-      n="$(grep -o '<\(loc\|link\)>https\{0,1\}://' "$tmp/body" | wc -l | tr -d ' ')"
-      if [ "$MODE" = local ]; then ok "$path → 200, $n URLs (en local no hay TLS: no se exige https)"
-      elif [ -z "$plain" ]; then ok "$path → 200, $n URLs, todas https"
+      n="$(grep -o '<\(loc\|link\)>https://' "$tmp/body" | wc -l | tr -d ' ')"
+      if [ -z "$plain" ] && [ "$n" -gt 0 ]; then ok "$path → 200, $n URLs, todas https"
+      elif [ -z "$plain" ]; then ok "$path → 200, sin URLs todavía (nadie ha publicado de ese tipo)"
       else ko "$path publica URLs http:// (${plain#*>})"; fi
     done
     rm -rf "$tmp"

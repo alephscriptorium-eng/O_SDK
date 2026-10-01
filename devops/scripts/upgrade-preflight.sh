@@ -68,7 +68,8 @@ echo
 # --- 1) árbol + remote -------------------------------------------------------
 echo "-- Árbol --"
 note "Branch: $(git branch --show-current 2>/dev/null || echo '?')"
-if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+# Solo ficheros con seguimiento: uno sin seguimiento (ajustes locales del editor) no viaja a ninguna parte.
+if [ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ]; then
   warn "working tree NO limpio — commitea/stashea antes del upgrade"
 else
   note "Working tree limpio"
