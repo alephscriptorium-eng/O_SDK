@@ -389,6 +389,14 @@ para donar. `OASIS_WALLET_PUB_ID` y `--pub-id` ya no hacen nada.
 - **Los mensajes SSB son permanentes**: `wallet` (tu dirección) y `ubiClaim` no se borran ni se
   editan. Una dirección equivocada o duplicada se queda en tu feed y en el pub.
 - **Abrir la GUI con el nivel (ii) activo llama a `getnewaddress`** (§8.2): backup antes.
+- **«Desconectar cartera» (Settings, desde Oasis 1.1.10) no es un interruptor: es una publicación.**
+  El botón (`POST /settings/wallet/disconnect`) vacía `wallet.{url,user,pass}` en la config de la
+  GUI **y publica un mensaje `wallet` con la dirección vacía**, que anula tu dirección para toda la
+  red: nadie puede pagarte hasta que publiques otra. En este cliente, además, el entrypoint vuelve
+  a cablear la cartera desde el `.env` en el siguiente arranque y la siguiente visita a la GUI
+  **publica la dirección otra vez**: dos mensajes permanentes por un clic. Para dejar de usar la
+  cartera, quita `ECOIN_RPC_*` del `.env` (§8.1); no uses ese botón. Con el puente de loopback
+  (§8.10) el botón responde desde el navegador del host.
 - `.env` raíz: lo comparte todo el compose de la raíz. El pub usa su propio `--env-file` y no lo lee.
 - **Al pasar de cartera propia a solo dirección, para antes `ecoind`**: `npm run ecoin:stop`. Un
   `docker compose down` sin `--profile ecoin` no ve el servicio `ecoin-wallet`: lo deja corriendo y la
