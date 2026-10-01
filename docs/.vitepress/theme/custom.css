@@ -273,6 +273,7 @@ body {
 }
 
 .VPDoc a {
+  color: var(--zine-ink);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }

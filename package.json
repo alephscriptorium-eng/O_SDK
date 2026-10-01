@@ -107,7 +107,9 @@
     "pub:site:deploy": "npm run devops:site:deploy",
     "skills:sync": "alephscript-skills-sync --runtime claude",
     "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs"
+    "docs:build": "vitepress build docs",
+    "docs:gate": "node .claude/skills/site-web/scripts/verificar-sitio.mjs --dist docs/.vitepress/dist --base / && node .claude/skills/site-web/scripts/verificar-piel.mjs --piel familia-vp --dist docs/.vitepress/dist && node .claude/skills/site-web/scripts/verificar-contraste-piel.mjs --piel familia-vp --css docs/.vitepress/theme/custom.css && bash ./devops/scripts/docs-ceguera.sh",
+    "docs:verificar": "npm run docs:build && npm run docs:gate"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
