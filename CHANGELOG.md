@@ -5,6 +5,33 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Protocolo de upgrade: mide comportamiento y publicación (WP-O112, 2026-10-01)
+
+Reporte `plan/REPORTES/WP-O112-protocolo-upgrade.md`. Asiento D-O25.
+
+- **`docs/PUB/UPGRADE-PROTOCOL.md` orquesta el ciclo entero**: riesgo por rol (el pub en modo `server`
+  solo ejecuta `src/server/`), inventario de piezas, diff de comportamiento con disposición obligatoria,
+  derivados fuera de `src/`, gates locales U0-U7 y deploy pub → HUB → bot con puertas de GO. HUB §5 y
+  ECOIN §5 quedan como anexos.
+- **`devops/scripts/upgrade-behaviour-diff.sh`** (`npm run devops:upgrade:diff`): candidatos a cambio
+  de comportamiento entre dos versiones de upstream (rutas, publicación, temporizadores, cabeceras,
+  entorno, estado, config, dependencias) con ID estable y `--check` contra el reporte. Los greps de
+  los anexos pasan a `upgrade-invariants.d/*.tsv`.
+- **`devops/scripts/upgrade-gates.sh`** (`npm run devops:upgrade:gates`): qué publica cada nodo al
+  subir (Δ`sequence` propio == suma de Δ por tipo, cifrados incluidos, frente a un delta declarado) y
+  matriz del visor por delante de la caché. Contra el host, solo lectura.
+- **`devops/scripts/deploy-status.sh`**: versión de Oasis por contenedor, modo, deriva de los ficheros
+  del host frente al repo y restos de rollback. **`upgrade-preflight.sh`**: `OLD_REF`/`NEW_REF` y
+  ficheros por rol. **`host.env`**: layout medido (ya no hay que exportar `REMOTE_REPO_DIR`).
+- **Lo que no se sabía**: un upgrade publica un `oasisVersion` por nodo (también el pub) y un rollback también
+  (`docs/AGENTES.md` §3); el control «cero `private`» era vacío y el HUB tiene 4 cifrados propios.
+
+### Fixed — Documentación (WP-O112)
+
+- `docs/CLIENT-PROTOCOL.md`: fuera las secciones §0-§8 duplicadas y el aviso caducado de 1.1.4.
+- «5 guards» en todos los protocolos; `walletPub` fuera de las comprobaciones; `mv src src.old` del
+  deploy, que con un `src.old` existente metía `src` dentro.
+
 ### Added — Roadmap: dosier P2P (WP-O110, planificado; 2026-09-19)
 
 - `docs/ROADMAP/p2p/`: el soporte nativo de Oasis a torrents (catálogo SSB, sin siembra), las

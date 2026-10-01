@@ -288,6 +288,32 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   firmado del Teatro es la **raíz de confianza**; torrent, magnet y ed2k son
   caminos hacia los mismos bytes verificables. (7) El anuncio en el módulo
   Torrents de Oasis es un mensaje SSB: irreversible, manual y con GO.
+- **D-O25 · 2026-10-01 · En clearnet la presentación es del pub; lo que elige
+  el visitante viaja en la URL.** Decidido con el custodio al preparar el
+  upgrade a 1.1.10, que trae un visor `/c` que elige idioma por
+  `Accept-Language` sin emitir `Vary`, delante de una caché que solo conoce la
+  URL: el primer visitante decidiría el idioma de todos durante 60 s.
+  Precedente: el **tema**. En la GUI es del visitante (cookie `theme`); para
+  clearnet upstream hace que el visor ignore la cookie y lea `themes.current`
+  de la config del pub, y la casa lo reforzó fijando esa clave en la config
+  del HUB y descartando `Set-Cookie` en nginx. Se asienta la regla general:
+  (1) los valores por defecto del visor (tema, idioma) los fija la **config
+  del HUB**: `language` pasa a ser clave fijada junto a `themes.current`; su
+  valor es dato de instancia. (2) Lo que elige el visitante viaja **en la
+  URL** (`?lang=`), que sí entra en la clave de caché; el selector de idioma
+  del visor se conserva. (3) nginx **no reenvía** al HUB `Accept-Language` ni
+  `Cookie`: el backend no puede variar por visitante aunque upstream añada
+  otra detección. (4) Se descarta la clave de caché por idioma del navegador:
+  el idioma es una variable global del proceso (`setLanguage`), así que dos
+  peticiones concurrentes pueden cruzarse dentro del backend y la clave no lo
+  arregla; ese cruce residual con `?lang=` se **mide** en el gate del visor y,
+  si aparece, nginx descarta también `lang` y `/c` queda monolingüe. (5)
+  `/c/sitemap.xml` y `/c/rss/:module` (nuevas en 1.1.10) **se publican**, con
+  las URLs corregidas a `https` en nginx (Koa no atiende `X-Forwarded-Proto`);
+  anunciarlas en un `robots.txt` queda fuera. (6) Toda detección nueva «por
+  visitante» que traiga upstream se trata igual; la saca la sección `headers`
+  del diff de comportamiento. Hallazgos para upstream: falta `Vary` en `/c`;
+  idioma global por proceso. Aplicación: WP-O113.
 
 ## Índice de dependencias externas vivas
 
