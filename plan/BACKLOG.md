@@ -692,6 +692,63 @@ en la imagen por el `.dockerignore` pre-refactor, y el bot con el motor encendid
 1.1.4, `sequence` pub 15 · HUB 11 · bot 50, época 2026-10 abierta.
 Dep: WP-O113.
 
+| **WP-O115** | **P2** | Portal: puertas por rol con estado medido, sin canibalizar lo que hay |
+
+**Estado** · ✅ 2026-10-01 (`plan/REPORTES/WP-O115-portal-roles.md`). Asiento D-O26.
+
+**BRIEF** · El portal decía «Oasis 1.1.2» y «todavía no es útil de verdad», y recibía con una lista
+plana de once protocolos. Gana una entrada por rol (`docs/roles/`: cliente, pub, economía, «hazlo
+tuyo», mantener) en la que cada página es a la vez la receta que lee el agente, con el encargo
+literal, los puntos de DECISIÓN y PERMISO y un sello de estado por encargo. Versión leída de
+`src/server/package.json`. Banner al día con la misma voz. `AGENTES §0`. Ficha de instancia vacía.
+Bases del portal al día. Gate `npm run docs:verificar` (verdad de contenido, piel, contraste, ceguera
+por ámbito) en CI. Hero, fichas, protocolos, Roadmap y todas las URL se conservan; solo deja de
+publicarse `legacy.html`. **Fuera de alcance** (decisión del custodio): el trabajo de repo que haría
+verdad los encargos «en obras» (WP-O116, WP-O117) y la prueba en frío (WP-O118).
+Dep: WP-O114 (la versión que enseña).
+
+| **WP-O116** | **P1** | Cliente arrancable en cualquier Docker: sin GPU ni modelo por defecto; secuencia única con cartera |
+
+**Estado** · abierto. Es lo que falta para que la puerta «Cliente Oasis» pase a «probado».
+
+**BRIEF** · Medido el 2026-10-01: el compose del cliente reserva una GPU NVIDIA
+(`docker-compose.yml:72-79`) y `setup.sh` descarga por defecto un modelo de unos 4 GB; en un Docker
+Desktop sin runtime NVIDIA el arranque falla. Entregar: (1) arranque por defecto sin GPU y sin
+modelo, con la IA como opción explícita (perfil o fichero de compose aparte); (2) una secuencia
+única «cliente con cartera» (hoy repartida entre `CLIENT §8` y los scripts `client:ecoin:*`);
+(3) la unión a una red como DECISIÓN del usuario con su PERMISO (publica un `contact` y canjea una
+invitación), no como paso por defecto; (4) prueba en frío con identidad desechable y, con ella, el
+sello de la puerta. Ojo con el volumen del cliente real del custodio: no se toca sin GO.
+Dep: —. Relación: WP-O111 (modelo de IA de upstream), D-O26.
+
+| **WP-O117** | **P1** | Pub mínimo por instancia: solo el pub, sin nada de la demo |
+
+**Estado** · abierto. Es lo que falta para «Pub Oasis · pub simple» y «Hazlo tuyo».
+
+**BRIEF** · Medido el 2026-10-01: no existe «el pub y nada más». El despliegue que trae el repo
+levanta el pub **y** las piezas de la demo (HUB, panel, página de inicio, otros dominios), y varios
+scripts publican o escriben el nombre de la demo si no se les dice otra cosa. Entregar: (1) un
+compose mínimo (pub solo; HUB, cartera y Teatro como piezas que se añaden); (2) config SSB y `.env`
+por instancia, generados desde la ficha (`INSTANCIA-PLANTILLA.md`) y `devops/hosts/<host>/host.env`;
+(3) guardas en los scripts que hoy publican en el feed con el nombre de la demo por defecto
+(`publish-profile.sh:4-5`, `announce-pub.sh:9`): sin nombre de instancia, paran; (4) bootstrap de servidor
+sin exigir segundo disco; (5) ensayo en local con identidad desechable y después en un servidor
+limpio, con GO. Inventario previo de dónde aparece la demo fuera de su ficha: el trinquete de
+`devops/scripts/docs-ceguera.sh` (52 menciones en protocolos de método) y un `grep` equivalente
+sobre `pub/` y `devops/`.
+Dep: —. Relación: D-O23, D-O26.
+
+| **WP-O118** | **P2** | Prueba de agente en frío de las puertas ya ejercidas |
+
+**Estado** · abierto. Convierte «ejercido en la demo» en «probado en frío».
+
+**BRIEF** · Un agente sin contexto, con solo el repo y el encargo literal de la puerta, completa:
+HUB clearnet, acoger una obra, cartera en el cliente, banco del pub, subir de versión, recuperar.
+Todo en local con identidades desechables (lo irreversible de verdad no se ensaya en producción).
+Cada tropiezo se corrige en la receta o en el protocolo; el reporte de cada prueba es lo que
+permite cambiar el sello. Absorbe de WP-O109 la «prueba formal de D-O23».
+Dep: WP-O116 y WP-O117 para las puertas que hoy están en obras.
+
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
 **Estado** · ✅ 2026-09-19 en `main`. Asientos D-O20, D-O23.
@@ -744,7 +801,7 @@ Dep: WP-O105.
 
 | **WP-O109** | **P3** | Endurecimiento: agente en frío, `limit_req` en `/c`, docs de upstream |
 
-**BRIEF** · Primera prueba formal de D-O23 · `limit_req` en la location `^/c/`
+**BRIEF** · ~~Primera prueba formal de D-O23~~ (pasa a WP-O118, por puertas) · `limit_req` en la location `^/c/`
 (`/c/<tipo>/<slug>` reconstruye el índice, O(N·k)) · traer `deploy.md` e
 `inventory.md` de upstream.
 Dep: WP-O106.
