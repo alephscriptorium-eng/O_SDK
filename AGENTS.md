@@ -1,8 +1,11 @@
 # AGENTS.md · o-sdk
 
-Eres un agente (o una persona) que llega a este repo a **operar**: levantar un pub de Oasis, añadirle
-piezas, subirlo de versión o recuperarlo. Este fichero es la puerta; el manual está en
-**[`docs/AGENTES.md`](docs/AGENTES.md)**. Léelo entero antes de ejecutar nada.
+Eres un agente (o una persona) que llega a este repo porque alguien te ha encargado algo: arrancar
+un cliente de Oasis en su máquina, levantar un pub, darle economía, hacerlo suyo, subirlo de versión
+o recuperarlo. Este fichero es la entrada. El manual está en
+**[`docs/AGENTES.md`](docs/AGENTES.md)**: léelo entero antes de ejecutar nada. Su §0 te lleva a la
+**receta de la puerta** por la que llega quien te manda ([`docs/roles/`](docs/roles/index.md)), con
+el estado medido de cada encargo: empieza por ahí.
 
 ## Qué es esto
 
@@ -12,8 +15,10 @@ necesario para desplegar un **pub** en un VPS y una **app cliente** en local. `s
 
 El repo separa **método** e **instancia**. El método es genérico: sirve a cualquier pub, con su
 dominio, sus pieles y su lore. La instancia que lo ejercita es Scriptorium (`pub.escrivivir.co`), y
-sus datos viven en [`docs/PUB/INSTANCIA-SCRIPTORIUM.md`](docs/PUB/INSTANCIA-SCRIPTORIUM.md). Si
-despliegas otro pub, copias esa ficha y la rellenas con lo tuyo; los protocolos no cambian.
+sus datos viven en [`docs/PUB/INSTANCIA-SCRIPTORIUM.md`](docs/PUB/INSTANCIA-SCRIPTORIUM.md). Es la
+demo: quien despliega otro pub no necesita nada de ella. Rellena
+[`docs/PUB/INSTANCIA-PLANTILLA.md`](docs/PUB/INSTANCIA-PLANTILLA.md) con lo suyo; los protocolos no
+cambian.
 
 ## Cinco leyes sin excepción
 
