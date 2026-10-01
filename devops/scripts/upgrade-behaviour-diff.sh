@@ -7,7 +7,7 @@
 # una cabecera que ahora decide el idioma, un fichero de estado que se muda. Este script saca
 # esos CANDIDATOS de forma mecánica, para que nadie dependa de leer 15.000 líneas de diff con
 # suerte. No da veredictos: cada línea se dispone a mano en el registro del ciclo
-# (docs/PUB/UPGRADE-PROTOCOL.md §9) con una de: no-afecta · adaptado en <commit> · documentado
+# (el reporte del WP; docs/PUB/UPGRADE-PROTOCOL.md §3.1 y §7) con una de: no-afecta · adaptado en <commit> · documentado
 # en <sección> · gate <id>.
 #
 # Uso:
