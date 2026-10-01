@@ -17,7 +17,7 @@
 | Intención | Protocolo | Antes, lee |
 |---|---|---|
 | Levantar un pub en un VPS | `pub/README.md` · `docs/PUB/deploy.md` (guía de upstream) | §2 y §3 de esta página |
-| Subir Oasis de versión (con o sin piezas activas) | [`UPGRADE-PROTOCOL.md`](./PUB/UPGRADE-PROTOCOL.md) | HUB §5 y ECOIN §5 si están activos |
+| Subir Oasis de versión (con o sin piezas activas) | [`UPGRADE-PROTOCOL.md`](./PUB/UPGRADE-PROTOCOL.md): orquesta el ciclo entero | sus anexos por pieza: HUB §5, ECOIN §5, CLIENT §4 |
 | Publicar en clearnet lo que los habitantes marcan (`/c`) | [`HUB-PROTOCOL.md`](./PUB/HUB-PROTOCOL.md) | — |
 | Dar ECOin al pub: cartera, RBU | [`ECOIN-PROTOCOL.md`](./PUB/ECOIN-PROTOCOL.md) | HUB §3 (mismo bootstrap de bot) |
 | Dar de alta o **renombrar un bot** de soporte | HUB-PROTOCOL [§11-§12](./PUB/HUB-PROTOCOL.md) | §5 de esta página (nombres) |
@@ -57,6 +57,8 @@ expreso del custodio en el momento**, aunque el plan general ya esté aprobado.
 | Publicar `about` (nombre, descripción, imagen) | queda en el log; el último gana, los anteriores siguen ahí | texto literal aprobado; ventana no pública (HUB §12) |
 | Publicar `wallet` (dirección ECOin) | el alta **no es idempotente**: cada POST es otro mensaje | contar antes (`0` mensajes `wallet`), publicar **una** vez, contar después |
 | `contact` (seguir, bloquear), invites redimidos | cambian la replicación de terceros | lista cerrada aprobada |
+| Recrear un nodo `backend` (HUB, bot, cliente) en **otra versión** de Oasis: upgrade **o rollback** | publica un `oasisVersion` con su identidad cada vez que arranca en una versión distinta de la última que anunció | uno por nodo y declarado antes (`upgrade-gates.sh check --expect`, UPGRADE §0.4 y §3.4); el rollback de un backend pide GO. El pub (modo `server`) no publica |
+| Arrancar la maint-ui (un backend sobre el `.ssb` del pub) con una imagen de otra versión | publicaría ese `oasisVersion` **con la identidad del pub** | prohibida durante un ciclo de upgrade (UPGRADE §0.2) |
 | `pubAvailability`, `ubiAllocation`, pagos de RBU | anuncian el pub como banco y mueven ECO reales | ECOIN §9; saldo, backup y elegibilidad comprobados |
 | Borrar o pisar `wallet.dat` o `secret` | son las claves: sin copia, el dinero o la identidad se pierden | **nunca**; se aparta con sufijo, no se borra |
 | Arrancar un nodo con el `secret` y un log más corto que el de la red | bifurca el feed | RECOVERY §4 |
@@ -88,6 +90,12 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | Tras un upgrade reaparece estado viejo o ficheros fantasma | el overlay se hizo sin `git rm -r src`: los ficheros que upstream borró siguen ahí | UPGRADE §2 |
 | Desde Oasis 1.1.3: una segunda dirección ECOin, o el mapa de direcciones «vacío» | el estado vive en `~/.ssb/oasis/**`; `OASIS_BANKING_DIR` solo lo honra medio código | ECOIN §5 · UPGRADE §2 |
 | `src/` llega al host con CRLF | en Windows `git archive` aplica `autocrlf` al empaquetar: `git -c core.autocrlf=false archive …` | UPGRADE §4 |
+| Tras subir `src/`, el build usa el árbol viejo y `src` aparece dentro de `src.old` | `mv src src.old` con un `src.old` que ya existía mueve **dentro**: comprobar `test ! -e` y dar al rollback un nombre con versión (`src.old-X.Y.Z`) | UPGRADE §4 |
+| Un contador de mensajes cifrados da 0 siempre | `grep '"private":true'` no casa nunca: un cifrado se guarda como `"content":"….box"`. Medir con `upgrade-gates.sh snapshot`, que cuenta por autor e incluye `(cifrado)` | HUB §1 |
+| `/c` sale en el idioma (o con el tema) del primer visitante | el backend decide algo por una cabecera o una cookie y la caché lo sirve a todos: en clearnet la presentación es del pub y lo del visitante viaja en la URL (D-O25) | HUB §2 |
+| Se cambió la plantilla de nginx y `hub-cache` sigue igual | la plantilla se renderiza al arrancar el contenedor: `reload` no la relee; `up -d --no-deps --force-recreate hub-cache` | HUB §5.2 |
+| El preflight no encuentra de qué commit partir | upstream no etiqueta las versiones de Oasis; el commit es el titulado `Oasis release X.Y.Z`, y la versión de partida es la **desplegada**, no la de `HEAD`: `--from X.Y.Z` | UPGRADE §1 |
+| Un gate de upgrade da «sin cambios» y sí los hubo | se midió sobre un estado que ya había pasado por la versión nueva (el `oasisVersion` ya estaba): `upgrade-gates.sh restore` antes de repetir | UPGRADE §3.4 |
 | Un contador de mensajes da cientos en un bot recién nacido | con `hops` > 0 el log trae los mensajes de media red: contar **por autor** | HUB §12 |
 | El pub anuncia para donaciones una dirección que no es la publicada | cada `pubAvailability` pide `getnewaddress`: es de la misma cartera (keypool). Backup semanal de `wallet.dat` con el motor encendido | ECOIN §9 |
 | Un torrent o un enlace ed2k publicado deja de completar | los bytes detrás de la URL cambiaron: una obra con enlaces publicados se **congela**; la edición nueva sale con sufijo | TEATRO-P2P §1 |

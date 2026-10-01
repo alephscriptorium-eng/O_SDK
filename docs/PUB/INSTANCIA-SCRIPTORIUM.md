@@ -14,7 +14,9 @@
 |---|---|
 | Pub | `pub.escrivivir.co` (dominio del operador: `escrivivir.co`) |
 | Host | VPS Debian, 4 GB; definición en `devops/hosts/scriptorium/host.env` |
-| Layout vivo | `/opt/oasis-scriptorium/OASIS_PUB` (pre-refactor, **sin git**): exportar `REMOTE_REPO_DIR` con esa ruta antes de los scripts de `devops/` |
+| Layout vivo | `/opt/oasis-scriptorium/OASIS_PUB` (pre-refactor, **sin git**). `host.env` lleva esa ruta (el layout medido): los scripts de `devops/` no piden ningún `export`. Migración al layout canónico: pendiente (`devops/MIGRATION-2026-07.md`) |
+| Acceso | SSH con la clave `devops/.ssh/gandi_pub_ed25519` (carpeta fuera de git; nombre en `KEY_FILE` de `host.env`). Los scripts la toman solos |
+| Nodos de Oasis | tres contenedores de la misma imagen: `oasis-pub-scriptorium` (`server`), `oasis-pub-hub` (`backend`), `oasis-pub-wallet-bot` (`backend`). Versión y modo de cada uno: `deploy-status.sh`, bloque «Piezas vivas» |
 | Datos | volumen `/srv/oasis` (un subdirectorio por servicio) |
 | Edge | Caddy, 6 vhosts; solo `validate` + `reload` |
 | Ciclo de red | 6 (`src/configs/blockchain-cycle.json`); salto al 7 previsto: el historial actual es de pruebas |
