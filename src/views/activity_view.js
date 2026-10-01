@@ -1,5 +1,5 @@
 const { div, h2, p, section, button, form, a, input, img, textarea, br, span, video: videoHyperaxe, audio: audioHyperaxe, table, tr, td, th, details, summary } = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink, userLinkLabel, renderSpreadButton, renderContentActions, renderVotesSummary, renderModuleStats, renderCardMetaRow } = require('./main_views');
+const { template, i18n, userLink, userLinkLabel, renderSpreadButton, renderContentActions, renderVotesSummary, renderModuleStats, renderCardMetaRow, renderTorrentDownload, torrentDownloadHref } = require('./main_views');
 const opinionCategories = require('../backend/opinion_categories');
 
 const OPINION_TYPES = new Set(['bookmark','votes','feed','image','audio','video','document','torrent']);
@@ -37,7 +37,7 @@ const renderMediaBlob = (value, fallbackSrc = null) => {
   if (!s) return fallbackSrc ? img({ src: fallbackSrc, class: 'post-image' }) : null
   if (s.startsWith('&')) return renderZoomableImage(`/blob/${encodeURIComponent(s)}`, { imgClass: 'post-image' })
   const mVideo = s.match(/\[video:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
-  if (mVideo) return videoHyperaxe({ controls: true, class: 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}` })
+  if (mVideo) return videoHyperaxe({ controls: true, class: 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}`, preload: 'metadata' })
   const mAudio = s.match(/\[audio:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
   if (mAudio) return audioHyperaxe({ controls: true, class: 'post-audio', src: `/blob/${encodeURIComponent(mAudio[1])}` })
   const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
@@ -621,13 +621,11 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
     }
 
     if (type === 'torrent') {
-      const { title } = content;
+      const { title, url } = content;
       cardBody.push(
         div({ class: 'card-section' },
-          title ? div({ class: 'card-field' },
-            span({ class: 'card-label' }, (i18n.torrentTitleLabel || 'Title') + ':'),
-            span({ class: 'card-value' }, title)
-          ) : null
+          title?.trim() ? h2({ class: 'torrent-title' }, title) : "",
+          url ? renderTorrentDownload(torrentDownloadHref(url, title)) : null
         )
       );
     }
@@ -881,7 +879,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
                                   : mime === 'application/pdf'
                                     ? a({ href: attSrc, target: '_blank', rel: 'noopener', class: 'filter-btn' }, '📄 PDF')
                                     : mime.includes('bittorrent') || mime === 'application/x-torrent'
-                                      ? a({ href: attSrc, class: 'filter-btn' }, `🧲 ${i18n.torrentDownload}`)
+                                      ? renderTorrentDownload(attSrc)
                                       : renderZoomableImage(attSrc, { imgClass: 'post-image' }))
                             : renderMediaBlob(latest.image);
                         const textNode = latest.text
@@ -1258,8 +1256,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       const listTitle = content.title || action.title || '';
       cardBody.push(
         div({ class: 'card-section' },
-          div({ class: 'card-field' }, listKey ? a({ href: `/mailing/${encodeURIComponent(listKey)}`, class: 'card-value user-link' }, listTitle || listKey) : span({ class: 'card-value' }, listTitle || '')),
-          content.description ? div({ class: 'card-field' }, span({ class: 'card-value' }, String(content.description))) : ''
+          div({ class: 'card-field' }, listKey ? a({ href: `/mailing/${encodeURIComponent(listKey)}`, class: 'card-value user-link' }, listTitle || listKey) : span({ class: 'card-value' }, listTitle || ''))
         )
       );
     }
@@ -1283,12 +1280,14 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       const pKey = action.id || action.key || '';
       const pTitle = content.title || action.title || '';
       const pHref = type === 'podcast' ? `/podcasts/${encodeURIComponent(pKey)}` : `/podcasts/episode/${encodeURIComponent(pKey)}`;
+      const pDesc = stripMediaMarkdown(content.description);
+      const pShortDesc = pDesc ? (pDesc.length > 140 ? pDesc.slice(0, 140) + "\u2026" : pDesc) : '';
       cardBody.push(
         div({ class: 'card-section' },
           type === 'podcastEpisode' ? '' : div({ class: 'card-field' }, pKey ? a({ href: pHref, class: 'card-value user-link' }, pTitle || pKey) : span({ class: 'card-value' }, pTitle || '')),
+          pShortDesc ? div({ class: 'card-field' }, span({ class: 'card-value' }, pShortDesc)) : '',
           type === 'podcast' && content.category ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.podcastCategoryLabel || 'Category') + ':'), span({ class: 'card-value' }, String(content.category).toUpperCase())) : '',
-          renderMediaObject(type === 'podcast' ? content.cover : content.media, type === 'podcast' ? pHref : null),
-          stripMediaMarkdown(content.description) ? p({ class: 'tribe-description' }, ...renderStyledText(stripMediaMarkdown(content.description).slice(0, 280))) : ''
+          renderMediaObject(type === 'podcast' ? content.cover : content.media, type === 'podcast' ? pHref : null)
         )
       );
     }
@@ -1521,38 +1520,6 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       );
     }
       
-    if (type === 'aiExchange') {
-      const { ctx, lang, tags, rating } = content;
-      const helpful = Number(action.helpfulVotes || 0);
-      cardBody.push(
-        div({ class: 'card-section ai-exchange' },
-          Array.isArray(ctx) && ctx.length
-            ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.aiSnippetsLearned || 'Snippets learned') + ':'), span({ class: 'card-value' }, String(ctx.length)))
-            : null,
-          lang
-            ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.aiExchangeLang || 'Language') + ':'), span({ class: 'card-value' }, String(lang).toUpperCase()))
-            : null,
-          Array.isArray(tags) && tags.length
-            ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.aiExchangeTags || 'Tags') + ':'),
-                span({ class: 'card-value' }, tags.map(t => span({ class: 'ai-exchange-tag' }, '#' + t))))
-            : null,
-          rating > 0
-            ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.aiExchangeRating || 'Rating') + ':'), span({ class: 'card-value' }, '★'.repeat(rating) + '☆'.repeat(Math.max(0, 5 - rating))))
-            : null,
-          div({ class: 'card-field' },
-            span({ class: 'card-label' }, (i18n.aiExchangeHelpful || 'Helpful') + ':'),
-            span({ class: 'card-value' }, String(helpful)),
-            form({ method: 'POST', action: '/ai/exchange/vote', class: 'ai-exchange-vote-form' },
-              input({ type: 'hidden', name: 'target', value: action.id }),
-              input({ type: 'hidden', name: 'helpful', value: 'yes' }),
-              input({ type: 'hidden', name: 'returnTo', value: '/activity' }),
-              button({ type: 'submit', class: 'filter-btn' }, i18n.aiExchangeMarkHelpful || '+1 helpful')
-            )
-          )
-        )
-      );
-    }
-
     if (type === 'karmaScore') {
       const { karmaScore } = content;
       cardBody.push(
@@ -1831,7 +1798,7 @@ function renderActionCards(actions, userId, allActions, spreadMap = new Map(), e
       return null;
     }
 
-    const detailHref = (type !== 'aiExchange' && type !== 'bankWallet')
+    const detailHref = (type !== 'bankWallet')
       ? (isParliamentTarget
           ? `/parliament?filter=${encodeURIComponent(parliamentFilter)}`
           : isCourtsTarget
@@ -2045,7 +2012,6 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
     { type: 'housing',   label: i18n.typeHousing },
     { type: 'job',       label: i18n.typeJob },
     { type: 'shop',      label: i18n.typeShop },
-    { type: 'transfer',  label: i18n.typeTransfer },
     { type: 'audio',     label: i18n.typeAudio },
     { type: 'bookmark',  label: i18n.typeBookmark },
     { type: 'document',  label: i18n.typeDocument },
@@ -2232,7 +2198,7 @@ exports.activityView = (actions, filter, userId, q = '', extras = {}) => {
             'all', 'mine', 'recent', 'top',
             'inhabitants', 'tribe', 'larp', 'schoolCourse', 'parliament', 'courts', 'emergency',
             'votes', 'event', 'calendar', 'task', 'report', 'campaign',
-            'banking', 'market', 'housing', 'project', 'industry', 'job', 'shop', 'transfer', 'logistics',
+            'banking', 'market', 'housing', 'project', 'industry', 'job', 'shop', 'logistics',
             'post', 'feed', 'chat', 'pad', 'wiki', 'mailing', 'forum', 'map',
             'audio', 'bookmark', 'document', 'image', 'torrent', 'video', 'podcast'
           ];

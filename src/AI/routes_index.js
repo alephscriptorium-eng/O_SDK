@@ -95,6 +95,8 @@ const ROUTES = [
   { path: '/inbox',         mod: null,         description: 'inbox, notifications, mentions, emergencies, messages addressed to me, received PM' },
   { path: '/inbox?filter=sent', mod: null,     description: 'sent messages, outgoing PM, my sent private messages, what I wrote' },
   { path: '/inbox?filter=reminders', mod: null, description: 'reminders, task reminders, calendar reminders, automatic notifications' },
+  { path: '/inbox?filter=notifications', mod: null, description: 'bot notifications, BankingBot, PoliticalBot, MarketBot, notices per bot, unread notices' },
+  { path: '/inbox?filter=archived', mod: null, description: 'archived messages, archived PMs, put away conversations' },
   { path: '/pm',            mod: null, description: 'private messages, direct messages, DMs, encrypted PM, compose new PM' },
   { path: '/mentions',      mod: null,         description: 'mentions, who mentioned me, tagged me, my mentions, posts mentioning me, tribe mentions' },
   { path: '/games',         mod: 'gamesMod',    description: 'games, play, mini-games, scoring, fun' },
@@ -239,7 +241,11 @@ const KEYWORD_STOPWORDS = new Set([
   'the', 'this', 'that', 'these', 'those', 'and', 'for', 'with', 'from', 'into', 'about', 'want', 'show', 'see', 'find', 'give', 'get', 'go', 'my', 'me', 'to', 'of', 'in', 'on', 'at', 'an', 'is', 'are', 'do', 'does',
   'week', 'year', 'month', 'today', 'tomorrow', 'now', 'next', 'last',
   'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'este', 'esta', 'esto', 'estos', 'estas', 'ese', 'esa', 'eso', 'que', 'quiero', 'ver', 'buscar', 'dame', 'ir', 'mi', 'mis', 'lo', 'se', 'al', 'en', 'con', 'para', 'por',
-  'semana', 'mes', 'hoy', 'ahora', 'proximo', 'próximo', 'proxima', 'próxima', 'ultimo', 'último', 'ultima', 'última'
+  'semana', 'mes', 'hoy', 'ahora', 'proximo', 'próximo', 'proxima', 'próxima', 'ultimo', 'último', 'ultima', 'última',
+  'els', 'les', 'uns', 'unes', 'dels', 'aquest', 'aquesta', 'aquests', 'aquestes', 'això', 'aquell', 'aquella', 'vull', 'veure', 'cercar', 'anar', 'meu', 'meva', 'meus', 'meves', 'amb', 'per', 'als', 'on', 'què', 'com',
+  'setmana', 'avui', 'ara', 'proper', 'propera', 'darrer', 'darrera',
+  'os', 'as', 'unha', 'unhas', 'do', 'da', 'dos', 'das', 'isto', 'iso', 'estes', 'quero', 'miña', 'miñas', 'meu', 'meus', 'no', 'na', 'nos', 'nas', 'co', 'coa', 'onde', 'como',
+  'hoxe', 'agora'
 ])
 
 const resolveKeywordTopK = ({ isModuleEnabled } = {}, query, k = 8) => {
