@@ -103,7 +103,9 @@ nada enlazaba.
 
 - El tema oscuro se ha mirado en dos páginas y a un solo ancho; la portada y el móvil, solo en claro.
 - El contraste se comprueba por reglas declaradas en el CSS, no midiendo la página pintada.
-- La CI nueva (`npm run docs:gate`) no ha corrido todavía en GitHub: correrá con el push de la rama.
+- La CI nueva corrió con el push de la rama (run `36909134770`, commit `1ad2bee`): `docs:build: success`,
+  con `html=73`, `verdad de contenido: 0 fallo(s)`, piel y contraste `OK`, `CEGUERA OK`;
+  `deploy Pages: skipped`. El despliegue en sí solo se verá con el push a `main`.
 - Los sellos «ejercido» se apoyan en reportes de trabajos hechos sobre la demo; ninguno es una
   prueba de la receta tal como está escrita. Eso es WP-O118.
 
