@@ -42,7 +42,7 @@ resultado. «0» = cero coincidencias en ficheros de texto, excluyendo
 | Spec de muxrpc en `docs/PUB/` | `docs\PUB` | no; solo implícito en `pub\tools\ssb-admin.js`, `ssb-probe.js` | `02` |
 | Esquema formal de mensajes SSB (JSON-Schema o tabla de tipos) | `docs/` | no; disperso en `src\models\*.js`; inventario de features **pendiente** (`BASE-3-MECANISMO.md:43`) | `02` |
 | Catálogo de servicios del pub a nivel de casa | `scriptorium` | no; el más completo vive en o-sdk (`pub\site\scriptorium\index.html:453-483`, `pub\site\index.html:229-234`) | `02` |
-| Rooms server en la suite local | `S_LAB` | vive en `escrivivir-co/scriptorium-vps` (cuenta vieja); inventario `<pendiente>` (`PLAN.md:55,230-232`) | `02` |
+| Rooms server en la suite local | `S_LAB` | vive en el repo `scriptorium-vps` de la cuenta de origen (anulada); inventario `<pendiente>` (`PLAN.md:55,230-232`) | `02` |
 | `blobstore-sidecar` desplegado | composes vivos | huérfano a propósito (4 condiciones antes del GO, WP-O50) | `02` |
 | `plan\BRIEFS\` en o-sdk | disco | no existe pese a WP-O01 (`BACKLOG.md:56-58`); solo `plan\REPORTES\` (3) | `02` |
 | `MAPA-RAIZ/REPO/TALLER` en o-sdk | disco | no (WP-O02 pendiente, `BACKLOG.md:80-86`) | `02` |
