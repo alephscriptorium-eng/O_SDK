@@ -6,16 +6,16 @@ lema: Tu nodo en tu máquina. Tu identidad, tu muro, tu cartera si la quieres.
 encargos:
   - id: cliente
     titulo: Arrancar un cliente Oasis en mi máquina
-    estado: en-obras
+    estado: ejercido
     medido: '2026-10-01'
     prueba: plan/REPORTES/WP-O108-cliente-1.1.4.md
-    falta: arranque sin GPU NVIDIA y sin descargar el modelo de IA (WP-O116)
+    falta: que arranque también sin GPU NVIDIA y sin el modelo de IA; prueba en frío (WP-O116)
   - id: cliente-con-cartera
     titulo: Arrancar un cliente Oasis con cartera ECOin
-    estado: en-obras
+    estado: ejercido
     medido: '2026-10-01'
     prueba: plan/REPORTES/WP-O113-upgrade-oasis-1.1.10.md
-    falta: lo mismo, y una secuencia única de principio a fin (WP-O116)
+    falta: lo mismo, y una secuencia única de principio a fin; prueba en frío (WP-O116)
 ---
 
 # Cliente Oasis
@@ -28,11 +28,11 @@ identidad en un fichero tuyo y, si quieres, una cartera ECOin también tuya.
 - Cliente: <Sello rol="cliente" id="cliente" />
 - Cliente con cartera: <Sello rol="cliente" id="cliente-con-cartera" />
 
-**Qué funciona hoy.** El cliente corre en la demo, con y sin cartera, y se ha ensayado con una
-identidad desechable y sin usar la GPU. **Qué no:** el arranque normal exige una GPU NVIDIA
-(`docker-compose.yml` reserva el dispositivo) y, si no se le dice lo contrario, descarga un modelo
-de IA de unos 4 GB. En una máquina sin esa GPU el agente tiene que parar y decírtelo; no debe
-improvisar un arreglo sobre tu identidad real.
+**Qué funciona hoy.** El cliente corre de verdad en la demo, con su identidad y su cartera, en una
+máquina con GPU NVIDIA; y se ha ensayado con una identidad desechable. **Con qué condición:** el
+arranque normal exige esa GPU (`docker-compose.yml` reserva el dispositivo) y, si no se le dice lo
+contrario, descarga un modelo de IA de unos 4 GB. En una máquina sin ella el arranque falla: el
+agente tiene que parar y decírtelo; no debe improvisar un arreglo sobre tu identidad real.
 
 ## Qué le dices a tu agente
 
@@ -49,7 +49,8 @@ Sin cartera, quita «con cartera».
 - Docker Desktop arrancado, y `git`, `bash` (en Windows, Git Bash) y `npm`.
 - Sitio para una imagen de unos 5 GB (y 4 GB más si quieres la IA) y, la primera vez, 10-20
   minutos de construcción.
-- Hoy, además: GPU NVIDIA con su runtime de Docker. Sin ella, esta puerta está en obras.
+- Hoy, además: GPU NVIDIA con su runtime de Docker. Sin ella el arranque falla; quitar ese requisito
+  es trabajo pendiente (WP-O116).
 - Un sitio **fuera de la máquina** donde guardar dos copias: la de tu identidad y la de tu cartera.
 
 ## Qué hará el agente

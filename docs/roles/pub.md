@@ -6,9 +6,10 @@ lema: Un pub en tu servidor. El punto de encuentro donde tu gente se sincroniza.
 encargos:
   - id: pub-minimo
     titulo: Desplegar un pub simple en mi servidor
-    estado: en-obras
+    estado: ejercido
     medido: '2026-10-01'
-    falta: un despliegue que levante solo el pub, sin las piezas de la demo (WP-O117)
+    prueba: plan/REPORTES/WP-O114-aplicacion-vps-1.1.10.md
+    falta: la variante de solo el pub, sin las piezas de la demo (WP-O117); prueba en frío
   - id: hub-clearnet
     titulo: Añadir a mi pub la lectura pública en la web (HUB clearnet)
     estado: ejercido
@@ -36,10 +37,11 @@ Corre la misma imagen que el cliente, en otro modo.
 - Teatro: <Sello rol="pub" id="teatro" />
 
 **Qué funciona hoy.** Hay un pub de demostración en producción, con su HUB, su economía y su
-Teatro, y un protocolo por pieza. **Qué no:** el despliegue que trae el repo levanta el pub **y**
-las piezas de la demo (lectura web, panel, página de inicio, otros dominios). No existe todavía el
-«pub y nada más». Hasta que exista, el agente puede preparar tu servidor y tu ficha, y debe parar
-antes de desplegar algo que no has pedido.
+Teatro, desplegado y subido de versión con este repo, y un protocolo por pieza. **Con qué
+condición:** el despliegue que trae el repo levanta el pub **y** las piezas de la demo (lectura
+web, panel, página de inicio, otros dominios). No existe todavía el «pub y nada más». Si es eso lo
+que quieres, el agente puede preparar tu servidor y tu ficha, y debe parar antes de desplegar algo
+que no has pedido.
 
 ## Qué le dices a tu agente
 
@@ -73,7 +75,7 @@ Lee docs/roles/pub.md y el protocolo del HUB.
 | 2 | Crear tu instancia: `devops/hosts/` con tu host, tu usuario y el nombre de tu clave | los scripts apuntan a **tu** servidor | ver [Hazlo tuyo](/roles/tu-pub) |
 | 3 | Medir el servidor sin tocarlo: sistema, disco, memoria, puertos, Docker | un informe | **solo lectura** |
 | 4 | Preparar la base del servidor | Docker, cortafuegos, carpetas de datos | **PERMISO**: escribe en tu servidor. El script actual pide un segundo disco y lo formatea: si no lo tienes, **parar** |
-| 5 | Desplegar el pub | **hoy, parar aquí**: el despliegue arrastra las piezas de la demo | en obras |
+| 5 | Desplegar el pub | el pub responde en el 8008. **Hoy, parar aquí** si lo quieres sin las piezas de la demo: el despliegue del repo las arrastra | **DECISIÓN**. La variante de solo el pub está pendiente (WP-O117) |
 | 6 | Dar nombre al pub y anunciarlo | perfil publicado, pub visible | **PERMISO**: son mensajes que no se retiran |
 | 7 | Generar un invite y comprobarlo con un cliente | un cliente se conecta y se sincroniza | |
 

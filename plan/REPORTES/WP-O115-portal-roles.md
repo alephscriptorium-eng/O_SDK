@@ -109,6 +109,27 @@ nada enlazaba.
 - Los sellos «ejercido» se apoyan en reportes de trabajos hechos sobre la demo; ninguno es una
   prueba de la receta tal como está escrita. Eso es WP-O118.
 
+## Corrección tras publicar (2026-10-01)
+
+El custodio, al ver el sitio: «mi cliente lo tengo instalado y sale "en obras"». Tenía razón. Tres
+encargos salieron «en obras» con un criterio distinto del que define el sello: se midió si un
+recién llegado cualquiera podría completarlos (sin GPU, sin las piezas de la demo), no si se habían
+hecho. Por la definición del propio sello eran «ejercido en la demo»: están hechos, con reporte, y
+funcionando.
+
+| Encargo | Antes | Ahora | Medido |
+|---|---|---|---|
+| Arrancar un cliente | en obras | ejercido en la demo | `docker ps`: `oasis-client Up (healthy)`; `nvidia-smi`: `Quadro P2000`; reporte WP-O108 |
+| Cliente con cartera | en obras | ejercido en la demo | `docker ps`: `ecoin-wallet Up (healthy)`; reporte WP-O113 |
+| Desplegar un pub | en obras | ejercido en la demo | pub en producción en 1.1.10; reporte WP-O114 |
+| Instancia propia | en obras | en obras | solo ha existido una instancia: la demo |
+
+La condición que motivó el «en obras» no desaparece: pasa a la línea `falta` del sello y al texto de
+la puerta (el cliente pide GPU NVIDIA; no hay despliegue de «solo el pub»). La tabla de sellos de
+`/roles/` precisa las dos definiciones: «ejercido» dice con qué condiciones; «en obras» es lo que
+nadie ha hecho todavía. La tabla «Estado que publica cada puerta» de este reporte queda como lo que
+se publicó primero.
+
 ## Qué queda abierto
 
 | WP | Qué | Efecto en el portal |
