@@ -98,7 +98,7 @@ node_own_records() { # ancla en el sobre del mensaje (author…hash…content), 
           -e 's/.*"content":".*/(cadena)/'
 }
 node_own_types() { node_own_records "$1" "$2" | sort | uniq -c | sed 's/^ *//'; }
-node_state()   { docker inspect -f '{{.State.Status}}{{if .State.Health}} {{.State.Health.Status}}{{end}}' "$1" 2>/dev/null || echo ausente; }
+node_state()   { local s; s="$(docker inspect -f '{{.State.Status}}{{if .State.Health}} {{.State.Health.Status}}{{end}}' "$1" 2>/dev/null)"; echo "${s:-ausente}"; }
 node_version() { docker exec "$1" sh -c 'grep -m1 "\"version\"" /app/src/server/package.json' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/'; }
 node_image()   { docker inspect -f '{{.Config.Image}} {{.Image}}' "$1" 2>/dev/null | sed 's/sha256:\(............\).*/\1/'; }
 NODE_LIB
