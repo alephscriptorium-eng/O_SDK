@@ -24,6 +24,14 @@ server {
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto https;
   proxy_set_header Connection "";
+  # D-O25: en clearnet la presentación es del pub. El backend no recibe nada «del visitante» que no
+  # esté en la URL: la clave de caché es la URL, y lo que decida por una cabecera o una cookie se lo
+  # serviría a todos (Oasis 1.1.10 elige el idioma de /c por Accept-Language y no emite Vary;
+  # checkMod lee cookies de módulo). El idioma por defecto es `language` de la config del HUB; el
+  # que elige el visitante viaja en ?lang=.
+  proxy_set_header Accept-Language "";
+  proxy_set_header Cookie "";
+  proxy_set_header Accept-Encoding "";        # el HUB responde sin comprimir (comprime Caddy): sub_filter necesita texto
   proxy_connect_timeout 5s;
   proxy_read_timeout 40s;
 
@@ -48,6 +56,15 @@ server {
   location ~ ^/c/assets/ {                    # 1.1.2: el visor clearnet referencia /c/assets/* (mount nuevo en middleware.js)
     proxy_ignore_headers Cache-Control Expires Set-Cookie;   # koa-static manda max-age=0 -> sin esto nunca cachea
     proxy_cache_valid 200 1d;
+    proxy_pass $hub_up;
+  }
+  location ~ ^/c/(sitemap\.xml$|rss/) {       # 1.1.10: antes de la genérica (entre regex gana la primera)
+    limit_req zone=hub_req burst=20 nodelay;
+    # El backend arma las URLs absolutas con ctx.protocol, y Koa sin app.proxy ignora
+    # X-Forwarded-Proto: saldrían en http://. Se corrigen aquí, sin tocar src/.
+    sub_filter 'http://$host' 'https://$host';
+    sub_filter_once off;
+    sub_filter_types application/xml application/rss+xml text/xml;
     proxy_pass $hub_up;
   }
   location ~ ^/(c|clearnet)(/|$|\?) {
