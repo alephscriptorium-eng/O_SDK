@@ -434,7 +434,7 @@ Ciclos registrados (lo que cada uno cambió en el protocolo):
 |---|---|---|
 | 1.0.8 → 1.1.2 | `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md` · `HUB-PROTOCOL.md` §5.5 | primer ciclo con el HUB activo: `/c/assets`, rutas de detalle nuevas |
 | 1.1.2 → 1.1.4 | `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`, `WP-O106-aplicacion-vps-1.1.4.md` · `ECOIN-PROTOCOL.md` §5.4 | `state-manager.js` y la mudanza de estado; quinto guard; `git archive` y CRLF |
-| 1.1.4 → 1.1.10 | WP-O112 (este protocolo), WP-O113, WP-O114 | el protocolo no medía comportamiento ni publicación; idioma por visitante en `/c` (D-O25); `oasisVersion` |
+| 1.1.4 → 1.1.10 | `plan/REPORTES/WP-O112-protocolo-upgrade.md` (este protocolo), `WP-O113-upgrade-oasis-1.1.10.md` (local), WP-O114 (host) | el protocolo no medía comportamiento ni publicación. Todo nodo anuncia su versión (`oasisVersion`), también al volver atrás. Idioma por visitante en `/c` (D-O25). Avisos automáticos que se envían cifrados a uno mismo (`inboxMutedBots`). `GET /wallet` republica la dirección en un bot con el motor encendido. El primer `GET /banking` publica la dirección. El modelo de IA cambia bajo el mismo nombre |
 
 ## 8. HUB clearnet — ver `HUB-PROTOCOL.md`
 

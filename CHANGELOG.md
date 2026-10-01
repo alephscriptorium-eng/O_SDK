@@ -5,6 +5,21 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Oasis 1.1.10 (WP-O113, 2026-10-01; en local, pendiente el host)
+
+Reporte `plan/REPORTES/WP-O113-upgrade-oasis-1.1.10.md`. Primera ejecución del protocolo de WP-O112.
+
+- **`src/` en Oasis 1.1.10** (upstream `f770dbb`) con los 5 guards.
+- **HUB clearnet** (D-O25): nginx no reenvía `Accept-Language` ni `Cookie` al HUB; `language` y
+  `themes.current` fijadas en su config; `/c/sitemap.xml` y `/c/rss/<tipo>` publicados con URLs `https`.
+- **Nodos de soporte sin mensajes cifrados a sí mismos**: `inboxMutedBots` en la config del HUB y
+  del bot de cartera. `pub/scripts/regen-node-configs.js` regenera las dos copias desde la de upstream.
+- **Cliente**: `client/scripts/test-ai-service.sh` habla el contrato de IA de 1.1.10 (token por
+  sesión, puerto variable).
+- **Documentado**: «desconectar cartera» publica un `wallet` vacío (`docs/AGENTES.md` §3); `GET /wallet`
+  en un bot con el motor encendido republica la dirección (§4); el primer `GET /banking` de un nodo con
+  cartera ya publica la dirección (`docs/PUB/ECOIN-PROTOCOL.md` §3).
+
 ### Changed — Protocolo de upgrade: mide comportamiento y publicación (WP-O112, 2026-10-01)
 
 Reporte `plan/REPORTES/WP-O112-protocolo-upgrade.md`. Asiento D-O25.
