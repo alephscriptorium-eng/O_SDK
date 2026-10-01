@@ -36,8 +36,10 @@ protocolo: tres nodos, y cada uno publicó un anuncio de versión y nada más.
 Para subir de versión:
 
 ```text
-Hay versión nueva de Oasis. Sube mi pub siguiendo el protocolo de upgrade.
-Lee docs/roles/mantener.md. Ensáyalo en local antes y pídeme permiso en cada puerta.
+Hay versión nueva de Oasis.
+Sube mi pub siguiendo el protocolo de upgrade.
+Lee docs/roles/mantener.md. Ensáyalo en local antes
+y pídeme permiso en cada puerta.
 ```
 
 Si algo se ha roto:

@@ -149,7 +149,11 @@ export default defineConfig({
       }
     ],
     socialLinks: [{ icon: 'github', link: BACK.repo }],
-    outline: { level: [2, 3] },
+    outline: { level: [2, 3], label: 'En esta página' },
+    docFooter: { prev: 'Anterior', next: 'Siguiente' },
+    returnToTopLabel: 'Volver arriba',
+    sidebarMenuLabel: 'Menú',
+    darkModeSwitchLabel: 'Apariencia',
     search: { provider: 'local' },
     footer: {
       // Marca Scriptorium (misma línea que Z_SDK/S_SDK). VPFooter hace v-html

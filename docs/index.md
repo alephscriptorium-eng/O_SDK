@@ -51,7 +51,8 @@ Cómo se usa una puerta y qué garantiza cada sello: [¿Quién llega?](/roles/).
 
 ```text [Díselo a tu agente]
 Hola. He clonado o-sdk y tengo Docker Desktop arrancado.
-Arráncame un cliente Oasis. Lee docs/roles/cliente.md y sigue esa receta.
+Arráncame un cliente Oasis.
+Lee docs/roles/cliente.md y sigue esa receta.
 ```
 
 ```bash [A mano]

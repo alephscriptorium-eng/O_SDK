@@ -126,14 +126,14 @@ body {
 :root {
   --vp-layout-top-height: 3.4rem;
 }
-@media (max-width: 860px) {
+@media (max-width: 1180px) { /* antes 860: a 1000 px el texto pedía tres líneas y se cortaba */
   :root {
     --vp-layout-top-height: 4.8rem;
   }
 }
 @media (max-width: 520px) {
   :root {
-    --vp-layout-top-height: 6.6rem;
+    --vp-layout-top-height: 7.9rem; /* una línea más: el texto del banner creció (WP-O115) */
   }
 }
 
@@ -309,6 +309,20 @@ div[class*='language-'] {
 
 /* Imprimible como fanzine */
 
+/* Entre 768 y 1040 px la barra lleva seis entradas y no cabían: se aprietan. */
+@media (min-width: 768px) and (max-width: 1040px) {
+  .VPNavBarMenuLink,
+  .VPNavBarMenuGroup .button {
+    padding: 0 6px !important;
+  }
+  .VPNavBarSearch {
+    padding-left: 12px !important;
+  }
+  .DocSearch-Button-Keys {
+    display: none !important;
+  }
+}
+
 /* ---- Puertas por rol (WP-O115) ---------------------------------------------
    Sello de estado de un encargo y lista de puertas. Solo tokens de la piel:
    tinta, papel, gris y rayas. Sin color: el estado se lee por la forma. */
@@ -346,7 +360,7 @@ div[class*='language-'] {
 
 .zine-puertas {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
   gap: 1rem;
   margin: 1.2rem 0;
 }

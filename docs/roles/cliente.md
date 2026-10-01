@@ -38,7 +38,8 @@ improvisar un arreglo sobre tu identidad real.
 
 ```text
 Hola. He clonado o-sdk y tengo Docker Desktop arrancado.
-Arráncame un cliente Oasis con cartera. Lee docs/roles/cliente.md y sigue esa receta.
+Arráncame un cliente Oasis con cartera.
+Lee docs/roles/cliente.md y sigue esa receta.
 ```
 
 Sin cartera, quita «con cartera».

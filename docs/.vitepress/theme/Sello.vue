@@ -7,7 +7,8 @@ import { computed } from 'vue';
 import { useData } from 'vitepress';
 import { data as roles } from './roles.data.mjs';
 
-const props = defineProps({ rol: String, id: String });
+// corto: solo el estado (para la lista de puertas); el detalle queda en la página de la puerta.
+const props = defineProps({ rol: String, id: String, corto: Boolean });
 const { theme } = useData();
 
 const TEXTO = { probado: 'probado en frío', ejercido: 'ejercido en la demo', 'en-obras': 'en obras' };
@@ -27,6 +28,6 @@ const prueba = computed(() =>
     class="zine-sello"
     :data-estado="encargo.estado"
     :data-prueba="encargo.prueba || ''"
-  ><strong>{{ TEXTO[encargo.estado] || encargo.estado }}</strong><template v-if="encargo.medido"> · {{ encargo.medido }}</template><template v-if="prueba"> · <a :href="prueba">reporte</a></template><template v-if="encargo.falta"> · falta: {{ encargo.falta }}</template></span>
+  ><strong>{{ TEXTO[encargo.estado] || encargo.estado }}</strong><template v-if="!corto"><template v-if="encargo.medido"> · {{ encargo.medido }}</template><template v-if="prueba"> · <a :href="prueba">reporte</a></template><template v-if="encargo.falta"> · falta: {{ encargo.falta }}</template></template></span>
   <span v-else class="zine-sello" data-estado="sin-estado" data-prueba=""><strong>sin estado</strong></span>
 </template>

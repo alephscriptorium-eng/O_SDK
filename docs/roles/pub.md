@@ -52,7 +52,8 @@ Lee docs/roles/pub.md y sigue esa receta.
 Para ampliar un pub que ya corre:
 
 ```text
-Mi pub ya funciona. Añádele la lectura pública en la web (el HUB clearnet).
+Mi pub ya funciona.
+Añádele la lectura pública en la web (el HUB clearnet).
 Lee docs/roles/pub.md y el protocolo del HUB.
 ```
 

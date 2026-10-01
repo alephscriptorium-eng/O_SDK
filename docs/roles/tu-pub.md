@@ -38,8 +38,10 @@ con ellas puestas.
 ## Qué le dices a tu agente
 
 ```text
-Quiero mi propio pub Oasis, con mi nombre y mi dominio, sin nada de la demo.
-Empieza por la ficha de mi instancia: lee docs/roles/tu-pub.md y pregúntame lo que necesites.
+Quiero mi propio pub Oasis, con mi nombre y mi dominio,
+sin nada de la demo.
+Empieza por la ficha de mi instancia:
+lee docs/roles/tu-pub.md y pregúntame lo que necesites.
 ```
 
 ## Qué necesitas tener decidido

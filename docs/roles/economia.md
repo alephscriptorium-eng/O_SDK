@@ -42,15 +42,18 @@ Para tu cartera:
 
 ```text
 Quiero una cartera ECOin en mi cliente Oasis.
-Lee docs/roles/economia.md y la sección de cartera del protocolo del cliente.
+Lee docs/roles/economia.md y la sección de cartera
+del protocolo del cliente.
 Primero ensáyalo con una identidad desechable.
 ```
 
 Para el banco de tu pub:
 
 ```text
-Mi pub ya funciona. Dale una cartera ECOin y prepara la renta básica, con el motor apagado.
-Lee docs/roles/economia.md y el protocolo de ECOin. No enciendas nada sin preguntarme.
+Mi pub ya funciona. Dale una cartera ECOin y prepara
+la renta básica, con el motor apagado.
+Lee docs/roles/economia.md y el protocolo de ECOin.
+No enciendas nada sin preguntarme.
 ```
 
 ## Qué necesitas tener
