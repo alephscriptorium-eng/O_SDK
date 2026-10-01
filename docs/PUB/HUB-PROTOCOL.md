@@ -58,17 +58,24 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
   Caddy enruta solo `/c`, `/c/*`, `/clearnet` y `/assets/{styles,themes,images}/*`.
   `OASIS_HUB_PUBLIC=false` existe **solo** para el bootstrap del invite y **nunca**
   con `@hub` activo en Caddy.
-- **El feed del HUB solo contiene cuatro tipos propios, todos públicos**: `contact` (follow
+- **El feed del HUB solo debe contener cuatro tipos propios, todos públicos**: `contact` (follow
   al pub), `pub` (lo publica ssb-invite al aceptar el invite, con la dirección del pub),
-  `about` (§11) y `oasisVersion` (el backend lo publica al arrancar con feed no vacío). Cero
-  `private`. Contraevidencia: `grep -a -c '"private":true' flume/log.offset` = 0 y los
-  mensajes filtrados por `author` = feed del HUB no tienen otro `type`.
+  `about` (§11) y `oasisVersion` (el backend publica uno cada vez que arranca en una versión
+  distinta de la última que anunció: +1 por upgrade **y +1 por rollback**). Ningún cifrado.
+  Se mide con `bash devops/scripts/upgrade-gates.sh --remote snapshot <tag>` (línea `tipos:` del
+  HUB), que cuenta por autor e incluye los cifrados como `(cifrado)`.
+  > **El control anterior era vacío.** `grep -a -c '"private":true' flume/log.offset` da 0
+  > siempre: un mensaje cifrado se guarda como `"content":"….box"`, sin ese campo. La primera
+  > medida buena (2026-10-01) encontró **4 cifrados propios en el feed del HUB** del host (y 1 en
+  > el del bot de cartera y 1 en el del pub). Son anteriores a este control y no se pueden
+  > retirar; qué son está por investigar (seguimiento en el backlog). El invariante sigue siendo
+  > la meta: **ningún cifrado nuevo**, y `upgrade-gates.sh check` lo comprueba en cada upgrade.
 - **El pub solo publica el `contact` del follow-back** al redimir el invite (función
   normal de un pub). Secuencia del feed del pub antes/después = +1, una vez.
 - **Todo el estado nuevo bajo `/srv/oasis/oasis-hub/*`** (volumen de datos, 40 GB).
   `df -h /` igual antes y después: sin rebuild, solo `docker pull nginx:alpine`.
 - **Delta del fork en `src/`: cero.** El HUB vive en la zona *wholesale* (`pub/**`,
-  `devops/**`). Los 4 guards de `UPGRADE-PROTOCOL.md` §2 siguen siendo los únicos.
+  `devops/**`). Los 5 guards de `UPGRADE-PROTOCOL.md` §2 siguen siendo los únicos.
 - **`CA-ANTI-AUTORIDAD`** (D-O6): el opt-in viaja con el feed del habitante; el HUB no
   decide quién aparece y **no se lista a sí mismo** (su `about` no lleva `vis_*`).
 - **La cuenta se declara con nombre propio de bot de soporte** (D-O20, que supera la forma de
@@ -107,9 +114,23 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
     └── config/hub/               ssb-config · oasis-config.json · nginx.conf.template
 ```
 
-Regla de los binds **de fichero** (`Caddyfile`, `ssb-config`, `oasis-config.json`):
-sobrescribir **in place** (`cat > fichero`), nunca reemplazar el inode (`mv`, editores
-que hacen rename): el contenedor seguiría viendo el fichero viejo.
+Regla de los binds **de fichero** (`Caddyfile`, `ssb-config`, `oasis-config.json`,
+`nginx.conf.template`): sobrescribir **in place** (`cat > fichero`), nunca reemplazar el inode
+(`mv`, editores que hacen rename): el contenedor seguiría viendo el fichero viejo. Y después,
+lo que cada uno pida para releerlo: Caddy `validate` + `reload`; `ssb-config` y
+`oasis-config.json`, recrear el HUB; la plantilla de nginx, **recrear** `hub-cache` (se renderiza
+al arrancar: un `reload` no la relee).
+
+**Regla del visor (D-O25): en clearnet la presentación es del pub.** Los valores por defecto del
+visor (tema, idioma) los fija la config del HUB; lo que elige el visitante viaja **en la URL**
+(`?lang=`), nunca en cabeceras ni cookies. Motivo: la caché sirve la misma respuesta a todo el que
+pide la misma URL; si el backend decide algo por una cabecera (`Accept-Language`) o una cookie
+(`theme`, las de módulos), el primer visitante decide por todos durante lo que dure la entrada.
+Upstream ya lo hace así con el tema (el visor lee `themes.current` de la config, no la cookie);
+desde 1.1.10 no lo hace con el idioma (cae en `Accept-Language` sin emitir `Vary`). Por eso,
+a partir del ciclo 1.1.10 (WP-O113), nginx **no reenvía** al HUB `Accept-Language` ni `Cookie`,
+y `language` es clave fijada de la config. Cualquier detección nueva «por visitante» que traiga
+upstream se trata igual (`headers` en el diff de comportamiento, §5.1).
 
 ## 3. Activación (resumen; la secuencia completa está en `v2.md` «Secuencia de deploy»)
 
@@ -156,54 +177,55 @@ curl -s "$H/c/inhabitant/@nadie.ed25519" | grep -c "not accessible"   # 1 — es
 ```
 
 En el VPS: `docker ps` → `oasis-pub-scriptorium`, `oasis-pub-hub`, `oasis-pub-hub-cache`
-healthy · feed id del pub sin cambios · feed del HUB sin `private` · `df -h /` = línea base ·
+healthy · feed id del pub sin cambios · feed del HUB sin cifrados nuevos (`upgrade-gates.sh`, §1) · `df -h /` = línea base ·
 `hub-disk.sh check` → 0. Aislamiento: `docker stop oasis-pub-hub` no afecta a `whoami`/`invite`
 del pub; `docker stop` del pub deja `/c` sirviendo `STALE` desde la caché.
 
-## 5. Upgrades de Oasis con el HUB activo (leer junto a `UPGRADE-PROTOCOL.md`)
+## 5. Upgrades de Oasis con el HUB activo (anexo de `UPGRADE-PROTOCOL.md`)
 
 El HUB **no añade guards** a `src/`, pero **depende de comportamientos de upstream que no
-son API estable**. Un upgrade puede romperlo sin tocar ninguno de los 4 guards. Por eso:
+son API estable**. Un upgrade puede romperlo sin tocar ninguno de los 5 guards. El orden y las
+puertas los da `UPGRADE-PROTOCOL.md`; aquí está lo que es propio del HUB.
 
-**5.1 Antes del merge (preflight del HUB).** Sobre el árbol nuevo, cada línea debe dar ≥ 1:
+**5.1 Invariantes y diff (UPGRADE §3.1).** Lo que el HUB necesita de upstream está en
+`devops/scripts/upgrade-invariants.d/hub.tsv` (antes vivía aquí como un bloque de greps) y se
+evalúa sobre el árbol de trabajo:
 
 ```bash
-grep -c 'exec node backend.js' docker-entrypoint.sh                       # modo backend (nuestro, wholesale)
-grep -c "require('../server/SSB_server')" src/client/gui.js               # backend requiere el server…
-grep -c 'get server()' src/server/SSB_server.js                           # …y el getter crea el sbot embebido
-grep -c '\.env("OASIS")' src/client/oasis_client.js                       # OASIS_PUBLIC / OASIS_ALLOW_HOST / OASIS_OPEN
-grep -c 'allow-host' src/client/oasis_client.js                           # --allow-host sigue existiendo
-grep -c '"/c/inhabitant/:feedId"' src/backend/backend.js                  # ruta del healthcheck
-grep -c '"/c/blob/' src/backend/backend.js                                # blobs content-addressed
-grep -c 'visibilityPrefs' src/backend/backend.js                          # opt-in por habitante
-grep -c 'oasis-first-contact' src/models/onboarding_model.js              # nombre del flag anti-PM de bienvenida
-grep -c 'ssbLogStream' src/models/inhabitants_model.js                    # ventana de autores de /c
-grep -c 'OASIS_SERVER_CONFIG_OVERRIDE' src/server/ssb_config.js           # guard del fork del que el HUB depende (0 en upstream: es nuestro)
-grep -c 'mount("/c/assets"' src/client/middleware.js                     # 1.1.2+: assets del visor bajo /c/assets (location propia en nginx)
-grep -on '/c/assets/[a-z]*\|/assets/[a-z]*' src/views/clearnet_view.js | sort -u   # subárboles que Caddy/nginx deben enrutar y cachear
-git diff <tag-viejo> oasis-upstream/main -- src/backend/backend.js | grep -o '^+.*\.get("/c/[^"]*"'   # rutas /c/* nuevas → paridad en Sala 04
-grep -n 'X-Frame-Options\|Referrer-Policy\|Permissions-Policy' src/client/middleware.js   # lista de proxy_hide_header
+bash devops/scripts/upgrade-behaviour-diff.sh $OLD_REF $NEW_REF --section annex    # ninguna línea «!»
+bash devops/scripts/upgrade-behaviour-diff.sh $OLD_REF $NEW_REF --section routes,headers,config,deps
 ```
 
-Si alguna cambia, la pieza afectada de §2 se adapta **en la misma rama del upgrade** y el
-gate G4 (cabeceras/URI) se repite en local. `hub-conn-fix.js` depende de la API de ssb-conn
-(`conn.forget/remember/connect/peers`) y del comportamiento de ssb-invite: si el upgrade
-cambia `ssb-conn` o `ssb-invite` en `src/server/package.json`, repetir el gate G3 en local
-(invite + `docker restart` + CONNECTED en el log del pub) antes de subir. Cambios típicos que hay que esperar de
-upstream: nombre del flag de bienvenida (→ el HUB publicaría un PM en el siguiente
-arranque), rutas nuevas bajo `/c/*` (→ paridad de tipos en la Sala 04), cabeceras nuevas
-del backend (→ duplicadas con Caddy hasta añadirlas a `proxy_hide_header`), claves
-nuevas en `oasis-config.json`.
+Los invariantes dicen que algo **sigue existiendo**; no dicen que se comporte igual. Para el HUB
+el comportamiento que importa sale de cuatro secciones del diff, y cada una tiene su consecuencia:
+
+| Sección | Qué mirar | Consecuencia |
+|---|---|---|
+| `routes` | GET nuevas bajo `/c/` | salen solas al clearnet (Caddy y nginx enrutan `/c/*`): decidir si se publican, darles `location` propia si no son HTML cacheable, paridad en la Sala 04 |
+| `headers` | cabeceras, cookies, `accept-language`, `ctx.protocol` en código que sirve `/c` | **regla D-O25** (§2): si la respuesta depende de algo que no está en la URL, la caché la sirve a quien no toca. Cabeceras de respuesta nuevas: a `proxy_hide_header` si Caddy ya las fija |
+| `config` | defaults de `oasis-config.json`, `server-config.json` | regenerar la copia del HUB (§5.2) |
+| `deps` | `ssb-conn`, `ssb-invite` | `hub-conn-fix.js` depende de su API: repetir el gate G3 en local (invite + `docker restart` + CONNECTED en el log del pub) |
+
+Si un invariante cae o una de esas líneas afecta, la pieza de §2 se adapta **en la misma rama
+del upgrade** y se repite el gate del visor (`upgrade-gates.sh --local hub --strict`, UPGRADE
+§3.4 U4). Cambios que hay que esperar de upstream: el nombre del flag de bienvenida (el HUB
+publicaría un PM en el siguiente arranque), rutas nuevas bajo `/c/*`, cabeceras nuevas del
+backend, claves nuevas en `oasis-config.json`, y cualquier detección «por visitante» (idioma,
+tema, dispositivo).
 
 **5.2 Ficheros derivados de upstream que se regeneran en cada upgrade.**
 
-- `pub/config/hub/oasis-config.json` **es una copia** de `src/configs/oasis-config.json`
-  con 6 claves fijadas (4 difieren del original en 1.0.8; si upstream cambia un default, la
-  cifra cambia, las claves no). Tras el overlay: copiar el nuevo y re-aplicar las 6; comprobar
-  que el diff son **solo** esas claves:
+- `pub/config/hub/oasis-config.json` **es una copia** de `src/configs/oasis-config.json` con unas
+  pocas claves fijadas (la lista vigente, en la fila «Visor» de §2). Tras el overlay: copiar el
+  nuevo, re-aplicar las claves fijadas y comprobar que el diff son **solo** esas claves:
   `diff <(node -e 'console.log(JSON.stringify(require("./src/configs/oasis-config.json"),null,1))') <(node -e 'console.log(JSON.stringify(require("./pub/config/hub/oasis-config.json"),null,1))')`.
+  Una clave que upstream retira debe desaparecer también de la copia: regenerar, no parchear.
 - `pub/config/hub/ssb-config` reemplaza **arrays enteros** de `src/configs/server-config.json`
   (`mergeDeep`): si upstream cambia `connections.incoming/outgoing`, replicar el cambio.
+- `pub/config/hub/nginx.conf.template`: lo que digan `routes` y `headers`. Se renderiza con
+  `envsubst` **al arrancar** `hub-cache`: tras cambiarla (in place) hay que **recrear** el
+  contenedor (`up -d --no-deps --force-recreate hub-cache`); `nginx -s reload` no la relee.
+  Antes, `nginx -t` de la plantilla renderizada en un contenedor desechable.
 - **Rotación de ciclo** (`UPGRADE-PROTOCOL.md` §5): `caps.shs` también vive en
   `pub/config/hub/ssb-config`. Añadirlo al lockstep. Cambiar el cap no rompe el follow
   (está en los logs), pero HUB y pub deben rotar juntos.
@@ -226,6 +248,15 @@ bash devops/scripts/hub-disk.sh prune-cache                # si el upgrade reind
 
 Mientras el HUB se recrea, `/c` sirve `STALE` desde nginx; el pub no depende del HUB.
 **Rollback** del upgrade con HUB: retag de la imagen vieja + `up -d --no-deps --no-build oasis-pub oasis-hub`.
+El rollback del HUB **publica** otro `oasisVersion` (pide GO); el del pub no publica nada.
+El orden completo con bots (pub → HUB → bots), los backups previos y las puertas de GO están en
+`UPGRADE-PROTOCOL.md` §4; las comprobaciones de este bloque se hacen allí con
+`upgrade-gates.sh --remote check` y `hub --strict`.
+
+**5.4 Si cambia la identidad del pub** (recuperación, `RECOVERY-PROTOCOL.md`): el HUB apunta
+al pub por clave en `conn.json`. Con el HUB parado, vaciar `conn.json` y `gossip.json` (la
+clave vieja en `gossip.json` haría que el nuevo invite respondiera `alreadyFederated`) y
+repetir el bootstrap del invite (§3 paso 3). El `secret` del HUB no cambia.
 
 **5.5 Hechos del ciclo 1.0.8→1.1.2 (2026-09-17).** Todos los greps de §5.1 ≥ 1 sobre el árbol
 nuevo; `ssb-*` en `src/server/package.json` sin cambios (G3 no se repitió); `oasis-config.json` y
@@ -249,11 +280,6 @@ Lo que sí cambió y cómo se adaptó:
   el detalle técnico de lock/corrupción solo se imprime con `--debug`/`OASIS_DEBUG`.
 - Overlay en Windows: con `core.autocrlf` los ficheros nuevos salen **CRLF** en el árbol de trabajo;
   `git diff` normaliza, pero un reemplazo literal con `\n` no casa. Detectar el EOL antes de editar.
-
-**5.4 Si cambia la identidad del pub** (recuperación, `RECOVERY-PROTOCOL.md`): el HUB apunta
-al pub por clave en `conn.json`. Con el HUB parado, vaciar `conn.json` y `gossip.json` (la
-clave vieja en `gossip.json` haría que el nuevo invite respondiera `alreadyFederated`) y
-repetir el bootstrap del invite (§3 paso 3). El `secret` del HUB no cambia.
 
 ## 6. Disco: mantener el tamaño del HUB
 
@@ -333,8 +359,9 @@ queda sin habitantes salvo que el pub siga directamente a gente con Clearnet). E
 ## 9. Realidad del VPS — leer antes de tocar
 
 - Layout vivo `/opt/oasis-scriptorium/OASIS_PUB` (pre-refactor, **sin git**); `.env.prod`
-  solo allí. `host.env` dice `…/pub` → exporta `REMOTE_REPO_DIR=/opt/oasis-scriptorium/OASIS_PUB`
-  antes de los scripts de `devops/` (nota en `UPGRADE-PROTOCOL.md` §0).
+  solo allí. `host.env` lleva ya esa ruta (el layout **medido**, no el canónico): los scripts de
+  `devops/` no necesitan ningún `export` previo. Qué ficheros del host se apartan del repo lo
+  dice `deploy-status.sh`, bloque «Deriva» (`UPGRADE-PROTOCOL.md` §0.3).
 - **Dentro de la imagen viva el árbol también es pre-refactor**: `ssb-admin.js` está en
   `/app/OASIS_PUB/tools/ssb-admin.js`, no en `/app/pub/tools/…` (MODULE_NOT_FOUND en el deploy
   del 2026-09-13). Es la ruta que usa el `scripts/whoami.sh` vivo. Cuando se migre el layout y se
