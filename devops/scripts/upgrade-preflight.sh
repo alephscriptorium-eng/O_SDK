@@ -7,14 +7,22 @@
 # excluye .git y el aviso es solo console.log). Este script lo reemplaza.
 #
 # Detecta y AVISA de:
-#   1) Drift de versión: local src/server/package.json vs oasis-upstream/master.
+#   1) Drift de versión: local src/server/package.json vs oasis-upstream/main, y
+#      de qué commit de upstream se parte (OLD_REF) para el diff de comportamiento
+#      (devops/scripts/upgrade-behaviour-diff.sh). La versión de partida es la
+#      DESPLEGADA (último registro del journal), no la de HEAD: en la rama de
+#      upgrade HEAD ya es la versión nueva. Se puede forzar con --from X.Y.Z.
 #   2) Drift de ciclo de red: caps.shs local vs el cap actual de la red, derivado
 #      en vivo del directorio https://oasis-project.pub/api/pubs.
 #   3) Presencia de nuestro pub en el directorio (cycle/shs/status) — distingue
 #      "atraso de cap/deploy" de "descubribilidad" (falta follow-back).
 #   4) Estado del árbol git.
 #
-# Salida: bloque "=== UPGRADE PREFLIGHT ===" con GO / N x WARN.
+# Uso: bash devops/scripts/upgrade-preflight.sh [--from X.Y.Z]
+#      (UPSTREAM_REMOTE / UPSTREAM_BRANCH por entorno; por defecto oasis-upstream/main)
+#
+# Salida: bloque "=== UPGRADE PREFLIGHT ===" con GO / N x WARN, y las líneas
+# `OLD_REF=<commit>` y `NEW_REF=<commit>` listas para copiar.
 # Exit 0 si GO, 1 si hay algún WARN (para poder gatear en CI/deploy).
 # =============================================================================
 set -uo pipefail
@@ -26,7 +34,18 @@ cd "$REPO_ROOT" || exit 2
 # shellcheck disable=SC1091
 source "$REPO_ROOT/devops/scripts/lib-host.sh"
 UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-oasis-upstream}"
-UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-master}"
+UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-main}"
+JOURNAL="${DEPLOY_LOG_PATH:-$REPO_ROOT/devops/logs/deploy-history.jsonl}"
+
+FROM_VER=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --from) FROM_VER="${2:-}"; shift ;;
+    --from=*) FROM_VER="${1#--from=}" ;;
+    -h|--help) sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  esac
+  shift
+done
 DIRECTORY_API="${DIRECTORY_API:-https://oasis-project.pub/api/pubs}"
 OUR_PUB_HOST="${OUR_PUB_HOST:-${PUB_HOST:-}}"
 
@@ -65,6 +84,40 @@ UP_VER="$(git show "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH:src/server/package.json" 2
 note "LOCAL=${LOCAL_VER:-?}  UPSTREAM=${UP_VER:-?}"
 if [ -n "$LOCAL_VER" ] && [ -n "$UP_VER" ] && [ "$LOCAL_VER" != "$UP_VER" ]; then
   warn "upstream por delante: $LOCAL_VER -> $UP_VER (rebuild desde el host; auto-update in-app deshabilitado)"
+fi
+
+# De qué commit de upstream se parte. Upstream no etiqueta las versiones de Oasis (solo las de
+# Android): el commit de una versión es el que se titula "Oasis release X.Y.Z".
+DEPLOYED_VER="$FROM_VER"
+if [ -z "$DEPLOYED_VER" ] && [ -f "$JOURNAL" ]; then
+  DEPLOYED_VER="$(tail -n 1 "$JOURNAL" | grep -o '"oasisVersion":"[^"]*"' | cut -d'"' -f4)"
+fi
+DEPLOYED_VER="${DEPLOYED_VER:-$LOCAL_VER}"
+note "DESPLEGADA=${DEPLOYED_VER:-?}  (journal o --from; mídela con deploy-status.sh, bloque «Piezas vivas»)"
+NEW_REF="$(git rev-parse --short "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" 2>/dev/null)"
+OLD_REF=""
+if [ -n "$DEPLOYED_VER" ]; then
+  esc="$(printf '%s' "$DEPLOYED_VER" | sed 's/\./\\./g')"
+  OLD_REF="$(git log --format=%h -1 --grep="release $esc\$" "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" 2>/dev/null)"
+fi
+if [ -n "$OLD_REF" ] && [ "$(git show "$OLD_REF:src/server/package.json" 2>/dev/null | pkg_version)" = "$DEPLOYED_VER" ]; then
+  echo "OLD_REF=$OLD_REF"
+  echo "NEW_REF=$NEW_REF"
+  # Riesgo por rol. El pub (modo server) no ejecuta «src/server»: ejecuta el CIERRE de requires de
+  # SSB_server.js, que sale de esa carpeta (banking_model.js, state-manager…). Los backends (HUB,
+  # bots) y el cliente pueden cargar todo src/.
+  n_all="$(git diff --name-only "$OLD_REF" "$NEW_REF" -- src ':!src/client/assets' | wc -l | tr -d ' ')"
+  closure="$(node "$REPO_ROOT/devops/scripts/upgrade-closure.js" "$NEW_REF" src/server/SSB_server.js 2>/dev/null)"
+  if [ -n "$closure" ]; then
+    changed="$(git diff --name-only "$OLD_REF" "$NEW_REF" -- src | grep -Fx -f <(printf '%s\n' "$closure") | grep -v 'package-lock.json')"
+    note "Código que cambia por rol: pub en modo server = $(printf '%s' "$changed" | grep -c .) de los $(printf '%s\n' "$closure" | grep -c .) ficheros que carga · backends y cliente = $n_all"
+    printf '%s\n' "$changed" | grep . | sed 's/^/      pub: /'
+  else
+    warn "no pude calcular el cierre de requires del modo server (¿node?): cuenta solo src/server = $(git diff --name-only "$OLD_REF" "$NEW_REF" -- src/server | wc -l | tr -d ' ')"
+  fi
+  note "Siguiente: bash devops/scripts/upgrade-behaviour-diff.sh $OLD_REF $NEW_REF"
+else
+  warn "no encuentro en $UPSTREAM_REMOTE/$UPSTREAM_BRANCH el commit de la versión ${DEPLOYED_VER:-?} (prueba --from X.Y.Z)"
 fi
 
 # --- 3) drift de ciclo + presencia en el directorio --------------------------

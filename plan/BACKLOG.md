@@ -628,10 +628,11 @@ Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertur
 | Cuándo | Qué | Dónde está el cómo |
 |---|---|---|
 | **≥ 2026-10-18** | **El bot `ecoin.escrivivir.co` cumple 30 días de feed**: decidir si reclama la RBU que otros pubs le asignan (en 2026-09 La Plaza le asignó ~50 ECO). Es un `ubiClaim` del bot, irreversible: ventana no pública + GUI del bot, con GO | ECOIN §9 · HUB §12 (ventana) |
-| 2026-10-01 | Época nueva: `hub-wallet.sh status` — la de octubre se abre con el saldo real (la de septiembre quedó fijada con pool 0) | ECOIN §9 |
+| ~~2026-10-01~~ ✅ | Época nueva: `hub-wallet.sh status` — la de octubre se abre con el saldo real (la de septiembre quedó fijada con pool 0). **Medido el 2026-10-01**: saldo 0 → pool 0; épocas abiertas `2026-09,2026-10`; `pubAvailability` 24, `ubiAllocation` 16 | ECOIN §9 |
+| siguiente sesión | **Qué son los cifrados propios** que el control viejo no veía: 4 en el feed del HUB, 1 en el del bot, 1 en el del pub (medidos el 2026-10-01 con `upgrade-gates.sh --remote snapshot`). Solo se pueden leer desde cada nodo. Hipótesis: PM de bienvenida o avisos de banca a sí mismo. No se pueden retirar; hay que saber qué los causó para que no se repita | HUB §1 |
 | al llegar la **dote** | `backup-ecoin.sh` inmediato; comprobar pool y primer pago; avisar a upstream de que estamos en la lista | ECOIN §8, §9 |
 | semanal | `backup-ecoin.sh` (cada anuncio usa una dirección nueva del keypool) + `hub-wallet.sh status` + `hub-disk.sh status --json` | ECOIN §9 · HUB §6 |
-| 2026-09-20 | Memoria de HUB y bot-2 en 1.1.4 con el motor encendido; si va bien, retirar en el VPS la imagen `:1.1.2`, `src.old` y `/srv/oasis/src-1.1.2.tgz` | reporte WP-O106 |
+| 2026-09-20 → **WP-O114** | Memoria de HUB y bot-2 en 1.1.4 con el motor encendido; si va bien, retirar en el VPS la imagen `:1.1.2`, `src.old` y `/srv/oasis/src-1.1.2.tgz`. **Sin hacer a 2026-10-01** (`deploy-status.sh`, restos de rollback: `src.old`, `:1.1.2` y los tgz de 0.9.6, 1.0.8 y 1.1.2): pasa al paso 2 de WP-O114, porque `src.old` rompe el `mv` del deploy | reporte WP-O106 · UPGRADE §4 |
 | cuanto antes | **Backups de hoy a almacenamiento cifrado fuera de la máquina**: `devops/backups/{oasis-pub,ecoin,client,client-wallet}/2026091*` (llevan `secret` y `wallet.dat` sin cifrar) | AGENTES §2.7 |
 | custodio, en el navegador | Casilla «Torrents» en clearnet de su perfil → `/c/torrents/…` en el HUB; opcional «wallet» visible para recibir pagos desde la UI. Cada una es un `about` | TEATRO-P2P §4.4 |
 | custodio | Comprobar en Banking el cobro del `ubiClaim` de 2026-09 (dirigido a La Plaza) | CLIENT §8.7 |
@@ -639,6 +640,44 @@ Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertur
 | siguiente sesión | WP-O109: prueba de agente en frío del protocolo; `limit_req` en `/c`; docs de upstream | AGENTES, D-O23 |
 | horizonte | Carteras en los 2 clientes Android del custodio: protocolo propio (la app trae su cartera); en 1.1.4 abrir la app con cartera publica la dirección | CLIENT §8.2 |
 | a upstream | Hallazgos de ECOIN §12 (suelo de 1 ECO sin fondos y época fijada, `isLoopbackRequest` tras proxy/contenedor, alta no idempotente…) | ECOIN §12 |
+
+| **WP-O112** | **P1** | Protocolo de upgrade: orquestador por roles, diff de comportamiento y gates de publicación |
+
+**Estado** · ✅ 2026-10-01 en `main` (`plan/REPORTES/WP-O112-protocolo-upgrade.md`). Asiento D-O25.
+
+**BRIEF** · Al ejecutar el protocolo contra 1.1.10 se vio que comprobaba lo barato (los guards de
+`src/`) y no lo caro (que Oasis se comporte igual y qué publica cada nodo al subir). `UPGRADE-PROTOCOL.md`
+pasa a orquestar el ciclo (roles, inventario de piezas, diff de comportamiento con disposición
+obligatoria, derivados fuera de `src/`, gates U0-U7, deploy pub → HUB → bot con GO); HUB §5 y ECOIN §5
+quedan como anexos. Herramientas: `upgrade-behaviour-diff.sh` + `upgrade-invariants.d/`,
+`upgrade-gates.sh`, `lib-node.sh`, `deploy-status.sh` con piezas vivas y deriva, preflight con
+`OLD_REF`, `host.env` con el layout medido. Aceptación por respuesta conocida (ciclos 1.1.2→1.1.4 y
+1.1.4→1.1.10). **Fuera de alcance**: el upgrade en sí (WP-O113, WP-O114).
+Dep: —. Relación: WP-O109 (agente en frío), D-O23.
+
+| **WP-O113** | **P1** | Upgrade de Oasis 1.1.4 → 1.1.10 en local, con el protocolo nuevo |
+
+**Estado** · 🟡 en curso. Rama `upgrade/oasis-1.1.10` (overlay y guards hechos: `cc21d0d`, `b6b1828`).
+
+**BRIEF** · Ejecutar `UPGRADE-PROTOCOL.md` de punta a punta como un agente en frío; cada tropiezo se
+corrige en el protocolo. Adaptaciones del ciclo: D-O25 en `nginx.conf.template` (sin `Accept-Language`
+ni `Cookie` hacia el HUB; `location` de sitemap y RSS con `https`), config del HUB regenerada (sin
+`walletPub`, con `language`), `test-ai-service.sh` (el servicio de IA exige token), Sala 04, `ECOIN §3`
+pasos 7-8 tras medir en el gate cuántos `wallet` publica un bootstrap en 1.1.10, fila «desconectar
+cartera» en `AGENTES §3`. Gates U0-U7 con identidades desechables. Reporte con las disposiciones del
+diff de comportamiento (`--check` en verde).
+Dep: WP-O112.
+
+| **WP-O114** | **P1** | Aplicación en el VPS: Oasis 1.1.10 en pub, HUB y bot de cartera |
+
+**Estado** · ⬜ pendiente de WP-O113 y del **GO del custodio** en cada puerta (`UPGRADE-PROTOCOL.md` §4).
+
+**BRIEF** · Secuencia de UPGRADE §4 con sus cuatro puertas. Incluye retirar el rollback de 1.1.2 que
+quedó de WP-O106 (`src.old`, `:1.1.2`, tres tgz), comprobar si `.env.prod` y `src.old` están entrando
+en la imagen por el `.dockerignore` pre-refactor, y el bot con el motor encendido (`pause` → medir →
+`on`). Después, y con otro GO: cliente del custodio. Línea base ya medida (2026-10-01): tres nodos en
+1.1.4, `sequence` pub 15 · HUB 11 · bot 50, época 2026-10 abierta.
+Dep: WP-O113.
 
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
@@ -1182,6 +1221,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-18: +WP-O100 P1 en L4 — Teatro: puerta semántica, asiento D-O17.)
 (2026-09-18: +WP-O101 P2 en L4 — Roadmap: dosieres de trabajo en docs/ROADMAP, asiento D-O18.)
 (2026-09-19: +WP-O110 P2 en L4 — Teatro P2P con cartelera, planificado; dosier en docs/ROADMAP/p2p, asiento D-O24.)
+(2026-10-01: +WP-O112 P1, +WP-O113 P1, +WP-O114 P1 en L4 — protocolo de upgrade y ciclo 1.1.4 → 1.1.10, asiento D-O25.)
 (2026-09-18: +WP-O102 P1 en L5 — hub-wallet del pub (ecoind + wallet-bot-2), +WP-O103 P1 en L4 — ECOin en el cliente, asiento D-O19.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
