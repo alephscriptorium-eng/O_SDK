@@ -34,12 +34,13 @@ tanto un upgrade le cambia cosas distintas:
 
 | Rol | `command` | Qué código de Oasis ejecuta | Qué arriesga en un upgrade |
 |---|---|---|---|
-| **pub** | `server` | solo `src/server/` (sbot) | poco: dependencias `ssb-*`, `ssb_config.js`. Pero es el único cuyo reinicio se nota en la red |
+| **pub** | `server` | el sbot: `src/server/SSB_server.js` **y lo que carga** (en 1.1.10, 15 ficheros: también `banking_model.js`, `state-manager.js`, `typed_log.js`) | dependencias `ssb-*`, `ssb_config.js`, y lo que el sbot hace solo al arrancar (anunciar versión; publicar dirección si tuviera cartera a mano). Es el único cuyo reinicio se nota en la red |
 | **nodo de soporte** (HUB, bots) | `backend` | todo `src/`: sbot embebido + `backend.js` con identidad propia y, en un bot de cartera, dinero | todo lo que el backend haga **solo** al arrancar o por temporizador, y todo lo que publique |
 | **cliente** | `full` | todo `src/` + GUI con una persona delante + IA | lo anterior, más cada botón nuevo que publique |
 
-`upgrade-preflight.sh` (§1) dice cuántos ficheros cambian para cada rol. En 1.1.4→1.1.10: pub 3,
-backends y cliente 87.
+`upgrade-preflight.sh` (§1) dice qué ficheros cambian para cada rol. Para el pub no cuenta una
+carpeta sino el **cierre de requires** de `SSB_server.js` (`devops/scripts/upgrade-closure.js`): en
+1.1.4→1.1.10 cambian 6 de los 15 ficheros que carga el pub, y 73 para backends y cliente.
 
 ### 0.2 Inventario de piezas
 
@@ -48,14 +49,14 @@ fila**: una pieza sin fila es una pieza que nadie mira al subir.
 
 | Pieza | Modo · código de Oasis | Contrato con upstream (sin API estable) | Cómo se comprueba | Anexo | Publica al subir |
 |---|---|---|---|---|---|
-| pub | `server` · `src/server/` | `ssb_config.js` (guard), dependencias `ssb-*`, plugins | `check`, invite, directorio | este | **nada** |
+| pub | `server` · cierre de `SSB_server.js` | `ssb_config.js` (guard), dependencias `ssb-*`, plugins; `ensureSelfAddressPublished` a los 5 s (inerte sin cartera alcanzable) | `check`, invite, directorio | este | `oasisVersion` +1 |
 | HUB clearnet | `backend --public` | rutas `/c/*`, cabeceras, flag de primer contacto, getter del sbot, prefijo `OASIS_` | `annex` (hub) + gate `hub` | `HUB-PROTOCOL.md` §5 | `oasisVersion` +1 |
 | bot de cartera | `backend`, `pub:true` si el motor está encendido | `banking_model.js`, `state-manager.js`, interruptor `isPubNode`, rutas de banca | `annex` (ecoin) + `check` + `worst` | `ECOIN-PROTOCOL.md` §5 | `oasisVersion` +1; con el motor encendido, `pubAvailability` +0..1 |
 | caché del HUB | nginx | qué rutas hay, qué cabeceras manda el backend, **de qué depende la respuesta además de la URL** | gate `hub` | `HUB-PROTOCOL.md` §2 | — |
 | edge | Caddy (compartido con otros vhosts) | qué prefijos enruta al HUB | sin tocar salvo ruta nueva fuera de `/c/*` | `HUB-PROTOCOL.md` §2 | — |
 | panel-api y landing | `docker exec` al pub | ruta de `ssb-admin.js` y de `package.json` **dentro de la imagen** | `/public/status` da la versión nueva | — | — |
 | `pub/tools/*.js` | dentro de la imagen o por stdin | `ssb-client`, `ssb_config`, API de `ssb-conn` e `ssb-invite` | gate del invite si cambian `ssb-*` (§3.4 U6) | `HUB-PROTOCOL.md` §3 | `invite-accept` (solo si se usa) |
-| maint-ui | backend sobre el `.ssb` **del pub** | — | **prohibida durante el ciclo**: publicaría `oasisVersion` con la identidad del pub | — | `oasisVersion` del pub |
+| maint-ui | backend sobre el `.ssb` **del pub** | — | **prohibida durante el ciclo**: todo lo que un backend publica solo lo publicaría con la identidad del pub | — | lo que publique un backend |
 | ecoind | imagen propia | RPC | no se recrea en un upgrade de Oasis | `ECOIN-PROTOCOL.md` | — |
 | cliente | `full` + entrypoint (`persist_client_state`, `wire_wallet_config`, `setup_oasis_config`) | forma de `oasis-config.json`, loopback, contrato de IA | drill del cliente | `../CLIENT-PROTOCOL.md` §4-§5 | `oasisVersion` +1; `wallet` si hay cartera cableada sin publicar |
 | parches de `node_modules` | `apply_node_patches` del entrypoint (fuente: `scripts/patch-node-modules.js`) | versiones de `ssb-ref`, `ssb-blobs`, `multiserver` | log de arranque sin parches no-op | §3.3 | — |
@@ -82,13 +83,15 @@ tags de imagen) ocupan disco y, si existe `src.old`, rompen el `mv` de §4.
 
 ### 0.4 Un upgrade publica, y un rollback también
 
-Cada **backend** emite un mensaje `oasisVersion` al arrancar en una versión distinta de la última
-que anunció. Es la única publicación esperada de un upgrade, y es irreversible como cualquier
-mensaje SSB (`../AGENTES.md` §3). Consecuencias:
+Cada **nodo** emite un mensaje `oasisVersion` al arrancar en una versión distinta de la última que
+anunció. Lo hace el propio sbot (`SSB_server.js`, a los 7 s) y, en los backends, también
+`backend.js`: vale para el pub en modo `server`, para los nodos de soporte y para el cliente. Es la
+única publicación esperada de un upgrade, y es irreversible como cualquier mensaje SSB
+(`../AGENTES.md` §3). Consecuencias:
 
-- El pub (modo `server`) no publica nada al subir. Su rollback es gratis.
-- Cada nodo de soporte y cada cliente publica **uno**. Volver atrás publica **otro**, y volver a
-  subir, otro más. El rollback de un backend pide GO.
+- Cada nodo publica **uno** al subir. Volver atrás publica **otro**, y volver a subir, otro más.
+  **Ningún rollback es gratis**: el de cualquier nodo pide GO.
+- Recrear un nodo en la **misma** versión no publica nada.
 - Cualquier otra cosa que aparezca en el feed de un nodo tras recrearlo es una **desviación**:
   parada dura. Para eso está `upgrade-gates.sh check` (§3.4).
 
@@ -168,7 +171,7 @@ Saca, de forma mecánica, los **candidatos** a cambio de comportamiento. No da v
 
 | Sección | Qué busca | Por qué importa |
 |---|---|---|
-| `roles`, `files` | qué código cambia para cada rol; ficheros que nacen o mueren | acota el riesgo; un borrado sin `git rm` deja restos |
+| `roles`, `files` | qué código cambia para cada rol (para el pub, el cierre de requires de `SSB_server.js`); ficheros que nacen o mueren | acota el riesgo; un borrado sin `git rm` deja restos |
 | `routes` | rutas HTTP añadidas o quitadas | una GET bajo `/c/` sale al clearnet; una POST es una acción nueva de la GUI |
 | `loopback` | rutas tras `isLoopbackRequest` | tocan dinero o identidad |
 | `publish` | líneas que publican en SSB | cada `+` es una publicación posible que antes no existía |
@@ -252,11 +255,12 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 **El delta declarado (U3).** Lo normal:
 
 ```
---expect 'pub:=0 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1'
+--expect 'pub:oasisVersion=+1 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1'
 ```
 
-- `pub:=0` siempre. Si el pub publica algo al recrearse, algo arrancó un backend sobre su `.ssb`.
-- `oasisVersion=+1` por backend. `+0` significa que no subió de versión (imagen vieja).
+- `oasisVersion=+1` por nodo, **también el pub**. `+0` significa que no subió de versión (imagen
+  vieja, o un estado que ya había pasado por la nueva: `restore` antes de repetir).
+- En el pub, cualquier otra cosa es una desviación: algo arrancó un backend sobre su `.ssb`.
 - `pubAvailability=+0..1` solo con el motor encendido: al arrancar relee su último anuncio y vuelve
   a anunciar si pasaron más de 12 h o cambió el saldo. Cada anuncio gasta una dirección del
   keypool: `backup-ecoin.sh` antes y después (`ECOIN-PROTOCOL.md` §9).
@@ -293,7 +297,7 @@ R="bash devops/scripts/upgrade-gates.sh --remote"                     # en la m�
 | 4 | **Subir `src/`** | ver abajo | |
 | 5 | **Lo demás que viaja** (§3.2) que sea inocuo en la versión vieja: se sube y se aplica **ahora**, con los nodos todavía en la versión vieja, y se comprueba | p. ej. plantilla nginx: in place · `nginx -t` en un contenedor desechable · `$C up -d --no-deps --force-recreate hub-cache` · `$R hub` | |
 | 6 | **Build y humo** | `$C build oasis-pub` (el pub sigue sirviendo) · contenedor efímero con la imagen nueva, sin red y con un `.ssb` temporal, en modo `server` y en modo `backend`: arranca y no escupe errores · `df -h /` | |
-| 7 | **Pub** | `$C up -d --no-deps oasis-pub` · `$R check pre --expect 'pub:=0'` · invite · `/public/status` | **GO-2** (el pub se reinicia) |
+| 7 | **Pub** | `$C up -d --no-deps oasis-pub` · `$R check pre --expect 'pub:oasisVersion=+1'` · invite · `/public/status` | **GO-2** (el pub se reinicia y publica `oasisVersion`) |
 | 8 | **HUB** | sus configs in place · `$C up -d --no-deps oasis-hub` · `$R check …` · `$R hub --strict` · `hub-disk.sh prune-cache` | **GO-3** (publica `oasisVersion`) |
 | 9 | **Bot de cartera** | motor encendido: `hub-wallet.sh pause` (lo recrea en la versión nueva con el motor **apagado**) · `$R check …` (misma dirección, `wallet` sin cambios) · y entonces `hub-wallet.sh on --yes` · `$R check …` · `backup-ecoin.sh`. Motor apagado: `$C up -d --no-deps oasis-wallet-bot` · `$R check …` | **GO-4a** (`oasisVersion`) · **GO-4b** (encender: `pubAvailability`) |
 | 10 | **Cierre** | `$R snapshot post` · `deploy-status.sh` · `deploy-log.sh` (abajo) · ficha de instancia | |
@@ -370,7 +374,7 @@ compose up -d oasis-client`. Detalle, importación de identidad y sbot puro: `..
 
 **Rollback.**
 
-- **Pub** (< 2 min, no publica): `docker tag <imagen>:<ver-vieja> <imagen>:latest` + `$C up -d
+- **Pub** (< 2 min; publica otro `oasisVersion`: **GO**): `docker tag <imagen>:<ver-vieja> <imagen>:latest` + `$C up -d
   --no-deps --no-build oasis-pub`; `src/` desde `src.old-<ver-vieja>` o el tgz. `.ssb` intacto.
 - **Nodos de soporte** (publica otro `oasisVersion`: **GO**): mismo retag + `up -d --no-deps
   --no-build` del nodo. El estado que la versión nueva haya mudado (`state` en §3.1) no vuelve

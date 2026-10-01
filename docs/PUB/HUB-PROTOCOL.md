@@ -248,7 +248,7 @@ bash devops/scripts/hub-disk.sh prune-cache                # si el upgrade reind
 
 Mientras el HUB se recrea, `/c` sirve `STALE` desde nginx; el pub no depende del HUB.
 **Rollback** del upgrade con HUB: retag de la imagen vieja + `up -d --no-deps --no-build oasis-pub oasis-hub`.
-El rollback del HUB **publica** otro `oasisVersion` (pide GO); el del pub no publica nada.
+El rollback **publica** otro `oasisVersion` por nodo, también el del pub (lo anuncia el propio sbot): pide GO.
 El orden completo con bots (pub → HUB → bots), los backups previos y las puertas de GO están en
 `UPGRADE-PROTOCOL.md` §4; las comprobaciones de este bloque se hacen allí con
 `upgrade-gates.sh --remote check` y `hub --strict`.

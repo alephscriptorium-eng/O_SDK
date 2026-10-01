@@ -15,7 +15,8 @@
 #   OLD/NEW: commits de upstream (los da upgrade-preflight.sh: OLD_REF / NEW_REF).
 #
 # Secciones:
-#   roles     ficheros que cambian por rol (src/server = pub en modo server; el resto = backends y cliente)
+#   roles     ficheros que cambian por rol (pub en modo server = cierre de requires de SSB_server.js,
+#             calculado con upgrade-closure.js; backends y cliente = todo src/)
 #   files     ficheros añadidos o borrados en src/
 #   routes    rutas HTTP añadidas o quitadas en backend.js
 #   loopback  rutas protegidas por isLoopbackRequest añadidas o quitadas
@@ -97,9 +98,12 @@ loopback_of() { # rutas cuya primera línea de cuerpo comprueba isLoopbackReques
 for s in $SECTIONS; do
   case "$s" in
     roles)
-      head_of roles "qué código cambia para cada rol. El pub (modo server) solo ejecuta src/server; HUB, bots y cliente, todo src/"
-      emit roles = "src/server" "pub: $(git diff --name-only "$OLD" "$NEW" -- src/server | wc -l | tr -d ' ') ficheros"
-      git diff --name-only "$OLD" "$NEW" -- src/server | grep -v 'package-lock.json' | while read -r f; do emit roles + "$f" "cambia código que ejecuta el pub"; done
+      head_of roles "qué código cambia para cada rol. El pub (modo server) carga el cierre de requires de SSB_server.js, que sale de src/server; HUB, bots y cliente, todo src/"
+      closure="$(node "$REPO_ROOT/devops/scripts/upgrade-closure.js" "$NEW" src/server/SSB_server.js 2>/dev/null)"
+      if [ -z "$closure" ]; then closure="$(git ls-tree -r --name-only "$NEW" -- src/server)"; emit roles '!' "src/server/SSB_server.js" "no pude calcular el cierre de requires (¿node?): solo cuento src/server"; fi
+      emit roles = "src/server/SSB_server.js" "pub (modo server): carga $(printf '%s\n' "$closure" | grep -c .) ficheros"
+      git diff --name-only "$OLD" "$NEW" -- src | grep -Fx -f <(printf '%s\n' "$closure") | grep -v 'package-lock.json' \
+        | while read -r f; do emit roles + "$f" "cambia código que carga el pub en modo server"; done
       for d in backend models views client AI configs; do
         emit roles = "src/$d" "backends y cliente: $(git diff --name-only "$OLD" "$NEW" -- "src/$d" ':!src/client/assets' | wc -l | tr -d ' ') ficheros"
       done ;;

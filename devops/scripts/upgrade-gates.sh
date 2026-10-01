@@ -21,8 +21,9 @@
 #   check <tag> [--expect '<esperado>']
 #                       Foto nueva y comparación con <tag>. Por nodo: mismo feed; Δsequence == suma de
 #                       Δ por tipo (si no cuadra, la medida no vale); y ese delta es el esperado.
-#                       <esperado>: 'pub:=0 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1'
-#                       Lo que no se nombra debe ser 0. Sin --expect, todo debe ser 0.
+#                       <esperado>: 'pub:oasisVersion=+1 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1'
+#                       (todo nodo, también el pub en modo server, anuncia su versión al cambiarla;
+#                       `nodo:=0` declara «nada»). Lo que no se nombra debe ser 0. Sin --expect, todo 0.
 #                       Además: errores en los logs desde la foto (EROFS, ReferenceError…).
 #   hub [--strict]      Matriz del visor clearnet por delante de la caché: 200, MISS→HIT, mismo /c con
 #                       distinto Accept-Language y con cookies (D-O25), ?lang=, cruce de idiomas con
