@@ -1,8 +1,9 @@
 # Ficha de instancia · Scriptorium (`pub.escrivivir.co`)
 
 > **Qué es esto.** Los protocolos de o-sdk son genéricos; aquí están los **datos de un despliegue
-> concreto**, el de la casa. Es a la vez registro vivo y **plantilla**: quien monte otro pub copia
-> este fichero como `INSTANCIA-<la-suya>.md`, conserva los epígrafes y pone sus valores y su lore.
+> concreto**, el de la casa: la instancia de demostración que ejerce el método. Es registro vivo y
+> ejemplo relleno. Quien monte otro pub no necesita nada de ella: rellena la
+> [ficha vacía](./INSTANCIA-PLANTILLA.md) con sus valores y su lore.
 >
 > **Qué no va aquí.** Secretos (nada de `.env.prod`, credenciales RPC, invites, `secret`) ni datos que
 > cambian solos (versión desplegada, memoria, disco): esos **se miden** con
@@ -44,7 +45,8 @@ nombre puede cambiar.
 | 2 | `ecoin.escrivivir.co` | ecoin (cartera) · scriptorium | hub-wallet: cartera ECOin del pub, custodia la dote y reparte la RBU; **sin ruta pública** | `oasis-pub-wallet-bot` + `oasis-pub-ecoin` · `/srv/oasis/oasis-wallet-bot`, `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
-Oasis **1.1.4** en pub, HUB y bot-2 desde el 2026-09-19 (WP-O106). Motor de RBU: **encendido**
+Oasis **1.1.10** en pub, HUB y bot-2 desde el 2026-10-01 (WP-O114; antes 1.1.4, WP-O106). La versión
+viva se mide con `deploy-status.sh`. Motor de RBU: **encendido**
 desde el 2026-09-19 17:09 UTC (WP-O107; `hub-wallet.sh status`): la casa sale en la lista de pubs de Banking,
 sin fondos (✗, pool 0) hasta la dote. Época `2026-09` fijada con pool 0.
 
