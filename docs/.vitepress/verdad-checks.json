@@ -1,0 +1,35 @@
+[
+  {
+    "patron": "data-vivo=\"oasisVersion\">\\d+\\.\\d+\\.\\d+<",
+    "descripcion": "la versión de Oasis sale inyectada desde src/server/package.json (componente Vivo)"
+  },
+  {
+    "patron": "data-vivo=\"[^\"]+\">(undefined)?<",
+    "noDebeAparecer": true,
+    "descripcion": "un dato vivo ha salido vacío: revisar themeConfig.vivo en docs/.vitepress/config.mjs"
+  },
+  {
+    "patron": "Fork dockerizado de Oasis \\d",
+    "noDebeAparecer": true,
+    "descripcion": "la versión de Oasis está escrita a mano en la portada (BASE-1 §6: versiones paramétricas)"
+  },
+  {
+    "patron": "faltan ~7 releases",
+    "noDebeAparecer": true,
+    "descripcion": "ha vuelto el texto viejo del banner"
+  },
+  {
+    "patron": "data-estado=\"(probado|ejercido)\" data-prueba(=\"\")?>",
+    "noDebeAparecer": true,
+    "descripcion": "una puerta dice «probado» o «ejercido» sin citar su reporte (frontmatter `prueba` en docs/roles/*.md)"
+  },
+  {
+    "patron": "data-estado=\"sin-estado\"",
+    "noDebeAparecer": true,
+    "descripcion": "un Sello apunta a un encargo que no existe en el frontmatter de su puerta"
+  },
+  {
+    "patron": "class=\"zine-puerta\"",
+    "descripcion": "la portada y /roles/ pintan las puertas (el cargador de docs/roles/*.md funciona)"
+  }
+]

@@ -6,16 +6,11 @@
 > entorno scriptorium viven en `pub/` (proyecto `oasis-pub-scriptorium`) y **no comparten** puertos,
 > nombres, redes ni directorios de `volumes-dev/` con el cliente (ver §0).
 
-> **Estado · ACTIVO 2026-09-17 13:37 UTC** (WP-O98). Oasis **1.1.2**, feed
-> `@tMJzSfcZSNCsFRF3pl3rMoFDatz6VjDCjQ8/TpjYIRY=.ed25519` («Alephillo»), importado desde el
-> cliente 0.8.8 de `BlockchainComPort\volumes-dev\ssb-data` (seq 44 al importar; 45 = `oasisVersion`
-> del sbot puro; 46 = `karmaScore` de la GUI; `seq_pub` = 46; `Verification`: forks 0). Manifiesto
-> `volumes-dev/ssb-data/.import-20260917-153020.txt`; backup `devops/backups/client/20260917-153020/`.
-> Blobs del origen descartados (todos dañados por NUL): 4 propios pendientes de la red. Reporte
-> `plan/REPORTES/WP-O98-cliente-fresco-identidad.md`. Instalación antigua **retirada** el mismo día (§7: contenedor, imagen, 6 volúmenes y 2 redes); el directorio físico queda como backup frío.
-
-> **ECOin en el cliente · implementado en rama, drill pendiente** (WP-O103, 2026-09-18): dirección o
-> cartera propia, independiente del VPS. Procedimiento y avisos en §8.
+> **Estado.** El protocolo se ha ejercido de punta a punta: alta e importación de una identidad
+> existente (WP-O98, 2026-09-17), cartera (WP-O103, WP-O108) y subida a 1.1.10 en el ensayo con
+> identidad desechable (WP-O113). Los datos de esas ejecuciones —feed, secuencias, rutas, copias—
+> están en sus reportes (`plan/REPORTES/`), no aquí. Qué se puede encargar hoy a un agente y con
+> qué garantías: puerta [Cliente Oasis](./roles/cliente.md).
 
 Checklist operativo para **dar de alta un cliente fresco, traer una identidad SSB existente sin
 bifurcar su feed, sincronizarlo con el pub, subirlo de versión, verificarlo y volver atrás**.

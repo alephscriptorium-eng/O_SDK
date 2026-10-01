@@ -320,4 +320,4 @@ ruta de instalación. Para preparar un PR upstream habría que consolidarlas.
 - Reparto **zeus vs o-sdk**: qué queda aquí (rol pub, edge, sidecar SSB) y qué
   sube al pack (Ciudad, rooms, node-red contribs, registry).
 - Nombre definitivo del scope (`@zeus` declarado y sin usar; `z-sdk` inexistente).
-- Destino de `docs/public/legacy.html` (congelar o migrar; hoy viola ceguera).
+- ~~Destino de `docs/public/legacy.html`~~ → resuelto 2026-10-01 (D-O26): retirada de lo publicado y archivada en `ARCHIVO/portal/`.

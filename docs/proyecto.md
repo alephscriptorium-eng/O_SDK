@@ -13,8 +13,9 @@ portal — aquí va el **flujo**, no las direcciones duplicadas.
    se instalan desde el **registry privado** y se materializan a
    `.claude/skills/` con `npm run skills:sync` — espejo auditable, fuente de
    verdad en `package-lock`.
-3. **CI.** GitHub Actions construye este portal de docs (VitePress) y lo publica
-   en Pages en cada push a `main` que toque `docs/**`.
+3. **CI.** GitHub Actions construye este portal de docs (VitePress) en cada push
+   que toque `docs/**` o la versión de Oasis, y lo publica en Pages cuando el
+   push es a `main`.
 4. **Pages.** Este sitio, servido en `o-sdk.escrivivir.co` desde la propia forja.
 
 ## Roles de despliegue (misma imagen, dos modos)
@@ -27,6 +28,8 @@ portal — aquí va el **flujo**, no las direcciones duplicadas.
 El invariante en ambos: **preservar el `.ssb`** (la clave `secret` es la
 identidad). Todo lo demás — índices, blobs, log — es derivable y se
 re-replica desde la red.
+
+Quién llega a cada rol y qué le encarga a su agente: **[¿Quién llega?](/roles/)**.
 
 ## Manuales operativos
 
@@ -49,10 +52,22 @@ re-replica desde la red.
   identidad, upgrade y cartera ECOin.
 - **Teatro**: **[obra](/PUB/TEATRO-PROTOCOL)** ·
   **[curaduría](/PUB/TEATRO-CURADURIA-PROTOCOL)** ·
-  **[sidecar de RRSS](/PUB/RRSS-SIDECAR-PROTOCOL)**.
+  **[sidecar de RRSS](/PUB/RRSS-SIDECAR-PROTOCOL)** ·
+  **[P2P](/PUB/TEATRO-P2P-PROTOCOL)**.
+
+## Contribuir
+
+El trabajo va por paquetes pequeños, una rama por paquete y una pieza por
+commit; lo que toca un servidor vivo o publica algo se ensaya antes en local con
+una identidad desechable. El método está en `plan/PRACTICAS.md` y las decisiones
+en `plan/DECISIONES.md`, en el repo. La prueba de que un protocolo sirve es que
+un agente sin contexto lo complete: si quieres ayudar, coge una
+[puerta](/roles/) que esté «en obras» o prueba en frío una ya ejercida.
 
 ## Verificación
 
-El portal se construye con `ignoreDeadLinks: false` y pasa el *gate* de enlaces
-(`site-web/scripts/verificar-sitio.mjs`) sobre el `dist/` antes del deploy:
-enlaces internos y anclas deben resolver. Nada se publica roto.
+El portal se construye con `ignoreDeadLinks: false` y pasa un *gate* sobre el
+`dist/` antes del deploy (`npm run docs:verificar`): enlaces internos y anclas
+deben resolver; la versión de Oasis sale leída del sistema, no escrita a mano;
+ninguna puerta dice «probado» o «ejercido» sin citar su reporte; y las páginas
+de rol no nombran a la instancia de demostración. Nada se publica roto.

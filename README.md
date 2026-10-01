@@ -8,7 +8,7 @@
 Tu nodo, tu identidad. Sin nube, sin cuentas, sin servidor central.
 
 [![web](https://img.shields.io/badge/web-o--sdk.escrivivir.co-111?style=flat-square)](https://o-sdk.escrivivir.co)
-[![oasis](https://img.shields.io/badge/oasis-0.9.6-111?style=flat-square)](https://solarnethub.com/)
+[![oasis](https://img.shields.io/github/package-json/v/alephscriptorium-eng/O_SDK?filename=src%2Fserver%2Fpackage.json&label=oasis&color=111&style=flat-square)](https://solarnethub.com/)
 [![docker](https://img.shields.io/badge/docker-compose-111?style=flat-square&logo=docker&logoColor=white)](#-quickstart)
 [![SSB](https://img.shields.io/badge/protocol-SSB-111?style=flat-square)](https://scuttlebutt.nz)
 [![status](https://img.shields.io/badge/status-WIP-111?style=flat-square)](#-a-quien-corresponda)
@@ -24,9 +24,10 @@ Tu nodo, tu identidad. Sin nube, sin cuentas, sin servidor central.
 ## 📌 A quien corresponda
 
 > **O_SDK es un _wrapper_ Docker NO OFICIAL de [Oasis · SolarNET.HuB](https://solarnethub.com/):**
-> unos ficheros para levantarlo en contenedores. Ya quedó bonito, pero todavía
-> no es útil de verdad — faltan ~7 releases para que sirva pa' algo más que
-> enseñarlo. Software libre, _work in progress_, sin prisa.
+> unos ficheros para levantarlo en contenedores. Hoy sostiene un pub de verdad;
+> lo que está probado y lo que sigue en obras lo dice cada puerta de
+> [¿Quién llega?](https://o-sdk.escrivivir.co/roles/). Software libre,
+> _work in progress_, sin prisa.
 >
 > - ❌ **NO** es un producto de [SolarNET.HuB](https://solarnethub.com) ni de [OASIS](https://github.com/epsylon/oasis).
 > - ❌ **NO** está completo ni probado exhaustivamente.
@@ -53,6 +54,21 @@ empaqueta en Docker para que la levantes en un comando.
 
 ---
 
+## 🚪 ¿Quién llega?
+
+No hace falta saber Docker ni SSB: clonas el repo, abres en él un agente de código y le dices qué
+quieres. Cada puerta es a la vez una página del portal y la receta que lee el agente, con el estado
+**medido** de cada encargo ([cómo funciona](docs/roles/index.md)).
+
+| Puerta | Para qué | Receta |
+|--------|----------|--------|
+| Cliente Oasis | tu nodo en tu máquina, con cartera si la quieres | [docs/roles/cliente.md](docs/roles/cliente.md) |
+| Pub Oasis | un pub en tu servidor; lectura web y Teatro como piezas | [docs/roles/pub.md](docs/roles/pub.md) |
+| Economía Oasis | ECOin: tu cartera, y el banco del pub con renta básica | [docs/roles/economia.md](docs/roles/economia.md) |
+| Hazlo tuyo | tu propia instancia: nombre, dominio, piel | [docs/roles/tu-pub.md](docs/roles/tu-pub.md) |
+| Mantener | subir de versión, recuperar | [docs/roles/mantener.md](docs/roles/mantener.md) |
+| Agente | si eres el agente que llega | [AGENTS.md](AGENTS.md) |
+
 ## 🚀 Quickstart
 
 ```bash
@@ -63,7 +79,9 @@ docker compose up -d oasis-client      # cliente + SSB + IA  (o `npm run up`, qu
 # GUI en http://localhost:3000
 ```
 
-**Requisitos:** Docker 24+, 8 GB RAM. GPU NVIDIA opcional (para la IA local).
+**Requisitos:** Docker 24+, 8 GB RAM. **Hoy el compose del cliente pide GPU NVIDIA** con su runtime
+de Docker y, si no se le dice lo contrario, descarga un modelo de IA de unos 4 GB. Sin esa GPU el
+arranque falla: el estado y lo que falta están en la puerta [Cliente Oasis](docs/roles/cliente.md).
 
 Para desplegar un **pub** de federación en un VPS:
 
@@ -82,7 +100,8 @@ operativos, reutilizables y verificados en producción:
 |-----------|-------------|
 | [Portal (web)](https://o-sdk.escrivivir.co) | Portada + Proyecto/DevOps |
 | **[Protocolo para agentes](docs/AGENTES.md)** | **Empieza aquí** (también [`AGENTS.md`](AGENTS.md)): qué leer según la intención, reglas, acciones irreversibles, trampas conocidas, nombres de bots |
-| [Ficha de instancia · Scriptorium](docs/PUB/INSTANCIA-SCRIPTORIUM.md) | Los datos de nuestro despliegue, y plantilla para el tuyo |
+| [Ficha de instancia · Scriptorium](docs/PUB/INSTANCIA-SCRIPTORIUM.md) | Los datos de la instancia de demostración |
+| [Ficha de instancia · plantilla](docs/PUB/INSTANCIA-PLANTILLA.md) | La ficha vacía que rellenas para tu pub |
 | [Protocolo de upgrade](docs/PUB/UPGRADE-PROTOCOL.md) | Subir el fork a una versión upstream sin perder identidad ni _guards_ |
 | [Protocolo de recuperación](docs/PUB/RECOVERY-PROTOCOL.md) | Recuperar repo, imagen e identidad SSB tras un fallo de disco |
 | [Protocolo del HUB clearnet](docs/PUB/HUB-PROTOCOL.md) | HUB web `/c` como nodo de soporte; serie de bots y su renombrado |

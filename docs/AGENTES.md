@@ -6,11 +6,40 @@
 >
 > **Método e instancia.** Todo lo de esta página es genérico. Los datos de un despliegue concreto
 > (dominio, feeds, rutas, nombres) viven en su **ficha de instancia**; la de la casa es
-> [`INSTANCIA-SCRIPTORIUM.md`](./PUB/INSTANCIA-SCRIPTORIUM.md) y sirve de plantilla para la tuya.
+> [`INSTANCIA-SCRIPTORIUM.md`](./PUB/INSTANCIA-SCRIPTORIUM.md) y sirve de ejemplo relleno. La que
+> se rellena para otro pub es [`INSTANCIA-PLANTILLA.md`](./PUB/INSTANCIA-PLANTILLA.md).
 >
 > **Criterio de aceptación de cualquier protocolo de este repo:** un agente sin contexto, al que solo
 > se le da el repo y una intención, completa la tarea sin preguntar. Cada vez que tropieza, el defecto
 > es del protocolo y se corrige aquí.
+
+## 0. ¿Quién te manda? → la receta de su puerta
+
+Quien te encarga algo llega por una **puerta** ([`docs/roles/`](./roles/index.md)). Cada puerta
+tiene una receta: el encargo, lo que hace falta tener, los pasos con sus puntos de DECISIÓN y de
+PERMISO, y el **estado medido** de ese encargo. Lee la receta antes que el protocolo: te dice hasta
+dónde se puede llegar hoy.
+
+| Te dicen algo como… | Puerta | Receta |
+|---|---|---|
+| «arráncame un cliente Oasis», «…con cartera» | Cliente Oasis | [`roles/cliente.md`](./roles/cliente.md) |
+| «despliega un pub en mi servidor», «añádele la lectura web», «acoge esta obra» | Pub Oasis | [`roles/pub.md`](./roles/pub.md) |
+| «quiero una cartera ECOin», «dale un banco a mi pub» | Economía Oasis | [`roles/economia.md`](./roles/economia.md) |
+| «quiero mi propio pub, con mi nombre y mi dominio» | Hazlo tuyo | [`roles/tu-pub.md`](./roles/tu-pub.md) |
+| «hay versión nueva, súbela», «algo se ha roto» | Mantener | [`roles/mantener.md`](./roles/mantener.md) |
+
+Tres reglas de las recetas:
+
+1. **Si el encargo está «en obras», lo dices antes de empezar**: qué puedes hacer hoy y dónde vas a
+   parar. No rellenas el hueco improvisando sobre la identidad o el servidor de nadie.
+2. **DECISIÓN** es que preguntas y esperas. **PERMISO** es que el paso no tiene vuelta atrás (§3):
+   pides permiso expreso, cada vez, aunque el plan general ya esté aprobado.
+3. **Quien quiere su propio pub no necesita nada de la instancia de demostración.** Sus datos van
+   en su ficha. No copies a su despliegue nombres, dominios ni textos de la demo.
+
+Los sellos de estado (`probado en frío`, `ejercido en la demo`, `en obras`) salen del frontmatter de
+cada receta. Cuando completes un encargo en frío, el reporte de tu trabajo es lo que permite subirlo
+a «probado».
 
 ## 1. ¿Qué quieres hacer? → qué leer
 

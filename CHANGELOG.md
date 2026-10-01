@@ -5,6 +5,25 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Portal: puertas por rol con estado medido (WP-O115, 2026-10-01)
+
+Reporte `plan/REPORTES/WP-O115-portal-roles.md`. Asiento D-O26.
+
+- **«¿Quién llega?»** (`docs/roles/`): cliente, pub, economía, «hazlo tuyo» y mantener. Cada página
+  es la receta que lee el agente: el encargo literal, lo que hace falta, los pasos con sus puntos de
+  DECISIÓN y PERMISO, y un **sello** por encargo (`probado en frío` · `ejercido en la demo` ·
+  `en obras`). Hoy ninguno está probado en frío; tres están en obras (WP-O116, WP-O117).
+- **`docs/AGENTES.md` §0** «¿Quién te manda?» y `AGENTS.md`: el agente entra por la receta de la puerta.
+- **`docs/PUB/INSTANCIA-PLANTILLA.md`**: ficha de instancia vacía. La demo no es requisito de nada.
+- **Portada**: sección de puertas; «Empezar» pasa a «Llévatela» (encargo al agente o a mano), con
+  el aviso de que hoy el cliente pide GPU NVIDIA. La versión de Oasis se lee de
+  `src/server/package.json`. **Banner** al día, con la misma voz.
+- **Gate** `npm run docs:verificar`, también en CI: enlaces y anclas, verdad de contenido
+  (`docs/.vitepress/verdad-checks.json`), piel, contraste y ceguera por ámbito
+  (`devops/scripts/docs-ceguera.sh`).
+- **Deja de publicarse** `legacy.html` (enlazaba a la cuenta anulada y cargaba fuentes de terceros);
+  queda en `ARCHIVO/portal/`. El resto de URL se conserva.
+
 ### Changed — Oasis 1.1.10 desplegado en el pub (WP-O114, 2026-10-01)
 
 Reporte `plan/REPORTES/WP-O114-aplicacion-vps-1.1.10.md`. Pub, HUB y bot de cartera en 1.1.10 con

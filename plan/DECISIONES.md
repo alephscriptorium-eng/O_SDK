@@ -314,6 +314,30 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   visitante» que traiga upstream se trata igual; la saca la sección `headers`
   del diff de comportamiento. Hallazgos para upstream: falta `Vary` en `/c`;
   idioma global por proceso. Aplicación: WP-O113.
+- **D-O26 · 2026-10-01 · El portal recibe por puertas de rol; cada encargo
+  lleva su estado medido.** Decidido con el custodio al revisar el portal: no
+  se canibaliza lo que hay, se progresa. (1) Entrada nueva `docs/roles/`, de
+  menos a más: **cliente → pub → economía → «hazlo tuyo»**, más «mantener» y
+  la del agente. Lo publicado no se mueve ni se renombra; los protocolos
+  siguen en «Operación» y las puertas apuntan a ellos. (2) Cada página de rol
+  es **a la vez** página del portal y receta que lee el agente (fuente única):
+  lleva la secuencia, los puntos de DECISIÓN y de PERMISO y los enlaces; el
+  detalle se queda en el protocolo (D-O18). (3) **Sello de tres valores** por
+  encargo, en el frontmatter: `probado en frío` (un agente sin contexto lo
+  completó; fecha y reporte) · `ejercido en la demo` (se hizo, con reporte,
+  pero no en frío) · `en obras` (dice qué falta y en qué WP). Sin reporte no
+  hay «probado» ni «ejercido»: lo impone el gate. Lo que no se ha medido no se
+  promete. (4) **Ceguera por ámbito** (precisa D-O23): puertas y ficha
+  plantilla, cero menciones a la demo ni a su dominio; protocolos de método
+  ya publicados, trinquete (el recuento no sube; se va llevando a la ficha al
+  tocar cada uno); la ficha de la demo es donde vive la instancia. La demo
+  tiene nombre propio y fuera de su ficha no hace falta. (5) Los datos vivos
+  del portal (versión de Oasis) se leen del sistema, no se escriben. (6) La
+  landing antigua deja de publicarse y se guarda en `ARCHIVO/portal/`.
+  (7) Excepción a «la doc de upstream no se re-renderiza»: la guía de
+  Mastodon ya estaba publicada; conserva su URL y se enlaza desde la puerta
+  del cliente. Aplicación: WP-O115. Lo que haría «probado» cada encargo:
+  WP-O116, WP-O117, WP-O118.
 
 ## Índice de dependencias externas vivas
 

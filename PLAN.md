@@ -280,7 +280,7 @@ E7, E9                     (independientes, cuando haya hueco)
 | D-c | kubo en el mismo VPS (4 GB) o aparte | E5 | medir tras E3; plan B 2º VPS |
 | D-d | Forgejo sí/no | E7 | sí, como pieza única de soberanía |
 | D-e | Scope npm definitivo (`@zeus` sin uso / `z-sdk` inexistente) | E7 | decidir con Forgejo/registry a la vista |
-| D-f | `docs/public/legacy.html` (viola ceguera) | E2 | congelar con nota |
+| D-f | `docs/public/legacy.html` (viola ceguera) | E2 | ~~congelar con nota~~ → **resuelta 2026-10-01 (D-O26, WP-O115)**: retirada de lo publicado, conservada en `ARCHIVO/portal/legacy.html` |
 
 ## Reglas anti-bola (las que hacen que esto no explote)
 

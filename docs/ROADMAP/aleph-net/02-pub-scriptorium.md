@@ -40,7 +40,7 @@ fresco + importación de identidad (WP-O98); HUB clearnet activo desde
 | Invites | `invite.create` vía `docker exec`; invite público de 1000 usos servido por `/public/status` | — | activo, **bug**: sin caché negativa, cada GET anónimo dispara un `docker exec` | `MAPA.md:217-220`; `pub\panel-api\src\server.mjs:167-173` |
 | Sitio estático / salas | Landing, Sala 01 Scriptorium, Hackería, Sala 02 Parlament, Sala 03 Teatro, Sala 04 HUB, `/admin/` | `/`, `/scriptorium/`, `/teatro/`, `/c`, `/admin/`, `/public/status` | activo | `pub\site\index.html:229-234` |
 
-## Servicios externos que el edge enruta (código fuera de o-sdk, en `escrivivir-co/scriptorium-vps`)
+## Servicios externos que el edge enruta (código fuera de o-sdk, en el repo `scriptorium-vps` de la cuenta de origen, anulada)
 
 | Vhost | Upstream | Dónde |
 | :-- | :-- | :-- |

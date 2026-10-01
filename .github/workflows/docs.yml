@@ -1,6 +1,7 @@
 # Docs portal → GitHub Pages (o-sdk.escrivivir.co)
 # Derivado de la plantilla skill site-web (docs.yml.tpl).
 # Mitigaciones: #1 CNAME en repo · #4 npm ci · #6 build = solo VitePress · #7 gap paths.
+# El portal lee la versión de Oasis de src/server/package.json: un upgrade lo reconstruye.
 name: Docs
 
 on:
@@ -10,10 +11,16 @@ on:
       - 'wp/**'
     paths:
       - 'docs/**'
+      - 'src/server/package.json'
+      - 'package.json'
+      - 'devops/scripts/docs-ceguera.*'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
       - 'docs/**'
+      - 'src/server/package.json'
+      - 'package.json'
+      - 'devops/scripts/docs-ceguera.*'
   workflow_dispatch:
 
 concurrency:
@@ -38,8 +45,9 @@ jobs:
         run: npm run skills:sync
       - name: Build VitePress portal
         run: npm run docs:build
-      - name: Verify links (gate)
-        run: node .claude/skills/site-web/scripts/verificar-sitio.mjs --dist docs/.vitepress/dist --base /
+      # Enlaces y anclas, verdad de contenido, piel, contraste y ceguera por ámbito.
+      - name: Verify (gate)
+        run: npm run docs:gate
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
