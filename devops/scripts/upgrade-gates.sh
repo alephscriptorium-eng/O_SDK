@@ -33,7 +33,9 @@
 #                       volumes-dev/.gates/<tag>/ con los contenedores PARADOS.
 #   restore <tag> --yes (local) Repone esa copia. Sin esto el gate no es repetible: tras una pasada el
 #                       log ya tiene el oasisVersion nuevo y la segunda daría delta 0 (falso verde).
-#   up <pub|hub|bot>    (local) Recrea un nodo con la imagen actual y espera a healthy.
+#   up <pub|hub|bot>    (local) Recrea un nodo con la imagen actual, espera a healthy y deja pasar
+#                       GATE_SETTLE segundos (90) con una petición en medio: lo que un nodo publica
+#                       solo no sale todo en el arranque.
 #   worst               (local) Peor caso del bot: GET /banking y /wallet por loopback (las páginas que
 #                       autopublican la dirección). Después: check … con wallet sin cambios.
 #
@@ -304,7 +306,14 @@ case "$CMD" in
     n=0; until [ "$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null)" = healthy ] || [ $n -ge 60 ]; do sleep 5; n=$((n + 1)); done
     st="$(docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' "$c" 2>/dev/null)"
     echo "$alias ($c): $st · v$(docker exec "$c" sh -c 'grep -m1 "\"version\"" /app/src/server/package.json' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/')"
-    case "$st" in *healthy) sleep 25 ;; *) echo "DESVIACIÓN: $c no llegó a healthy" >&2; exit 1 ;; esac   # 25 s: primer tick de arranque (oasisVersion, motor)
+    case "$st" in *healthy) ;; *) echo "DESVIACIÓN: $c no llegó a healthy" >&2; exit 1 ;; esac
+    # Un nodo no publica solo «al arrancar»: el sbot anuncia versión a los 7 s, el motor hace su
+    # primer tick a los 15 s, y los avisos automáticos del backend se disparan con una PETICIÓN
+    # (la del healthcheck vale) cuando los índices ya están: pueden tardar más de un minuto.
+    # Se espera GATE_SETTLE segundos (90) y se provoca una petición a mitad.
+    settle="${GATE_SETTLE:-90}"; sleep $((settle / 2))
+    MSYS_NO_PATHCONV=1 docker exec "$c" sh -c 'curl -s -o /dev/null --max-time 20 http://127.0.0.1:3000/c/inhabitant/@AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=.ed25519' 2>/dev/null || true
+    sleep $((settle - settle / 2))
     ;;
 
   worst)

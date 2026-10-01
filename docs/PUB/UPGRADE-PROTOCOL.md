@@ -207,8 +207,8 @@ rama** y se repite su gate.
 
 | Fichero | Se regenera cuando | Cómo llega al host |
 |---|---|---|
-| `pub/config/hub/oasis-config.json` | cambia `src/configs/oasis-config.json` (`config`). Copia con claves fijadas: `HUB-PROTOCOL.md` §5.2 | bind de fichero: **in place** (`cat >`) + recrear el HUB |
-| `pub/config/wallet-bot/oasis-config.json.tpl` | ídem. `ECOIN-PROTOCOL.md` §5.2 | re-render en el host + recrear el bot |
+| `pub/config/hub/oasis-config.json` | **siempre**: `node pub/scripts/regen-node-configs.js` (copia de `src/configs/oasis-config.json` con claves fijadas, entre ellas la lista de avisos silenciados, que sale de `pm_model.js`). `HUB-PROTOCOL.md` §5.2 | bind de fichero: **in place** (`cat >`) + recrear el HUB |
+| `pub/config/wallet-bot/oasis-config.json.tpl` | ídem, mismo script. `ECOIN-PROTOCOL.md` §5.2 | re-render en el host + recrear el bot |
 | `pub/config/hub/ssb-config`, `pub/config/wallet-bot/ssb-config*` | cambia `src/configs/server-config.json` (arrays enteros) o rota el ciclo (§5) | in place + recrear el nodo |
 | `pub/config/hub/nginx.conf.template` | `routes` o `headers` traen algo nuevo bajo `/c/` | in place + **recrear** `hub-cache` (la plantilla se renderiza al arrancar: un `reload` no la relee) |
 | `pub/caddy/Caddyfile` | una ruta nueva del visor fuera de los prefijos que ya enruta | in place + `validate` + `reload` (`../AGENTES.md` §2.6) |
@@ -267,6 +267,18 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 - `ubiAllocation` no se nombra: debe ser 0. Solo es 0 si la **época del mes ya está abierta** antes
   de subir (`épocas=` en la foto). Si no lo está, la abriría la versión nueva con sus reglas:
   irreversible y distinto; decídelo con el custodio antes.
+
+- `(cifrado)` no se nombra: debe ser 0. El backend trae avisos automáticos (el «bot político», el
+  de empleo, recordatorios) que se disparan con cualquier petición, también la del healthcheck, y
+  se envían **a sí mismos un mensaje cifrado**. En un nodo de soporte van silenciados por config
+  (`inboxMutedBots`, desde 1.1.10; `HUB-PROTOCOL.md` §2). Si aparece un cifrado, esa lista está
+  incompleta o el nodo corre una versión que aún no la entiende.
+
+**Cuándo medir.** Un nodo no publica todo «al arrancar»: el sbot anuncia versión a los 7 s, el motor
+hace su primer tick a los 15 s, y los avisos automáticos esperan a la primera petición con los
+índices listos (más de un minuto). `upgrade-gates.sh up` espera 90 s con una petición en medio. En
+el host, el `check` que cuenta es el que se hace **al menos 5 minutos después** de recrear el
+último nodo, y se repite en el cierre (`snapshot post`).
 
 `check` exige además que el feed de cada nodo sea el mismo, que `Δsequence` == suma de Δ por tipo
 (cifrados incluidos) y que el sbot vivo dé el mismo `sequence`. Si eso no cuadra responde
