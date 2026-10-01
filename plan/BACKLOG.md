@@ -674,7 +674,11 @@ Dep: WP-O112.
 
 | **WP-O114** | **P1** | Aplicación en el VPS: Oasis 1.1.10 en pub, HUB y bot de cartera |
 
-**Estado** · ⬜ listo para empezar; espera el **GO del custodio** en cada puerta (`UPGRADE-PROTOCOL.md` §4).
+**Estado** · 🟡 paso 0 (lectura) hecho el 2026-10-01; espera el **GO del custodio** en cada puerta (`UPGRADE-PROTOCOL.md` §4).
+**Hallazgo del paso 0**: `OASIS_PUB/.env.prod` y dos copias `.env.prod.bak-*` **están dentro de la imagen** del host
+(`/app/OASIS_PUB/`, visibles desde pub, HUB y bot): su `.dockerignore` excluye `OASIS_PUB/.env` y `OASIS_PUB/.env.local`,
+no `OASIS_PUB/.env.*`. `src.old` sí está excluido. Antes del build: añadir `OASIS_PUB/.env.*` al `.dockerignore` del host.
+Las imágenes de rollback (`:1.1.2`, y la `:1.1.4` que se etiquete) lo llevan dentro: se retiran en cuanto el ciclo se da por bueno.
 Qué viaja al host y qué delta se espera: reporte de WP-O113 §4 y §6. Para decidir en el GO: idioma
 por defecto del visor (`en` hoy, propuesta `es`).
 
