@@ -26,8 +26,9 @@ fi
 echo "🤖 Modelo en el volumen:"
 docker exec "$CTR" sh -lc 'ls -la /app/src/AI/models/*.gguf 2>/dev/null || echo "  (sin modelo: aiMod queda off; OASIS_SKIP_AI_MODEL o descarga pendiente)"'
 
-# Todo lo que toca el token corre dentro del contenedor, en un solo shell.
-docker exec -i -e AI_INPUT="$INPUT" "$CTR" sh -s <<'IN_CONTAINER'
+# Todo lo que toca el token corre dentro del contenedor, en un solo shell, y como el usuario dueño del
+# proceso: root dentro del contenedor no tiene CAP_SYS_PTRACE y no puede leer el environ de otro usuario.
+docker exec -i -u "${OASIS_CLIENT_USER:-oasis}" -e HOME=/home/oasis -e AI_INPUT="$INPUT" "$CTR" sh -s <<'IN_CONTAINER'
 find_ai() {   # pid del proceso ai_service.mjs, sin depender de pgrep (la imagen slim no lo trae)
   for d in /proc/[0-9]*; do
     if tr '\0' ' ' < "$d/cmdline" 2>/dev/null | grep -q 'ai_service\.mjs'; then echo "${d#/proc/}"; return 0; fi
@@ -48,9 +49,6 @@ PORT="$(env_of "$pid" OASIS_AI_PORT)"; PORT="${PORT:-4001}"
 TOKEN="$(env_of "$pid" OASIS_AI_TOKEN)"
 echo "🤖 servicio: pid $pid · puerto $PORT · token $([ -n "$TOKEN" ] && echo 'presente (no se muestra)' || echo 'AUSENTE')"
 
-code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:$PORT/status")"
-echo "   GET /status sin token → $code (se espera 403)"
-
 # El modelo se carga al arrancar el servicio: esperar a ready (la primera vez tarda).
 i=0; st=""
 while [ $i -lt 60 ]; do
@@ -60,6 +58,10 @@ while [ $i -lt 60 ]; do
   i=$((i + 1)); sleep 5
 done
 echo "   GET /status con token → $(echo "$st" | cut -c1-200)"
+# Sin token debe negarse. Se prueba aquí y no antes: recién lanzado, el servicio aún no escucha.
+code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:$PORT/status")"
+echo "   GET /status sin token → $code (se espera 403)"
+[ "$code" = "403" ] || echo "⚠️  el servicio respondió $code sin token: revisar el contrato de IA de esta versión"
 if echo "$st" | grep -q 'model_missing'; then echo "❌ falta el modelo"; exit 3; fi
 
 payload="$(node -e 'process.stdout.write(JSON.stringify({ input: process.env.AI_INPUT, maxTokens: 64 }))')"
