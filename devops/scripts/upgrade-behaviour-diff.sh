@@ -88,10 +88,12 @@ set_diff() { # set_diff <fichero-viejo> <fichero-nuevo>
   comm -13 <(sort -u "$1") <(sort -u "$2") | sed 's/^/+\t/'
   comm -23 <(sort -u "$1") <(sort -u "$2") | sed 's/^/-\t/'
 }
-routes_of() { git show "$1:$BACKEND" 2>/dev/null | tr -d '\r' | grep -oE '\.(get|post|put|del|delete|patch)\("[^"]+"' | sed -E 's/^\.([a-z]+)\("/\U\1 /; s/"$//'; }
+# backend.js declara rutas con comillas dobles y simples (.get("/c") y .post('/ai')): se unifican antes.
+backend_of() { git show "$1:$BACKEND" 2>/dev/null | tr -d '\r' | tr "'" '"'; }
+routes_of() { backend_of "$1" | grep -oE '\.(get|post|put|del|delete|patch)\("/[^"]*"' | sed -E 's/^\.([a-z]+)\("/\U\1 /; s/"$//'; }
 loopback_of() { # rutas cuya primera línea de cuerpo comprueba isLoopbackRequest
-  git show "$1:$BACKEND" 2>/dev/null | tr -d '\r' | awk '
-    match($0, /\.(get|post|put|del|delete|patch)\("[^"]+"/) { r = substr($0, RSTART + 1, RLENGTH - 1); n = NR }
+  backend_of "$1" | awk '
+    match($0, /\.(get|post|put|del|delete|patch)\("\/[^"]*"/) { r = substr($0, RSTART + 1, RLENGTH - 1); n = NR }
     /isLoopbackRequest\(ctx\)/ && r != "" && NR - n <= 2 { print r; r = "" }' | sed -E 's/^([a-z]+)\("/\U\1 /; s/"$//'
 }
 
