@@ -14,3 +14,5 @@
 1	src/server/ssb_config.js	OASIS_SERVER_CONFIG_OVERRIDE	guard del fork del que dependen HUB y bots (0 en upstream: es nuestro)
 1	src/client/middleware.js	mount("/c/assets"	assets del visor bajo /c/assets (location propia en nginx)
 1	src/views/clearnet_view.js	themes?.current	D-O25: el tema del visor sale de la config del pub, no de una cookie
+1	src/models/pm_model.js	const INBOX_BOTS = {	lista de avisos automáticos que regen-node-configs.js silencia en los nodos de soporte
+1	src/backend/backend.js	pmModel.mutedBots(getConfig())	notifyBot respeta inboxMutedBots: sin esto los nodos de soporte se envían cifrados a sí mismos

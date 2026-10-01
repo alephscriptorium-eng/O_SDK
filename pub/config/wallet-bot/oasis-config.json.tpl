@@ -78,5 +78,23 @@
   "language": "en",
   "wish": "whole",
   "pmVisibility": "whole",
-  "lanBroadcasting": false
+  "lanBroadcasting": false,
+  "inboxMutedBots": [
+    "blogs",
+    "jobs",
+    "projects",
+    "market",
+    "shops",
+    "political",
+    "banking",
+    "school",
+    "industry",
+    "housing",
+    "wiki",
+    "emergencies",
+    "podcasts",
+    "campaigns",
+    "logistics",
+    "reminders"
+  ]
 }

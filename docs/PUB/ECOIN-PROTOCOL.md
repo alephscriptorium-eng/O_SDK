@@ -101,7 +101,8 @@ después cliente (WP-O103).
   `ubiAllocation`, `ubiClaimResult`, `bankClaim`, `transfer` (con tag `UBI`). **Nunca** cifrados
   ni `post`. Se mide con `upgrade-gates.sh snapshot` (cuenta por autor; los cifrados salen como
   `(cifrado)`; el antiguo `grep '"private":true'` daba 0 siempre, `HUB-PROTOCOL.md` §1). Medido el
-  2026-10-01 en el host: **1 cifrado propio** en el feed de bot-2, anterior a este control.
+  2026-10-01 en el host: **1 cifrado propio** en el feed de bot-2, anterior a este control (un aviso
+  automático del backend a sí mismo; desde 1.1.10 van silenciados con `inboxMutedBots`).
 - **Identidad propia y nombre de serie** (D-O14): `secret` nacido en
   `/srv/oasis/oasis-wallet-bot/ssb-data`; fila 2 del registro de `HUB-PROTOCOL.md` §11.
 - **Delta del fork en `src/`: cero.** Todo vive en la zona *wholesale* (`ecoin/**`, `pub/**`,
@@ -273,8 +274,11 @@ repite el gate G3 en local (bootstrap + motor apagado + ensayo del interruptor).
 **5.2 Ficheros derivados de upstream que se regeneran en cada upgrade.**
 
 - `pub/config/wallet-bot/oasis-config.json.tpl` **es una copia** de `src/configs/oasis-config.json`
-  con las claves fijadas de §2. Tras el overlay: copiar el nuevo, re-aplicar las claves y los tres
-  marcadores, **re-renderizar** y comprobar que el diff contra el original son solo esas claves.
+  con las claves fijadas de §2 más, desde 1.1.10, `inboxMutedBots` (los avisos automáticos del
+  backend silenciados: sin eso el bot se envía cifrados a sí mismo, `HUB-PROTOCOL.md` §1). Tras el
+  overlay: `node pub/scripts/regen-node-configs.js` la regenera con sus marcadores e imprime qué
+  claves difieren del original; después, **re-renderizar** (`pub/scripts/render-wallet-bot-config.sh`)
+  y recrear el bot.
 - `pub/config/wallet-bot/ssb-config`: mismas reglas que el del HUB (arrays enteros; `caps.shs` en el
   lockstep de rotación, `HUB-PROTOCOL.md` §5.2).
 - Orden de deploy: pub → HUB → **bot al final** (`UPGRADE-PROTOCOL.md` §4, paso 9); `ecoin` no
