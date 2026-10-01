@@ -17,7 +17,7 @@
 | Pieza | Commit |
 |---|---|
 | `host.env` con el layout medido; preflight con `OLD_REF`/`NEW_REF` y ficheros por rol | `b7f30d7` |
-| `upgrade-closure.js`: qué carga de verdad cada punto de entrada; corrección de «el pub no publica» | (commit de cierre) |
+| `upgrade-closure.js`: qué carga de verdad cada punto de entrada; corrección de «el pub no publica» | `55e5c19` |
 | `lib-node.sh`: versión, feed, `sequence` y registros propios por tipo (cifrados incluidos) | `047457e` |
 | `deploy-status.sh`: piezas vivas, deriva host↔repo, restos de rollback | `f0bf7c8` |
 | `upgrade-behaviour-diff.sh` + `upgrade-invariants.d/{hub,ecoin}.tsv` | `a695687` |
