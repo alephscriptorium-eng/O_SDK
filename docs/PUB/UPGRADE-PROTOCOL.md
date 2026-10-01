@@ -303,14 +303,14 @@ R="bash devops/scripts/upgrade-gates.sh --remote"                     # en la m�
 | # | Paso | Detalle | Puerta |
 |---|---|---|---|
 | 0 | **Medir** | `deploy-status.sh` · `$R snapshot pre` · `df -h /` · `docker system df` | lectura |
-| 1 | **Backups** | `backup-oasis-pub.sh` · `backup-ecoin.sh` (si hay cartera) · tgz de `ssb-data` de cada nodo de soporte · copia `*.bak-<etiqueta>-<fecha>` de cada fichero que vaya a cambiar | **GO-1** |
+| 1 | **Backups** | `backup-oasis-pub.sh` · `backup-ecoin.sh` (si hay cartera) · tgz de `ssb-data` de cada nodo de soporte · copia `*.bak-<etiqueta>-<fecha>` de cada fichero que vaya a cambiar (las de ficheros bajo `site/`, **fuera** de `site/`: esa carpeta se sirve al público) | **GO-1** |
 | 2 | **Disco** | retirar el rollback del ciclo **anterior** (tag de imagen, `src.old*`, tgz) · `docker image prune -f` · `docker builder prune -f`. Cada rebuild deja ~3 GB | |
 | 3 | **Rollback de este ciclo** | `docker tag <imagen>:latest <imagen>:<ver-vieja>` · `tar -czf <datos>/src-<ver-vieja>.tgz src` | |
 | 4 | **Subir `src/`** | ver abajo | |
-| 5 | **Lo demás que viaja** (§3.2) que sea inocuo en la versión vieja: se sube y se aplica **ahora**, con los nodos todavía en la versión vieja, y se comprueba | p. ej. plantilla nginx: in place · `nginx -t` en un contenedor desechable · `$C up -d --no-deps --force-recreate hub-cache` · `$R hub` | |
+| 5 | **Lo demás que viaja** (§3.2) que sea inocuo en la versión vieja: se sube y se aplica **ahora**, con los nodos todavía en la versión vieja, y se comprueba | p. ej. plantilla nginx: a un temporal del host · `nginx -t` en un contenedor desechable · in place · `$C up -d --no-deps --force-recreate hub-cache` · `$R hub` · salud de **todos** los vhosts del edge | |
 | 6 | **Build y humo** | `$C build oasis-pub` (el pub sigue sirviendo) · humo de la imagen nueva (abajo) · `df -h /` | |
 | 7 | **Pub** | `$C up -d --no-deps oasis-pub` · `$R check pre --expect 'pub:oasisVersion=+1'` · invite · `/public/status` | **GO-2** (el pub se reinicia y publica `oasisVersion`) |
-| 8 | **HUB** | sus configs in place · `$C up -d --no-deps oasis-hub` · `$R check …` · `hub-disk.sh prune-cache` · `$R hub --strict` (en ese orden: la caché guarda 404 de las rutas que la versión vieja no tenía) | **GO-3** (publica `oasisVersion`) |
+| 8 | **HUB** | sus configs in place · `$C up -d --no-deps oasis-hub` · `$R check …` · `hub-disk.sh prune-cache` · `$R hub --strict` (en ese orden: la caché guarda 404 de las rutas que la versión vieja no tenía) · ficheros del sitio que cambien: **uno a uno**, tras comprobar que el vivo es el del repo (`deploy-site.sh` sincroniza el sitio entero con `--delete`) | **GO-3** (publica `oasisVersion`) |
 | 9 | **Bot de cartera** | motor encendido: `hub-wallet.sh pause` (lo recrea en la versión nueva con el motor **apagado**) · `$R check …` (misma dirección, `wallet` sin cambios) · y entonces `hub-wallet.sh on --yes` · `$R check …` · `backup-ecoin.sh`. Motor apagado: `$C up -d --no-deps oasis-wallet-bot` · `$R check …` | **GO-4a** (`oasisVersion`) · **GO-4b** (encender: `pubAvailability`) |
 | 10 | **Cierre** | `$R snapshot post` · `deploy-status.sh` · `deploy-log.sh` (abajo) · ficha de instancia | |
 
@@ -350,9 +350,12 @@ ls src.new/src/configs/*.json                                 # ningún JSON de 
 test ! -e src.old-<ver-vieja> && mv src src.old-<ver-vieja> && mv src.new/src src && rmdir src.new
 ```
 
-Si `deploy-status` avisó de que el `.dockerignore` del host no excluye `src.old*`, `src.new` o el
-`.env.prod`, corrígelo antes del build: el contexto de build es la raíz del repo del host y
-`COPY . .` se lo lleva todo a la imagen.
+**Antes del build, el `.dockerignore` del host.** El contexto de build es la raíz del repo del host y
+`COPY . .` se lo lleva todo a la imagen. Debe excluir los rollbacks de `src` **con comodín**
+(`src.old*`, `src.new*`: un `src.old` a secas no cubre `src.old-X.Y.Z`) y los env de producción de
+la carpeta del compose (`<carpeta>/.env.*`: el patrón `.env.*` solo casa en la raíz). Comprobarlo
+en la imagen construida, dentro del humo del paso 6: `ls -a` de la carpeta del compose no muestra
+ningún `.env.prod*`. En la casa estuvo entrando hasta 2026-10-01 (WP-O114).
 
 **Journal.** El `deploy.sh` del repo apunta el deploy al terminar; el del host es una copia vieja
 que no se usa. Tras un deploy a mano, desde la máquina operadora:
@@ -434,7 +437,7 @@ Ciclos registrados (lo que cada uno cambió en el protocolo):
 |---|---|---|
 | 1.0.8 → 1.1.2 | `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md` · `HUB-PROTOCOL.md` §5.5 | primer ciclo con el HUB activo: `/c/assets`, rutas de detalle nuevas |
 | 1.1.2 → 1.1.4 | `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`, `WP-O106-aplicacion-vps-1.1.4.md` · `ECOIN-PROTOCOL.md` §5.4 | `state-manager.js` y la mudanza de estado; quinto guard; `git archive` y CRLF |
-| 1.1.4 → 1.1.10 | `plan/REPORTES/WP-O112-protocolo-upgrade.md` (este protocolo), `WP-O113-upgrade-oasis-1.1.10.md` (local), WP-O114 (host) | el protocolo no medía comportamiento ni publicación. Todo nodo anuncia su versión (`oasisVersion`), también al volver atrás. Idioma por visitante en `/c` (D-O25). Avisos automáticos que se envían cifrados a uno mismo (`inboxMutedBots`). `GET /wallet` republica la dirección en un bot con el motor encendido. El primer `GET /banking` publica la dirección. El modelo de IA cambia bajo el mismo nombre |
+| 1.1.4 → 1.1.10 | `plan/REPORTES/WP-O112-protocolo-upgrade.md` (este protocolo), `WP-O113-upgrade-oasis-1.1.10.md` (local), `WP-O114-aplicacion-vps-1.1.10.md` (host: mismo delta que en local) | el protocolo no medía comportamiento ni publicación. Todo nodo anuncia su versión (`oasisVersion`), también al volver atrás. Idioma por visitante en `/c` (D-O25). Avisos automáticos que se envían cifrados a uno mismo (`inboxMutedBots`). `GET /wallet` republica la dirección en un bot con el motor encendido. El primer `GET /banking` publica la dirección. El modelo de IA cambia bajo el mismo nombre |
 
 ## 8. HUB clearnet — ver `HUB-PROTOCOL.md`
 
