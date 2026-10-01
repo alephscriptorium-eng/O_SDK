@@ -289,7 +289,7 @@ case "$CMD" in
   up)
     alias="${ARGS[0]:-}"; svc="$(service_of "$alias")" || { echo "uso: up <pub|hub|bot>" >&2; exit 64; }
     c="$(container_of "$alias")"
-    compose_local up -d --no-deps "$svc" 2>&1 | tail -1
+    compose_local up -d --no-deps --force-recreate "$svc" 2>&1 | tail -1
     n=0; until [ "$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null)" = healthy ] || [ $n -ge 60 ]; do sleep 5; n=$((n + 1)); done
     st="$(docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' "$c" 2>/dev/null)"
     echo "$alias ($c): $st · v$(docker exec "$c" sh -c 'grep -m1 "\"version\"" /app/src/server/package.json' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/')"
