@@ -248,9 +248,9 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 | **U2** | Imagen nueva | etiquetar la vieja (`docker tag …:latest …:X.Y.Z-vieja`) · `npm run build` (o el build del compose del pub) | build limpio; `node --check` dentro de la imagen |
 | **U3** | Recrear en orden pub → HUB → bot y medir **qué publica cada uno** | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre --expect '…'` | `GATE OK` con el delta declarado (abajo) |
 | **U4** | Visor por delante de la caché | recrear `hub-cache` si cambió la plantilla · `$G hub --strict` | `GATE OK`: MISS→HIT, idioma independiente del visitante, sin cruce, rutas nuevas |
-| **U5** | Peor caso del bot: las páginas que autopublican la dirección | `$G snapshot u5` · `$G worst` · `$G check u5 --expect 'bot:karmaScore=+0..1'` | `wallet` no se mueve; misma dirección |
+| **U5** | Peor caso del bot: las páginas donde el backend refresca la cartera por su cuenta (`/banking`, `/transfers`, `/shops`, `/market`, `/school`) | `$G snapshot u5` · `$G worst` · `$G check u5 --expect 'bot:karmaScore=+0..1'` | `wallet` y `(cifrado)` no se mueven; misma dirección. **`/wallet` queda fuera a propósito**: en cualquier versión, con el motor encendido, republica la dirección (`../AGENTES.md` §4) |
 | **U6** | Gates propios de las piezas que el diff ha tocado | invite (`HUB-PROTOCOL.md` §3, si cambian `ssb-*`) · bootstrap de un bot nuevo (`ECOIN-PROTOCOL.md` §3, si cambia la publicación de la dirección) · drill del cliente (`../CLIENT-PROTOCOL.md` §5) | los de cada anexo |
-| **U7** | Repetible | parar nodos · `$G restore pre --yes` | el estado vuelve a la línea base |
+| **U7** | Repetible | parar nodos · `$G restore pre --yes` · **volver a renderizar** la config del bot (`restore` repone también la renderizada vieja, que vive en `volumes-dev/`) · repetir U3 | mismo delta que la primera vez |
 
 **El delta declarado (U3).** Lo normal:
 
@@ -308,15 +308,33 @@ R="bash devops/scripts/upgrade-gates.sh --remote"                     # en la m�
 | 3 | **Rollback de este ciclo** | `docker tag <imagen>:latest <imagen>:<ver-vieja>` · `tar -czf <datos>/src-<ver-vieja>.tgz src` | |
 | 4 | **Subir `src/`** | ver abajo | |
 | 5 | **Lo demás que viaja** (§3.2) que sea inocuo en la versión vieja: se sube y se aplica **ahora**, con los nodos todavía en la versión vieja, y se comprueba | p. ej. plantilla nginx: in place · `nginx -t` en un contenedor desechable · `$C up -d --no-deps --force-recreate hub-cache` · `$R hub` | |
-| 6 | **Build y humo** | `$C build oasis-pub` (el pub sigue sirviendo) · contenedor efímero con la imagen nueva, sin red y con un `.ssb` temporal, en modo `server` y en modo `backend`: arranca y no escupe errores · `df -h /` | |
+| 6 | **Build y humo** | `$C build oasis-pub` (el pub sigue sirviendo) · humo de la imagen nueva (abajo) · `df -h /` | |
 | 7 | **Pub** | `$C up -d --no-deps oasis-pub` · `$R check pre --expect 'pub:oasisVersion=+1'` · invite · `/public/status` | **GO-2** (el pub se reinicia y publica `oasisVersion`) |
-| 8 | **HUB** | sus configs in place · `$C up -d --no-deps oasis-hub` · `$R check …` · `$R hub --strict` · `hub-disk.sh prune-cache` | **GO-3** (publica `oasisVersion`) |
+| 8 | **HUB** | sus configs in place · `$C up -d --no-deps oasis-hub` · `$R check …` · `hub-disk.sh prune-cache` · `$R hub --strict` (en ese orden: la caché guarda 404 de las rutas que la versión vieja no tenía) | **GO-3** (publica `oasisVersion`) |
 | 9 | **Bot de cartera** | motor encendido: `hub-wallet.sh pause` (lo recrea en la versión nueva con el motor **apagado**) · `$R check …` (misma dirección, `wallet` sin cambios) · y entonces `hub-wallet.sh on --yes` · `$R check …` · `backup-ecoin.sh`. Motor apagado: `$C up -d --no-deps oasis-wallet-bot` · `$R check …` | **GO-4a** (`oasisVersion`) · **GO-4b** (encender: `pubAvailability`) |
 | 10 | **Cierre** | `$R snapshot post` · `deploy-status.sh` · `deploy-log.sh` (abajo) · ficha de instancia | |
 
 Orden fijo: **pub → HUB → bots**. La imagen es compartida y un retag no recrea contenedores:
 mientras no se recrea, cada nodo sigue en la versión vieja. `ecoind` no depende de la imagen de
 Oasis y **no se recrea**.
+
+**Paso 6, humo de la imagen.** El `Dockerfile` y el entrypoint del host pueden no ser los del repo
+(§0.3): la imagen que se acaba de construir **allí** se prueba allí, antes de recrear a nadie, en
+un contenedor que no toca nada: sin red, sin volúmenes (identidad y `.ssb` desechables dentro del
+contenedor) y que se borra al acabar.
+
+```bash
+IMG=<imagen>:latest
+docker run --rm --network none --entrypoint sh $IMG -c 'grep -m1 "\"version\"" /app/src/server/package.json; node --check /app/src/backend/backend.js && echo ok'
+for mode in server backend; do
+  cid=$(docker run -d --network none -e OASIS_SKIP_AI_MODEL=true -e OASIS_PUBLIC=true -e OASIS_OPEN=false -e HOME=/home/oasis -e SSB_PATH=/home/oasis/.ssb $IMG $mode)
+  sleep 45
+  docker inspect -f '{{.State.Status}}' $cid                                             # running
+  docker logs $cid 2>&1 | grep -a -E 'Version: |patcheado|EROFS|Cannot find module|Error'  # versión nueva, 3 parches, ningún error
+  [ $mode = backend ] && docker exec $cid curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/c   # 200
+  docker rm -f $cid
+done
+```
 
 **Paso 4, subir `src/`.** El host no es un checkout git. Desde la rama, solo ficheros trackeados:
 

@@ -36,8 +36,8 @@
 #   up <pub|hub|bot>    (local) Recrea un nodo con la imagen actual, espera a healthy y deja pasar
 #                       GATE_SETTLE segundos (90) con una petición en medio: lo que un nodo publica
 #                       solo no sale todo en el arranque.
-#   worst               (local) Peor caso del bot: GET /banking y /wallet por loopback (las páginas que
-#                       autopublican la dirección). Después: check … con wallet sin cambios.
+#   worst               (local) Peor caso del bot: GET por loopback a las páginas donde el backend refresca
+#                       la cartera solo (/banking, /transfers…; /wallet no: ver el código). Después: check.
 #
 # Códigos de salida: 0 ok · 1 desviación · 3 no medible o precondición · 64 uso.
 # Nodos: GATE_NODES="alias:contenedor:servicio …" (por defecto pub, hub y bot de esta casa).
@@ -318,11 +318,16 @@ case "$CMD" in
 
   worst)
     c="$(container_of bot)"
-    for p in /banking /wallet; do
+    # Las páginas donde el backend refresca la cartera por su cuenta (WALLET_CHIP_PATHS de backend.js).
+    # /wallet NO entra por defecto: en CUALQUIER versión, con el motor encendido, republica la
+    # dirección con la última que haya emitido la cartera (cada pubAvailability pide una nueva).
+    # No es una regresión que medir en cada upgrade: es una trampa (AGENTES §4, ECOIN §9).
+    # GATE_WORST_PATHS permite pedir otras rutas a propósito.
+    for p in ${GATE_WORST_PATHS:-/banking /transfers /shops /market /school}; do
       code="$(MSYS_NO_PATHCONV=1 docker exec "$c" curl -s -o /dev/null -w '%{http_code}' --max-time 60 -H 'Host: localhost:3000' "http://127.0.0.1:3000$p")"
       echo "GET $p por loopback en el bot → $code"
     done
-    sleep 10
-    echo "Ahora: upgrade-gates.sh --local check <tag> --expect '…' (wallet no debe moverse; karmaScore puede)."
+    sleep 30
+    echo "Ahora: upgrade-gates.sh --local check <tag> --expect 'bot:karmaScore=+0..1' (wallet y (cifrado) no deben moverse)."
     ;;
 esac
