@@ -308,6 +308,77 @@ div[class*='language-'] {
 }
 
 /* Imprimible como fanzine */
+
+/* ---- Puertas por rol (WP-O115) ---------------------------------------------
+   Sello de estado de un encargo y lista de puertas. Solo tokens de la piel:
+   tinta, papel, gris y rayas. Sin color: el estado se lee por la forma. */
+.zine-sello {
+  display: inline-block;
+  border: 1px solid var(--zine-ink);
+  padding: 0 6px;
+  font-size: 0.78em;
+  line-height: 1.6;
+  white-space: normal;
+  vertical-align: baseline;
+}
+.zine-sello strong {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.zine-sello[data-estado='probado'] {
+  background: var(--zine-ink);
+  color: var(--zine-paper);
+}
+.zine-sello[data-estado='probado'] a {
+  color: var(--zine-paper);
+}
+.zine-sello[data-estado='ejercido'] {
+  border-width: 2px;
+}
+.zine-sello[data-estado='en-obras'] {
+  border-style: dashed;
+  background-image: var(--zine-stripe);
+  background-size: 100% 4px;
+  background-repeat: no-repeat;
+  background-position: bottom;
+  padding-bottom: 4px;
+}
+
+.zine-puertas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1rem;
+  margin: 1.2rem 0;
+}
+.zine-puerta {
+  border: 2px solid var(--zine-ink);
+  padding: 0.8rem 1rem 0.6rem;
+}
+.zine-puerta__nombre {
+  display: block;
+  font-weight: 700;
+  font-size: 1.05em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.zine-puerta__lema {
+  margin: 0.2rem 0 0.6rem;
+  line-height: 1.4;
+}
+.vp-doc .zine-puerta__encargos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.vp-doc .zine-puerta__encargos li {
+  margin: 0.5rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--zine-ink);
+}
+.zine-puerta__encargo {
+  display: block;
+}
+
 @media print {
   :root,
   .dark {

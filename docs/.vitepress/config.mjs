@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress';
+import { readFileSync } from 'node:fs';
 
 /**
  * O_SDK docs portal — Oasis (SSB) dockerized fork.
@@ -28,6 +29,29 @@ const BACK = {
     'https://github.com/alephscriptorium-eng/O_SDK/blob/main/CHANGELOG.md',
   issues: 'https://github.com/alephscriptorium-eng/O_SDK/issues'
 };
+
+/**
+ * Datos vivos: se leen del sistema al construir y no se escriben a mano en ninguna página
+ * (BASE-1 §6: «versiones paramétricas»). Se pintan con el componente Vivo; el gate de verdad
+ * (docs/.vitepress/verdad-checks.json) falla si salen vacíos o si alguien vuelve a escribirlos.
+ * El workflow reconstruye el portal cuando cambia src/server/package.json.
+ */
+const VIVO = {
+  oasisVersion: JSON.parse(
+    readFileSync(new URL('../../src/server/package.json', import.meta.url), 'utf8')
+  ).version
+};
+
+/** Puertas por rol: una página por rol en docs/roles/, que es a la vez la receta del agente. */
+const puertas = [
+  { text: 'Todas las puertas', link: '/roles/' },
+  { text: 'Cliente Oasis · tu nodo en tu máquina', link: '/roles/cliente' },
+  { text: 'Pub Oasis · un pub en tu servidor', link: '/roles/pub' },
+  { text: 'Economía Oasis · ECOin', link: '/roles/economia' },
+  { text: 'Hazlo tuyo · tu propia instancia', link: '/roles/tu-pub' },
+  { text: 'Mantener · subir de versión, recuperar', link: '/roles/mantener' },
+  { text: 'Agente · el protocolo', link: '/AGENTES' }
+];
 
 const backLinks = [
   { text: 'Repositorio', link: BACK.repo },
@@ -59,14 +83,17 @@ export default defineConfig({
   themeConfig: {
     back: BACK,
     backLinks,
+    vivo: VIVO,
     nav: [
       { text: 'Portada', link: '/' },
+      { text: '¿Quién llega?', items: puertas },
       { text: 'Proyecto', link: '/proyecto' },
       {
         text: 'Operación',
         items: [
           { text: 'Protocolo para agentes', link: '/AGENTES' },
           { text: 'Ficha de instancia · Scriptorium', link: '/PUB/INSTANCIA-SCRIPTORIUM' },
+          { text: 'Ficha de instancia · plantilla', link: '/PUB/INSTANCIA-PLANTILLA' },
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
           { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' },
@@ -89,15 +116,18 @@ export default defineConfig({
           { text: 'Proyecto · DevOps', link: '/proyecto' }
         ]
       },
+      { text: '¿Quién llega?', items: puertas },
       {
         text: 'Operación',
         items: [
           { text: 'Protocolo para agentes', link: '/AGENTES' },
           { text: 'Ficha de instancia · Scriptorium', link: '/PUB/INSTANCIA-SCRIPTORIUM' },
+          { text: 'Ficha de instancia · plantilla', link: '/PUB/INSTANCIA-PLANTILLA' },
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
           { text: 'Protocolo del Teatro', link: '/PUB/TEATRO-PROTOCOL' },
           { text: 'Protocolo del sidecar de RRSS', link: '/PUB/RRSS-SIDECAR-PROTOCOL' },
+          { text: 'Protocolo del Teatro P2P', link: '/PUB/TEATRO-P2P-PROTOCOL' },
           { text: 'Protocolo de curaduría del Teatro', link: '/PUB/TEATRO-CURADURIA-PROTOCOL' },
           { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' },
           { text: 'Protocolo de ECOin (hub-wallet)', link: '/PUB/ECOIN-PROTOCOL' },
