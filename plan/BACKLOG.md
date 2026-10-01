@@ -634,7 +634,9 @@ Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertur
 | a upstream | `Vary` en `/c` e idioma global por proceso; `GET /wallet` republica la dirección; avisos a uno mismo en un nodo `--public` | reporte WP-O113 §7 |
 | al llegar la **dote** | `backup-ecoin.sh` inmediato; comprobar pool y primer pago; avisar a upstream de que estamos en la lista | ECOIN §8, §9 |
 | semanal | `backup-ecoin.sh` (cada anuncio usa una dirección nueva del keypool) + `hub-wallet.sh status` + `hub-disk.sh status --json` | ECOIN §9 · HUB §6 |
-| 2026-09-20 → **WP-O114** | Memoria de HUB y bot-2 en 1.1.4 con el motor encendido; si va bien, retirar en el VPS la imagen `:1.1.2`, `src.old` y `/srv/oasis/src-1.1.2.tgz`. **Sin hacer a 2026-10-01** (`deploy-status.sh`, restos de rollback: `src.old`, `:1.1.2` y los tgz de 0.9.6, 1.0.8 y 1.1.2): pasa al paso 2 de WP-O114, porque `src.old` rompe el `mv` del deploy | reporte WP-O106 · UPGRADE §4 |
+| **2026-10-02** | **A las 24 h de WP-O114**: memoria de HUB y bot en 1.1.10; `upgrade-gates.sh --remote check post-o114` (esperado: `pubAvailability` +1 o +2, cifrados 0). Si va bien, retirar el rollback: imagen `:1.1.4` (lleva dentro el `.env.prod` viejo), `src.old-1.1.4`, `/srv/oasis/src-1.1.4.tgz` y los `*.bak-o114-*` | reporte WP-O114 |
+| cuanto antes | Backups del 2026-10-01 (`devops/backups/{oasis-pub,ecoin}/20261001T17*`) a almacenamiento cifrado. Decidir si se rota lo que había en el `.env.prod` (estuvo dentro de las imágenes del host) | reporte WP-O114 |
+| ~~2026-09-20~~ ✅ WP-O114 | Memoria de HUB y bot-2 en 1.1.4 con el motor encendido; si va bien, retirar en el VPS la imagen `:1.1.2`, `src.old` y `/srv/oasis/src-1.1.2.tgz`. **Sin hacer a 2026-10-01** (`deploy-status.sh`, restos de rollback: `src.old`, `:1.1.2` y los tgz de 0.9.6, 1.0.8 y 1.1.2): pasa al paso 2 de WP-O114, porque `src.old` rompe el `mv` del deploy | reporte WP-O106 · UPGRADE §4 |
 | cuanto antes | **Backups de hoy a almacenamiento cifrado fuera de la máquina**: `devops/backups/{oasis-pub,ecoin,client,client-wallet}/2026091*` (llevan `secret` y `wallet.dat` sin cifrar) | AGENTES §2.7 |
 | custodio, en el navegador | Casilla «Torrents» en clearnet de su perfil → `/c/torrents/…` en el HUB; opcional «wallet» visible para recibir pagos desde la UI. Cada una es un `about` | TEATRO-P2P §4.4 |
 | custodio | Comprobar en Banking el cobro del `ubiClaim` de 2026-09 (dirigido a La Plaza) | CLIENT §8.7 |
@@ -674,7 +676,12 @@ Dep: WP-O112.
 
 | **WP-O114** | **P1** | Aplicación en el VPS: Oasis 1.1.10 en pub, HUB y bot de cartera |
 
-**Estado** · ⬜ listo para empezar; espera el **GO del custodio** en cada puerta (`UPGRADE-PROTOCOL.md` §4).
+**Estado** · ✅ 2026-10-01 (`plan/REPORTES/WP-O114-aplicacion-vps-1.1.10.md`): pub, HUB y bot en 1.1.10,
+motor encendido, cada nodo publicó un `oasisVersion` y nada más. Queda el cliente del custodio (con su GO).
+**Hallazgo del paso 0**: `OASIS_PUB/.env.prod` y dos copias `.env.prod.bak-*` **están dentro de la imagen** del host
+(`/app/OASIS_PUB/`, visibles desde pub, HUB y bot): su `.dockerignore` excluye `OASIS_PUB/.env` y `OASIS_PUB/.env.local`,
+no `OASIS_PUB/.env.*`. `src.old` sí está excluido. Antes del build: añadir `OASIS_PUB/.env.*` al `.dockerignore` del host.
+Las imágenes de rollback (`:1.1.2`, y la `:1.1.4` que se etiquete) lo llevan dentro: se retiran en cuanto el ciclo se da por bueno.
 Qué viaja al host y qué delta se espera: reporte de WP-O113 §4 y §6. Para decidir en el GO: idioma
 por defecto del visor (`en` hoy, propuesta `es`).
 

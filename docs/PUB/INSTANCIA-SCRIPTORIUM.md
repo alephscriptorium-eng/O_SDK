@@ -19,6 +19,7 @@
 | Nodos de Oasis | tres contenedores de la misma imagen: `oasis-pub-scriptorium` (`server`), `oasis-pub-hub` (`backend`), `oasis-pub-wallet-bot` (`backend`). Versión y modo de cada uno: `deploy-status.sh`, bloque «Piezas vivas» |
 | Datos | volumen `/srv/oasis` (un subdirectorio por servicio) |
 | Edge | Caddy, 6 vhosts; solo `validate` + `reload` |
+| Visor clearnet (`/c`) | tema `Dark-SNH`, idioma por defecto **`es`** (claves `themes.current` y `language` de `pub/config/hub/oasis-config.json`, D-O25). El visitante cambia de idioma con `?lang=` |
 | Ciclo de red | 6 (`src/configs/blockchain-cycle.json`); salto al 7 previsto: el historial actual es de pruebas |
 | Feed del pub | se mide: `pub/scripts/whoami.sh` |
 

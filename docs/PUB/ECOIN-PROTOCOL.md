@@ -291,7 +291,9 @@ repite el gate G3 en local (bootstrap + motor apagado + ensayo del interruptor).
   backend silenciados: sin eso el bot se envía cifrados a sí mismo, `HUB-PROTOCOL.md` §1). Tras el
   overlay: `node pub/scripts/regen-node-configs.js` la regenera con sus marcadores e imprime qué
   claves difieren del original; después, **re-renderizar** (`pub/scripts/render-wallet-bot-config.sh`)
-  y recrear el bot.
+  y recrear el bot. En el host la plantilla y el script viajan juntos (in place) y el render va con
+  `sudo`: el destino está a 400 y es del uid del contenedor; se escribe in place y conserva inodo,
+  dueño y permisos.
 - `pub/config/wallet-bot/ssb-config`: mismas reglas que el del HUB (arrays enteros; `caps.shs` en el
   lockstep de rotación, `HUB-PROTOCOL.md` §5.2).
 - Orden de deploy: pub → HUB → **bot al final** (`UPGRADE-PROTOCOL.md` §4, paso 9); `ecoin` no
