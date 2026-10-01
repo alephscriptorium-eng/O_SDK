@@ -8,6 +8,9 @@ hero:
     Tu nodo, tu identidad. Sin nube, sin cuentas, sin servidor central.
   actions:
     - theme: brand
+      text: ¿Quién llega?
+      link: /roles/
+    - theme: alt
       text: Proyecto · DevOps
       link: /proyecto
     - theme: alt
@@ -31,9 +34,27 @@ features:
     link: /ROADMAP/
 ---
 
-## Empezar
+## ¿Quién llega?
 
-```bash
+No hace falta saber Docker ni SSB. Clonas el repo, abres en él un agente de código y le dices qué
+quieres; el agente lee la receta de tu puerta y se para donde la decisión es tuya. Cada encargo
+lleva su estado **medido**: lo que está ejercido, y lo que sigue en obras.
+
+<Puertas />
+
+Cómo se usa una puerta y qué garantiza cada sello: [¿Quién llega?](/roles/). Si eres el agente:
+[protocolo para agentes](/AGENTES).
+
+## Llévatela
+
+::: code-group
+
+```text [Díselo a tu agente]
+Hola. He clonado o-sdk y tengo Docker Desktop arrancado.
+Arráncame un cliente Oasis. Lee docs/roles/cliente.md y sigue esa receta.
+```
+
+```bash [A mano]
 git clone https://github.com/alephscriptorium-eng/O_SDK.git
 cd O_SDK
 npm run setup                          # crea volumes-dev/{ssb-data,ai-models,logs,client-state} (sin esto el bind falla)
@@ -41,5 +62,10 @@ docker compose up -d oasis-client      # cliente + SSB + IA  (o `npm run up`, qu
 # GUI en http://localhost:3000
 ```
 
-Fork dockerizado de Oasis 1.1.2. Código **FOSS**:
+:::
+
+Hoy ese arranque pide una GPU NVIDIA y descarga un modelo de IA de unos 4 GB: sin ella, mira el
+estado de la puerta [Cliente Oasis](/roles/cliente) antes de empezar.
+
+Fork dockerizado de Oasis <Vivo k="oasisVersion" />. Código **FOSS**:
 [github.com/alephscriptorium-eng/O_SDK](https://github.com/alephscriptorium-eng/O_SDK).
