@@ -61,24 +61,13 @@ PUBC="${PUB_CONTAINER:-oasis-pub-scriptorium}"
 CFG_OFF="./config/wallet-bot/ssb-config"
 CFG_ON="./config/wallet-bot/ssb-config.engine-on"
 
-TMP_WORK=""
-cleanup() { [ -n "$TMP_WORK" ] && rm -rf "$TMP_WORK"; }
-trap cleanup EXIT
-
-if [ "$LOCAL" = 1 ]; then
-  COMPOSE_DIR="$REPO_ROOT/pub"; ENV_FILE=".env.local"; DATA="$REPO_ROOT/volumes-dev"; SUDO=""
-  run() { MSYS_NO_PATHCONV=1 bash -s; }
-else
-  COMPOSE_DIR="${REMOTE_REPO_DIR:?REMOTE_REPO_DIR vacío (host.env)}"; ENV_FILE="${REMOTE_ENV_FILE:-.env.prod}"
-  DATA="${WALLET_DATA_ROOT:-/srv/oasis}"; SUDO="sudo -n"
-  [ -n "${REMOTE_USER:-}" ] && [ -n "${REMOTE_HOST:-}" ] || { echo "ERROR: REMOTE_USER/REMOTE_HOST vacíos" >&2; exit 3; }
-  [ -f "${KEY_PATH:-}" ] || { echo "ERROR: clave SSH no encontrada: ${KEY_PATH:-}" >&2; exit 3; }
-  key_mode="$(stat -c '%a' "$KEY_PATH" 2>/dev/null || echo 600)"
-  if [ "$key_mode" != "600" ] && [ "$key_mode" != "400" ]; then
-    TMP_WORK="$(mktemp -d)"; cat "$KEY_PATH" > "$TMP_WORK/key"; chmod 600 "$TMP_WORK/key"; KEY_PATH="$TMP_WORK/key"
-  fi
-  run() { ssh -i "$KEY_PATH" -o BatchMode=yes -o ServerAliveInterval=30 "$REMOTE_USER@$REMOTE_HOST" bash -s; }
-fi
+# Dónde se ejecuta (host por SSH o stack local) y con qué rutas: común a todos los scripts que
+# miden nodos (lib-node.sh). Define run().
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib-node.sh"
+trap node_run_cleanup EXIT
+node_run_setup "$LOCAL" || exit 3
+COMPOSE_DIR="$NODE_COMPOSE_DIR"; ENV_FILE="$NODE_ENV_FILE"; DATA="$NODE_DATA"; SUDO="$NODE_SUDO"
 
 # Backup local reciente de wallet.dat (lo hace backup-ecoin.sh en la máquina del operador)
 backup_ok=0

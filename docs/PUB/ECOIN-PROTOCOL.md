@@ -98,8 +98,10 @@ después cliente (WP-O103).
   `wallet.dat.bak-<fecha>`. El `secret` del bot tampoco se borra: ambos sobreviven a cualquier rollback.
 - **Tipos permitidos en el feed de bot-2.** Motor **apagado**: `contact`, `pub`, `about`,
   `oasisVersion`, `wallet`, `karmaScore`. Motor **encendido**, además: `pubAvailability`,
-  `ubiAllocation`, `ubiClaimResult`, `bankClaim`, `transfer` (con tag `UBI`). **Nunca** `private`
-  ni `post`. Contraevidencia: mensajes filtrados por `author` = feed de bot-2 sin otro `type`.
+  `ubiAllocation`, `ubiClaimResult`, `bankClaim`, `transfer` (con tag `UBI`). **Nunca** cifrados
+  ni `post`. Se mide con `upgrade-gates.sh snapshot` (cuenta por autor; los cifrados salen como
+  `(cifrado)`; el antiguo `grep '"private":true'` daba 0 siempre, `HUB-PROTOCOL.md` §1). Medido el
+  2026-10-01 en el host: **1 cifrado propio** en el feed de bot-2, anterior a este control.
 - **Identidad propia y nombre de serie** (D-O14): `secret` nacido en
   `/srv/oasis/oasis-wallet-bot/ssb-data`; fila 2 del registro de `HUB-PROTOCOL.md` §11.
 - **Delta del fork en `src/`: cero.** Todo vive en la zona *wholesale* (`ecoin/**`, `pub/**`,
@@ -238,33 +240,35 @@ invariante de §1 y **cero `pubAvailability`** mientras el motor esté apagado. 
 `https://pub.escrivivir.co/c` y los 6 vhosts igual que antes. Aislamiento: `docker stop oasis-pub-ecoin`
 o `docker stop oasis-pub-wallet-bot` no afectan a `whoami`/`invite` del pub ni a `/c`.
 
-## 5. Upgrades de Oasis con el hub-wallet activo (leer junto a `UPGRADE-PROTOCOL.md` y `HUB-PROTOCOL.md` §5)
+## 5. Upgrades de Oasis con el hub-wallet activo (anexo de `UPGRADE-PROTOCOL.md`; leer con `HUB-PROTOCOL.md` §5)
 
 El hub-wallet **no añade guards** a `src/`, pero depende de comportamientos de upstream que no son
 API estable. La imagen es compartida: aplica también todo `HUB-PROTOCOL.md` §5.1 (modo `backend`,
-sbot embebido, `OASIS_*`).
+sbot embebido, `OASIS_*`). El orden y las puertas los da `UPGRADE-PROTOCOL.md` §4; aquí está lo
+propio del bot de cartera.
 
-**5.1 Antes del merge (preflight del hub-wallet).** Sobre el árbol nuevo, cada línea debe dar ≥ 1
-(verificadas sobre 1.1.2 el 2026-09-18 y rehechas para **1.1.4** el 2026-09-19, §5.4):
+**5.1 Invariantes y diff (UPGRADE §3.1).** Lo que el hub-wallet necesita de upstream está en
+`devops/scripts/upgrade-invariants.d/ecoin.tsv` (antes vivía aquí como un bloque de greps;
+verificados sobre 1.1.2, 1.1.4 y 1.1.10) y se evalúa sobre el árbol de trabajo:
 
 ```bash
-grep -c 'async function runPubEngineTick' src/backend/backend.js          # el motor sigue en backend.js…
-grep -c 'bankingModel.isPubNode()' src/backend/backend.js                 # …y sigue condicionado a isPubNode
-grep -c 'function isPubNode' src/models/banking_model.js                  # el interruptor sigue siendo isPubNode()…
-grep -c 'config?.pub === true' src/models/banking_model.js                # …y desde 1.1.3 es pub:true del ssb-config + wallet.url (antes walletPub.pubId)
-grep -c 'migrateAll' src/backend/backend.js                               # desde 1.1.3 el estado se muda a ~/.ssb/oasis/** al arrancar
-grep -c '"url": "http://localhost:7474"' src/configs/oasis-config.json    # wallet.url sigue siendo config (la plantilla lo pisa)
-grep -c 'process.env.OASIS_BANKING_DIR' src/models/banking_model.js       # estado bancario fuera de la capa efímera
-grep -c 'messagesByType({ type: "ubiClaim"' src/models/banking_model.js   # cómo ve el motor los reclamos (todo el log)
-grep -c 'const isLoopbackRequest' src/backend/backend.js                  # escrituras de banking solo desde loopback
-grep -c '.post("/banking/addresses"' src/backend/backend.js               # ruta que fija/publica la dirección
-grep -c 'ensureSelfAddressPublished' src/backend/backend.js               # autopublicación de la dirección al abrir la GUI
-grep -c 'oasis-first-contact' src/models/onboarding_model.js              # flag anti-PM de bienvenida
-grep -c 'exec node backend.js' docker-entrypoint.sh                       # modo backend del entrypoint (nuestro)
+bash devops/scripts/upgrade-behaviour-diff.sh $OLD_REF $NEW_REF --section annex    # ninguna línea «!»
+bash devops/scripts/upgrade-behaviour-diff.sh $OLD_REF $NEW_REF --section publish,loopback,timers,state,env
 ```
 
-Si alguna cae a 0, la pieza afectada de §2 se adapta **en la misma rama del upgrade** y se repite
-el gate G3 en local (bootstrap + motor apagado + ensayo del interruptor).
+Los invariantes dicen que el motor y sus rutas **siguen ahí**; no dicen que hagan lo mismo. Para
+un nodo con cartera, lo que hay que leer del diff:
+
+| Sección | Qué mirar | Consecuencia |
+|---|---|---|
+| `publish` | líneas nuevas en `banking_model.js` y en el bloque de cartera de `backend.js` | cada una es un mensaje que el bot (o un cliente) puede publicar solo: `wallet`, `pubAvailability`, `ubiAllocation`. Se decide con el gate, no leyendo: UPGRADE §3.4 U3 y U5 |
+| `loopback` | rutas nuevas tras `isLoopbackRequest` | acciones nuevas sobre dinero o identidad: fila en `../AGENTES.md` §3 si publican |
+| `timers` | temporizadores nuevos en `backend.js` | lo que el bot hará solo al arrancar en la versión nueva |
+| `state` | ficheros de `banking` nuevos o mudados | tgz de `ssb-data/oasis/` antes de subir: la mudanza no vuelve con un rollback de imagen |
+| `env` | `OASIS_BANKING_DIR`, `OASIS_TEST` y cualquier variable nueva | el compose no debe definir ninguna de las dos |
+
+Si un invariante cae, la pieza afectada de §2 se adapta **en la misma rama del upgrade** y se
+repite el gate G3 en local (bootstrap + motor apagado + ensayo del interruptor).
 
 **5.2 Ficheros derivados de upstream que se regeneran en cada upgrade.**
 
@@ -273,10 +277,21 @@ el gate G3 en local (bootstrap + motor apagado + ensayo del interruptor).
   marcadores, **re-renderizar** y comprobar que el diff contra el original son solo esas claves.
 - `pub/config/wallet-bot/ssb-config`: mismas reglas que el del HUB (arrays enteros; `caps.shs` en el
   lockstep de rotación, `HUB-PROTOCOL.md` §5.2).
-- Orden de deploy: pub → HUB → **bot al final**
-  (`$C up -d --no-deps oasis-wallet-bot`); `ecoin` no depende de la imagen de Oasis y **no se recrea**
-  en un upgrade de Oasis. Tras recrear el bot: mismo feed id, `banking/` intacto, **cero** mensajes
-  `wallet` nuevos.
+- Orden de deploy: pub → HUB → **bot al final** (`UPGRADE-PROTOCOL.md` §4, paso 9); `ecoin` no
+  depende de la imagen de Oasis y **no se recrea** en un upgrade de Oasis.
+  - **Motor apagado**: `$C up -d --no-deps oasis-wallet-bot`.
+  - **Motor encendido**: `hub-wallet.sh pause` (recrea el bot en la versión nueva con el motor
+    **apagado**) → comprobar → `hub-wallet.sh on --yes` (GO: publica `pubAvailability`, §9) →
+    `backup-ecoin.sh`. Así «arranca en la versión nueva» y «el motor corre en la versión nueva»
+    son dos pasos con su medida, no uno.
+  - Antes de subir, mirar `épocas=` en la foto (`upgrade-gates.sh snapshot`): si la época del mes
+    **no** está abierta, la abriría el motor de la versión nueva con sus reglas de elegibilidad
+    (irreversible). Decidirlo con el custodio antes.
+  - Tras cada paso, `upgrade-gates.sh check`: mismo feed id, misma dirección, `banking/` intacto,
+    **cero** mensajes `wallet` nuevos, y el delta declarado (`oasisVersion` +1; con el motor
+    encendido, `pubAvailability` +0..1; `ubiAllocation` 0).
+  - **Rollback del bot**: publica otro `oasisVersion` (pide GO) y no deshace la mudanza de estado:
+    reponer `ssb-data/oasis/` desde el tgz previo. `wallet.dat` no se toca en ningún caso.
 
 **5.3 Tabla de contingencia 1.1.3** (escrita antes de que hubiera fuente; **resuelta el 2026-09-19**: se
 cumplió la primera fila —no hay autodetección, `wallet.*` sigue siendo config— y apareció un caso que la

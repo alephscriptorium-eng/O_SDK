@@ -1,0 +1,15 @@
+# Invariantes del hub-wallet (docs/PUB/ECOIN-PROTOCOL.md §5.1). Columnas separadas por TAB:
+# mínimo	fichero	cadena literal (grep -F)	de qué depende la pieza
+1	src/backend/backend.js	async function runPubEngineTick	el motor de RBU sigue en backend.js…
+1	src/backend/backend.js	bankingModel.isPubNode()	…y sigue condicionado a isPubNode
+1	src/models/banking_model.js	function isPubNode	el interruptor sigue siendo isPubNode()…
+1	src/models/banking_model.js	config?.pub === true	…y es pub:true del ssb-config + wallet.url (hub-wallet.sh conmuta el fichero montado)
+1	src/backend/backend.js	migrateAll	el estado se muda a ~/.ssb/oasis/** al arrancar
+1	src/configs/oasis-config.json	"url": "http://localhost:7474"	wallet.url sigue siendo config (la plantilla del bot lo pisa)
+1	src/models/banking_model.js	process.env.OASIS_BANKING_DIR	variable que el compose NO debe definir (dos mapas de direcciones)
+1	src/models/banking_model.js	messagesByType({ type: "ubiClaim"	cómo ve el motor los reclamos (todo el log)
+1	src/backend/backend.js	const isLoopbackRequest	las escrituras de banca solo entran por loopback
+1	src/backend/backend.js	.post("/banking/addresses"	ruta que fija y publica la dirección (no idempotente)
+1	src/backend/backend.js	ensureSelfAddressPublished	autopublicación de la dirección al abrir la GUI
+1	src/models/onboarding_model.js	oasis-first-contact	flag anti-PM de bienvenida
+1	docker-entrypoint.sh	exec node backend.js	modo backend del entrypoint (nuestro)

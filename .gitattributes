@@ -15,3 +15,5 @@ ecoin/*.sha256 text eol=lf
 # Sidecar de RRSS: Python y plantillas en LF (corren tambien en WSL y dentro de la obra publicada)
 pub/rrss-sidecar/** text eol=lf
 pub/rrss-sidecar/**/*.json text eol=lf
+# Invariantes del upgrade: los lee bash con IFS=TAB y grep -F; un CR al final rompería la última columna.
+devops/scripts/upgrade-invariants.d/* text eol=lf
