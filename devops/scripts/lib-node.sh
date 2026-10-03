@@ -20,10 +20,13 @@
 # Lado destino (funciones que imprime node_remote_lib):
 #   node_ssb_dir <contenedor>         carpeta del host montada como /home/oasis/.ssb
 #   node_feed <ssb-dir>               feed id (campo público `id` del secret; no se lee nada más)
-#   node_own_seq <ssb-dir> <feed>     mayor `sequence` propio visto en el log
-#   node_own_records <ssb-dir> <feed> una línea por mensaje PROPIO: su `type`, `(cifrado)`,
-#                                     `(sin-type-inicial)` o `(cadena)`
-#   node_own_types <ssb-dir> <feed>   "N tipo" por línea, ordenado
+#   node_log_format <ssb-dir>         flume (Oasis <= 1.1.x) · db2 (>= 1.2) · migrando · ninguno
+#   node_own_scan <ssb-dir> <feed> [<contenedor>] [<tipo>]
+#                                     una pasada por el log: `F <formato>`, `S <sequence propio>`,
+#                                     `R <tipo>` por mensaje PROPIO (su `type`, `(cifrado)`,
+#                                     `(sin-type-inicial)` o `(cadena)`), `L <último contenido de <tipo>>`.
+#                                     Si el log no se puede leer: `S ?`, nunca `S 0`.
+#   node_own_seq / node_own_records / node_own_types   lo mismo, por partes (mismos argumentos)
 #   node_state / node_version / node_image <contenedor>
 #
 # Por qué así:
@@ -33,6 +36,10 @@
 #  - La invariante es `sequence` propio == nº de registros propios. Si no cuadra, la medida no
 #    vale y quien la use debe decir «no medible», no «sin cambios».
 #  - `grep -a -o … | wc -l`, nunca `grep -c`, sobre un fichero binario (AGENTES §4).
+#  - Dos formatos de log. flume/log.offset es JSON y se lee con grep. db2/log.bipf es binario y lo
+#    lee node dentro del contenedor (pub/tools/log-bipf.js): por eso db2 pide el contenedor en marcha.
+#    Tras migrar, flume/log.offset es un fichero-guarda de texto: un grep sobre él da 0 sin error.
+#    Lo que no se puede leer es `?`, y `?` es «no medible».
 
 # shellcheck disable=SC2034
 node_run_setup() {
@@ -85,21 +92,50 @@ node_ssb_dir() { # en local Docker Desktop devuelve rutas de Windows: allí mand
 node_feed() {
   $SUDO grep -o '"id": *"@[A-Za-z0-9+/]\{43\}=\.ed25519"' "$1/secret" 2>/dev/null | head -1 | grep -o '@[^"]*'
 }
-node_own_seq() {
+node_log_format() { # flume | db2 | migrando | ninguno
+  local old="$1/flume/log.offset" new="$1/db2/log.bipf" guard=0
+  $SUDO head -c 64 "$old" 2>/dev/null | grep -a -q '^OASIS: this log was migrated' && guard=1
+  if $SUDO test -f "$new"; then
+    if [ "$guard" = 1 ] || ! $SUDO test -e "$old"; then echo db2; else echo migrando; fi
+  elif [ "$guard" = 0 ] && $SUDO test -f "$old"; then echo flume
+  else echo ninguno; fi
+}
+node_own_seq_flume() {
   { $SUDO grep -a -o "\"sequence\":[0-9]*,\"author\":\"$2\"" "$1/flume/log.offset" 2>/dev/null | sed 's/"sequence":\([0-9]*\).*/\1/'
     $SUDO grep -a -o "\"author\":\"$2\",\"sequence\":[0-9]*" "$1/flume/log.offset" 2>/dev/null | sed 's/.*"sequence"://'
     echo 0; } | sort -n | tail -1
 }
-node_own_records() { # ancla en el sobre del mensaje (author…hash…content), en sus dos órdenes históricos
+node_own_records_flume() { # ancla en el sobre del mensaje (author…hash…content), en sus dos órdenes históricos
   $SUDO grep -a -o "\"author\":\"$2\",\(\"sequence\":[0-9]*,\)\{0,1\}\"timestamp\":[0-9.]*,\"hash\":\"sha256\",\"content\":\({\"type\":\"[^\"]*\"\|{\|\"[^\"]*\"\)" "$1/flume/log.offset" 2>/dev/null \
     | sed -e 's/.*"content":{"type":"\([^"]*\)"$/\1/' \
           -e 's/.*"content":{$/(sin-type-inicial)/' \
           -e 's/.*"content":"[^"]*\.box[0-9]*"$/(cifrado)/' \
           -e 's/.*"content":".*/(cadena)/'
 }
-node_own_types() { node_own_records "$1" "$2" | sort | uniq -c | sed 's/^ *//'; }
+node_own_scan() { # node_own_scan <ssb-dir> <feed> [<contenedor>] [<tipo para L>]  → líneas F/S/R/L/T/D/A
+  local fmt out; fmt="$(node_log_format "$1")"; echo "F $fmt"
+  case "$fmt" in
+    flume)
+      echo "S $(node_own_seq_flume "$1" "$2")"
+      node_own_records_flume "$1" "$2" | sed 's/^/R /'
+      if [ -n "${4:-}" ]; then
+        $SUDO grep -a -o "\"author\":\"$2[^{]*{\"type\":\"$4\"[^}]*" "$1/flume/log.offset" 2>/dev/null | tail -1 | sed 's/.*"content":/L /' | cut -c1-402
+      fi ;;
+    db2) # binario BIPF: lo lee node dentro del contenedor (pub/tools/log-bipf.js por stdin)
+      out="$(node_bipf_js | docker exec -i -u oasis -e HOME=/home/oasis -e SSB_FEED="$2" -e SSB_LAST_TYPE="${4:-}" "${3:-}" sh -lc 'cd /app/src/server && node -' 2>/dev/null)"
+      if printf '%s\n' "$out" | grep -q '^S [0-9]'; then printf '%s\n' "$out" | grep '^[SRLTDA] '; else echo "S ?"; fi ;;
+    *) echo "S ?" ;;
+  esac
+}
+node_own_seq()     { node_own_scan "$@" | sed -n 's/^S //p'; }
+node_own_records() { node_own_scan "$@" | sed -n 's/^R //p'; }
+node_own_types()   { node_own_records "$@" | sort | uniq -c | sed 's/^ *//'; }
 node_state()   { local s; s="$(docker inspect -f '{{.State.Status}}{{if .State.Health}} {{.State.Health.Status}}{{end}}' "$1" 2>/dev/null)"; echo "${s:-ausente}"; }
 node_version() { docker exec "$1" sh -c 'grep -m1 "\"version\"" /app/src/server/package.json' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/'; }
 node_image()   { docker inspect -f '{{.Config.Image}} {{.Image}}' "$1" 2>/dev/null | sed 's/sha256:\(............\).*/\1/'; }
 NODE_LIB
+  # El lector del log db2 viaja dentro de la librería: en destino no hay checkout del repo.
+  printf "node_bipf_js() { cat <<'NODE_BIPF_JS'\n"
+  tr -d '\r' < "$(cd "$DEVOPS_DIR/.." && pwd)/pub/tools/log-bipf.js"
+  printf '\nNODE_BIPF_JS\n}\n'
 }
