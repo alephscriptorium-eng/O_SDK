@@ -85,3 +85,16 @@ __pycache__/
 *.pyc
 pub/rrss-sidecar/**/store/
 pub/rrss-sidecar/**/obra.json
+
+# Oasis >= 1.2: la pila de IA y el modelo de embeddings se instalan aparte y no se versionan.
+src/AI/node_modules/
+src/AI/embeddings/
+src/AI/.cache/
+src/server/node_modules.full/
+*.onnx
+# Oasis >= 1.2: src/base son las dependencias que upstream vendoriza. Se versionan ENTERAS, tal
+# cual vienen (D-O27): ninguna regla de arriba (node_modules/, dist/, build/, *.log, cache/,
+# packages/) debe esconder un fichero suyo. Estas líneas van las últimas a propósito.
+!src/base/node_modules/
+!src/base/**/node_modules/
+!src/base/**
