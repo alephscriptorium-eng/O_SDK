@@ -124,7 +124,7 @@ apply_node_patches() {
                 fs.writeFileSync(p, d);
                 console.log('    \u2713 ssb-ref patcheado exitosamente');
             } else {
-                console.log('    - ssb-ref no necesita patch');
+                console.log('    = ssb-ref ya parcheado');
             }
         }
         "
@@ -141,7 +141,9 @@ apply_node_patches() {
             let data = fs.readFileSync(path, 'utf8');
             const marker = 'want: function (id, cb)';
             const startIndex = data.indexOf(marker);
-            if (startIndex !== -1) {
+            if (data.includes('if (wantCallbacks[id]) registerWant(id);')) {
+                console.log('    = ssb-blobs ya parcheado (viene así en src/base)');
+            } else if (startIndex !== -1) {
                 const endIndex = data.indexOf('},', startIndex);
                 if (endIndex !== -1) {
                     const before = data.slice(0, startIndex);
@@ -202,7 +204,9 @@ apply_node_patches() {
             const originalChmod = 'fs.chmodSync(socket, mode)';
             const patchedChmod = 'try { fs.chmodSync(socket, mode); } catch(e) { if (e.code !== \"ENOENT\") throw e; }';
             
-            if (data.includes(originalChmod)) {
+            if (data.includes(patchedChmod)) {
+                console.log('    = multiserver unix-socket ya parcheado');
+            } else if (data.includes(originalChmod)) {
                 data = data.replace(originalChmod, patchedChmod);
                 fs.writeFileSync(path, data);
                 console.log('    ✓ multiserver unix-socket patcheado exitosamente');
@@ -501,7 +505,10 @@ setup_oasis_config() {
 
     if [ -f "$OASIS_CONFIG_FILE" ]; then
         local ai_target
-        if [ -f "$MODEL_PATH" ] || [ -f "$LEGACY_MODEL_PATH" ]; then
+        if { [ -f "$MODEL_PATH" ] || [ -f "$LEGACY_MODEL_PATH" ]; } && ! ai_stack_installed; then
+            echo "  → Hay modelo IA pero la imagen no trae la pila de IA (OASIS_AI=none): IA deshabilitada."
+            ai_target="off"
+        elif [ -f "$MODEL_PATH" ] || [ -f "$LEGACY_MODEL_PATH" ]; then
             echo "  → Modelo IA encontrado, habilitando IA en configuración..."
             ai_target="on"
         else
@@ -531,28 +538,25 @@ setup_oasis_config() {
 }
 
 # =============================================================================
-# FUNCIÓN: Instalar dependencias críticas de runtime
+# FUNCIÓN: Comprobar las dependencias de runtime (NO instala nada)
+# Desde Oasis 1.2 el núcleo viene vendorizado en src/base/node_modules y src/server/node_modules es
+# un enlace a él (lo crea el Dockerfile). Un `npm install` aquí escribiría a través del enlace y
+# reorganizaría src/base entero. La pila de IA (src/AI/node_modules) se instala en el build con
+# OASIS_AI=nav|full; si no está, la IA se apaga en setup_oasis_config.
 # =============================================================================
-install_runtime_deps() {
-    echo "Verificando dependencias críticas..."
-    cd "$CURRENT_DIR/src/server"
-    
-    # Instalar dependencias faltantes sin usar npm install completo
-    MISSING_DEPS=""
-    [ ! -d "node_modules/module-alias" ] && MISSING_DEPS="$MISSING_DEPS module-alias"
-    [ ! -d "node_modules/env-paths" ] && MISSING_DEPS="$MISSING_DEPS env-paths"
-    
-    if [ -n "$MISSING_DEPS" ]; then
-        echo "Instalando dependencias faltantes:$MISSING_DEPS"
-        npm install --no-save --no-bin-links --prefer-offline $MISSING_DEPS 2>/dev/null || \
-        echo "⚠ Advertencia: Algunas dependencias no se pudieron instalar"
+ai_stack_installed() { [ -d "$CURRENT_DIR/src/AI/node_modules/node-llama-cpp" ]; }
+
+check_runtime_deps() {
+    echo "Verificando dependencias (núcleo vendorizado en src/base)..."
+    if [ ! -d "$CURRENT_DIR/src/server/node_modules/ssb-db2" ]; then
+        echo "❌ src/server/node_modules no lleva a src/base/node_modules: la imagen está mal construida."
+        echo "   Reconstruye con el Dockerfile del repo (crea el enlace); no se instala nada en caliente."
+        exit 1
     fi
-    
-    # Intentar instalar node-llama-cpp solo si el modelo existe
-    if [ -f "$MODEL_PATH" ] && [ ! -d "node_modules/node-llama-cpp" ]; then
-        echo "Instalando node-llama-cpp para soporte de IA..."
-        npm install --no-save --no-bin-links --prefer-offline node-llama-cpp@latest 2>/dev/null || \
-        echo "⚠ node-llama-cpp no se pudo instalar, la IA podría no funcionar"
+    if ai_stack_installed; then
+        echo "  ✓ pila de IA instalada (src/AI/node_modules)"
+    else
+        echo "  - sin pila de IA en esta imagen (build con OASIS_AI=none): la IA queda apagada"
     fi
 }
 
@@ -736,8 +740,8 @@ else
     link_ai_model
 fi
 
-# 3. Instalar dependencias críticas
-install_runtime_deps
+# 3. Comprobar dependencias (no se instala nada en caliente)
+check_runtime_deps
 
 # 4. Aplicar parches críticos
 apply_node_patches

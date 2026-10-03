@@ -6,8 +6,21 @@
 .git/**
 node_modules
 node_modules/**
+# Oasis >= 1.2: src/server/node_modules es un ENLACE a ../base/node_modules; lo crea el Dockerfile.
+# src/base/node_modules SÍ viaja (son las dependencias vendorizadas): los patrones de arriba solo
+# casan en la raíz del contexto.
 src/server/node_modules
 src/server/node_modules/**
+src/server/node_modules.full
+src/server/node_modules.full/**
+# La pila de IA se instala en el build (OASIS_AI): lo que haya en la máquina que construye no vale
+# (binarios de otra plataforma) y pesa.
+src/AI/node_modules
+src/AI/node_modules/**
+src/AI/embeddings
+src/AI/embeddings/**
+src/AI/.cache
+src/AI/.cache/**
 src/AI/models
 src/AI/models/**
 volumes-dev
