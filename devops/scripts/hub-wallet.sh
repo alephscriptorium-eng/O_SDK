@@ -77,13 +77,13 @@ if [ -n "$newest" ] && [ -n "$(find "$newest" -maxdepth 1 -name 'wallet-*.dat' -
 # ---------------------------------------------------------------------------
 # Bloque que se ejecuta en el host (o en local): una sola sesión, sin secretos en argv
 # ---------------------------------------------------------------------------
-run <<REMOTE
+{ node_remote_preamble; node_remote_lib; cat <<REMOTE
 set -uo pipefail
 CMD="$CMD"; YES="$YES"; BOT="$BOT"; ECOIN="$ECOIN"; PUBC="$PUBC"; SUDO="$SUDO"
 DATA="$DATA"; ENV_FILE="$ENV_FILE"; CFG_OFF="$CFG_OFF"; CFG_ON="$CFG_ON"; BACKUP_OK="$backup_ok"
 cd "$COMPOSE_DIR" || { echo "ERROR: no existe $COMPOSE_DIR"; exit 3; }
 C="docker compose --env-file \$ENV_FILE -f docker-compose.pub.yml --profile wallet"
-LOG="\$DATA/oasis-wallet-bot/ssb-data/flume/log.offset"
+SSB_DIR="\$DATA/oasis-wallet-bot/ssb-data"
 MAP="\$DATA/oasis-wallet-bot/ssb-data/oasis/banking/wallet-addresses.json"
 
 rpc() { # rpc <method> [json-params]  — credenciales solo dentro del contenedor de ecoind
@@ -99,20 +99,26 @@ ENGINE_LOG="\$(docker logs "\$BOT" 2>&1 | grep -a -c 'PUB engine on')"
 INFO="\$(rpc getinfo)"
 BAL="\$(printf '%s' "\$INFO" | num balance)"; BLOCKS="\$(printf '%s' "\$INFO" | num blocks)"; CONNS="\$(printf '%s' "\$INFO" | num connections)"
 PEERH="\$(docker logs --tail 4000 "\$ECOIN" 2>&1 | grep -a -o 'receive version message.*blocks=[0-9]*' | grep -o 'blocks=[0-9]*' | cut -d= -f2 | sort -n | tail -1)"
-own() { \$SUDO grep -a -o "\"author\":\"\$FEED[^{]*{\"type\":\"\$1\"" "\$LOG" 2>/dev/null | wc -l | tr -d ' '; }
+# Mensajes propios por tipo, leídos del log en el formato que tenga (flume o db2: lib-node.sh).
+# Si el log no se puede leer, own() devuelve «?»: ready no pasa y status lo enseña, en vez de un 0.
+SCAN=""
+rescan() { SCAN="\$(node_own_scan "\$SSB_DIR" "\$FEED" "\$BOT" pubAvailability)"; }
+own() { if printf '%s\n' "\$SCAN" | grep -q '^S [0-9]'; then printf '%s\n' "\$SCAN" | grep -c -x "R \$1"; else echo '?'; fi; }
 
 status() {
+  rescan
   echo "== hub-wallet · \$(date -u +%FT%TZ)"
   echo "bot:        \$(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "\$BOT" 2>/dev/null)   feed \${FEED:-?}"
   echo "modo:       pub=\${PUBFLAG:-?}  (\${MOUNTED##*/})   «PUB engine on» en el log: \$ENGINE_LOG"
   echo "mensajes:   wallet=\$(own wallet) about=\$(own about) pubAvailability=\$(own pubAvailability) ubiAllocation=\$(own ubiAllocation)"
-  echo "anuncio:    \$(\$SUDO grep -a -o "\"author\":\"\$FEED[^{]*{\"type\":\"pubAvailability\"[^}]*" "\$LOG" 2>/dev/null | tail -1 | sed 's/.*"content"://' | cut -c1-200)"
+  echo "anuncio:    \$(printf '%s\n' "\$SCAN" | sed -n 's/^L //p' | cut -c1-200)"
   echo "ecoind:     \$(docker inspect -f '{{.State.Health.Status}}' "\$ECOIN" 2>/dev/null)  blocks=\${BLOCKS:-?} (pares: \${PEERH:-?})  conexiones=\${CONNS:-?}"
   echo "cartera:    \${ADDR:-?}  saldo=\${BAL:-?} ECO"
   awk -v b="\${BAL:-0}" 'BEGIN{a=b-500; if(a<0)a=0; p=a; if(2000<p)p=2000; if(0.2*b<p)p=0.2*b; printf "pool:       %.4f ECO esta época  (min(saldo-500, 2000, 0.2*saldo); con saldo <= 500 no se paga)\n", p}'
 }
 
 ready() {
+  rescan
   fail=0; ok() { echo "  ok   \$1"; }; ko() { echo "  FALLA \$1"; fail=1; }
   [ "\$(docker inspect -f '{{.State.Health.Status}}' "\$BOT" 2>/dev/null)" = healthy ] && ok "bot healthy" || ko "bot no healthy"
   [ "\$(docker inspect -f '{{.State.Health.Status}}' "\$ECOIN" 2>/dev/null)" = healthy ] && ok "ecoind healthy" || ko "ecoind no healthy"
@@ -165,3 +171,4 @@ case "\$CMD" in
     [ "\$PUBFLAG" = false ] && [ "\$ENGINE_LOG" = 0 ] || { echo "DESVIACIÓN: pub=\$PUBFLAG, engine log=\$ENGINE_LOG"; exit 2; } ;;
 esac
 REMOTE
+} | run
