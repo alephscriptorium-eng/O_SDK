@@ -107,11 +107,13 @@ if [ -n "$OLD_REF" ] && [ "$(git show "$OLD_REF:src/server/package.json" 2>/dev/
   # Riesgo por rol. El pub (modo server) no ejecuta «src/server»: ejecuta el CIERRE de requires de
   # SSB_server.js, que sale de esa carpeta (banking_model.js, state-manager…). Los backends (HUB,
   # bots) y el cliente pueden cargar todo src/.
-  n_all="$(git diff --name-only "$OLD_REF" "$NEW_REF" -- src ':!src/client/assets' | wc -l | tr -d ' ')"
+  # src/base (desde 1.2) son dependencias vendorizadas: se cuentan aparte, no como código de Oasis.
+  n_all="$(git diff --name-only "$OLD_REF" "$NEW_REF" -- src ':!src/client/assets' ':!src/base' | wc -l | tr -d ' ')"
+  n_vendor="$(git diff --name-only "$OLD_REF" "$NEW_REF" -- src/base | wc -l | tr -d ' ')"
   closure="$(node "$REPO_ROOT/devops/scripts/upgrade-closure.js" "$NEW_REF" src/server/SSB_server.js 2>/dev/null)"
   if [ -n "$closure" ]; then
     changed="$(git diff --name-only "$OLD_REF" "$NEW_REF" -- src | grep -Fx -f <(printf '%s\n' "$closure") | grep -v 'package-lock.json')"
-    note "Código que cambia por rol: pub en modo server = $(printf '%s' "$changed" | grep -c .) de los $(printf '%s\n' "$closure" | grep -c .) ficheros que carga · backends y cliente = $n_all"
+    note "Código que cambia por rol: pub en modo server = $(printf '%s' "$changed" | grep -c .) de los $(printf '%s\n' "$closure" | grep -c .) ficheros que carga · backends y cliente = $n_all · dependencias vendorizadas (src/base) = $n_vendor"
     printf '%s\n' "$changed" | grep . | sed 's/^/      pub: /'
   else
     warn "no pude calcular el cierre de requires del modo server (¿node?): cuenta solo src/server = $(git diff --name-only "$OLD_REF" "$NEW_REF" -- src/server | wc -l | tr -d ' ')"
