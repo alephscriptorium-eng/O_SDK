@@ -90,6 +90,7 @@ services:
       HOME: /home/oasis
       SSB_PATH: /home/oasis/.ssb
       OASIS_PUBLIC: ${OASIS_HUB_PUBLIC:-true}     # false SOLO durante el bootstrap del invite
+      OASIS_SNAPSHOT: "off"                       # D-O27: el snapshot lo construye el pub; aquí nadie lo pide
       OASIS_OPEN: "false"
       OASIS_ALLOW_HOST: ${OASIS_HUB_ALLOW_HOST:-pub.escrivivir.co}
       NODE_OPTIONS: ${OASIS_HUB_NODE_OPTIONS:---max-old-space-size=1024}
@@ -177,6 +178,7 @@ services:
       HOME: /home/oasis
       SSB_PATH: /home/oasis/.ssb
       OASIS_PUBLIC: ${OASIS_WALLET_BOT_PUBLIC:-true}   # false SOLO durante el bootstrap del invite
+      OASIS_SNAPSHOT: "off"                            # D-O27: ni lo construye ni arranca desde el del pub
       OASIS_OPEN: "false"
       OASIS_ALLOW_HOST: localhost
       # Sin OASIS_BANKING_DIR (retirado en 1.1.4): el estado bancario vive en ~/.ssb/oasis/banking, dentro

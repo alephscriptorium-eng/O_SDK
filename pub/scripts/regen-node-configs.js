@@ -22,6 +22,7 @@
 //   themes.current, language
 // Solo bot de cartera (plantilla .tpl; los marcadores los rellena render-wallet-bot-config.sh):
 //   wallet.url = http://ecoin:7474 · wallet.user / wallet.pass = marcadores
+//   language se conserva: un default que upstream cambia (1.2.1: en → es) no debe mover el nodo solo
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -60,7 +61,9 @@ const hub = base();
 hub.themes.current = (prevHub.themes && prevHub.themes.current) || src.themes.current;
 hub.language = prevHub.language || src.language;
 
+const prevBot = fs.existsSync(BOT) ? read(BOT) : {};
 const bot = base();
+bot.language = prevBot.language || src.language;
 bot.wallet.url = 'http://ecoin:7474';
 bot.wallet.user = '__ECOIN_RPC_USER__';
 bot.wallet.pass = '__ECOIN_RPC_PASS__';
