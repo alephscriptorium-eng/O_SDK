@@ -339,6 +339,34 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   del cliente. Aplicación: WP-O115. Lo que haría «probado» cada encargo:
   WP-O116, WP-O117, WP-O118.
 
+- **D-O27 · 2026-10-04 · Ciclo db2: el upgrade a Oasis 1.2 es de un solo
+  sentido, las dependencias se vendorizan y los snapshots los construye el
+  pub.** Decidido con el custodio tras medir el salto 1.1.10 → 1.2.1
+  (`OLD_REF=f770dbb7`, `NEW_REF=942d39c9`), que cambia el motor de base de
+  datos (`ssb-db`/flume → `ssb-db2`). (1) **Sentido único, aceptado.** El
+  primer arranque migra `flume/log.offset` a `db2/log.bipf`, borra `flume/` y
+  deja un fichero-guarda; todo nodo publica además su `oasisVersion`. Volver
+  atrás sería arrancar la identidad con un log más corto que el de la red:
+  no hay rollback tras migrar, se corrige hacia delante. A cambio, la
+  migración se **ensaya como gate bloqueante**: en local con identidades
+  desechables y, en el host, sobre una copia del log real sin `secret` y sin
+  red, antes de recrear ningún nodo. (2) **`src/base` se vendoriza tal cual**
+  (19 145 ficheros, 201 MB): es lo que upstream prueba y mantiene el
+  invariante de 6 ficheros. No se hace `npm install` en `src/server` ni se
+  ejecuta `patch-node-modules.js` sobre el repo. (3) **Snapshots: los
+  construye el pub**, con un script del fork que lee su log por el socket y
+  escribe solo registros de mensajes; no un backend sobre su `.ssb`. Se
+  descarta copiar el del HUB: es el nodo expuesto a internet y el formato
+  admite registros de estado y de blobs que el cliente escribe sin validar.
+  (4) **Interruptor `OASIS_SNAPSHOT=off`** en `src/backend/backend.js`, que ya
+  es fichero con guard: apaga la construcción y el arranque por snapshot en
+  HUB y bots, donde nadie los pide. Es un segundo edit que reponer en cada
+  upgrade. (5) **La medida no depende del formato del log**: lo que no se
+  puede leer es «no medible», nunca 0. (6) La capacidad (lo que crece en
+  disco y memoria, y su límite) tiene inventario único. (7) `/c/files/:id` se
+  cachea como el resto del visor. Supera: UPGRADE §0.4 y §6 en lo que decían
+  del rollback de un nodo. Aplicación: WP-O119 a WP-O123.
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |
