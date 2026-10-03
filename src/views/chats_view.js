@@ -30,9 +30,9 @@ const renderMediaBlob = (value, fallbackSrc = null, attrs = {}) => {
   if (!value) return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
   const s = String(value).trim()
   if (!s) return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
-  if (s.startsWith("&")) return img({ src: `/blob/${encodeURIComponent(s)}`, ...attrs })
+  if (s.startsWith("&")) return img({ loading: 'lazy', src: `/blob/${encodeURIComponent(s)}`, ...attrs })
   const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
-  if (mImg) return img({ src: `/blob/${encodeURIComponent(mImg[1])}`, ...attrs })
+  if (mImg) return img({ loading: 'lazy', src: `/blob/${encodeURIComponent(mImg[1])}`, ...attrs })
   return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
 }
 
@@ -47,7 +47,7 @@ const buildReturnTo = (filter, params = {}) => {
 const renderModeButtons = (currentFilter, emptyMod = false, modesAvail = null) =>
   div({ class: "tribe-mode-buttons" },
     ...(emptyMod ? [] : [
-    ["all", "mine", "recent", "favorites", "open", "closed"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
+    ["recent", "mine", "all", "favorites", "open", "closed"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
       form({ method: "GET", action: "/chats" },
         input({ type: "hidden", name: "filter", value: f }),
         button({ type: "submit", class: currentFilter === f ? "filter-btn active" : "filter-btn" }, i18n[`chatFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase())
@@ -192,15 +192,21 @@ const renderChatPoll = (poll, chat) => {
       : [
           p({ class: "chat-poll-question" }, poll.question),
           showResults ? renderResults(poll) : null,
-          div({ class: "chat-poll-actions" },
-            renderBallot(poll, `/chats/${encodeURIComponent(chat.key)}`, "/polls"),
-            String(poll.author) === String(userId) && poll.status === "OPEN"
-              ? form({ method: "POST", action: `/polls/close/${encodeURIComponent(poll.id)}` },
-                  input({ type: "hidden", name: "returnTo", value: `/chats/${encodeURIComponent(chat.key)}` }),
-                  button({ type: "submit", class: "filter-btn" }, i18n.pollCloseButton)
-                )
-              : null
-          ),
+          (() => {
+            const canClose = String(poll.author) === String(userId) && poll.status === "OPEN";
+            const closeFormId = `poll-close-${String(poll.id).replace(/[^a-zA-Z0-9]/g, "")}`;
+            const ballot = renderBallot(poll, `/chats/${encodeURIComponent(chat.key)}`, "/polls",
+              canClose ? [button({ type: "submit", form: closeFormId, class: "danger-btn" }, i18n.pollCloseButton)] : null);
+            return div({ class: "chat-poll-actions" },
+              ballot,
+              canClose
+                ? form({ id: closeFormId, method: "POST", action: `/polls/close/${encodeURIComponent(poll.id)}`, class: "chat-poll-close-form" },
+                    input({ type: "hidden", name: "returnTo", value: `/chats/${encodeURIComponent(chat.key)}` }),
+                    ballot ? null : button({ type: "submit", class: "danger-btn" }, i18n.pollCloseButton)
+                  )
+                : null
+            );
+          })(),
           div({ class: "chat-poll-meta" },
             span({ class: "card-label" }, `${i18n.pollVoters}: `),
             span({ class: "card-value" }, String(poll.totalVoters)),

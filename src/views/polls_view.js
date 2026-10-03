@@ -8,9 +8,9 @@ const { MAX_OPTIONS, MIN_OPTIONS, MAX_OPTION_LENGTH } = require("../models/polls
 const userId = config.keys.id;
 
 const FILTERS = [
-  { key: "ALL", i18n: "pollFilterAll" },
-  { key: "MINE", i18n: "pollFilterMine" },
   { key: "RECENT", i18n: "pollFilterRecent" },
+  { key: "MINE", i18n: "pollFilterMine" },
+  { key: "ALL", i18n: "pollFilterAll" },
   { key: "TOP", i18n: "pollFilterTop" },
   { key: "VOTED", i18n: "pollFilterVoted" },
   { key: "OPEN", i18n: "pollFilterOpen" },
@@ -67,7 +67,7 @@ const renderResults = (poll) =>
     )
   );
 
-const renderBallot = (poll, returnTo, basePath) => {
+const renderBallot = (poll, returnTo, basePath, extra = null) => {
   if (poll.status === "CLOSED" || poll.hasVoted) return null;
   const inputType = poll.multiple ? "checkbox" : "radio";
   return form({ method: "POST", action: `${basePath}/vote/${encodeURIComponent(poll.id)}`, class: "poll-ballot" },
@@ -84,7 +84,10 @@ const renderBallot = (poll, returnTo, basePath) => {
         )
       )
     ),
-    button({ type: "submit", class: "filter-btn" }, i18n.pollVoteButton)
+    div({ class: "poll-ballot-actions" },
+      button({ type: "submit", class: "filter-btn" }, i18n.pollVoteButton),
+      ...(Array.isArray(extra) ? extra.filter(Boolean) : [])
+    )
   );
 };
 

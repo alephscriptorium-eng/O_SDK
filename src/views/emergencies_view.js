@@ -10,7 +10,7 @@ const userId = config.keys.id;
 const CATEGORIES = ["WEATHER", "INFRASTRUCTURE", "HEALTH", "SECURITY", "LOST", "NEIGHBORHOOD"];
 const SEVERITIES = ["UNVERIFIED", "LOW", "MEDIUM", "HIGH"];
 const STATUSES = ["ACTIVE", "RESOLVED", "EXPIRED"];
-const BASE_FILTERS = ["ALL", "MINE", "RECENT"];
+const BASE_FILTERS = ["RECENT", "MINE", "ALL"];
 const EXPIRES = ["1d", "3d", "7d", "30d"];
 
 const catLabel = (c) => String(i18n[`emergencyCategory${c.charAt(0) + c.slice(1).toLowerCase()}`] || c).toUpperCase();
@@ -35,7 +35,7 @@ const renderEmergencyCard = (emergency, params = {}) =>
       renderContentActions(emergency.id, emergencyHref(emergency), { author: emergency.author, favKind: "emergencies", isFavorite: emergency.isFavorite, reportTitle: emergency.title, spread: (params.spreadMap && params.spreadMap.get(emergency.id)) || null })
     ),
     div({ class: "tribe-card-body" },
-      emergency.media && emergency.media.kind === "image" ? a({ href: emergencyHref(emergency) }, img({ class: "emergency-card-cover", src: `/blob/${encodeURIComponent(emergency.media.blobId)}`, alt: emergency.title || "" })) : null,
+      emergency.media && emergency.media.kind === "image" ? a({ href: emergencyHref(emergency) }, img({ loading: 'lazy', class: "emergency-card-cover", src: `/blob/${encodeURIComponent(emergency.media.blobId)}`, alt: emergency.title || "" })) : null,
       emergency.media && emergency.media.kind === "video" ? videoHyperaxe({ class: "emergency-card-cover", src: `/blob/${encodeURIComponent(emergency.media.blobId)}`, controls: true, preload: "metadata" }) : null,
       div({ class: "shop-title-row" }, h2({ class: "tribe-card-title" }, a({ href: emergencyHref(emergency) }, emergency.title || "—"))),
       div({ class: "card-chips-row" }, severityChip(emergency), statusChip(emergency), categoryChip(emergency)),
