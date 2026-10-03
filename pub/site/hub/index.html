@@ -136,7 +136,7 @@
   </div>
 
   <div class="stats-bar tilt-l" aria-label="Ficha del HUB">
-    <div class="stat"><span class="val">16</span><span class="lbl">Tipos</span></div>
+    <div class="stat"><span class="val">17</span><span class="lbl">Tipos</span></div>
     <div class="stat"><span class="val">GET</span><span class="lbl">Único verbo</span></div>
     <div class="stat"><span class="val">Opt-in</span><span class="lbl">Visibilidad</span></div>
     <div class="stat"><span class="val">0</span><span class="lbl">JS en la puerta</span></div>
@@ -225,7 +225,7 @@
   <div class="cutout tilt-r2">
     <div class="tape tape-tl"></div>
     <div class="tape tape-br"></div>
-    <h3>Los 16 tipos · <code>/c/&lt;tipo&gt;/&lt;id&gt;</code></h3>
+    <h3>Los 17 tipos · <code>/c/&lt;tipo&gt;/&lt;id&gt;</code></h3>
     <table class="tbl">
       <tr>
         <th>Tipo</th>
@@ -281,12 +281,21 @@
         <td>Bookmarks</td>
         <td><code>/c/bookmarks/&lt;id&gt;</code></td>
       </tr>
+      <tr>
+        <td>Files</td>
+        <td><code>/c/files/&lt;id&gt;</code></td>
+        <td></td>
+        <td></td>
+      </tr>
     </table>
     <div class="tiny-note" style="margin-top:8px;">
       Listados por tipo con <code>/c?type=&lt;tipo&gt;</code>. Los medios referenciados se sirven en <code>/c/blob/&lt;blobId&gt;</code>. Market, Feed, Wiki y Bookmarks llegan con Oasis 1.1.2.
     </div>
     <div class="tiny-note" style="margin-top:8px;">
       Con Oasis 1.1.10: mapa del sitio en <code>/c/sitemap.xml</code>, un canal RSS por tipo en <code>/c/rss/&lt;tipo&gt;</code> (los 50 más recientes) y selector de idioma en el visor (<code>/c?lang=&lt;idioma&gt;</code>). El idioma por defecto es el del pub; el que eliges viaja en la dirección, no en tu navegador.
+    </div>
+    <div class="tiny-note" style="margin-top:8px;">
+      Con Oasis 1.2.1: Files, ficheros de cualquier tipo que su autor ha marcado como públicos. La ficha está en <code>/c/files/&lt;id&gt;</code> y la descarga sale por <code>/c/blob/&lt;blobId&gt;</code>, como el resto de medios.
     </div>
   </div>
 

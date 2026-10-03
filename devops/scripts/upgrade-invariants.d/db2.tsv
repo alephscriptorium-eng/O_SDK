@@ -1,0 +1,17 @@
+# Invariantes del motor db2 (Oasis >= 1.2; D-O27, docs/PUB/UPGRADE-PROTOCOL.md §0.4). Columnas separadas por TAB:
+# mínimo	fichero	cadena literal (grep -F)	de qué depende la pieza
+# La medida de los nodos (devops/scripts/lib-node.sh, pub/tools/log-bipf.js, pub/tools/ssb-probe.js) y el protocolo
+# de upgrade dependen de cómo migra Oasis el log y de qué RPCs conserva el sbot. Nada de esto es API estable.
+1	src/server/SSB_server.js	const MIGRATED_MARKER = 'OASIS: this log was migrated to ssb-db2'	texto del fichero-guarda que deja la migración: node_log_format lo busca para saber que un nodo ya está en db2
+1	src/server/SSB_server.js	dangerouslyKillFlumeWhenMigrated: true	la migración BORRA flume/: es de un solo sentido (sin rollback por retag)
+1	src/server/SSB_server.js	migrateFlume().then(startServerOnly	el modo server migra ANTES de abrir el sbot: hasta que acaba no hay socket ni healthy
+1	src/server/ssb_config.js	automigrate: false	la migración la lanza Oasis, no ssb-db2 por su cuenta
+1	src/server/db2_legacy.js	createUserStream: 'source'	RPC con la que la sonda pregunta el sequence (getLatest ya no existe en el sbot)
+1	src/server/db2_legacy.js	createLogStream: 'source'	RPC con la que el pub construye su snapshot (pub/tools/snapshot-build.js)
+1	src/base/node_modules/ssb-db2/defaults.js	path.join(dir, 'db2', 'log.bipf')	ruta del log nuevo que lee log-bipf.js
+1	src/base/node_modules/ssb-db2/defaults.js	exports.BLOCK_SIZE = 64 * 1024	tamaño de bloque del log: log-bipf.js lo recorre por bloques
+1	src/base/node_modules/async-append-only-log/record.js	blockBuf.readUInt16LE(offsetInBlock)	cabecera de registro (longitud u16LE) que parsea log-bipf.js
+1	src/backend/backend.js	process.env.OASIS_SNAPSHOT === 'off'	interruptor del fork (0 en upstream: es nuestro): HUB y bots ni construyen snapshot ni arrancan desde el del pub
+1	src/server/snapshot_plugin.js	path.join(config.path, 'oasis', 'content'	de dónde sirve el sbot el snapshot: ahí lo deja el pub
+1	src/models/backup_model.js	const SNAPSHOT_MAGIC = Buffer.from('OASISSN1')	cabecera del formato de snapshot que escribe snapshot-build.js
+1	src/models/backup_model.js	const REC_MSG = 2	código de registro de mensaje del snapshot (el pub solo escribe META=1 y MSG=2)

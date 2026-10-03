@@ -16,3 +16,4 @@
 1	src/views/clearnet_view.js	themes?.current	D-O25: el tema del visor sale de la config del pub, no de una cookie
 1	src/models/pm_model.js	const INBOX_BOTS = {	lista de avisos automáticos que regen-node-configs.js silencia en los nodos de soporte
 1	src/backend/backend.js	pmModel.mutedBots(getConfig())	notifyBot respeta inboxMutedBots: sin esto los nodos de soporte se envían cifrados a sí mismos
+1	src/backend/backend.js	"/c/files/:id"	ruta de Files del visor (1.2.1): cae en la location genérica de nginx, 60 s de caché
