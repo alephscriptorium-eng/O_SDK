@@ -7,9 +7,13 @@
 # Uso (desde la raíz del repo):
 #   bash client/scripts/import-identity.sh --from <dir-.ssb-viejo> [--with-blobs] [--force] [--dry-run]
 #
-# Lista blanca (se copia):  secret · flume/log.offset · gossip.json · keys/ · [blobs/]
-# Lista negra (se queda):   config · conn.json · flume/* (índices) · ebt/ · blobs_push/ · socket
-#                           · manifest.json · node_modules · *.nul-damaged-bak · oasis-first-contact viejo
+# Lista blanca (se copia):  secret · el LOG · gossip.json · keys/ · [blobs/]
+#   El log es `flume/log.offset` si el origen es de Oasis <= 1.1.x, o `db2/log.bipf` (más la guarda
+#   `flume/log.offset`) si ya es de Oasis >= 1.2. Un log flume importado lo migra a db2 el primer
+#   arranque del cliente, y esa migración no tiene vuelta (docs/PUB/UPGRADE-PROTOCOL.md §0.4).
+# Lista negra (se queda):   config · conn.json · flume/* y db2/{indexes,jit} (índices) · ebt/
+#                           · blobs_push/ · socket · manifest.json · node_modules
+#                           · *.nul-damaged-bak · oasis-first-contact viejo
 # Además crea `oasis-first-contact` con el feed importado y `welcome=done`: en Oasis 1.1.2 es lo que
 # impide que la GUI publique el PM de bienvenida a los 3 s (= seq 1 nuevo = FORK del feed).
 #
@@ -77,7 +81,14 @@ fi
 
 # ---------------------------------------------------------------- 1. verificar origen
 [ -f "$SRC/secret" ]           || die 4 "falta $SRC/secret"
-[ -f "$SRC/flume/log.offset" ] || die 4 "falta $SRC/flume/log.offset (para importar solo el secret usa --from con un log vacío... no soportado: ver CLIENT-PROTOCOL §2)"
+# ¿En qué formato está el log del origen? db2 manda: tras migrar, flume/log.offset es solo la guarda.
+GUARD_TEXT='OASIS: this log was migrated'
+is_guard() { [ -f "$1" ] && [ "$(stat -c%s "$1")" -lt 4096 ] && head -c 64 "$1" | grep -a -q "^$GUARD_TEXT"; }
+if [ -f "$SRC/db2/log.bipf" ]; then LOGFMT=db2; LOGREL="db2/log.bipf"
+elif [ -f "$SRC/flume/log.offset" ] && ! is_guard "$SRC/flume/log.offset"; then LOGFMT=flume; LOGREL="flume/log.offset"
+elif is_guard "$SRC/flume/log.offset"; then die 4 "$SRC/flume/log.offset es la guarda de un log migrado y falta $SRC/db2/log.bipf"
+else die 4 "no hay log en $SRC (ni flume/log.offset ni db2/log.bipf). Importar solo el secret no está soportado: ver CLIENT-PROTOCOL §2"
+fi
 for f in secret gossip.json; do
   [ -f "$SRC/$f" ] || continue
   [ "$(tr -dc '\000' < "$SRC/$f" | wc -c)" = "0" ] || die 4 "$f contiene bytes NUL (fichero dañado)"
@@ -87,7 +98,7 @@ PUBK="$(grep -o '"public": *"[^"]*"' "$SRC/secret" | head -1 | cut -d'"' -f4)"
 [[ "$FEED" =~ $FEED_RE ]] || die 4 "secret sin un id válido"
 [ "@$PUBK" = "$FEED" ]      || die 4 "secret inconsistente: id=$FEED public=$PUBK"
 
-LOG_JSON="$(FULL_SCAN=1 node "$(wpath "$INSPECT")" "$(wpath "$SRC/flume/log.offset")" "$FEED")" || die 4 "log.offset con frames rotos: $LOG_JSON"
+LOG_JSON="$(FULL_SCAN=1 node "$(wpath "$INSPECT")" "$(wpath "$SRC/$LOGREL")" "$FEED")" || die 4 "$LOGREL con registros rotos: $LOG_JSON"
 MYSEQ="$(node -pe 'JSON.parse(process.argv[1]).mySeq || 0' "$LOG_JSON")"
 RECORDS="$(node -pe 'JSON.parse(process.argv[1]).records' "$LOG_JSON")"
 [ "$MYSEQ" -gt 0 ] || die 4 "el log no contiene mensajes del feed $FEED"
@@ -100,7 +111,7 @@ fi
 
 echo "=== import-identity · origen verificado ==="
 echo "  feed      : $FEED"
-echo "  log       : $RECORDS registros · seq propio $MYSEQ · $(node -pe 'JSON.parse(process.argv[1]).fileSize' "$LOG_JSON") bytes"
+echo "  log       : $LOGFMT ($LOGREL) · $RECORDS registros · seq propio $MYSEQ · $(node -pe 'JSON.parse(process.argv[1]).fileSize' "$LOG_JSON") bytes"
 echo "  gossip    : $([ -f "$SRC/gossip.json" ] && echo "sí ($(stat -c%s "$SRC/gossip.json") B)" || echo "no")"
 echo "  keys/     : $([ -d "$SRC/keys" ] && echo "sí" || echo "no")"
 echo "  blobs/    : $([ -d "$SRC/blobs" ] && echo "sí ($(du -sh "$SRC/blobs" | cut -f1)) · $([ $WITH_BLOBS = 1 ] && echo "SE COPIAN" || echo "no se copian (--with-blobs)")" || echo "no")"
@@ -113,7 +124,7 @@ if [ -d "$DST" ] && [ -n "$(ls -A "$DST" 2>/dev/null)" ]; then
   mv "$DST" "$DST.pre-import-$TS"
   info "destino anterior apartado en volumes-dev/ssb-data.pre-import-$TS"
 fi
-mkdir -p "$DST/flume" "$DST/keys" volumes-dev/ai-models volumes-dev/logs volumes-dev/client-state/banking
+mkdir -p "$DST/flume" "$DST/db2" "$DST/keys" volumes-dev/ai-models volumes-dev/logs volumes-dev/client-state/banking
 # El mapa de direcciones ECOin va POR FEED: con otra identidad, el de la anterior no vale y se aparta
 # (no se borra). La cartera (volumen docker o-sdk-client-ecoin-data) NO se toca: wallet.dat no depende del feed.
 WMAP="volumes-dev/client-state/banking/wallet-addresses.json"   # resto de 1.1.2; en 1.1.4 el mapa viaja dentro de ssb-data (oasis/banking) y se aparta con él
@@ -126,7 +137,7 @@ fi
 BK="$BACKUP_ROOT/$TS"
 mkdir -p "$BK"
 cp "$SRC/secret" "$BK/secret"
-cp "$SRC/flume/log.offset" "$BK/log.offset"
+cp "$SRC/$LOGREL" "$BK/$(basename "$LOGREL")"
 [ -f "$SRC/gossip.json" ] && cp "$SRC/gossip.json" "$BK/gossip.json"
 [ -d "$SRC/keys" ] && cp -r "$SRC/keys" "$BK/keys"
 ( cd "$BK" && find . -type f ! -name SHA256SUMS.txt -print0 | xargs -0 sha256sum > SHA256SUMS.txt )
@@ -135,7 +146,14 @@ info "backup verificado en devops/backups/client/$TS (gitignored; cópialo fuera
 
 # ---------------------------------------------------------------- 4. copia selectiva
 cp "$SRC/secret" "$DST/secret"
-cp "$SRC/flume/log.offset" "$DST/flume/log.offset"
+cp "$SRC/$LOGREL" "$DST/$LOGREL"
+if [ "$LOGFMT" = db2 ]; then
+  # La guarda impide que un Oasis anterior a 1.2 arranque sobre esta carpeta con un log vacío (= fork).
+  if is_guard "$SRC/flume/log.offset"; then cp "$SRC/flume/log.offset" "$DST/flume/log.offset"
+  else printf '%s to ssb-db2 (db2/log.bipf). Guarda escrita por import-identity.sh el %s: el origen nació en db2 y no la traía.\nNo la borres salvo que vuelvas a propósito a una versión anterior, y nunca arranques dos versiones sobre esta carpeta.\n' "$GUARD_TEXT" "$(date -u +%FT%TZ)" > "$DST/flume/log.offset"; fi
+else
+  rmdir "$DST/db2" 2>/dev/null || true
+fi
 [ -f "$SRC/gossip.json" ] && cp "$SRC/gossip.json" "$DST/gossip.json"
 [ -d "$SRC/keys" ] && cp -r "$SRC/keys/." "$DST/keys/"
 if [ $WITH_BLOBS = 1 ] && [ -d "$SRC/blobs" ]; then
@@ -153,11 +171,11 @@ printf '%s\n%s\n%s\n' "$FEED" "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" "welcome=done
 
 # ---------------------------------------------------------------- 5. verificación post-copia
 [ "$(sha "$SRC/secret")" = "$(sha "$DST/secret")" ] || die 5 "secret difiere tras la copia"
-[ "$(sha "$SRC/flume/log.offset")" = "$(sha "$DST/flume/log.offset")" ] || die 5 "log.offset difiere tras la copia"
+[ "$(sha "$SRC/$LOGREL")" = "$(sha "$DST/$LOGREL")" ] || die 5 "$LOGREL difiere tras la copia"
 if [ -f "$SRC/gossip.json" ]; then
   [ "$(sha "$SRC/gossip.json")" = "$(sha "$DST/gossip.json")" ] || die 5 "gossip.json difiere tras la copia"
 fi
-node "$(wpath "$INSPECT")" "$(wpath "$DST/flume/log.offset")" "$FEED" >/dev/null || die 5 "log.offset copiado no pasa la inspección"
+node "$(wpath "$INSPECT")" "$(wpath "$DST/$LOGREL")" "$FEED" >/dev/null || die 5 "$LOGREL copiado no pasa la inspección"
 if [ $WITH_BLOBS = 1 ] && [ -d "$SRC/blobs" ]; then
   n_src="$(find "$SRC/blobs" -type f | wc -l)"; n_dst="$(find "$DST/blobs" -type f | wc -l)"
   [ "$n_src" = "$n_dst" ] || die 5 "nº de blobs: origen $n_src ≠ destino $n_dst"
@@ -183,7 +201,7 @@ MAN="$DST/.import-$TS.txt"
   echo "o-sdk=$(git rev-parse --short HEAD 2>/dev/null || echo '?') oasis=$(node -pe 'require("./src/server/package.json").version')"
   echo "log=$LOG_JSON"
   echo "backup=$BK"
-  ( cd "$DST" && sha256sum secret flume/log.offset oasis-first-contact $( [ -f gossip.json ] && echo gossip.json ) )
+  ( cd "$DST" && sha256sum secret "$LOGREL" oasis-first-contact $( [ -f gossip.json ] && echo gossip.json ) )
   if [ $WITH_BLOBS = 1 ] && [ -d "$DST/blobs" ]; then
     echo "blobs_files=$(find "$DST/blobs" -type f | wc -l) blobs_bytes=$(du -sb "$DST/blobs" | cut -f1)"
   fi

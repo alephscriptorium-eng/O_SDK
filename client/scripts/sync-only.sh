@@ -47,7 +47,10 @@ probe_local() {  # $1 action, $2 invite
   docker exec -i -u oasis -e HOME=/home/oasis -e SSB_FEED="$FEED" -e SSB_ACTION="${1:-seq}" -e SSB_INVITE="${2:-}" "$CTR" \
     sh -lc 'cd /app/src/server && node -' < "$PROBE"
 }
-log_size() { stat -c%s "$SSB/flume/log.offset" 2>/dev/null || echo 0; }
+# El log vive en db2/log.bipf (Oasis >= 1.2) o en flume/log.offset (<= 1.1.x). Tras migrar,
+# flume/log.offset es una guarda de tamaño fijo: medir su tamaño diría «estable» siempre.
+# inspect-log-offset.js recibe la ruta flume y salta solo a db2 cuando encuentra la guarda.
+log_size() { stat -c%s "$SSB/db2/log.bipf" 2>/dev/null || stat -c%s "$SSB/flume/log.offset" 2>/dev/null || echo 0; }
 
 cmd="${1:-}"; shift || true
 case "$cmd" in
@@ -61,14 +64,17 @@ start)
   [ -z "$(docker ps -aq -f name="^$CTR$")" ] || die 3 "$CTR ya existe: sync-only.sh stop"
   docker image inspect "$IMAGE" >/dev/null 2>&1 || die 3 "imagen $IMAGE no construida: npm run build"
   mkdir -p volumes-dev/logs volumes-dev/ai-models volumes-dev/ecoin-data
-  rm -f "$SSB/socket" "$STATE"
+  # manifest.json es la señal de «sbot arriba»: uno viejo (de otra versión) daría la señal en falso.
+  rm -f "$SSB/socket" "$SSB/manifest.json" "$STATE"
   ports=(-p 8008:8008); [ $NO_PORTS = 1 ] && ports=()
   info "arrancando sbot puro como $FEED (modo server, sin GUI)…"
   docker compose run -d --rm --no-deps --name "$CTR" "${ports[@]}" -e OASIS_SKIP_AI_MODEL=true oasis-client server >/dev/null
-  for _ in $(seq 60); do [ -f "$SSB/manifest.json" ] && break; sleep 2; done
+  # Un log flume se migra a db2 ANTES de abrir el sbot (Oasis >= 1.2): con un log grande tarda.
+  START_TIMEOUT="${SYNC_START_TIMEOUT:-300}"
+  for _ in $(seq $(( START_TIMEOUT / 2 ))); do [ -f "$SSB/manifest.json" ] && break; sleep 2; done
   if [ ! -f "$SSB/manifest.json" ]; then
     docker logs --tail 40 "$CTR" 2>&1 || true
-    die 5 "el sbot no escribió manifest.json en 120 s (¿montaje? ¿log corrupto? mira los logs)"
+    die 5 "el sbot no escribió manifest.json en $START_TIMEOUT s (¿montaje? ¿log corrupto? ¿migración larga: SYNC_START_TIMEOUT? mira los logs)"
   fi
   sleep 3
   ME="$(probe_local seq 2>/dev/null | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).me' 2>/dev/null || echo '?')"
@@ -115,7 +121,7 @@ status)
       elif [ $stable_s -ge $(( STABLE_MIN * 60 )) ] && [ "$pub_conn" = "true" -o "$stable_s" -ge $(( STABLE_MIN * 120 )) ]; then verdict="SYNC-OK"
       else verdict="SYNCING (igual al pub; estable ${stable_s}s/$(( STABLE_MIN*60 ))s, pub conectado=$pub_conn)"; fi
     fi
-    printf '%s · log.offset=%s B (estable %ss, tail=%s) · seq local=%s/fichero %s/sbot · seq pub=%s · pub_sigue=%s · peers: %s\n  ⇒ %s\n' \
+    printf '%s · log=%s B (estable %ss, tail=%s) · seq local=%s/fichero %s/sbot · seq pub=%s · pub_sigue=%s · peers: %s\n  ⇒ %s\n' \
       "$(date +%H:%M:%S)" "$size" "$stable_s" "${tail_ok:-?}" "${seq_file:-?}" "${seq_sbot:-?}" "${seq_pub:--}" "${follows:--}" "$peers" "$verdict"
     case "$verdict" in
       SYNC-OK) echo "   → bash client/scripts/sync-only.sh stop  &&  docker compose up -d oasis-client"; exit 0 ;;
@@ -140,14 +146,14 @@ stop)
   NOW=0; for a in "$@"; do [ "$a" = "--now" ] && NOW=1; done
   FEED="$(feed_from_secret)"
   if ctr_running && [ $NOW = 0 ]; then
-    s1="$(log_size)"; info "comprobando que log.offset está estable (60 s)…"; sleep 60; s2="$(log_size)"
-    [ "$s1" = "$s2" ] || die 3 "log.offset sigue creciendo ($s1 → $s2). Espera, o --now"
+    s1="$(log_size)"; info "comprobando que el log está estable (60 s)…"; sleep 60; s2="$(log_size)"
+    [ "$s1" = "$s2" ] || die 3 "el log sigue creciendo ($s1 → $s2). Espera, o --now"
   fi
   # la parada acaba en SIGKILL (PID 1 es `su`): por eso exigimos estabilidad antes
   docker stop -t 30 "$CTR" >/dev/null 2>&1 || true
   docker rm -f "$CTR" >/dev/null 2>&1 || true
   rm -f "$SSB/socket"
-  final="$(node "$(wpath "$INSPECT")" "$(wpath "$SSB/flume/log.offset")" "$FEED")" || die 5 "frame final roto tras la parada: $final"
+  final="$(node "$(wpath "$INSPECT")" "$(wpath "$SSB/flume/log.offset")" "$FEED")" || die 5 "registro final roto tras la parada: $final"
   echo "✅ parado · seq local final $(json_get "$final" mySeq) · log $(json_get "$final" fileSize) B íntegro"
   echo "   si el último status fue SYNC-OK: docker compose up -d oasis-client"
   ;;
