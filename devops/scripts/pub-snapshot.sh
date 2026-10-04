@@ -51,8 +51,11 @@ FILE=/home/oasis/.ssb/oasis/content/snapshot.oasissn
 
 if [ "$CMD" = cron ]; then
   # En el host no hay checkout del repo: la línea llama al script que viaja DENTRO de la imagen.
+  # Su ruta depende del layout del host: la carpeta del compose puede no llamarse `pub`
+  # (HUB-PROTOCOL §9). Se deduce de REMOTE_REPO_DIR (host.env) o se da con PUB_TOOLS_DIR.
+  TOOLS="${PUB_TOOLS_DIR:-/app/$(basename "${REMOTE_REPO_DIR:-pub}")/tools}"
   echo "# snapshot del pub cada 6 h (pub-snapshot.sh; D-O27). flock evita dos construcciones a la vez."
-  echo "17 */6 * * * flock -n /tmp/pub-snapshot.lock docker exec -u oasis -e HOME=/home/oasis -e SNAPSHOT_MAX_MB=$MAX_MB $PUBC node /app/pub/tools/snapshot-build.js >> \$HOME/pub-snapshot.log 2>&1"
+  echo "17 */6 * * * flock -n /tmp/pub-snapshot.lock docker exec -u oasis -e HOME=/home/oasis -e SNAPSHOT_MAX_MB=$MAX_MB $PUBC node $TOOLS/snapshot-build.js >> \$HOME/pub-snapshot.log 2>&1"
   exit 0
 fi
 case "$CMD" in status|build|off) ;; *) usage; exit 64 ;; esac
