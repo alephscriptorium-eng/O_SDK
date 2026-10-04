@@ -292,8 +292,9 @@ Lo que sí cambió y cómo se adaptó:
 
 | Ruta (bajo `/srv/oasis/oasis-hub/`) | Crece con | Podable | Quién acota |
 |---|---|---|---|
-| `ssb-data/flume/log.offset` | replicación (hops 2, incluye `.box` privados ilegibles) | **no** | `friends.hops` en `ssb-config` |
-| `ssb-data/flume/*` índices, `ssb-data/ebt/` | el log | sí (rebuild automático) | — |
+| el log: `ssb-data/db2/log.bipf` (Oasis ≥ 1.2; antes `ssb-data/flume/log.offset`, que tras migrar es una guarda de texto) | replicación (hops 2, incluye `.box` privados ilegibles) | **no** | `friends.hops` en `ssb-config` |
+| índices: `ssb-data/db2/indexes`, `db2/jit` (antes `ssb-data/flume/*`), `ssb-data/ebt/` | el log | sí (rebuild automático) | — |
+| `ssb-data/blobs/` por encima del techo | replicación y visor | sí (se vuelven a pedir) | `blobCache.pubMaxMB` en la config del nodo (desde 1.2.1; `CAPACIDAD.md` §3) |
 | `ssb-data/blobs/` | cada `GET /c/blob/<id>` ausente (`blobs.want`, hasta 30 s) + blobs replicados | **sí**: content-addressed, `want` repone al siguiente GET | `hub-disk.sh prune-blobs`, `blobs.max` 50 MB (guard del fork) |
 | `http-cache/` | tráfico web | sí | nginx `max_size` + `inactive=7d`; `prune-cache` |
 | stdout de los contenedores (`/var/lib/docker`, **disco de sistema**) | tráfico y replicación | sí | `logging.max-size/max-file` del compose |
@@ -444,9 +445,11 @@ sin ángulos ni etiquetas (el saneado los elimina; el formulario no comprueba el
    va antes del contenido en cada registro:
 
    ```bash
-   sudo grep -a -o '"author":"<feed id>[^{]*{"type":"[a-zA-Z]*"' <datos>/<servicio>/ssb-data/flume/log.offset \
-     | sed 's/.*"type"://' | sort | uniq -c
+   bash devops/scripts/upgrade-gates.sh --remote snapshot <etiqueta>     # mensajes propios por tipo, en flume o en db2
    ```
+
+   (Con Oasis ≥ 1.2 el log es `db2/log.bipf`, binario: un `grep` sobre `flume/log.offset` da 0
+   sin error, porque ese fichero es ya la guarda de la migración.)
 3. **Publicar, una vez**, desde el loopback del contenedor, multipart, **sin ningún campo `vis_*`**
    (el handler los reconstruye todos: sin ellos quedan en falso, que es lo querido en un bot) y con
    `Host` y el host del `Referer` idénticos:
@@ -480,3 +483,48 @@ sin ángulos ni etiquetas (el saneado los elimina; el formulario no comprueba el
    nombre viejo en caché, tras reiniciarse.
 7. **Registrar**: en la ficha de instancia, el literal pasa de *propuesto* a *publicado* con fecha, y
    el nombre anterior a «nombres anteriores».
+
+## 13. Snapshot del pub (Oasis ≥ 1.2)
+
+Un cliente que acepta un invite le pide al pub, por RPC, un fichero con el historial empaquetado y
+lo ingiere de golpe en vez de replicar mensaje a mensaje. Es un acelerador del primer arranque: si
+el pub responde «not available», el cliente replica como siempre.
+
+**Por qué es una pieza del fork.** Upstream da por hecho que el pub es sbot + backend público sobre
+el mismo `.ssb`: el backend construye el fichero y el sbot lo sirve. Aquí el pub es solo sbot (§1)
+y los backends públicos son otros nodos: sin hacer nada, el pub serviría un fichero que nadie le
+construye y el HUB y los bots construirían, cada 6 h y cargando su log entero en memoria, ficheros
+que nadie pide. Decisión D-O27:
+
+| Nodo | Qué hace | Cómo |
+|---|---|---|
+| pub | **construye y sirve** | `pub/tools/snapshot-build.js` dentro de su contenedor, lanzado por un temporizador del host. Lee el log por el socket; no arranca un backend, no publica |
+| HUB y bots | **ni construyen ni arrancan desde uno** | `OASIS_SNAPSHOT=off` en el compose (interruptor del fork en `backend.js`) |
+
+**Qué lleva el fichero.** Cabecera `OASISSN1` y, en gzip, un registro de metadatos y uno por
+mensaje del log del pub, tal cual están (los privados, cifrados). **Nada más**: el formato admite
+además registros de blob y de fichero de estado que el cliente escribe en su `.ssb` sin validar, y
+el snapshot del pub no los lleva nunca. Cada mensaje lleva su firma y el cliente la valida. Solo el
+nivel completo (`snapshot.oasissn`): el «reciente» de upstream pesa casi lo mismo y el cliente
+bajaría dos veces.
+
+**A quién lo sirve.** Al propio nodo y a quien el pub **sigue**; a cualquier otro, `not allowed`.
+El pub sigue a quien redime un invite suyo. No sale por HTTP.
+
+```bash
+bash devops/scripts/pub-snapshot.sh status          # fichero, tamaño, edad, mensajes · solo lectura
+bash devops/scripts/pub-snapshot.sh build           # (re)construye ahora · escribe en el .ssb del pub
+bash devops/scripts/pub-snapshot.sh off --yes       # lo retira: el pub vuelve a decir «not available»
+bash devops/scripts/pub-snapshot.sh cron            # la línea de crontab para el host (cada 6 h)
+```
+
+- **Activarlo** en un host es escribir en el `.ssb` del pub y ofrecer un servicio nuevo: pide GO.
+  Después de `build`, `upgrade-gates.sh --remote check <foto>` debe dar «sin publicaciones».
+- **Techo**: `SNAPSHOT_MAX_MB` (1024 por defecto). Por encima no se publica y queda el anterior;
+  upstream rechaza en el cliente más de 2 GiB. Crece con el log: `CAPACIDAD.md`.
+- **Memoria**: constante (dos pasadas por el log en streaming). Corre dentro del contenedor del
+  pub y cuenta para su `mem_limit`.
+- **Alta de un nodo de soporte nuevo** (§3, `ECOIN-PROTOCOL.md` §3): con `OASIS_SNAPSHOT=off` el
+  `POST /settings/invite/accept` no arranca desde el snapshot (medido: el log del nodo no salta).
+- **En cada upgrade**: el formato y la ruta no son API estable; `upgrade-invariants.d/db2.tsv` los
+  vigila y el gate US (`UPGRADE-PROTOCOL.md` §3.4) lo mide.

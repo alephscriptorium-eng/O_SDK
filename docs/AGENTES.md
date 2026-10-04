@@ -53,6 +53,7 @@ a «probado».
 | App cliente: alta, importar identidad, cartera | [`CLIENT-PROTOCOL.md`](./CLIENT-PROTOCOL.md) | — |
 | Acoger y desplegar una obra del Teatro | [`TEATRO-PROTOCOL.md`](./PUB/TEATRO-PROTOCOL.md) · [curaduría](./PUB/TEATRO-CURADURIA-PROTOCOL.md) · [sidecar RRSS](./PUB/RRSS-SIDECAR-PROTOCOL.md) | — |
 | Sacar una obra a la escena P2P (torrent, ed2k) y anunciarla en Oasis | [`TEATRO-P2P-PROTOCOL.md`](./PUB/TEATRO-P2P-PROTOCOL.md) | §3 de esta página: el anuncio es irreversible |
+| Saber qué crece y si hay que limitarlo | [`CAPACIDAD.md`](./PUB/CAPACIDAD.md) · `devops/scripts/capacity.sh` | — |
 | Algo se ha roto (disco, repo, identidad) | [`RECOVERY-PROTOCOL.md`](./PUB/RECOVERY-PROTOCOL.md) | **no toques nada antes de §0** |
 
 Cómo se trabaja en el repo (ramas, commits, gates, reportes): `plan/PRACTICAS.md`. Por qué las cosas
@@ -88,6 +89,7 @@ expreso del custodio en el momento**, aunque el plan general ya esté aprobado.
 | «Desconectar cartera» en Settings (`POST /settings/wallet/disconnect`, desde Oasis 1.1.10) | publica un `wallet` con dirección **vacía** que anula la dirección en toda la red; en el cliente dockerizado, el siguiente arranque recablea la cartera y la GUI publica la dirección otra vez | no se usa: la cartera se retira por config (CLIENT §8.8). Si de verdad hay que anular una dirección: texto y momento aprobados, contar `wallet` antes y después |
 | `contact` (seguir, bloquear), invites redimidos | cambian la replicación de terceros | lista cerrada aprobada |
 | Recrear un nodo de Oasis (pub, HUB, bot, cliente) en **otra versión**: upgrade **o rollback** | publica un `oasisVersion` con su identidad cada vez que arranca en una versión distinta de la última que anunció (lo hace el propio sbot: también el pub en modo `server`) | uno por nodo y declarado antes (`upgrade-gates.sh check --expect`, UPGRADE §0.4 y §3.4); **ningún rollback es gratis**: pide GO |
+| Arrancar un nodo por primera vez en una versión con **otro motor de base de datos** (Oasis 1.2: flume → db2) | migra el log, **borra el viejo** y deja una guarda; la versión anterior ya no arranca sobre ese `.ssb`, y reponer el log viejo sería arrancar con un log más corto que el de la red | migración ensayada sobre una copia (UPGRADE §0.5 y §4); nodo parado y copiado en frío justo antes; GO por nodo diciendo «sin retorno» |
 | Arrancar la maint-ui (un backend sobre el `.ssb` del pub) durante un ciclo de upgrade | todo lo que un backend publica solo (avisos, PM de bienvenida si falta el flag, dirección si hay cartera) saldría **con la identidad del pub** | prohibida durante el ciclo (UPGRADE §0.2) |
 | `pubAvailability`, `ubiAllocation`, pagos de RBU | anuncian el pub como banco y mueven ECO reales | ECOIN §9; saldo, backup y elegibilidad comprobados |
 | Borrar o pisar `wallet.dat` o `secret` | son las claves: sin copia, el dinero o la identidad se pierden | **nunca**; se aparta con sufijo, no se borra |
@@ -133,6 +135,10 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | Un torrent o un enlace ed2k publicado deja de completar | los bytes detrás de la URL cambiaron: una obra con enlaces publicados se **congela**; la edición nueva sale con sufijo | TEATRO-P2P §1 |
 | Activar una casilla de visibilidad deja el perfil sin nombre | `POST /profile/edit` publica un `about` entero con lo que llegue: solo desde el formulario del navegador | TEATRO-P2P §4 |
 | La GUI del cliente da **403 vacío** en Banking, Wallet o Settings | Oasis exige que esas acciones lleguen desde `127.0.0.1`; en Docker el navegador del host entra por el mapeo de puertos. Puente de loopback del entrypoint + puerto publicado **solo** en `127.0.0.1` | CLIENT §8.10 |
+| Una medida de mensajes da 0 en un nodo con Oasis ≥ 1.2 | el log ya no es `flume/log.offset` (queda una guarda de texto) sino `db2/log.bipf`, binario; y la RPC `getLatest` no existe. Medir con `upgrade-gates.sh snapshot` o `lib-node.sh` (`node_own_scan`): lo ilegible es `?`, no 0 | UPGRADE §3.4 |
+| Tras un `npm install` en `src/server` cambian miles de ficheros de `src/base` | `src/server/node_modules` es un enlace a `src/base/node_modules`: se escribe a través de él. No se instala nada ahí; `git checkout -- src/base` | UPGRADE §2 |
+| El pub no da invite en el stack local: «Server has no public ip address» | el pub de ensayo anuncia `localhost` y `ssb-invite` no emite invites para un host privado: pedirlo con `invite.create({ uses: 1, external: '<dominio.con.punto>' })` y reescribir el host a la IP del bridge | HUB §3 |
+| Un cliente nuevo no arranca desde el snapshot del pub | el pub solo lo sirve a quien **sigue**; antes del invite responde `not allowed`. Y debe existir: `pub-snapshot.sh status` | HUB §13 |
 | El backend arranca sin sbot embebido | `OASIS_TEST` definido en el entorno (desde 1.1.3) | UPGRADE §1 |
 | El nombre nuevo de un feed no aparece | `nameCache` es memoria del proceso: reiniciar el nodo que lo muestra | HUB §12 |
 | El build del portal rompe | tokens entre ángulos fuera de código (Vue los lee como etiquetas) o enlaces muertos (`ignoreDeadLinks: false`) | `docs/proyecto.md` |

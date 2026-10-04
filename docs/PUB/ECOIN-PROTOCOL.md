@@ -357,7 +357,8 @@ re-enciende tras verificar; la cartera no se mueve.
 | `/srv/oasis/ecoin/` cadena (`blk*.dat`, `txleveldb/`) | la cadena de ECOin | **no** en caliente; re-derivable entera con `ecoind` parado **conservando `wallet.dat` y `ecoin.conf`** | tamaño de la cadena (no verificado: medir en G2 y en el paso 6) |
 | `/srv/oasis/ecoin/wallet.dat` | casi nada | **NUNCA** | §8 |
 | `/srv/oasis/ecoin/debug.log` | actividad de `ecoind` | sí (truncar in place) | — |
-| `/srv/oasis/oasis-wallet-bot/ssb-data/flume/` | replicación a hops 3 | no | `friends.hops` en `pub/config/wallet-bot/ssb-config` |
+| `/srv/oasis/oasis-wallet-bot/ssb-data/db2/` (Oasis ≥ 1.2; antes `…/flume/`) | replicación a hops 3 | no | `friends.hops` en `pub/config/wallet-bot/ssb-config` |
+| `/srv/oasis/oasis-wallet-bot/ssb-data/blobs/` | replicación | sí | `blobCache.pubMaxMB` = 256 MB en la plantilla de config (desde 1.2.1; `CAPACIDAD.md`) |
 | `/srv/oasis/oasis-wallet-bot/ssb-data/blobs/` | blobs replicados | sí | `blobs.max` (guard del fork) |
 | `/srv/oasis/oasis-wallet-bot/banking/` | épocas y transferencias | **no** (es el libro del banco) | — |
 | stdout de los contenedores (`/`, disco de sistema) | logs | sí | `logging 10m×3` |
