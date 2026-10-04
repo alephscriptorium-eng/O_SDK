@@ -5,6 +5,29 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Oasis 1.2.1 en local: motor db2, dependencias vendorizadas (WP-O119 a WP-O122, 2026-10-04)
+
+Reportes `plan/REPORTES/WP-O119-medida-db2.md`, `WP-O120-upgrade-oasis-1.2.1.md`,
+`WP-O121-capacidad.md`, `WP-O122-snapshots-pub.md`. Asiento D-O27. **Sin desplegar**: el host sigue
+en 1.1.10 (WP-O123).
+
+- **`src/` es Oasis 1.2.1** (upstream `942d39c9`). Cambia el motor de base de datos (`ssb-db`/flume →
+  `ssb-db2`): el primer arranque migra el log, borra el viejo y deja una guarda. **No hay rollback
+  tras migrar** (`UPGRADE-PROTOCOL.md` §0.5).
+- **`src/base/node_modules`** entra en el repo (dependencias que upstream vendoriza: 19 145
+  ficheros). La imagen no instala nada: `Dockerfile` con Node 22, enlace a `src/base` e IA por
+  `ARG OASIS_AI=none|nav|full`. La imagen del pub pasa de 4,46 GB a 1,58 GB.
+- **Guards**: los cinco de siempre y un segundo edit en `backend.js`, `OASIS_SNAPSHOT=off`.
+- **Medida** (`lib-node.sh`, `pub/tools/log-bipf.js`, `ssb-probe.js`, `upgrade-gates.sh`): lee el log
+  en flume o en db2; lo ilegible es «no medible», no 0. Gates nuevos: UM (migración), UR
+  (no-retorno), US (snapshot).
+- **Snapshots**: el pub construye el suyo (`pub/tools/snapshot-build.js`,
+  `devops/scripts/pub-snapshot.sh`); HUB y bots, apagados.
+- **Capacidad**: `devops/scripts/capacity.sh` y `docs/PUB/CAPACIDAD.md`; límite de memoria y
+  rotación de logs del pub; techo de blobs en HUB y bot; poda de blobs del pub.
+- **Visor**: `/c/files/<id>` (Files); 17 tipos en la Sala 04.
+- **Cliente**: `import-identity.sh`, `sync-only.sh` y los lectores de log aceptan los dos formatos.
+
 ### Added — Portal: puertas por rol con estado medido (WP-O115, 2026-10-01)
 
 Reporte `plan/REPORTES/WP-O115-portal-roles.md`. Asiento D-O26.
