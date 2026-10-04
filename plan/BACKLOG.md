@@ -799,7 +799,7 @@ Dep: WP-O120.
 
 | **WP-O123** | **P0** | Aplicación en el VPS del upgrade a 1.2.1 |
 
-**Estado** · ✅ 2026-10-04: pub, HUB y bot en 1.2.1 (`plan/REPORTES/WP-O123-aplicacion-vps-1.2.1.md`). Pendiente: GO-5 (snapshot del pub), medida a las 24 h y el cliente.
+**Estado** · ✅ 2026-10-04: pub, HUB y bot en 1.2.1 (`plan/REPORTES/WP-O123-aplicacion-vps-1.2.1.md`). Snapshot del pub construido y servido. Pendiente: su temporizador (el host no tiene `cron`), la medida a las 24 h y el cliente.
 
 **BRIEF** · Convergencia de los ficheros de build del host con el repo, subida de `src/` con
 `src/base`, build, ensayo de migración sobre copia del log real, y pub → HUB → bot con parada, copia

@@ -2,7 +2,7 @@
 
 2026-10-04 · rama `upgrade/oasis-1.2.1` · asiento D-O27 · BRIEF `plan/BRIEFS/WP-O123-aplicacion-vps-1.2.1.md`.
 GO del custodio en cada puerta: GO-1 (build), GO-2 (pub), GO-3 (HUB), GO-4a y GO-4b (bot).
-**Pendiente: GO-5 (snapshot del pub) y el cliente.**
+GO-5 (snapshot del pub): construido y servido; **falta su temporizador**. Pendiente también el cliente.
 
 ## Resultado
 
@@ -105,6 +105,26 @@ HUB 26 % de 768, bot 18 % de 768; los tres con rotación de log de Docker. Host:
 - La migración real duró segundos (logs de 4 MB) y los nodos en 1.1.10 siguieron replicando con el
   pub ya en 1.2.1 mientras duró el ciclo.
 
+## Paso 9b · Snapshot del pub (GO-5)
+
+```
+$ pub-snapshot.sh status          → snapshot: no hay (el pub responde not available)
+$ pub-snapshot.sh build           → {"ok":true,…,"messages":4562,"feeds":77,"boxed":697,"bytes":1747010,"ms":1080}
+$ pub-snapshot.sh status          → snapshot: 1747010 bytes · hace 0 h · {"version":1,"kind":"snapshot",…,"messages":4562,"feeds":77,…}
+$ upgrade-gates.sh --remote check post-o123 --expect 'bot:pubAvailability=+0..1'
+  pub  v1.2.1 · Δseq=0 · sin publicaciones → ok      (hub y bot, igual)      GATE OK
+```
+
+El pub ofrece ya su snapshot: 4 562 mensajes de 77 feeds en 1,7 MB, construido en un segundo y sin
+publicar nada. La orden que llamará el temporizador (el script dentro de la imagen, en
+`/app/OASIS_PUB/tools/`) se probó a mano: mismo resultado.
+
+**Desviación, con parada: el temporizador no está instalado.** El host no tiene `cron`
+(`crontab: command not found`; ni `cron` ni `systemd-cron` instalados): lo que hay son temporizadores
+de systemd. La lectura del paso 0 dio «crontab vacío» porque la orden fallaba en silencio.
+Instalar una unidad de systemd es otro cambio en el host y pide su propio GO. Hasta entonces el
+snapshot **no se refresca solo**: los clientes nuevos reciben el del 2026-10-04 y replican el resto.
+
 ## Rollback
 
 No hay: los tres nodos han migrado. Quedan, para corregir hacia delante o para `RECOVERY-PROTOCOL.md`
@@ -114,7 +134,8 @@ sustituya.
 
 ## Pendiente
 
-- **GO-5**: construir el snapshot del pub e instalar el temporizador (paso 9b).
+- **Temporizador del snapshot**: el host no tiene `cron`; decidir entre una unidad de systemd o
+  instalar `cron`, y que `pub-snapshot.sh` imprima lo que corresponda.
 - **A las 24 h**: `check post-o123` (esperado: `pubAvailability` +1 o +2, cifrados 0), memoria de
   los tres nodos, `capacity.sh`; fijar los presupuestos con esa medida.
 - **Cliente**: drill y `client:test-ai` con `OASIS_AI=full`, y GO aparte si la identidad es real.
