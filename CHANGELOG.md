@@ -8,8 +8,9 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 ### Changed — Oasis 1.2.1 en local: motor db2, dependencias vendorizadas (WP-O119 a WP-O122, 2026-10-04)
 
 Reportes `plan/REPORTES/WP-O119-medida-db2.md`, `WP-O120-upgrade-oasis-1.2.1.md`,
-`WP-O121-capacidad.md`, `WP-O122-snapshots-pub.md`. Asiento D-O27. **Sin desplegar**: el host sigue
-en 1.1.10 (WP-O123).
+`WP-O121-capacidad.md`, `WP-O122-snapshots-pub.md`. Asiento D-O27. **Desplegado el 2026-10-04**
+(WP-O123, `plan/REPORTES/WP-O123-aplicacion-vps-1.2.1.md`): pub, HUB y bot en 1.2.1; cada nodo publicó
+su `oasisVersion` y el bot, además, un `pubAvailability`.
 
 - **`src/` es Oasis 1.2.1** (upstream `942d39c9`). Cambia el motor de base de datos (`ssb-db`/flume →
   `ssb-db2`): el primer arranque migra el log, borra el viejo y deja una guarda. **No hay rollback
