@@ -45,8 +45,9 @@ nombre puede cambiar.
 | 2 | `ecoin.escrivivir.co` | ecoin (cartera) · scriptorium | hub-wallet: cartera ECOin del pub, custodia la dote y reparte la RBU; **sin ruta pública** | `oasis-pub-wallet-bot` + `oasis-pub-ecoin` · `/srv/oasis/oasis-wallet-bot`, `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
-Oasis **1.1.10** en pub, HUB y bot-2 desde el 2026-10-01 (WP-O114; antes 1.1.4, WP-O106). La versión
-viva se mide con `deploy-status.sh`. Motor de RBU: **encendido**
+Oasis **1.2.1** en pub, HUB y bot-2 desde el 2026-10-04 (WP-O123; antes 1.1.10, WP-O114). Motor de
+base de datos **db2** desde esa fecha: los tres nodos migraron su log y no hay vuelta a una versión
+anterior (`UPGRADE-PROTOCOL.md` §0.5). La versión viva se mide con `deploy-status.sh`. Motor de RBU: **encendido**
 desde el 2026-09-19 17:09 UTC (WP-O107; `hub-wallet.sh status`): la casa sale en la lista de pubs de Banking,
 sin fondos (✗, pool 0) hasta la dote. Época `2026-09` fijada con pool 0.
 

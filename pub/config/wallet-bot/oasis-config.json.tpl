@@ -59,6 +59,7 @@
     "mapsMod": "on",
     "chatsMod": "on",
     "torrentsMod": "on",
+    "filesMod": "on",
     "graphosMod": "on",
     "larpMod": "on"
   },
@@ -96,5 +97,9 @@
     "campaigns",
     "logistics",
     "reminders"
-  ]
+  ],
+  "blobCache": {
+    "maxMB": 256,
+    "pubMaxMB": 256
+  }
 }

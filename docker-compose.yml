@@ -24,6 +24,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Oasis >= 1.2 separa la pila de IA del núcleo: none | nav | full. El cliente la lleva entera.
+        OASIS_AI: ${OASIS_AI:-full}
     container_name: oasis-client
     ports:
       - "8008:8008"   # Puerto SSB

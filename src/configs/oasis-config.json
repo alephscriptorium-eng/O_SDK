@@ -59,6 +59,7 @@
     "mapsMod": "on",
     "chatsMod": "on",
     "torrentsMod": "on",
+    "filesMod": "on",
     "graphosMod": "on",
     "larpMod": "on"
   },
@@ -75,7 +76,7 @@
     "limit": 2000
   },
   "homePage": "activity",
-  "language": "en",
+  "language": "es",
   "wish": "whole",
   "pmVisibility": "whole",
   "lanBroadcasting": true

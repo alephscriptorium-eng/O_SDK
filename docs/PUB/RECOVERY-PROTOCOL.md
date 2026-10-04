@@ -112,13 +112,16 @@ Secuencia correcta:
 ```bash
 # 1) Preservar: secret, config, gossip.json, blobs/. Apartar: flume/, ebt/ (derivados),
 #    y borrar socket y manifest.json residuales.
+#    Oasis >= 1.2: el log es db2/log.bipf y los derivados db2/indexes y db2/jit. Si se aparta el
+#    log, se aparta db2/ ENTERO y se DEJA flume/log.offset si es la guarda de migración (texto,
+#    «OASIS: this log was migrated…»): impide que una versión vieja arranque con un log vacío.
 
 # 2) Arrancar sbot PURO (sin GUI → nada puede publicar). Hoy: bash client/scripts/sync-only.sh start
 #    (= modo `server` del entrypoint: chown, parches de runtime y `exec node SSB_server.js start`; nunca backend.js)
 docker compose run -d --rm --no-deps --name oasis-sync-only -e OASIS_SKIP_AI_MODEL=true oasis-client server
 
-# 3) Vigilar la re-replicación (termómetro = log.offset creciendo):
-watch stat -c%s volumes-dev/ssb-data/flume/log.offset
+# 3) Vigilar la re-replicación (termómetro = el log creciendo; sync-only.sh status lo hace solo):
+watch stat -c%s volumes-dev/ssb-data/db2/log.bipf        # Oasis <= 1.1.x: …/flume/log.offset
 
 # 4) Preguntar al pub qué tiene de tu feed (respuesta definitiva, no adivinar):
 bash devops/scripts/pub-feed-seq.sh '<tu-feed>'            # seq_pub · pub_follows_feed (pub/tools/ssb-probe.js por stdin)

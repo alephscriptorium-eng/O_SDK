@@ -29,7 +29,8 @@
 #   hub [--strict]      Matriz del visor clearnet por delante de la caché: 200, MISS→HIT, mismo /c con
 #                       distinto Accept-Language y con cookies (D-O25), ?lang=, cruce de idiomas con
 #                       peticiones concurrentes, sitemap y RSS con URLs https. Solo GET.
-#                       --strict: lo que es nuevo de 1.1.10 (?lang=, sitemap, RSS) pasa de aviso a fallo.
+#                       --strict: lo que es nuevo de 1.1.10 (?lang=, sitemap, RSS) y de 1.2.1 (Files)
+#                       pasa de aviso a fallo.
 #   backup <tag>        (local) Copia volumes-dev/{oasis-pub,oasis-hub,oasis-wallet-bot} a
 #                       volumes-dev/.gates/<tag>/ con los contenedores PARADOS.
 #   restore <tag> --yes (local) Repone esa copia. Sin esto el gate no es repetible: tras una pasada el
@@ -53,7 +54,7 @@ source "$SCRIPT_DIR/lib-node.sh"
 REPO_ROOT="$(cd "$DEVOPS_DIR/.." && pwd)"
 SNAP_DIR="$DEVOPS_DIR/logs/upgrade"
 
-usage() { sed -n '2,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,41p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 MODE=""; CMD=""; ARGS=(); EXPECT=""; YES=0; STRICT=0
 while [ $# -gt 0 ]; do
@@ -273,9 +274,12 @@ case "$CMD" in
       for f in "$tmp"/x.*; do total=$((total + 1)); want="${f##*.}"; [ "$(cat "$f")" = "$want" ] || cross=$((cross + 1)); done
       [ "$cross" = 0 ] && ok "sin cruce de idiomas en $total peticiones concurrentes" || ko "cruce de idiomas: $cross de $total páginas salieron en el idioma de otra petición"
     else soft "?lang= no cambia el idioma (de→«$ld», es→«$le»): visor anterior a 1.1.10"; fi
-    for path in "/c/sitemap.xml" "/c/rss/$RSS_MODULE"; do
+    # Listado por tipo: la página de Files (1.2.1) sale por la misma location genérica que el resto.
+    code="$(get "$BASE/c?type=files&$stamp=f")"
+    [ "$code" = 200 ] && ok "/c?type=files → 200" || soft "/c?type=files → $code (tipo nuevo de 1.2.1)"
+    for path in "/c/sitemap.xml" "/c/rss/$RSS_MODULE" "/c/rss/files"; do
       code="$(get "$BASE$path")"
-      if [ "$code" != 200 ]; then soft "$path → $code (ruta nueva de 1.1.10)"; continue; fi
+      if [ "$code" != 200 ]; then soft "$path → $code (ruta nueva de 1.1.10; /c/rss/files, de 1.2.1)"; continue; fi
       # En local el backend ve Host=localhost y construye las URLs con la IP de la LAN: no sirve para
       # probar la reescritura a https. Se pregunta a la caché desde dentro, con un Host de mentira.
       if [ "$MODE" = local ]; then

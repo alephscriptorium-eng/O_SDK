@@ -7,8 +7,8 @@ encargos:
   - id: subir-version
     titulo: Subir mi pub a la versión nueva de Oasis
     estado: ejercido
-    medido: '2026-10-01'
-    prueba: plan/REPORTES/WP-O114-aplicacion-vps-1.1.10.md
+    medido: '2026-10-04'
+    prueba: plan/REPORTES/WP-O123-aplicacion-vps-1.2.1.md
     falta: prueba en frío (WP-O118)
   - id: recuperar
     titulo: Algo se ha roto, recupéralo
@@ -28,8 +28,9 @@ puerta es para quien ya tiene algo corriendo.
 - Subir de versión: <Sello rol="mantener" id="subir-version" />
 - Recuperar: <Sello rol="mantener" id="recuperar" />
 
-La última subida del pub de demostración, de 1.1.4 a 1.1.10, se hizo con este
-protocolo: tres nodos, y cada uno publicó un anuncio de versión y nada más.
+La última subida del pub de demostración, de 1.1.10 a 1.2.1, se hizo con este
+protocolo: tres nodos, y cada uno publicó un anuncio de versión y nada más. Fue
+además un cambio de motor de base de datos, de los que no tienen vuelta atrás.
 
 ## Qué le dices a tu agente
 
@@ -64,6 +65,7 @@ Lee el protocolo de recuperación, haz el triaje y dime qué hay.
 | 3 | Traer el código nuevo y reponer las cinco diferencias del fork | exactamente seis ficheros distintos de upstream | |
 | 4 | Sacar **qué cambia de comportamiento** y disponer cada línea por escrito | ninguna línea sin leer | |
 | 5 | Ensayo en local con identidades desechables: recrear cada nodo y medir **qué publica** | un anuncio de versión por nodo y nada más | si aparece otra cosa: **parar** |
+| 5b | Si la versión cambia el motor de base de datos: ensayar la migración sobre una copia | los mismos registros antes y después | **DECISIÓN**: tras migrar no hay vuelta atrás |
 | 6 | Copias de seguridad y preparación del rollback en el servidor | | **PERMISO**: escribe en el servidor |
 | 7 | Subir el pub | sano, misma identidad | **PERMISO**: se reinicia y publica |
 | 8 | Subir cada nodo de soporte | sano, misma identidad | **PERMISO** por nodo |

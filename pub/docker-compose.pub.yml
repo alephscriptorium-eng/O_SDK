@@ -9,6 +9,12 @@ services:
     container_name: oasis-pub-scriptorium
     command: ["server"]
     restart: unless-stopped
+    # Capacidad (docs/PUB/CAPACIDAD.md): el pub no tenía techo de memoria ni rotación de su log.
+    # Dentro de este contenedor corre además, cada 6 h, la construcción del snapshot (pub-snapshot.sh).
+    mem_limit: ${OASIS_PUB_MEM_LIMIT:-1024m}
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
     environment:
       NODE_ENV: production
       OASIS_SKIP_AI_MODEL: "true"
@@ -38,6 +44,9 @@ services:
     image: oasis-pub-panel-api:latest
     container_name: oasis-pub-panel-api
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
     environment:
       NODE_ENV: production
       PUB_PANEL_TOKEN: ${PUB_PANEL_TOKEN:?Set PUB_PANEL_TOKEN in pub/.env}
@@ -59,6 +68,9 @@ services:
     image: caddy:2-alpine
     container_name: oasis-pub-web
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
     environment:
       OASIS_PUB_WEB_HOST: ${OASIS_PUB_WEB_HOST:-pub.escrivivir.co}
     ports:
@@ -90,6 +102,7 @@ services:
       HOME: /home/oasis
       SSB_PATH: /home/oasis/.ssb
       OASIS_PUBLIC: ${OASIS_HUB_PUBLIC:-true}     # false SOLO durante el bootstrap del invite
+      OASIS_SNAPSHOT: "off"                       # D-O27: el snapshot lo construye el pub; aquí nadie lo pide
       OASIS_OPEN: "false"
       OASIS_ALLOW_HOST: ${OASIS_HUB_ALLOW_HOST:-pub.escrivivir.co}
       NODE_OPTIONS: ${OASIS_HUB_NODE_OPTIONS:---max-old-space-size=1024}
@@ -177,6 +190,7 @@ services:
       HOME: /home/oasis
       SSB_PATH: /home/oasis/.ssb
       OASIS_PUBLIC: ${OASIS_WALLET_BOT_PUBLIC:-true}   # false SOLO durante el bootstrap del invite
+      OASIS_SNAPSHOT: "off"                            # D-O27: ni lo construye ni arranca desde el del pub
       OASIS_OPEN: "false"
       OASIS_ALLOW_HOST: localhost
       # Sin OASIS_BANKING_DIR (retirado en 1.1.4): el estado bancario vive en ~/.ssb/oasis/banking, dentro

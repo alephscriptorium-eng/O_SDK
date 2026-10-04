@@ -27,7 +27,7 @@ const renderMediaBlob = (value, fallbackSrc = null, attrs = {}) => {
   if (!value) return fallbackSrc ? require("../server/node_modules/hyperaxe").img({ src: fallbackSrc, ...attrs }) : null
   const { img } = require("../server/node_modules/hyperaxe")
   const s = String(value).trim()
-  if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}`, ...attrs })
+  if (s.startsWith('&')) return img({ loading: 'lazy', src: `/blob/${encodeURIComponent(s)}`, ...attrs })
   return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
 }
 
@@ -44,7 +44,7 @@ const buildReturnTo = (filter, params = {}) => {
 const renderModeButtons = (currentFilter, emptyMod = false, modesAvail = null) =>
   div({ class: "tribe-mode-buttons" },
     ...(emptyMod ? [] : [
-    ["all", "mine", "recent", "top", "applied", "open", "favorites"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
+    ["recent", "mine", "all", "top", "applied", "open", "favorites"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
       form({ method: "GET", action: "/school" },
         input({ type: "hidden", name: "filter", value: f }),
         button({ type: "submit", class: currentFilter === f ? "filter-btn active" : "filter-btn" }, i18n[`schoolFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase())

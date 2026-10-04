@@ -8,6 +8,15 @@ const { WORKFLOWS, currentWorkflow } = require('../models/workflows_model');
 const { renderVerificationReport, renderRebuildReport } = require('./backup_view');
 
 const snhUrl = "https://wiki.solarnethub.com/socialnet/overview";
+const BLOB_CACHE_OPTIONS = [512, 1024, 2048, 5120, 10240, 0];
+const sizeLabel = (bytes) => {
+  let value = Number(bytes) || 0;
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit += 1; }
+  return `${unit === 0 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`;
+};
+const blobCacheOptionLabel = (mb) => mb === 0 ? i18n.settingsBlobCacheUnlimited : (mb >= 1024 ? `${mb / 1024} GB` : `${mb} MB`);
 
 const themeFilePath = path.join(__dirname, '../configs/oasis-config.json');
 const getThemeConfig = () => {
@@ -20,7 +29,7 @@ const getThemeConfig = () => {
   }
 };
 
-const settingsView = ({ version, aiPrompt, aiExportCount = 0, fediverseAccount, fediverseError, telegramAccount = null, telegramLogin = null, telegramError = "", verification = null, rebuild = null }) => {
+const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, fediverseAccount, fediverseError, telegramAccount = null, telegramLogin = null, telegramError = "", peertubeAccount = null, peertubeError = "", verification = null, rebuild = null }) => {
   const currentThemeConfig = getThemeConfig();
   const theme = currentThemeConfig.themes?.current || "Dark-SNH";
   const currentConfig = getConfig();
@@ -30,7 +39,7 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, fediverseAccount, 
   const walletUrl = currentConfig.wallet.url;
   const walletUser = currentConfig.wallet.user;
   const walletFee = currentConfig.wallet.fee;
-  const currentWish = ['mutuals', 'only-lan'].includes(currentConfig.wish) ? currentConfig.wish : 'whole';
+  const currentWish = ['mutuals', 'only-lan', 'local'].includes(currentConfig.wish) ? currentConfig.wish : 'whole';
   const currentPmVisibility = currentConfig.pmVisibility === 'mutuals' ? 'mutuals' : 'whole';
 
   const themeElements = [
@@ -164,7 +173,8 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, fediverseAccount, 
           select({ name: "wish" },
             option({ value: "whole", ...(currentWish === "whole" ? { selected: true } : {})}, i18n.settingsWishWhole),
             option({ value: "mutuals", ...(currentWish === "mutuals" ? { selected: true } : {})}, i18n.settingsWishMutuals),
-            option({ value: "only-lan", ...(currentWish === "only-lan" ? { selected: true } : {})}, i18n.settingsWishOnlyLan || "Only LAN")
+            option({ value: "only-lan", ...(currentWish === "only-lan" ? { selected: true } : {})}, i18n.settingsWishOnlyLan || "Only LAN"),
+            option({ value: "local", ...(currentWish === "local" ? { selected: true } : {})}, i18n.settingsWishLocal || "Local")
           ), br(), br(),
           button({ type: "submit" }, i18n.saveSettings)
         )
@@ -249,6 +259,24 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, fediverseAccount, 
       )
      )
     ),
+    blobCache ? section({ id: "blobcache" },
+      div({ class: "tags-header" },
+        h2(i18n.settingsBlobCacheTitle),
+        p(i18n.settingsBlobCacheDesc),
+        blobCache.usage ? p({ class: "blob-cache-usage" }, strong(`${i18n.settingsBlobCacheUsage}: `), `${sizeLabel(blobCache.usage.bytes)} · ${blobCache.usage.count} ${i18n.settingsBlobCacheFiles}`) : null,
+        blobCache.cleaned !== null ? p({ class: "blob-cache-notice" }, String(i18n.settingsBlobCacheCleaned).replace('{n}', String(blobCache.cleaned)).replace('{size}', sizeLabel(blobCache.freed))) : null,
+        form(
+          { action: "/settings/blob-cache", method: "POST" },
+          label({ for: "blob_cache_mb" }, i18n.settingsBlobCacheLimit),
+          br(),
+          select({ id: "blob_cache_mb", name: "blob_cache_mb" }, ...BLOB_CACHE_OPTIONS.map(mb => option({ value: String(mb), ...(mb === blobCache.maxMB ? { selected: true } : {}) }, blobCacheOptionLabel(mb)))),
+          br(), br(),
+          button({ type: "submit" }, i18n.saveSettings),
+          blobCache.maxMB > 0 ? button({ type: "submit", formaction: "/settings/blob-cache/collect", class: "blob-cache-clean-btn" }, i18n.settingsBlobCacheCleanNow) : null
+        ),
+        p({ class: "blob-cache-note" }, i18n.settingsBlobCacheNote)
+      )
+    ) : null,
     section({ id: "replication" },
       div({ class: "tags-header" },
         h2(i18n.settingsReplicationTitle || 'Replication'),
@@ -423,6 +451,27 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, fediverseAccount, 
                     input({ type: "tel", id: "telegram_phone", name: "phone", placeholder: "+34 60000000", required: true }), br(), br(),
                     button({ type: "submit" }, i18n.fediverseConnect)
                   )
+        )
+        ,
+        div({ class: "fediverse-network" },
+          h3("PeerTube"),
+          peertubeError ? p({ class: "fediverse-error" }, i18n[peertubeError] || i18n.peertubeErrConnect) : "",
+          peertubeAccount
+            ? form(
+                { action: "/settings/peertube/disconnect", method: "POST" },
+                p(`${i18n.fediverseConnectedAs}: `, a({ href: peertubeAccount.channelUrl || peertubeAccount.profileUrl, target: "_blank", rel: "noopener noreferrer" }, peertubeAccount.handle)),
+                button({ type: "submit" }, i18n.fediverseDisconnect)
+              )
+            : form(
+                { action: "/settings/peertube", method: "POST" },
+                label({ for: "peertube_instance" }, i18n.fediverseInstanceLabel), br(),
+                input({ type: "text", id: "peertube_instance", name: "instance", placeholder: "peertube.example.org", required: true }), br(),
+                label({ for: "peertube_username" }, i18n.peertubeUsernameLabel), br(),
+                input({ type: "text", id: "peertube_username", name: "username", autocomplete: "off", required: true }), br(),
+                label({ for: "peertube_password" }, i18n.peertubePasswordLabel), br(),
+                input({ type: "password", id: "peertube_password", name: "password", autocomplete: "off", required: true }), br(),
+                button({ type: "submit" }, i18n.fediverseConnect)
+              )
         )
       )
     ) : null,

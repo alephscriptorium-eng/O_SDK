@@ -134,3 +134,14 @@ echo "-- hub-wallet (ecoin) (ecoin-disk.sh check; best-effort) --"
 # Nunca fatal: si el hub-wallet no está desplegado o falla el SSH, deploy-status sigue.
 ecoin_line="$(bash "$REPO_ROOT/devops/scripts/ecoin-disk.sh" check 2>/dev/null || true)"
 echo "  ${ecoin_line:-(hub-wallet no desplegado)}"
+echo
+
+echo "-- Capacidad (capacity.sh; best-effort) · docs/PUB/CAPACIDAD.md --"
+# Solo los avisos y el resumen: el inventario entero, con `npm run devops:capacity`. Nunca fatal.
+cap_out="$(bash "$REPO_ROOT/devops/scripts/capacity.sh" 2>/dev/null || true)"
+if [ -n "$cap_out" ]; then
+  printf '%s\n' "$cap_out" | grep -E '^ +(AVISO|DURO|\?) ' | sed 's/^ */  /' || true
+  printf '%s\n' "$cap_out" | grep '^capacity:' | sed 's/^/  /'
+else
+  echo "  (capacity.sh no disponible — ¿SSH?)"
+fi

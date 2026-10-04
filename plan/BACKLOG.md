@@ -751,7 +751,7 @@ Dep: WP-O116 y WP-O117 para las puertas que hoy están en obras.
 
 | **WP-O119** | **P0** | La medida de los nodos deja de depender del formato del log |
 
-**Estado** · en curso (rama `wp/O119-medida-db2`). Asiento D-O27.
+**Estado** · ✅ 2026-10-04 en la rama `wp/O119-medida-db2` (`plan/REPORTES/WP-O119-medida-db2.md`); pendiente de merge a `main`. Asiento D-O27.
 
 **BRIEF** · Oasis 1.2 cambia el log de `flume/log.offset` (JSON) a `db2/log.bipf` (binario) y deja en
 el sitio del viejo un fichero-guarda. `lib-node.sh` contaba con `grep` sobre el fichero viejo y la
@@ -766,7 +766,7 @@ Dep: —. Relación: WP-O112 (herramientas que corrige).
 
 | **WP-O120** | **P0** | Upgrade a Oasis 1.2.1 en local: overlay, build sobre `src/base`, gates con migración |
 
-**Estado** · abierto (rama `upgrade/oasis-1.2.1`).
+**Estado** · ✅ 2026-10-04 en la rama `upgrade/oasis-1.2.1` (`plan/REPORTES/WP-O120-upgrade-oasis-1.2.1.md`): gates locales en verde; pendiente de merge. Falta el drill del cliente antes de subir el cliente.
 
 **BRIEF** · Overlay de `src/` con `src/base` vendorizado; guards repuestos más el interruptor
 `OASIS_SNAPSHOT`; `Dockerfile` sin `npm install` (Node 22, enlace a `src/base`, IA por `ARG`);
@@ -778,7 +778,7 @@ Dep: WP-O119.
 
 | **WP-O121** | **P1** | Capacidad: inventario único de lo que crece y sus límites |
 
-**Estado** · abierto.
+**Estado** · ✅ 2026-10-04 en la rama `upgrade/oasis-1.2.1` (`plan/REPORTES/WP-O121-capacidad.md`). Valores provisionales hasta medir el host.
 
 **BRIEF** · `docs/PUB/CAPACIDAD.md` (qué crece · dónde · quién · límite · cómo se mide · qué se hace
 al pasar el umbral) y `devops/scripts/capacity.sh` (solo lectura, lo llama `deploy-status.sh`).
@@ -789,7 +789,7 @@ Dep: WP-O120.
 
 | **WP-O122** | **P1** | Snapshots construidos por el pub |
 
-**Estado** · abierto.
+**Estado** · ✅ 2026-10-04 en la rama `upgrade/oasis-1.2.1` (`plan/REPORTES/WP-O122-snapshots-pub.md`). Sin activar en el host.
 
 **BRIEF** · `pub/tools/snapshot-build.js` (lee el log del pub por el socket, escribe solo registros de
 mensajes, `.tmp` + `rename`, memoria constante) y `devops/scripts/pub-snapshot.sh` con temporizador
@@ -799,7 +799,7 @@ Dep: WP-O120.
 
 | **WP-O123** | **P0** | Aplicación en el VPS del upgrade a 1.2.1 |
 
-**Estado** · abierto. **Pide GO en cada paso marcado; desde que un nodo migra no hay rollback.**
+**Estado** · ✅ 2026-10-04: pub, HUB y bot en 1.2.1 (`plan/REPORTES/WP-O123-aplicacion-vps-1.2.1.md`). Snapshot del pub construido y servido. Pendiente: su temporizador (el host no tiene `cron`), la medida a las 24 h y el cliente.
 
 **BRIEF** · Convergencia de los ficheros de build del host con el repo, subida de `src/` con
 `src/base`, build, ensayo de migración sobre copia del log real, y pub → HUB → bot con parada, copia

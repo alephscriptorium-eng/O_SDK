@@ -39,6 +39,8 @@ Quién llega a cada rol y qué le encarga a su agente: **[¿Quién llega?](/role
   **[ficha de instancia](/PUB/INSTANCIA-SCRIPTORIUM)**.
 - **[Protocolo de upgrade](/PUB/UPGRADE-PROTOCOL)** — overlay del upstream,
   re-aplicación de los *fork-guards*, deploy por rol y healthcheck.
+- **[Capacidad](/PUB/CAPACIDAD)** — inventario único de lo que crece en disco
+  y en memoria, quién lo hace crecer, qué límite tiene y cómo se mide.
 - **[Protocolo de recuperación](/PUB/RECOVERY-PROTOCOL)** — triaje de
   integridad, salvamento del repo por *plumbing*, rebuild de imagen y la
   secuencia sbot-puro → sync → GUI que evita bifurcar el feed.

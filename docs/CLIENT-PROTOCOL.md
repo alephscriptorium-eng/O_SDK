@@ -18,8 +18,9 @@ Deriva de `UPGRADE-PROTOCOL.md` (misma imagen, tres modos) y de `RECOVERY-PROTOC
 de oro), y del primer alta+importación hecha en este repo (WP-O98, 2026-09-17).
 
 > **Modelo mental.** Solo hay **una cosa irremplazable: el `secret`**. Y una cosa que conviene no
-> perder: **tu propio log** (`flume/log.offset`), porque lo que el pub no tenga de tu feed no existe.
-> Todo lo demás (índices flume, `ebt/`, `conn.json`, `config`, blobs) es derivable. Oasis **no tiene
+> perder: **tu propio log** (`db2/log.bipf` desde Oasis 1.2; antes `flume/log.offset`), porque lo que
+> el pub no tenga de tu feed no existe.
+> Todo lo demás (índices, `ebt/`, `conn.json`, `config`, blobs) es derivable. Oasis **no tiene
 > guardia contra la bifurcación del feed**: si la GUI arranca con tu `secret` y un log vacío, publica
 > (en 1.1.2, el PM de bienvenida a los 3 s) un mensaje con `sequence: 1` → fork irreversible frente a
 > lo que guarda el pub. Por eso importar = **ficheros con el cliente parado + sbot puro hasta
@@ -82,14 +83,14 @@ npm run client:import-identity -- --from "C:/ruta/al/.ssb/viejo" --with-blobs [-
 | Se copia (lista blanca) | Por qué |
 |---|---|
 | `secret` | la identidad |
-| `flume/log.offset` | tu feed completo (y el de tus pares): elimina la ventana de fork por construcción |
+| el log: `db2/log.bipf` con su guarda `flume/log.offset` (origen en Oasis ≥ 1.2) o `flume/log.offset` (origen anterior) | tu feed completo (y el de tus pares): elimina la ventana de fork por construcción. Un log flume lo migra a db2 el primer arranque, y esa migración **no tiene vuelta**: la versión anterior ya no arranca sobre esa carpeta |
 | `gossip.json` | direcciones/claves de pubs conocidos: el cliente vuelve a encontrar al pub solo |
 | `keys/` | claves de tribus (no derivables) |
 | `blobs/` (opcional) | avatares/adjuntos; content-addressed, re-descargables |
 
 | **No** se copia | Por qué |
 |---|---|
-| `flume/*` (índices), `ebt/`, `blobs_push/` | vistas derivadas; las de otra versión hacen que el arranque muera con «Another Oasis instance is already running» (`isLockError` trata cualquier `OpenError` de leveldb como lock) o `isCorruptStoreError` |
+| `flume/*` y `db2/{indexes,jit}` (índices), `ebt/`, `blobs_push/` | vistas derivadas; las de otra versión hacen que el arranque muera con «Another Oasis instance is already running» (`isLockError` trata cualquier `OpenError` de leveldb como lock) o `isCorruptStoreError` |
 | `conn.json` | se regenera desde `gossip.json`; corrupto bloquea conexiones |
 | `config` | lo escribe el entrypoint; `server-config.json` manda (caps, connections, hops) |
 | `socket`, `manifest.json`, `node_modules`, `*.nul-damaged-bak` | residuos |

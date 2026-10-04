@@ -81,6 +81,8 @@
     "devops:preflight": "bash ./devops/scripts/upgrade-preflight.sh",
     "devops:upgrade:diff": "bash ./devops/scripts/upgrade-behaviour-diff.sh",
     "devops:upgrade:gates": "bash ./devops/scripts/upgrade-gates.sh",
+    "devops:capacity": "bash ./devops/scripts/capacity.sh",
+    "devops:pub:snapshot": "bash ./devops/scripts/pub-snapshot.sh",
     "devops:backup": "bash ./devops/scripts/backup-oasis-pub.sh",
     "devops:federation": "bash ./devops/scripts/pub-federation.sh",
     "devops:invite": "bash ./devops/scripts/generate-invite.sh",

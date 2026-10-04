@@ -26,11 +26,11 @@ const renderMediaBlob = (value, fallbackSrc = null, attrs = {}) => {
   if (!value) return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
   const s = String(value).trim()
   if (!s) return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
-  if (s.startsWith('&')) return img({ src: `/blob/${encodeURIComponent(s)}`, ...attrs })
+  if (s.startsWith('&')) return img({ loading: 'lazy', src: `/blob/${encodeURIComponent(s)}`, ...attrs })
   const mVideo = s.match(/\[video:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
   if (mVideo) return video({ controls: true, class: attrs.class || 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}`, preload: 'metadata' })
   const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
-  if (mImg) return img({ src: `/blob/${encodeURIComponent(mImg[1])}`, ...attrs })
+  if (mImg) return img({ loading: 'lazy', src: `/blob/${encodeURIComponent(mImg[1])}`, ...attrs })
   return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
 }
 
@@ -47,7 +47,7 @@ const buildReturnTo = (filter, params = {}) => {
 const renderModeButtons = (currentFilter, emptyMod = false, modesAvail = null) =>
   div({ class: "tribe-mode-buttons" },
     ...(emptyMod ? [] : [
-    ["all", "recent", "mine", "top", "products", "prices", "favorites"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
+    ["recent", "mine", "all", "top", "products", "prices", "favorites"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
       form({ method: "GET", action: "/shops" },
         input({ type: "hidden", name: "filter", value: f }),
         button({ type: "submit", class: currentFilter === f ? "filter-btn active" : "filter-btn" }, i18n[`shopFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase())

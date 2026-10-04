@@ -30,6 +30,8 @@ const BLOB_IMAGE_RE = /!\[([^\]]*)\]\(\s*(&[^)\s]+\.sha256)\s*\)/g;
 const BLOB_VIDEO_RE = /\[video:([^\]]*)\]\(\s*(&[^)\s]+\.sha256)\s*\)/g;
 const BLOB_AUDIO_RE = /\[audio:([^\]]*)\]\(\s*(&[^)\s]+\.sha256)\s*\)/g;
 const BLOB_PDF_RE = /\[pdf:([^\]]*)\]\(\s*(&[^)\s]+\.sha256)\s*\)/g;
+const BLOB_TORRENT_RE = /\[torrent:([^\]]*)\]\(\s*(&[^)\s]+\.sha256)\s*\)/g;
+const BLOB_FILE_RE = /(?<!!)\[(?!(?:video|audio|pdf|torrent):)([^\]\n]{1,160})\]\(\s*(&[^)\s]+\.sha256)\s*\)/g;
 const MD_MENTION_RE = /\[@([^\]]+)\]\(@?([A-Za-z0-9+/=.\-]+\.ed25519)\)/g;
 const RAW_MENTION_RE = /@([A-Za-z0-9+/=.\-]+\.ed25519)/g;
 const MSG_REF_RE = /%[A-Za-z0-9+/=]{44}\.sha256/g;
@@ -41,7 +43,7 @@ const URL_TAIL_RE = /[.,;:!?»"')\]}>]+$/;
 const SELF_HOST_RE = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:[/?#]|$)/i;
 const INTERNAL_PATHS = [
   'agenda','ai','audios','author','backup','banking','blockexplorer','blogs','bookmarks','calendars','campaigns',
-  'chats','cipher','courts','cv','dev','docs','emergencies','events','favorites','feed','forum','games','graphos',
+  'chats','cipher','courts','cv','dev','docs','emergencies','events','favorites','feed','files','forum','games','graphos',
   'hashtag','housing','images','industry','inbox','inhabitants','invites','jobs','larp','logistics','logs','mailing',
   'maps','market','melody','mentions','modules','multiverse','opinions','pads','parliament','peers','pixelia','pm',
   'podcasts','polls','popular','profile','projects','publish','reports','school','search','settings','shops','spread',
@@ -106,6 +108,8 @@ function renderStyledText(value, opts = {}) {
   for (const m of text.matchAll(BLOB_VIDEO_RE)) push(m, { type: 'blob-video', name: m[1], blob: m[2] });
   for (const m of text.matchAll(BLOB_AUDIO_RE)) push(m, { type: 'blob-audio', name: m[1], blob: m[2] });
   for (const m of text.matchAll(BLOB_PDF_RE)) push(m, { type: 'blob-pdf', name: m[1], blob: m[2] });
+  for (const m of text.matchAll(BLOB_TORRENT_RE)) push(m, { type: 'blob-file', name: m[1], blob: m[2] });
+  for (const m of text.matchAll(BLOB_FILE_RE)) push(m, { type: 'blob-file', name: m[1], blob: m[2] });
   for (const m of text.matchAll(MD_MENTION_RE)) push(m, { type: 'md-mention', name: m[1], feedId: m[2] });
   for (const m of text.matchAll(RAW_MENTION_RE)) push(m, { type: 'raw-mention', feedId: m[1] });
   for (const m of text.matchAll(MSG_REF_RE)) push(m, { type: 'msg-ref', id: m[0] });
@@ -177,6 +181,7 @@ function renderStyledText(value, opts = {}) {
         const zoomId = `rtzoom-${zoomSeq}-${String(m.blob).replace(/[^a-zA-Z0-9]/g, '').slice(-10)}`;
         result.push(a({ href: `#${zoomId}`, id: `${zoomId}-src`, class: 'zoom-link' }, img({ src: imageSrc, alt: m.name || '', class: 'post-image' })));
         result.push(span({ id: zoomId, class: 'lightbox' },
+          a({ href: `${imageSrc}${imageSrc.includes('?') ? '&' : '?'}download=1`, class: 'lightbox-download', title: getI18n().fileShareDownload || 'Download' }, '\u2913'),
           a({ href: `#${zoomId}-src`, class: 'lightbox-close' }, '\u00d7'),
           img({ src: imageSrc, alt: m.name || '', class: 'lightbox-image' })
         ));
@@ -190,6 +195,8 @@ function renderStyledText(value, opts = {}) {
     } else if (m.type === 'blob-pdf') {
       const i18n = getI18n();
       result.push(a({ href: blobHref(m.blob), class: 'post-pdf', target: '_blank', rel: 'noopener noreferrer' }, m.name || i18n.pdfFallbackLabel || 'PDF'));
+    } else if (m.type === 'blob-file') {
+      result.push(a({ href: blobHref(m.blob), class: 'post-pdf', target: '_blank', rel: 'noopener noreferrer' }, m.name || m.blob.slice(1, 9)));
     } else if (m.type === 'md-mention') {
       result.push(internalOn ? a({ href: `/author/${encodeURIComponent('@' + m.feedId)}`, class: 'mention' }, '@' + m.name) : '@' + m.name);
     } else if (m.type === 'raw-mention') {

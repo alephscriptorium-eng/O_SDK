@@ -17,3 +17,6 @@ pub/rrss-sidecar/** text eol=lf
 pub/rrss-sidecar/**/*.json text eol=lf
 # Invariantes del upgrade: los lee bash con IFS=TAB y grep -F; un CR al final rompería la última columna.
 devops/scripts/upgrade-invariants.d/* text eol=lf
+# Dependencias vendorizadas por upstream (Oasis >= 1.2, D-O27): byte a byte como vienen. Sin
+# conversión de fin de línea en el árbol de trabajo: la imagen se construye con COPY desde aquí.
+src/base/** -text
