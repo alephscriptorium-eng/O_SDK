@@ -9,6 +9,12 @@ services:
     container_name: oasis-pub-scriptorium
     command: ["server"]
     restart: unless-stopped
+    # Capacidad (docs/PUB/CAPACIDAD.md): el pub no tenía techo de memoria ni rotación de su log.
+    # Dentro de este contenedor corre además, cada 6 h, la construcción del snapshot (pub-snapshot.sh).
+    mem_limit: ${OASIS_PUB_MEM_LIMIT:-1024m}
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
     environment:
       NODE_ENV: production
       OASIS_SKIP_AI_MODEL: "true"
@@ -38,6 +44,9 @@ services:
     image: oasis-pub-panel-api:latest
     container_name: oasis-pub-panel-api
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
     environment:
       NODE_ENV: production
       PUB_PANEL_TOKEN: ${PUB_PANEL_TOKEN:?Set PUB_PANEL_TOKEN in pub/.env}
@@ -59,6 +68,9 @@ services:
     image: caddy:2-alpine
     container_name: oasis-pub-web
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
     environment:
       OASIS_PUB_WEB_HOST: ${OASIS_PUB_WEB_HOST:-pub.escrivivir.co}
     ports:

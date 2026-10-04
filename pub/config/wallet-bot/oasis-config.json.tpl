@@ -97,5 +97,9 @@
     "campaigns",
     "logistics",
     "reminders"
-  ]
+  ],
+  "blobCache": {
+    "maxMB": 256,
+    "pubMaxMB": 256
+  }
 }

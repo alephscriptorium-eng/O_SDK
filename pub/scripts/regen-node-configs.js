@@ -13,6 +13,12 @@
 //   modules.aiMod / aiNavMod = off      sin IA
 //   ssbLogStream.limit = 20000          ventana de autores del visor y del motor
 //   lanBroadcasting = false
+//   blobCache = { maxMB, pubMaxMB }     (desde 1.2.1) techo de la carpeta de blobs del nodo. Upstream lo
+//                                       deja en 0 para un backend público (= sin recolector). Con techo,
+//                                       cada 6 h borra los blobs ajenos menos usados de más de 24 h; se
+//                                       vuelven a pedir a la red si alguien los solicita. HUB: 2048 MB
+//                                       (sirve medios en /c/blob). Bot de cartera: 256 MB (no sirve nada).
+//                                       docs/PUB/CAPACIDAD.md.
 //   inboxMutedBots = todos              (desde 1.1.10) el backend trae «bots» de aviso (político,
 //                                       empleo, banca, recordatorios…) que se disparan con cualquier
 //                                       petición y se envían a sí mismos un mensaje CIFRADO. Un nodo
@@ -58,11 +64,13 @@ function base() {
 
 const prevHub = fs.existsSync(HUB) ? read(HUB) : {};
 const hub = base();
+hub.blobCache = { maxMB: 2048, pubMaxMB: 2048 };
 hub.themes.current = (prevHub.themes && prevHub.themes.current) || src.themes.current;
 hub.language = prevHub.language || src.language;
 
 const prevBot = fs.existsSync(BOT) ? read(BOT) : {};
 const bot = base();
+bot.blobCache = { maxMB: 256, pubMaxMB: 256 };
 bot.language = prevBot.language || src.language;
 bot.wallet.url = 'http://ecoin:7474';
 bot.wallet.user = '__ECOIN_RPC_USER__';

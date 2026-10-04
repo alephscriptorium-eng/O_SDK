@@ -18,7 +18,7 @@
 #   check         umbrales HUB_DISK_SOFT_PCT (75) / HUB_DISK_HARD_PCT (90)
 #                 sobre /srv/oasis Y / → exit 0 ok · 1 soft · 2 hard
 #                 (3 = no se pudo medir).   [read-only; deploy-status.sh y cron]
-#   prune-blobs [--older-than N] [--dry-run]
+#   prune-blobs [--node hub|pub] [--older-than N] [--dry-run]
 #                 borra blobs de ssb-data/blobs/sha256 no accedidos en N días
 #                 (default 30). Criterio -atime; si el mount es noatime cae a
 #                 -mtime (fecha de descarga). Seguro: content-addressed, `want`
@@ -64,7 +64,7 @@ HARD="${HUB_DISK_HARD_PCT:-90}"
 
 usage() {
   cat <<EOF
-uso: hub-disk.sh [--local] status [--json] | check | prune-blobs [--older-than N] [--dry-run] | prune-cache | --json
+uso: hub-disk.sh [--local] status [--json] | check | prune-blobs [--node hub|pub] [--older-than N] [--dry-run] | prune-cache | --json
   --local   ejecuta en local contra \${OASIS_HUB_LOCAL_DIR:-<repo>/volumes-dev/oasis-hub} (sin SSH)
   check     exit 0 ok · 1 ≥ HUB_DISK_SOFT_PCT ($SOFT) · 2 ≥ HUB_DISK_HARD_PCT ($HARD) · 3 sin medida
 EOF
@@ -223,21 +223,26 @@ EOF
     ;;
 
   prune-blobs)
-    N=30; DRY=0
+    N=30; DRY=0; NODE=hub
     set -- "${ARGS[@]+"${ARGS[@]}"}"
     while [ $# -gt 0 ]; do
       case "$1" in
         --older-than) N="${2:-}"; shift ;;
         --older-than=*) N="${1#*=}" ;;
         --dry-run) DRY=1 ;;
+        --node) NODE="${2:-}"; shift ;;
+        --node=*) NODE="${1#*=}" ;;
         *) echo "ERROR: opción desconocida para prune-blobs: $1" >&2; usage; exit 2 ;;
       esac
       shift
     done
     [ "$N" -ge 0 ] 2>/dev/null || { echo "ERROR: --older-than espera un entero de días" >&2; exit 2; }
-    run_h "N=$N; DRY=$DRY
+    case "$NODE" in hub|pub) ;; *) echo "ERROR: --node espera hub o pub" >&2; exit 2 ;; esac
+    run_h "N=$N; DRY=$DRY; NODE=$NODE
 $(cat <<'EOF'
-B="$HUB_DATA/ssb-data/blobs/sha256"
+# El pub es solo sbot: no tiene el recolector de blobs del backend (blobCache), así que su carpeta
+# de blobs solo se acota con esta poda. Mismo criterio y misma seguridad que en el HUB.
+if [ "$NODE" = pub ]; then B="$PUB_DATA/blobs/sha256"; else B="$HUB_DATA/ssb-data/blobs/sha256"; fi
 if [ ! -d "$B" ]; then echo "prune-blobs: $B no existe; nada que podar"; exit 0; fi
 # -atime solo es fiable si el mount NO es noatime; con noatime se cae a -mtime (fecha de descarga)
 case "$(mount_opts "$DATA_MOUNT")" in *noatime*) F=-mtime ;; *) F=-atime ;; esac
