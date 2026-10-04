@@ -11,7 +11,8 @@
 #   bash devops/scripts/pub-snapshot.sh [--local] status       fichero, tamaño, edad y mensajes · solo lectura
 #   bash devops/scripts/pub-snapshot.sh [--local] build        lo (re)construye ahora. ESCRIBE en el .ssb del pub
 #   bash devops/scripts/pub-snapshot.sh [--local] off --yes    lo retira: el pub vuelve a decir «not available»
-#   bash devops/scripts/pub-snapshot.sh cron                   imprime la línea de crontab para el host
+#   bash devops/scripts/pub-snapshot.sh timer                  imprime las dos unidades de systemd para el host
+#   bash devops/scripts/pub-snapshot.sh cron                   lo mismo como línea de crontab (host con cron)
 #
 #   --local   stack local (pub/.env.local, volumes-dev/); sin él, el host de la instancia por SSH
 #
@@ -32,7 +33,7 @@ source "$SCRIPT_DIR/lib-host.sh"
 source "$SCRIPT_DIR/lib-node.sh"
 REPO_ROOT="$(cd "$DEVOPS_DIR/.." && pwd)"
 
-usage() { sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 LOCAL=0; YES=0; CMD=""
 while [ $# -gt 0 ]; do
@@ -49,13 +50,44 @@ PUBC="${PUB_CONTAINER:-oasis-pub-scriptorium}"
 MAX_MB="${SNAPSHOT_MAX_MB:-1024}"
 FILE=/home/oasis/.ssb/oasis/content/snapshot.oasissn
 
+# La orden que corre el temporizador llama al script que viaja DENTRO de la imagen: en el host no
+# hay checkout del repo. Su ruta depende del layout del host: la carpeta del compose puede no
+# llamarse `pub` (HUB-PROTOCOL §9). Se deduce de REMOTE_REPO_DIR (host.env) o se da con PUB_TOOLS_DIR.
+TOOLS="${PUB_TOOLS_DIR:-/app/$(basename "${REMOTE_REPO_DIR:-pub}")/tools}"
+BUILD_CMD="exec -u oasis -e HOME=/home/oasis -e SNAPSHOT_MAX_MB=$MAX_MB $PUBC node $TOOLS/snapshot-build.js"
+
+if [ "$CMD" = timer ]; then
+  # Dos unidades de systemd. Un servicio `oneshot` no se solapa consigo mismo: no hace falta cerrojo.
+  # La salida (una línea JSON por construcción) queda en el journal: journalctl -u oasis-pub-snapshot.
+  cat <<EOF
+# --- /etc/systemd/system/oasis-pub-snapshot.service
+[Unit]
+Description=Snapshot del pub de Oasis para clientes nuevos (pub-snapshot.sh, D-O27)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=${DOCKER_BIN:-/usr/bin/docker} $BUILD_CMD
+TimeoutStartSec=900
+
+# --- /etc/systemd/system/oasis-pub-snapshot.timer
+[Unit]
+Description=Reconstruye el snapshot del pub de Oasis cada 6 h
+
+[Timer]
+OnCalendar=*-*-* 00/6:17:00
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+  exit 0
+fi
 if [ "$CMD" = cron ]; then
-  # En el host no hay checkout del repo: la línea llama al script que viaja DENTRO de la imagen.
-  # Su ruta depende del layout del host: la carpeta del compose puede no llamarse `pub`
-  # (HUB-PROTOCOL §9). Se deduce de REMOTE_REPO_DIR (host.env) o se da con PUB_TOOLS_DIR.
-  TOOLS="${PUB_TOOLS_DIR:-/app/$(basename "${REMOTE_REPO_DIR:-pub}")/tools}"
   echo "# snapshot del pub cada 6 h (pub-snapshot.sh; D-O27). flock evita dos construcciones a la vez."
-  echo "17 */6 * * * flock -n /tmp/pub-snapshot.lock docker exec -u oasis -e HOME=/home/oasis -e SNAPSHOT_MAX_MB=$MAX_MB $PUBC node $TOOLS/snapshot-build.js >> \$HOME/pub-snapshot.log 2>&1"
+  echo "17 */6 * * * flock -n /tmp/pub-snapshot.lock docker $BUILD_CMD >> \$HOME/pub-snapshot.log 2>&1"
   exit 0
 fi
 case "$CMD" in status|build|off) ;; *) usage; exit 64 ;; esac
