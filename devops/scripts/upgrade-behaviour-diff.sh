@@ -27,6 +27,7 @@
 #   state     ficheros de estado (state-manager.js) nuevos o retirados
 #   config    cambios en los JSON de src/configs/
 #   deps      cambios en src/server/package.json
+#             Lo vendorizado en src/base no entra en ninguna sección salvo como una línea de `deps`.
 #   outside   ficheros de upstream que cambian FUERA de src/ (no los importa el overlay)
 #   annex     invariantes de las piezas del fork (devops/scripts/upgrade-invariants.d/*.tsv),
 #             evaluados sobre el ÁRBOL DE TRABAJO (overlay y guards ya aplicados)
@@ -49,7 +50,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --section) SECTIONS="${2:-}"; shift ;;
     --check) CHECK="${2:-}"; shift ;;
-    -h|--help) sed -n '2,38p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,39p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) if [ -z "$OLD" ]; then OLD="$1"; elif [ -z "$NEW" ]; then NEW="$1"; else echo "argumento de más: $1" >&2; exit 2; fi ;;
   esac
   shift
@@ -63,7 +64,10 @@ SECTIONS="${SECTIONS:-$ALL}"; SECTIONS="${SECTIONS//,/ }"
 
 BACKEND="src/backend/backend.js"
 # Código, no texto ni estilos: las traducciones y el CSS no deciden comportamiento.
-CODE=(src ':!src/client/assets')
+# src/base (desde Oasis 1.2) son las dependencias vendorizadas: ~19 000 ficheros de terceros. No se
+# leen línea a línea: su cambio se resume en `deps` y lo deciden los gates (parches, invite, arranque).
+VENDOR='src/base'
+CODE=(src ':!src/client/assets' ":!$VENDOR" ':!src/**/package-lock.json')
 
 OUT="$(mktemp)"; trap 'rm -f "$OUT"' EXIT
 emit() { # emit <sección> <signo> <fichero> <texto>
@@ -111,7 +115,7 @@ for s in $SECTIONS; do
       done ;;
     files)
       head_of files "ficheros de src/ que nacen o desaparecen (un borrado sin 'git rm' previo deja restos)"
-      git diff --name-status --no-renames "$OLD" "$NEW" -- src | awk '$1 != "M"' | while read -r st f; do
+      git diff --name-status --no-renames "$OLD" "$NEW" -- src ":!$VENDOR" | awk '$1 != "M"' | while read -r st f; do
         [ "$st" = A ] && emit files + "$f" "nuevo" || emit files - "$f" "borrado por upstream"
       done ;;
     routes)
@@ -164,7 +168,12 @@ for s in $SECTIONS; do
     deps)
       head_of deps "dependencias. Si cambia un ssb-*, los parches de node_modules del entrypoint y el gate del invite se repiten"
       git diff -U0 "$OLD" "$NEW" -- src/server/package.json | tr -d '\r' | grep -E '^[+-][^+-]' \
-        | while read -r l; do emit deps "${l:0:1}" "src/server/package.json" "${l:1}"; done ;;
+        | while read -r l; do emit deps "${l:0:1}" "src/server/package.json" "${l:1}"; done
+      nv="$(git diff --name-only "$OLD" "$NEW" -- "$VENDOR" | wc -l | tr -d ' ')"
+      if [ "$nv" -gt 0 ]; then
+        np="$(git diff --name-only "$OLD" "$NEW" -- "$VENDOR" | sed -E "s|^$VENDOR/node_modules/((@[^/]+/)?[^/]+)/.*|\\1|" | sort -u | wc -l | tr -d ' ')"
+        emit deps + "$VENDOR" "dependencias vendorizadas: $nv ficheros en $np paquetes de primer nivel"
+      fi ;;
     outside)
       head_of outside "lo que upstream cambia fuera de src/: el overlay no lo trae. Mirar instaladores, docs de despliegue y tests"
       git diff --name-status --no-renames "$OLD" "$NEW" -- . ':!src' | while read -r st f; do

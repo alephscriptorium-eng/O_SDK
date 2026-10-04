@@ -749,6 +749,63 @@ Cada tropiezo se corrige en la receta o en el protocolo; el reporte de cada prue
 permite cambiar el sello. Absorbe de WP-O109 la «prueba formal de D-O23».
 Dep: WP-O116 y WP-O117 para las puertas que hoy están en obras.
 
+| **WP-O119** | **P0** | La medida de los nodos deja de depender del formato del log |
+
+**Estado** · en curso (rama `wp/O119-medida-db2`). Asiento D-O27.
+
+**BRIEF** · Oasis 1.2 cambia el log de `flume/log.offset` (JSON) a `db2/log.bipf` (binario) y deja en
+el sitio del viejo un fichero-guarda. `lib-node.sh` contaba con `grep` sobre el fichero viejo y la
+sonda preguntaba con `getLatest`, que desaparece y devolvía 0 sin error: tras migrar, `check` vería
+0 = 0 = 0 y daría verde. Entrega: `pub/tools/log-bipf.js` (lector de solo lectura del log db2),
+`lib-node.sh` con detección de formato (`node_log_format`, `node_own_scan`), sonda con
+`createUserStream`, `upgrade-gates.sh` con «log ilegible = NO MEDIBLE», `hub-wallet.sh` y
+`test-invite.sh` sobre la librería, discos que miden `db2/`, y diff de comportamiento y preflight que
+no recorren `src/base`. Aceptación: sobre el stack local en 1.1.10, la foto nueva da lo mismo que la
+vieja; el camino db2 se valida en WP-O120 (gate UM).
+Dep: —. Relación: WP-O112 (herramientas que corrige).
+
+| **WP-O120** | **P0** | Upgrade a Oasis 1.2.1 en local: overlay, build sobre `src/base`, gates con migración |
+
+**Estado** · abierto (rama `upgrade/oasis-1.2.1`).
+
+**BRIEF** · Overlay de `src/` con `src/base` vendorizado; guards repuestos más el interruptor
+`OASIS_SNAPSHOT`; `Dockerfile` sin `npm install` (Node 22, enlace a `src/base`, IA por `ARG`);
+entrypoint sin instalaciones en caliente y con parches idempotentes; disposiciones del diff de
+comportamiento; gates U0-U7 más **UM** (migración: mismos contadores antes y después) y **UR** (una
+1.1.10 sobre un `.ssb` migrado se niega a arrancar); `/c/files` en el gate del HUB y en la Sala 04;
+scripts del cliente para origen flume o db2. **Fuera de alcance**: el host.
+Dep: WP-O119.
+
+| **WP-O121** | **P1** | Capacidad: inventario único de lo que crece y sus límites |
+
+**Estado** · abierto.
+
+**BRIEF** · `docs/PUB/CAPACIDAD.md` (qué crece · dónde · quién · límite · cómo se mide · qué se hace
+al pasar el umbral) y `devops/scripts/capacity.sh` (solo lectura, lo llama `deploy-status.sh`).
+Cierra huecos: pub sin límite de memoria ni rotación de logs, blobs sin techo (`blobCache.pubMaxMB`
+en HUB y bot, poda generalizada para el pub), `db2/` y snapshots sin medir, logs y capa del
+contenedor, backups locales sin rotación. Los valores salen de la medida del host.
+Dep: WP-O120.
+
+| **WP-O122** | **P1** | Snapshots construidos por el pub |
+
+**Estado** · abierto.
+
+**BRIEF** · `pub/tools/snapshot-build.js` (lee el log del pub por el socket, escribe solo registros de
+mensajes, `.tmp` + `rename`, memoria constante) y `devops/scripts/pub-snapshot.sh` con temporizador
+del host y techo de tamaño. Solo el nivel completo. Gate US: un cliente desechable arranca desde el
+snapshot del pub local; el pub no publica nada al construir.
+Dep: WP-O120.
+
+| **WP-O123** | **P0** | Aplicación en el VPS del upgrade a 1.2.1 |
+
+**Estado** · abierto. **Pide GO en cada paso marcado; desde que un nodo migra no hay rollback.**
+
+**BRIEF** · Convergencia de los ficheros de build del host con el repo, subida de `src/` con
+`src/base`, build, ensayo de migración sobre copia del log real, y pub → HUB → bot con parada, copia
+en frío y `check` por nodo; activación del temporizador de snapshots; cierre con `capacity.sh`.
+Dep: WP-O120, WP-O121, WP-O122.
+
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
 **Estado** · ✅ 2026-09-19 en `main`. Asientos D-O20, D-O23.

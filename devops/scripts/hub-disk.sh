@@ -12,7 +12,7 @@
 #
 # Subcomandos:
 #   status        df -h de / y /srv/oasis · opciones del mount (¿noatime?) ·
-#                 du de ssb-data/{flume,blobs}, http-cache, logs y del pub
+#                 du de ssb-data/{flume,db2,blobs}, http-cache, logs y del pub
 #                 (comparativa) · nº de blobs · docker stats de pub, hub,
 #                 hub-cache y web · docker system df.   [read-only]
 #   check         umbrales HUB_DISK_SOFT_PCT (75) / HUB_DISK_HARD_PCT (90)
@@ -23,12 +23,12 @@
 #                 (default 30). Criterio -atime; si el mount es noatime cae a
 #                 -mtime (fecha de descarga). Seguro: content-addressed, `want`
 #                 repone al siguiente GET y nginx conserva la copia HTTP 7 días.
-#                 NUNCA toca flume/, secret, conn.json, gossip*.json.
+#                 NUNCA toca flume/, db2/, secret, conn.json, gossip*.json.
 #   prune-cache   vacía http-cache/ y hace `nginx -s reload` en
 #                 oasis-pub-hub-cache (útil tras un rebuild de índices para no
 #                 servir 60 s de indexingView; casi nunca por espacio).
 #   --json        una línea JSON para el journal (devops/logs/hub-disk.jsonl):
-#                 {ts, srvOasisPct, rootPct, hubFlumeBytes, hubBlobsBytes,
+#                 {ts, srvOasisPct, rootPct, hubFlumeBytes (log <= 1.1.x), hubDb2Bytes (log >= 1.2), hubBlobsBytes,
 #                  hubCacheBytes, hubMemMiB}. También `status --json`.
 #
 # Flag global:
@@ -179,7 +179,7 @@ echo "-- mount $DATA_MOUNT (noatime ⇒ prune-blobs usa -mtime) --"
 mount_opts "$DATA_MOUNT"
 echo
 echo "-- tamaño (du) --"
-for d in "$HUB_DATA/ssb-data/flume" "$HUB_DATA/ssb-data/blobs" "$HUB_DATA/http-cache" "$HUB_DATA/logs" "$PUB_DATA" "$(dirname "$PUB_DATA")/teatro"; do
+for d in "$HUB_DATA/ssb-data/flume" "$HUB_DATA/ssb-data/db2" "$HUB_DATA/ssb-data/blobs" "$HUB_DATA/http-cache" "$HUB_DATA/logs" "$PUB_DATA" "$(dirname "$PUB_DATA")/teatro"; do
   if [ -d "$d" ]; then $SUDO du -sh "$d" 2>/dev/null || echo "?	$d"; else echo "0	$d (no existe)"; fi
 done
 echo
@@ -273,9 +273,9 @@ EOF
 mem="$(mem_mib)"; [ -n "$mem" ] || mem=null
 sp="$(pct "$DATA_MOUNT")"; rp="$(pct "$ROOT_MOUNT")"
 [ -n "$sp" ] || sp=null; [ -n "$rp" ] || rp=null
-printf '{"ts":"%s","srvOasisPct":%s,"rootPct":%s,"hubFlumeBytes":%s,"hubBlobsBytes":%s,"hubCacheBytes":%s,"hubMemMiB":%s}\n' \
+printf '{"ts":"%s","srvOasisPct":%s,"rootPct":%s,"hubFlumeBytes":%s,"hubBlobsBytes":%s,"hubCacheBytes":%s,"hubMemMiB":%s,"hubDb2Bytes":%s}\n' \
   "$(date -u +%FT%TZ)" "$sp" "$rp" \
-  "$(bytes "$HUB_DATA/ssb-data/flume")" "$(bytes "$HUB_DATA/ssb-data/blobs")" "$(bytes "$HUB_DATA/http-cache")" "$mem"
+  "$(bytes "$HUB_DATA/ssb-data/flume")" "$(bytes "$HUB_DATA/ssb-data/blobs")" "$(bytes "$HUB_DATA/http-cache")" "$mem" "$(bytes "$HUB_DATA/ssb-data/db2")"
 EOF
 )"
     ;;

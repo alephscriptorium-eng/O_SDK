@@ -28,7 +28,7 @@
 #                 [read-only; deploy-status.sh y cron]
 #   --json        una línea JSON para el journal (devops/logs/ecoin-disk.jsonl):
 #                 {ts, srvOasisPct, rootPct, ecoinChainBytes, walletDatBytes,
-#                  blocks, connections, balance, botFlumeBytes, ecoinMemMiB,
+#                  blocks, connections, balance, botFlumeBytes (log <= 1.1.x), botDb2Bytes (log >= 1.2), ecoinMemMiB,
 #                  botMemMiB}. También `status --json`. Lo que no se puede
 #                 medir (contenedor parado) sale como null.
 #
@@ -215,7 +215,7 @@ else
 fi
 echo
 echo "-- wallet-bot (du) --"
-for d in "$BOT_DATA/ssb-data/flume" "$BOT_DATA/banking" "$BOT_DATA/logs"; do
+for d in "$BOT_DATA/ssb-data/flume" "$BOT_DATA/ssb-data/db2" "$BOT_DATA/banking" "$BOT_DATA/logs"; do
   if $SUDO test -d "$d" 2>/dev/null; then $SUDO du -sh "$d" 2>/dev/null || echo "?	$d"; else echo "0	$d (no existe)"; fi
 done
 echo
@@ -273,10 +273,10 @@ gi="$(getinfo)"
 em=""; bm=""
 if running "$EC"; then em="$(mem_mib "$EC")"; fi
 if running "$BOT"; then bm="$(mem_mib "$BOT")"; fi
-printf '{"ts":"%s","srvOasisPct":%s,"rootPct":%s,"ecoinChainBytes":%s,"walletDatBytes":%s,"blocks":%s,"connections":%s,"balance":%s,"botFlumeBytes":%s,"ecoinMemMiB":%s,"botMemMiB":%s}\n' \
+printf '{"ts":"%s","srvOasisPct":%s,"rootPct":%s,"ecoinChainBytes":%s,"walletDatBytes":%s,"blocks":%s,"connections":%s,"balance":%s,"botFlumeBytes":%s,"ecoinMemMiB":%s,"botMemMiB":%s,"botDb2Bytes":%s}\n' \
   "$(date -u +%FT%TZ)" "$sp" "$rp" "$(chain_bytes)" "$wb" \
   "$(num "$(printf '%s\n' "$gi" | jf blocks)")" "$(num "$(printf '%s\n' "$gi" | jf connections)")" "$(num "$(printf '%s\n' "$gi" | jf balance)")" \
-  "$(bytes "$BOT_DATA/ssb-data/flume")" "$(num "$em")" "$(num "$bm")"
+  "$(bytes "$BOT_DATA/ssb-data/flume")" "$(num "$em")" "$(num "$bm")" "$(bytes "$BOT_DATA/ssb-data/db2")"
 EOF
 )"
     ;;

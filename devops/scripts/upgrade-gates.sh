@@ -15,8 +15,9 @@
 #
 # Subcomandos:
 #   snapshot <tag>      Foto de cada nodo (pub, hub, bot): estado, versión dentro del contenedor, feed,
-#                       sequence propio (del log y del sbot vivo), mensajes propios por tipo (cifrados
-#                       incluidos), flag de primer contacto; en el bot además dirección, modo del motor,
+#                       formato del log (flume o db2), sequence propio (del log y del sbot vivo),
+#                       mensajes propios por tipo (cifrados incluidos), flag de primer contacto; en el
+#                       bot además dirección, modo del motor,
 #                       épocas abiertas. Se guarda en devops/logs/upgrade/<tag>.<local|remote>.snap
 #   check <tag> [--expect '<esperado>']
 #                       Foto nueva y comparación con <tag>. Por nodo: mismo feed; Δsequence == suma de
@@ -52,7 +53,7 @@ source "$SCRIPT_DIR/lib-node.sh"
 REPO_ROOT="$(cd "$DEVOPS_DIR/.." && pwd)"
 SNAP_DIR="$DEVOPS_DIR/logs/upgrade"
 
-usage() { sed -n '2,39p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 MODE=""; CMD=""; ARGS=(); EXPECT=""; YES=0; STRICT=0
 while [ $# -gt 0 ]; do
@@ -102,9 +103,12 @@ for n in $GATE_NODES; do
   f="$(node_feed "$d")"
   echo "$a|feed|$f"
   [ -n "$f" ] || continue
-  echo "$a|seq|$(node_own_seq "$d" "$f")"
-  recs="$(node_own_records "$d" "$f")"
-  echo "$a|records|$(printf '%s' "$recs" | grep -c .)"
+  scan="$(node_own_scan "$d" "$f" "$c")"
+  echo "$a|log|$(printf '%s\n' "$scan" | sed -n 's/^F //p')"
+  seq="$(printf '%s\n' "$scan" | sed -n 's/^S //p')"; recs="$(printf '%s\n' "$scan" | sed -n 's/^R //p')"
+  echo "$a|seq|${seq:-?}"
+  # Un log ilegible no tiene «0 registros»: tiene `?`, para que no cuadre por casualidad con seq.
+  if [ "${seq:-?}" = "?" ]; then echo "$a|records|?"; else echo "$a|records|$(printf '%s' "$recs" | grep -c .)"; fi
   printf '%s\n' "$recs" | grep . | sort | uniq -c | while read -r k t; do echo "$a|type:$t|$k"; done
   # Oasis no envía el PM de bienvenida si el flag EXISTE (firstContactSeen): ausente = lo enviaría
   # un backend al arrancar. En un nodo en modo server no hay backend y el flag no aplica.
@@ -144,13 +148,14 @@ show_snapshot() {
     $2=="state"{st[$1]=$3} $2=="version"{v[$1]=$3} $2=="feed"{f[$1]=$3} $2=="seq"{s[$1]=$3} $2=="records"{r[$1]=$3}
     $2=="seq_probe"{p[$1]=$3} $2 ~ /^type:/{t[$1]=t[$1] " " substr($2,6) "=" $3}
     $2=="address"{x[$1]=x[$1] " dirección=" $3} $2=="epochs"{x[$1]=x[$1] " épocas=" $3} $2=="engine"{x[$1]=x[$1] " motor:" $3}
-    $2=="mode"{md[$1]=$3}
+    $2=="mode"{md[$1]=$3} $2=="log"{lg[$1]=$3}
     $2=="first_contact_flag"{x[$1]=x[$1] " flag-primer-contacto=" $3; if ($3=="ausente") noflag[$1]=1}
     $1!="meta" && !seen[$1]++ {order[++n]=$1}
     END { for (i=1;i<=n;i++) { a=order[i]
-      ok = (s[a]==r[a]) ? "cuadra" : "NO CUADRA (medida no válida)"
+      ok = (s[a]=="?") ? "LOG ILEGIBLE (medida no válida)" : ((s[a]==r[a]) ? "cuadra" : "NO CUADRA (medida no válida)")
       pr = (p[a]=="" ) ? "" : ((p[a]==s[a]) ? " · sbot=" p[a] : " · sbot=" p[a] " ≠ log")
-      printf "  %-4s %-16s v%-7s %-8s feed %s\n       seq=%s registros=%s → %s%s\n       tipos:%s\n      %s\n", a, st[a], (v[a]==""?"?":v[a]), md[a], f[a], s[a], r[a], ok, pr, t[a], x[a]
+      printf "  %-4s %-16s v%-7s %-8s feed %s\n       log=%s seq=%s registros=%s → %s%s\n       tipos:%s\n      %s\n", a, st[a], (v[a]==""?"?":v[a]), md[a], f[a], (lg[a]==""?"?":lg[a]), s[a], r[a], ok, pr, t[a], x[a]
+      if (s[a]=="0" && st[a] ~ /^running/) printf "       AVISO: el nodo corre y su feed no tiene ningún mensaje propio.\n"
       if (noflag[a] && md[a] ~ /backend|full/) printf "       AVISO: sin flag de primer contacto en un nodo con backend: al arrancar enviaría el PM de bienvenida (un cifrado).\n" } }' "$1"
 }
 
@@ -163,7 +168,9 @@ case "$CMD" in
     add_probe "$out.tmp"; mv "$out.tmp" "$out"
     echo "== foto «$tag» ($MODE) · $(awk -F'|' '$2=="ts"{print $3}' "$out")"; show_snapshot "$out"
     echo "guardada en ${out#"$REPO_ROOT/"}"
-    awk -F'|' '$2=="seq"{s[$1]=$3} $2=="records"{r[$1]=$3} END{for(a in s) if(s[a]!=r[a]) e=1; exit e}' "$out" || { echo "NO MEDIBLE: sequence y registros no cuadran en algún nodo." >&2; exit 3; }
+    awk -F'|' '$2=="seq"{s[$1]=$3} $2=="records"{r[$1]=$3} $2=="seq_probe"{p[$1]=$3}
+      END{for(a in s) if(s[a]=="?" || s[a]!=r[a] || ((a in p) && p[a]!=s[a])) e=1; exit e}' "$out" \
+      || { echo "NO MEDIBLE: en algún nodo el log no se puede leer, o sequence, registros y sbot no cuadran." >&2; exit 3; }
     ;;
 
   check)
@@ -194,8 +201,10 @@ case "$CMD" in
         for (i = 1; i <= nn; i++) { a = order[i]; line = ""; sum = 0; nodebad = 0
           if (v[1, a, "feed"] != v[2, a, "feed"]) { printf "  %-4s DESVIACIÓN: el feed ha cambiado (%s → %s)\n", a, v[1, a, "feed"], v[2, a, "feed"]; bad = 1; continue }
           if (v[2, a, "feed"] == "") { printf "  %-4s NO MEDIBLE: sin feed\n", a; unmeasurable = 1; continue }
+          if (v[1, a, "seq"] == "?" || v[2, a, "seq"] == "?") { printf "  %-4s NO MEDIBLE: el log no se puede leer (formato: %s → %s)\n", a, v[1, a, "log"], v[2, a, "log"]; unmeasurable = 1; continue }
           if (v[1, a, "seq"] != v[1, a, "records"] || v[2, a, "seq"] != v[2, a, "records"]) { printf "  %-4s NO MEDIBLE: sequence y registros no cuadran\n", a; unmeasurable = 1; continue }
-          if (v[2, a, "seq_probe"] != "" && v[2, a, "seq_probe"] != "?" && v[2, a, "seq_probe"] != v[2, a, "seq"]) { printf "  %-4s NO MEDIBLE: el sbot dice seq=%s y el log %s\n", a, v[2, a, "seq_probe"], v[2, a, "seq"]; unmeasurable = 1; continue }
+          # La sonda no contesta «?» por casualidad: o el sbot no responde o no entiende la consulta.
+          if (v[2, a, "seq_probe"] != "" && v[2, a, "seq_probe"] != v[2, a, "seq"]) { printf "  %-4s NO MEDIBLE: el sbot dice seq=%s y el log %s\n", a, v[2, a, "seq_probe"], v[2, a, "seq"]; unmeasurable = 1; continue }
           dseq = v[2, a, "seq"] - v[1, a, "seq"]
           for (k in types) { split(k, kk, SUBSEP); if (kk[1] != a) continue; t = kk[2]
             d = v[2, a, "type:" t] - v[1, a, "type:" t]; sum += d
@@ -207,6 +216,7 @@ case "$CMD" in
           if (sum != dseq) { printf "  %-4s NO MEDIBLE: Δsequence=%d pero la suma por tipos es %d\n", a, dseq, sum; unmeasurable = 1; continue }
           ver = (v[1, a, "version"] == v[2, a, "version"]) ? "v" v[2, a, "version"] : "v" v[1, a, "version"] " → v" v[2, a, "version"]
           extra = ""
+          if (v[1, a, "log"] != "" && v[1, a, "log"] != v[2, a, "log"]) extra = extra " · log: " v[1, a, "log"] " → " v[2, a, "log"]
           if (v[1, a, "address"] != v[2, a, "address"]) { nodebad = 1; why[a] = why[a] " la dirección ECOin ha cambiado;" }
           if (v[1, a, "epochs"] != v[2, a, "epochs"]) extra = extra " · épocas: " v[1, a, "epochs"] " → " v[2, a, "epochs"]
           if (v[1, a, "engine"] != v[2, a, "engine"]) extra = extra " · motor: " v[1, a, "engine"] " → " v[2, a, "engine"]
@@ -303,10 +313,14 @@ case "$CMD" in
     alias="${ARGS[0]:-}"; svc="$(service_of "$alias")" || { echo "uso: up <pub|hub|bot>" >&2; exit 64; }
     c="$(container_of "$alias")"
     compose_local up -d --no-deps --force-recreate "$svc" 2>&1 | tail -1
-    n=0; until [ "$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null)" = healthy ] || [ $n -ge 60 ]; do sleep 5; n=$((n + 1)); done
+    # El primer arranque en una versión con otro motor de base de datos migra el log ANTES de abrir
+    # el sbot (1.2: flume → db2): hasta que acaba no hay socket ni healthy. Tope: GATE_UP_TIMEOUT s.
+    tries=$(( ${GATE_UP_TIMEOUT:-300} / 5 ))
+    n=0; until [ "$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null)" = healthy ] || [ $n -ge "$tries" ]; do sleep 5; n=$((n + 1)); done
     st="$(docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' "$c" 2>/dev/null)"
     echo "$alias ($c): $st · v$(docker exec "$c" sh -c 'grep -m1 "\"version\"" /app/src/server/package.json' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/')"
-    case "$st" in *healthy) ;; *) echo "DESVIACIÓN: $c no llegó a healthy" >&2; exit 1 ;; esac
+    case "$st" in *healthy) ;; *) echo "DESVIACIÓN: $c no llegó a healthy en $((n * 5)) s (¿migración larga? GATE_UP_TIMEOUT)" >&2; exit 1 ;; esac
+    echo "  healthy a los $((n * 5)) s"
     # Un nodo no publica solo «al arrancar»: el sbot anuncia versión a los 7 s, el motor hace su
     # primer tick a los 15 s, y los avisos automáticos del backend se disparan con una PETICIÓN
     # (la del healthcheck vale) cuando los índices ya están: pueden tardar más de un minuto.

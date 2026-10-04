@@ -7,7 +7,8 @@
 //     sh -lc 'cd /app/src/server && node -' < pub/tools/ssb-probe.js
 //
 // Salida: JSON {via, me, feed, seq, key, lastTs, iFollow, followsMe, peers[], accept?}
-//   seq       último `sequence` que ESTE sbot tiene del feed (0 = no tiene nada)
+//   seq       último `sequence` que ESTE sbot tiene del feed (0 = no tiene nada; si la consulta falla,
+//             la sonda sale con error y sin JSON: nunca devuelve 0 por un fallo)
 //   iFollow   este sbot sigue al feed · followsMe  el feed sigue a este sbot
 //
 // Conexión: 1º socket unix `noauth` (mismo patrón que src/client/gui.js), 2º TCP loopback con las
@@ -16,7 +17,6 @@
 // (claves nuevas, socket inexistente) y la sonda hablaría con el sbot como un desconocido.
 
 'use strict';
-const fs = require('fs');
 const path = require('path');
 const { createRequire } = require('module');
 
@@ -29,11 +29,6 @@ const config = req('./ssb_config');
 const feed = process.env.SSB_FEED || null;
 const action = process.env.SSB_ACTION || 'seq';
 
-let manifest = null;
-try {
-  manifest = JSON.parse(fs.readFileSync(path.join(config.path, 'manifest.json'), 'utf8'));
-} catch (_) { /* el cliente de ssb lo pedirá al servidor */ }
-
 const pubKey = String(config.keys.public).replace(/\.ed25519$/, '');
 const remotes = [
   `unix:${path.join(config.path, 'socket')}~noauth:${pubKey}`,
@@ -41,8 +36,9 @@ const remotes = [
 ];
 
 function connect(i, cb) {
+  // Sin `manifest`: ssb-client se lo pide al servidor. El manifest.json del disco puede ser el de
+  // otra versión (en un backend nadie lo reescribe) y ofrecería RPCs que el sbot vivo ya no tiene.
   const opts = Object.assign({}, config, { remote: remotes[i] });
-  if (manifest) opts.manifest = manifest;
   let called = false;
   const done = (err, sbot) => {
     if (called) return;
@@ -58,6 +54,7 @@ function connect(i, cb) {
 }
 
 const cbp = (fn, ...args) => new Promise((res, rej) => fn(...args, (e, v) => (e ? rej(e) : res(v))));
+const collect = (src) => new Promise((res, rej) => pull(src, pull.collect((e, v) => (e ? rej(e) : res(v || [])))));
 const first = (src) => new Promise((res, rej) =>
   pull(src, pull.take(1), pull.collect((e, v) => (e ? rej(e) : res(v[0] || [])))));
 
@@ -75,7 +72,9 @@ connect(0, async (err, sbot, via) => {
       out.accept = await cbp(sbot.invite.accept, invite);
     }
     if (feed) {
-      const latest = await cbp(sbot.getLatest, feed).catch(() => null);
+      // createUserStream existe con ssb-db (<= 1.1.x) y con ssb-db2 (>= 1.2, db2_legacy.js); getLatest
+      // no. Un fallo aquí es un fallo de la sonda, no «seq 0»: quien mide debe poder distinguirlos.
+      const latest = (await collect(sbot.createUserStream({ id: feed, reverse: true, limit: 1 })))[0] || null;
       out.seq = latest && latest.value ? latest.value.sequence : 0;
       out.key = latest ? latest.key : null;
       out.lastTs = latest && latest.value && latest.value.timestamp ? new Date(latest.value.timestamp).toISOString() : null;
