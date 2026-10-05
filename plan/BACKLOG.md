@@ -808,7 +808,7 @@ Dep: WP-O120, WP-O121, WP-O122.
 
 | **WP-O124** | **P0** | Upgrade a Oasis 1.2.2: Phone y Rooms, centralita en el pub acotada |
 
-**Estado** · ✅ 2026-10-05: pub, HUB y bot en 1.2.2 (`plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md`), mismo delta que en local: `oasisVersion` +1 por nodo y un `about` (`visibilityPrefs.phone = off`) del HUB; el del bot aún no había salido al cerrar. Centralita del pub acotada y comprobada (`roomInfo`: aforo 12). Pub renombrado a `pub.escrivivir.co`. Pendiente: una llamada real por el pub, medida a las 24 h, merge a `main`.
+**Estado** · ✅ 2026-10-05: pub, HUB y bot en 1.2.2 (`plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md`), mismo delta que en local: `oasisVersion` +1 por nodo y un `about` (`visibilityPrefs.phone = off`) del HUB; el del bot aún no había salido al cerrar. Centralita del pub acotada y comprobada (`roomInfo`: aforo 12). Pub renombrado a `pub.escrivivir.co`. En `main` desde el 2026-10-05 (`aef7ffe3`). Pendiente: una llamada real por el pub (dos clientes de escritorio), el `about` del bot (sale al visitar sus páginas), medida a las 24 h, retirar los restos de rollback de 1.1.10, backups del 2026-10-05 fuera de la máquina y el cliente en 1.2.2.
 
 **BRIEF** · Oasis 1.2.2 carga en el sbot un plugin que retransmite llamadas y aloja salas de voz.
 Decisión del custodio: la centralita se queda en el pub, acotada desde su ssb-config (`phone`:
