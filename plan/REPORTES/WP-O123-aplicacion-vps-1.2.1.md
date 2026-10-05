@@ -2,7 +2,8 @@
 
 2026-10-04 · rama `upgrade/oasis-1.2.1` · asiento D-O27 · BRIEF `plan/BRIEFS/WP-O123-aplicacion-vps-1.2.1.md`.
 GO del custodio en cada puerta: GO-1 (build), GO-2 (pub), GO-3 (HUB), GO-4a y GO-4b (bot).
-GO-5 (snapshot del pub): construido y servido; **falta su temporizador**. Pendiente también el cliente.
+GO-5 (snapshot del pub): construido y servido. Su temporizador y la medida de las 24 h: cerrados el
+2026-10-05 (§ Cierre). Pendiente el cliente.
 
 ## Resultado
 
@@ -124,6 +125,7 @@ publicar nada. La orden que llamará el temporizador (el script dentro de la ima
 de systemd. La lectura del paso 0 dio «crontab vacío» porque la orden fallaba en silencio.
 Instalar una unidad de systemd es otro cambio en el host y pide su propio GO. Hasta entonces el
 snapshot **no se refresca solo**: los clientes nuevos reciben el del 2026-10-04 y replican el resto.
+Resuelto el 2026-10-05 sin instalar nada en el host: § Cierre.
 
 ## Rollback
 
@@ -134,11 +136,68 @@ sustituya.
 
 ## Pendiente
 
-- **Temporizador del snapshot**: el host no tiene `cron`; decidir entre una unidad de systemd o
-  instalar `cron`, y que `pub-snapshot.sh` imprima lo que corresponda.
-- **A las 24 h**: `check post-o123` (esperado: `pubAvailability` +1 o +2, cifrados 0), memoria de
-  los tres nodos, `capacity.sh`; fijar los presupuestos con esa medida.
+- ~~Temporizador del snapshot~~ · ~~medida a las 24 h~~ · ~~push y merge a `main`~~: hechos (§ Cierre).
+  De la medida de las 24 h no se hizo: fijar los presupuestos de memoria con ella.
 - **Cliente**: drill y `client:test-ai` con `OASIS_AI=full`, y GO aparte si la identidad es real.
-- Backups de hoy (`devops/backups/{oasis-pub,ecoin}/20261004T*`, con `secret` y `wallet.dat`) a
+- Backups del 2026-10-04 (`devops/backups/{oasis-pub,ecoin}/20261004T*`, con `secret` y `wallet.dat`) a
   almacenamiento cifrado fuera de la máquina.
-- Push y merge a `main` de las dos ramas.
+- **HUB y bot en la imagen anterior** (`59c597f240cc`): igualarlos en su próxima recreación y retirar
+  entonces la etiqueta `oasis-pub-scriptorium:1.2.1-pre-o123t`.
+
+## Cierre · 2026-10-05
+
+**Medida de las 24 h** (a las 37 h de recrear el pub):
+
+```
+$ upgrade-gates.sh --remote check post-o123 --expect 'bot:pubAvailability=+0..3'
+  pub  v1.2.1 · Δseq=0 · sin publicaciones → ok
+  hub  v1.2.1 · Δseq=0 · sin publicaciones → ok
+  bot  v1.2.1 · Δseq=2 · pubAvailability+2 → ok
+GATE OK
+```
+
+`deploy-status.sh`: los tres nodos en 1.2.1 y `healthy`, directorio `online` ciclo 6, `capacity.sh`
+0 avisos.
+
+**Temporizador del snapshot.** Dos intentos. El primero (`aa7cc232`) imprimía unidades de systemd
+para el host; **no llegó a instalarse** (medido: ninguna unidad ni timer `oasis`/`snapshot` en el
+host, entrypoint y compose iguales a HEAD). Lo sustituye `b2d72392`: el temporizador vive dentro del
+contenedor del pub. Su entrypoint, en modo `server` y con `OASIS_PUB_SNAPSHOT_HOURS` > 0 (6 en el
+compose), lanza un proceso de fondo que llama a `snapshot-build.js` a los 120 s y después cada N
+horas; si falla, reintenta a los 10 minutos. Nada que instalar en el host (`HUB-PROTOCOL.md` §13).
+Sin ensayo local (Docker local apagado): solo `bash -n`, y humo de la imagen en el host.
+
+Aplicación en el host, con GO del custodio:
+
+| Paso | Qué pasó |
+|---|---|
+| Medir | host con entrypoint `879c8978…` y compose `a5211371…`: los de HEAD anterior. `snapshot-build.js` del host igual al del repo. Foto `pre-o123t` |
+| Ficheros | `docker-entrypoint.sh` (`14d3273d…`) y compose (`3c041bc6…`) desde `git show`, sha256 verificado antes de sustituir; `compose config -q` válido; `OASIS_PUB_SNAPSHOT_HOURS: "6"` en el pub, `OASIS_SNAPSHOT: "off"` en HUB y bot |
+| Rollback previo | tag `:1.2.1-pre-o123t` y `*.bak-o123t-2026-10-05` de los dos ficheros |
+| Build y humo | imagen `70e8a66a68ba`, 1,08 GB. Dentro: entrypoint con el sha esperado, `bash -n` ok, `/app/OASIS_PUB/tools/snapshot-build.js`, versión 1.2.1 |
+| Pub | recreado 15:19:22 UTC, `healthy` a las 15:19:55. HUB y bot sin tocar |
+| Cierre | `deploy-status.sh`: entrypoint y compose «igual que HEAD»; journal (`deploy-log.sh`); retirado `/tmp/pub-snapshot.lock` |
+
+```
+$ docker logs oasis-pub-scriptorium | grep snapshot
+📦 Snapshot del pub: primera construcción a los 120 s y después cada 6 h (/app/OASIS_PUB/tools/snapshot-build.js)
+[snapshot] {"ok":true,…,"messages":4790,"feeds":82,"boxed":707,"bytes":1804607,"ms":1887}
+$ pub-snapshot.sh status
+reconstrucción automática: cada 6 h, dentro del contenedor del pub
+snapshot: 1804607 bytes · hace 0 h · {…"createdAt":"2026-10-05T15:21:26.523Z",…"messages":4790,"feeds":82,…}
+$ upgrade-gates.sh --remote check pre-o123t
+  pub  v1.2.1 · Δseq=0 · sin publicaciones → ok      (hub y bot, igual)      GATE OK
+```
+
+Desviaciones, las dos con parada y sin efecto en el host:
+
+1. El primer envío de los dos ficheros llegó vacío (la invocación de `git` falló en la máquina
+   operadora). La comprobación de sha256 cortó el paso antes de sustituir nada. Repetido: `OK`.
+2. `docker rmi oasis-pub-scriptorium:1.2.1-pre-o123t` falló: la imagen a la que apunta la usan el
+   HUB y el bot, que no se recrearon. No se forzó. Decisión del custodio: la etiqueta se queda hasta
+   que se recreen. Los dos `*.bak-o123t-2026-10-05` se borraron.
+
+`deploy-status.sh` marca HUB y bot como «IMAGEN VIEJA». La única diferencia de la imagen nueva es
+el entrypoint, que en modo `backend` no hace nada nuevo.
+
+Git: `main` en `17e37447` (merge de la rama del temporizador), en `origin`.
