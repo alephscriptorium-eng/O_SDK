@@ -144,6 +144,7 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | `crontab -l` no devuelve nada y se da por «crontab vacío» | puede ser que el host no tenga `cron`: la orden falla y, con el error tapado, parece vacío. Medir con `command -v crontab` y `systemctl list-timers`. Y antes de instalar nada en el host: lo que una pieza necesita para funcionar va **en el compose o en la imagen**, no en el host | HUB §13 |
 | El backend arranca sin sbot embebido | `OASIS_TEST` definido en el entorno (desde 1.1.3) | UPGRADE §1 |
 | El nombre nuevo de un feed no aparece | `nameCache` es memoria del proceso: reiniciar el nodo que lo muestra | HUB §12 |
+| Una página del sitio del pub en el host **no coincide** con la del repo | el repo guarda la plantilla; el host, la página con sus **valores vivos fusionados a mano** al desplegar. `deploy-site.sh` sincroniza con `--delete` y los borraría. Antes de subir un fichero del sitio: sha256 del vivo contra el del repo; si coinciden, se sustituye in place; si no, se cambian **solo las líneas** que tocan, sobre el fichero vivo, y se comprueba que el `diff` con la copia previa son exactamente esas | ficha de instancia, §5 |
 | El build del portal rompe | tokens entre ángulos fuera de código (Vue los lee como etiquetas) o enlaces muertos (`ignoreDeadLinks: false`) | `docs/proyecto.md` |
 
 ## 5. Nombres de los bots de soporte

@@ -100,5 +100,15 @@ description: Bot de soporte nº 2 de pub.escrivivir.co · tipo ecoin (cartera) �
 | Teatro · sidecar RRSS | `TEATRO-PROTOCOL.md` · `RRSS-SIDECAR-PROTOCOL.md` | en cada uno |
 | Teatro P2P | `TEATRO-P2P-PROTOCOL.md` | §5 · *Aleph Cero* **congelada** el 2026-09-19; enlaces en `/teatro/aleph-cero/p2p/p2p.json`, anuncios de Oasis en `p2p/oasis.json` |
 
+**Sitio del pub: qué páginas vivas no son las del repo** (medido el 2026-10-05, WP-O125). El repo
+guarda la plantilla; en el host, estas llevan valores fusionados a mano y no se sustituyen enteras:
+
+| Página | Qué lleva el vivo que el repo no |
+|---|---|
+| `site/scriptorium/index.html` | un valor real donde la plantilla dice «SOLICITAR», una orden `curl` completa y una ruta del layout del host en un diagrama |
+| `site/admin/index.html` | la ruta del env local según el layout del host; finales de línea CRLF |
+
+`site/hub/` (Sala 04) sí es idéntica a la del repo. Cómo se sube un cambio: `../AGENTES.md` §4.
+
 Backups de cartera: `devops/backups/ecoin/` (no versionado). Particularidades del host que ya
 costaron una parada: `HUB-PROTOCOL.md` §9 y `ECOIN-PROTOCOL.md` §11.
