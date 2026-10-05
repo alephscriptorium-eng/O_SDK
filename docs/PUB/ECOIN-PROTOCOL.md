@@ -137,7 +137,7 @@ después cliente (WP-O103).
 │   ├── ecoin.conf                sembrada por el entrypoint · 600 · lleva las credenciales RPC
 │   └── blk*.dat · txleveldb/ · peers.dat · debug.log     cadena: re-derivable de la red
 └── oasis-wallet-bot/             estado de azofaifo-scriptorium-wallet-bot-2
-    ├── ssb-data/                 secret · flume/ · blobs/ · conn.json · gossip.json · oasis-first-contact
+    ├── ssb-data/                 secret · db2/ (flume/ en ≤ 1.1.x) · blobs/ · conn.json · gossip.json · oasis-first-contact
     ├── logs/                     bind de /app/logs
     ├── banking/                  OASIS_BANKING_DIR: wallet-addresses.json, épocas, transferencias (uid de oasis)
     └── config/oasis-config.json  RENDERIZADO fuera de git · 400 · lleva las credenciales RPC

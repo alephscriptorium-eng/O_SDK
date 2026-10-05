@@ -82,7 +82,7 @@ Endpoints MVP:
 6. Revisa `config/ssb/config` antes del primer arranque.
 7. Arranca con `bash scripts/deploy.sh`.
 8. Obtén la identidad con `bash scripts/whoami.sh`.
-9. Publica perfil con `bash scripts/publish-profile.sh`.
+9. Publica perfil con `bash scripts/publish-profile.sh «nombre»` (el nombre es obligatorio).
 10. Anuncia el pub con `bash scripts/announce-pub.sh`.
 11. Genera invite con `bash scripts/invite.sh 1`.
 
@@ -94,7 +94,7 @@ Endpoints MVP:
 4. Revisa `config/ssb/config` antes del primer arranque.
 5. Arranca con `bash scripts/deploy.sh`.
 6. Obtén la identidad con `bash scripts/whoami.sh`.
-7. Publica perfil con `bash scripts/publish-profile.sh`.
+7. Publica perfil con `bash scripts/publish-profile.sh «nombre»` (el nombre es obligatorio).
 8. Anuncia el pub con `bash scripts/announce-pub.sh`.
 9. Genera invite con `bash scripts/invite.sh 1`.
 

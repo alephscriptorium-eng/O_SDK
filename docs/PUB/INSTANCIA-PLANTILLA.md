@@ -61,8 +61,25 @@ description: Bot de soporte nº «n» de «tu pub» · tipo «…» · piel «�
 |---|---|---|
 | Pub (solo sbot) | `UPGRADE-PROTOCOL.md` | journal `deploy-log.sh` |
 | «HUB clearnet, si lo activas» | `HUB-PROTOCOL.md` | su §10 |
+| «Centralita de Phone y Rooms: encendida, acotada o apagada; aforo de sala» | `HUB-PROTOCOL.md` §14 | «reporte» |
 | «Banco, si lo activas» | `ECOIN-PROTOCOL.md` | su §13 |
 | «Teatro, si lo activas» | `TEATRO-PROTOCOL.md` | en el protocolo |
+
+### Hoja del habitante
+
+Lo que el [manual de bienvenida](/habitante/manual) deja en blanco y lo que tu pub hace a su
+manera. Es lo que lee quien entra, no quien opera: puerta [Habitante](/roles/habitante).
+
+| El manual pide | En tu pub |
+|---|---|
+| El dominio | «tu dominio» |
+| La ventana pública de solo lectura | «`https://tu-dominio/c`, si activas el HUB» |
+| Dónde conseguir la invitación | «la portada del pub, una persona de contacto, un QR…» |
+| Wi-Fi del nodo y mesa técnica | «si es un pub presencial: nombre del Wi-Fi y dónde está la mesa. Si no: no aplica» |
+| Dónde conseguir la app | «quién reparte el APK, o solo las *releases* y la tienda» |
+
+Y qué ofrece: instantánea para quien entra, llamadas y salas de voz, banco y renta básica, lo que
+tengas encendido. Solo lo que hayas medido.
 
 Copias de seguridad: «dónde se guardan, fuera de la máquina». Particularidades de tu host que ya te
 hayan costado una parada: apúntalas aquí.

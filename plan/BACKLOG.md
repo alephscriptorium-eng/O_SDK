@@ -816,6 +816,13 @@ relé solo para feeds que sigue, `roomMax` 12); apagada en HUB y bots. Sin nodo 
 nuevo en `src/`. `HUB-PROTOCOL.md` §14. Después: gates locales y host por puertas, con GO.
 Dep: WP-O123.
 
+| **WP-O125** | **P1** | Web al día tras los upgrades y puerta «Habitante» |
+
+**Estado** · 🔶 2026-10-05, rama `wp/O125-web-al-dia`: portal al día (db2, 17 tipos, cliente real en 1.2.2, ciclo 1.2.1→1.2.2) y puerta nueva con tres piezas etiquetadas: manual de la red (`docs/habitante/manual.md`), lo de este SDK (`docs/roles/habitante.md`) y la hoja de la casa (`docs/PUB/INSTANCIA-SCRIPTORIUM-HABITANTE.md`). `docs:verificar` y `docs-ceguera.sh` en verde. Pendiente: merge a `main` (publica el portal) y, con GO, subir al host las cuatro páginas tocadas de `pub/site/`. El camino del móvil no está medido: el sello de la puerta dice «en obras».
+
+**BRIEF** · Barrido de lo publicado tras WP-O123 y WP-O124; el manual de bienvenida de `ARCHIVO/DISCO/` entra al portal de forma que se distinga lo de la red, lo del SDK y lo de la casa. Queda escrito para agentes cómo entra un habitante (la portada del pub publica un invite de muchos usos).
+Dep: WP-O124.
+
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
 **Estado** · ✅ 2026-09-19 en `main`. Asientos D-O20, D-O23.

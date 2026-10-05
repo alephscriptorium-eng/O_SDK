@@ -16,11 +16,11 @@
 > Sala 04 con 16 tipos. Reporte `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md`.
 
 Checklist operativo para **activar, operar, mantener en disco y llevar a través de
-los upgrades** el HUB web de solo lectura de Oasis (`/c`, 16 tipos de contenido desde 1.1.2; 12 en 1.0.8,
+los upgrades** el HUB web de solo lectura de Oasis (`/c`, 17 tipos de contenido desde 1.2.1, con Files; 16 desde 1.1.2; 12 en 1.0.8,
 `./clearnet.md`). Deriva del plan v2 del 2026-09-13 y de su revisión adversarial
 (20 hallazgos, `dosier/05-revision-adversarial.md`).
 
-> **Modelo mental.** El pub (`oasis-pub-scriptorium`, modo `server`) **solo replica**.
+> **Modelo mental.** El pub (`oasis-pub-scriptorium`, modo `server`) **solo replica** y, desde 1.2.2, hace de centralita acotada de Phone y Rooms (§14).
 > El HUB lo sirve **otra cuenta SSB**, un *nodo de soporte*, en su propio contenedor
 > `oasis-pub-hub`: **misma imagen** que el pub, `command: ["backend"]`, es decir
 > `backend.js --public` con el sbot **embebido** y un `.ssb` propio en
@@ -110,7 +110,7 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
 ├── oasis-pub/                    estado del pub (INTACTO)
 ├── teatro/                       obras estáticas (TEATRO-PROTOCOL)
 └── oasis-hub/                    estado del nodo de soporte
-    ├── ssb-data/                 secret · flume/ · blobs/ · ebt/ · conn.json · gossip.json · oasis-first-contact
+    ├── ssb-data/                 secret · db2/ (flume/ en ≤ 1.1.x) · blobs/ · ebt/ · conn.json · gossip.json · oasis-first-contact
     ├── logs/                     bind de /app/logs (sin escritores; simetría con el pub)
     └── http-cache/               proxy_cache de nginx (max_size + inactive=7d)
 /opt/oasis-scriptorium/OASIS_PUB/ código y configs (disco de sistema, 25 GB, layout vivo pre-refactor)
@@ -304,11 +304,11 @@ VPS vía `lib-host.sh`, read-only salvo `prune-*`:
 
 | Comando | Qué hace | Cuándo |
 |---|---|---|
-| `status` | `df -h / /srv/oasis`, opciones del mount (`noatime`), `du` de flume/blobs/cache/logs y del pub (comparativa), nº de blobs, `docker stats`, `docker system df` | semanal y antes/después de cualquier deploy |
-| `check` | umbrales `HUB_DISK_SOFT_PCT=75` / `HUB_DISK_HARD_PCT=90` sobre `/srv/oasis` **y** `/` → exit 0/1/2 | `deploy-status.sh` lo imprime; cron del host |
-| `prune-blobs [--older-than N=30] [--dry-run]` | borra blobs no accedidos en N días (`-atime`; con `noatime` cae a `-mtime`). Nunca toca `flume/`, `secret`, `conn.json`, `gossip*.json` | soft en `/srv/oasis` |
+| `status` | `df -h / /srv/oasis`, opciones del mount (`noatime`), `du` de flume o db2, blobs, cache y logs, y del pub (comparativa), nº de blobs, `docker stats`, `docker system df` | semanal y antes/después de cualquier deploy |
+| `check` | umbrales `HUB_DISK_SOFT_PCT=75` / `HUB_DISK_HARD_PCT=90` sobre `/srv/oasis` **y** `/` → exit 0/1/2 | `deploy-status.sh` lo imprime. No hay temporizador en el host: se corre al medir |
+| `prune-blobs [--older-than N=30] [--dry-run]` | borra blobs no accedidos en N días (`-atime`; con `noatime` cae a `-mtime`). Nunca toca el log (`db2/`, `flume/`), `secret`, `conn.json`, `gossip*.json` | soft en `/srv/oasis` |
 | `prune-cache` | vacía `http-cache/` + `nginx -s reload` | tras un rebuild de índices; casi nunca por espacio |
-| `--json` | `{ts, srvOasisPct, rootPct, hubFlumeBytes, hubBlobsBytes, hubCacheBytes}` | apéndalo a `devops/logs/hub-disk.jsonl` (no versionado) |
+| `--json` | `{ts, srvOasisPct, rootPct, hubFlumeBytes, hubDb2Bytes, hubBlobsBytes, hubCacheBytes}` | apéndalo a `devops/logs/hub-disk.jsonl` (no versionado) |
 
 **Cadencia**: `status --json` en el cierre del deploy (línea base), a las 24 h, a los 7
 días y después **semanal**; `check` en cada `deploy-status`. Con 30 días de `--json` se
@@ -321,7 +321,7 @@ decide el tope duro (WP-O47).
      (nginx purga solo hasta el nuevo tope).
    - `blobs/` → `prune-blobs --dry-run`, luego `prune-blobs`. Después de una poda grande,
      un reinicio del HUB es más rápido (el entrypoint hace `chown -R` de `blobs/` en cada arranque).
-   - `flume/` → el log replicado **no se poda**. Opciones por orden: `friends.hops` 3→2 en
+   - `db2/` (`flume/` en ≤ 1.1.x) → el log replicado **no se poda**. Opciones por orden: `friends.hops` 3→2 en
      `ssb-config` + `up -d --no-deps oasis-hub` (acota el crecimiento futuro, no reduce lo
      replicado) · como último recurso, con el HUB parado, vaciar `ssb-data/` **conservando**
      `secret`, `config`, `conn.json`, `gossip.json`, `oasis-first-contact` y dejar que

@@ -15,7 +15,7 @@ Invariantes de la puerta:
 - Sin recursos externos: solo `/assets/fanzine.css` y `/ico.png` (ambos de la landing).
 - No promete nada sin opt-in: quien no activó Clearnet aparece como «not accessible».
 - No expone `/qr/*` ni lo anuncia (codifica `localhost:3000`; queda fuera del proxy).
-- La cuenta de soporte se nombra (`azofaifo-scriptorium-skin-bot-1`); su feed id se rellena tras el alta.
+- La cuenta de soporte se nombra (`clearnet.escrivivir.co`) y da su feed id.
 
 ## De qué depende (operativa)
 

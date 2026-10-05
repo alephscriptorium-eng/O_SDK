@@ -45,6 +45,8 @@ const VIVO = {
 /** Puertas por rol: una página por rol en docs/roles/, que es a la vez la receta del agente. */
 const puertas = [
   { text: 'Todas las puertas', link: '/roles/' },
+  { text: 'Habitante · entrar con tu móvil', link: '/roles/habitante' },
+  { text: 'Manual de bienvenida a la red', link: '/habitante/manual' },
   { text: 'Cliente Oasis · tu nodo en tu máquina', link: '/roles/cliente' },
   { text: 'Pub Oasis · un pub en tu servidor', link: '/roles/pub' },
   { text: 'Economía Oasis · ECOin', link: '/roles/economia' },
@@ -93,6 +95,7 @@ export default defineConfig({
         items: [
           { text: 'Protocolo para agentes', link: '/AGENTES' },
           { text: 'Ficha de instancia · Scriptorium', link: '/PUB/INSTANCIA-SCRIPTORIUM' },
+          { text: 'Hoja del habitante · Scriptorium', link: '/PUB/INSTANCIA-SCRIPTORIUM-HABITANTE' },
           { text: 'Ficha de instancia · plantilla', link: '/PUB/INSTANCIA-PLANTILLA' },
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
@@ -123,6 +126,7 @@ export default defineConfig({
         items: [
           { text: 'Protocolo para agentes', link: '/AGENTES' },
           { text: 'Ficha de instancia · Scriptorium', link: '/PUB/INSTANCIA-SCRIPTORIUM' },
+          { text: 'Hoja del habitante · Scriptorium', link: '/PUB/INSTANCIA-SCRIPTORIUM-HABITANTE' },
           { text: 'Ficha de instancia · plantilla', link: '/PUB/INSTANCIA-PLANTILLA' },
           { text: 'Protocolo de upgrade', link: '/PUB/UPGRADE-PROTOCOL' },
           { text: 'Protocolo de recuperación', link: '/PUB/RECOVERY-PROTOCOL' },
