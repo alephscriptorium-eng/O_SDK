@@ -43,9 +43,12 @@ de imprimirlo o repartirlo.
 
 ## Si tu pub corre con este SDK
 
-El manual describe un pub instalado directamente (`./oasis.sh …`). Un pub de este SDK corre en
-contenedores, así que para **quien organiza** cambian los comandos, y para **quien entra** cambian
-unas pocas cosas. Nada de esto contradice el manual: lo concreta.
+::: tip De este SDK
+Esta sección **no es el manual de la red**: es lo que este repo hace a su manera. El manual
+describe un pub instalado directamente (`./oasis.sh …`). Un pub de este SDK corre en contenedores,
+así que para **quien organiza** cambian los comandos, y para **quien entra** cambian unas pocas
+cosas. Nada de esto contradice el manual: lo concreta.
+:::
 
 | El manual dice | Con este SDK |
 |---|---|
