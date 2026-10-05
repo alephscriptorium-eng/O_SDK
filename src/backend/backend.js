@@ -1508,8 +1508,9 @@ const buildSnapshotFile = async (name, opts) => {
     return res;
   } catch (e) { try { fs.unlinkSync(tmp); } catch (_) {} debug(`[snapshot] ${name} failed: ${e && e.message ? e.message : e}`); return null; }
 };
+const snapshotsOff = process.env.OASIS_SNAPSHOT === 'off';
 const runSnapshotBuild = async () => {
-  if (!config.public) return null;
+  if (!config.public || snapshotsOff) return null;
   const recent = await buildSnapshotFile('snapshot-recent.oasissn', { sinceMs: SNAPSHOT_RECENT_MS });
   const full = await buildSnapshotFile('snapshot.oasissn', {});
   return { recent, full };
@@ -1523,7 +1524,7 @@ const pubAddressFor = (invite) => {
   return m ? msAddrFrom(m[1], m[2], m[3]) : null;
 };
 const bootstrapFromPub = (invite) => {
-  if (config.public) return null;
+  if (config.public || snapshotsOff) return null;
   const address = pubAddressFor(invite);
   if (!address) return null;
   const current = backupModel.restoreStatus();
@@ -12630,12 +12631,7 @@ router
   })
   .post("/update", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
-    const exec = require("node:util").promisify(require("node:child_process").exec);
-    const repoRoot = path.resolve(__dirname, '..', '..');
-    const { stdout, stderr } = await exec("git reset --hard && git pull", { cwd: repoRoot });
-    console.log("oasis@version: updating Oasis...", stdout, stderr);
-    const { stdout: shOut, stderr: shErr } = await exec("sh install.sh", { cwd: repoRoot });
-    console.log("oasis@version: running install.sh...", shOut, shErr);
+    console.warn("oasis@version: in-app auto-update is disabled for this Dockerized deployment. Update from the host repository and rebuild the container.");
     safeRefererRedirect(ctx, '/settings');
   })
   .post("/settings/workflow", koaBody(), async (ctx) => {
