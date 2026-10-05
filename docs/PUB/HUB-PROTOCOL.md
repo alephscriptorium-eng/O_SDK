@@ -498,7 +498,7 @@ que nadie pide. Decisión D-O27:
 
 | Nodo | Qué hace | Cómo |
 |---|---|---|
-| pub | **construye y sirve** | `pub/tools/snapshot-build.js` dentro de su contenedor, lanzado por un temporizador del host. Lee el log por el socket; no arranca un backend, no publica |
+| pub | **construye y sirve** | `pub/tools/snapshot-build.js` dentro de su contenedor, lanzado por su propio entrypoint cada `OASIS_PUB_SNAPSHOT_HOURS` horas. Lee el log por el socket; no arranca un backend, no publica |
 | HUB y bots | **ni construyen ni arrancan desde uno** | `OASIS_SNAPSHOT=off` en el compose (interruptor del fork en `backend.js`) |
 
 **Qué lleva el fichero.** Cabecera `OASISSN1` y, en gzip, un registro de metadatos y uno por
@@ -515,11 +515,19 @@ El pub sigue a quien redime un invite suyo. No sale por HTTP.
 bash devops/scripts/pub-snapshot.sh status          # fichero, tamaño, edad, mensajes · solo lectura
 bash devops/scripts/pub-snapshot.sh build           # (re)construye ahora · escribe en el .ssb del pub
 bash devops/scripts/pub-snapshot.sh off --yes       # lo retira: el pub vuelve a decir «not available»
-bash devops/scripts/pub-snapshot.sh cron            # la línea de crontab para el host (cada 6 h)
 ```
 
-- **Activarlo** en un host es escribir en el `.ssb` del pub y ofrecer un servicio nuevo: pide GO.
-  Después de `build`, `upgrade-gates.sh --remote check <foto>` debe dar «sin publicaciones».
+**Quién lo reconstruye.** El propio contenedor del pub, como en upstream lo hace el propio pub. Su
+entrypoint, en modo `server`, lanza un proceso de fondo que llama a `snapshot-build.js` a los dos
+minutos de arrancar y después cada `OASIS_PUB_SNAPSHOT_HOURS` horas. El compose lo deja en 6;
+`0` es «no ofrecerlo». **No hay nada que instalar en el host**: ni cron ni systemd. Quien despliega
+un pub con este compose ya lo ofrece. Si una construcción falla (el sbot aún arrancando o
+migrando), reintenta a los diez minutos. Cada pasada deja una línea `[snapshot] {…}` en el log del
+contenedor.
+
+- **Activarlo o retirarlo** en un host vivo es cambiar `OASIS_PUB_SNAPSHOT_HOURS` en el env del pub
+  y recrearlo (misma versión: no publica). Ofrecer un servicio nuevo desde el pub pide GO.
+  Después, `upgrade-gates.sh --remote check <foto>` debe dar «sin publicaciones».
 - **Techo**: `SNAPSHOT_MAX_MB` (1024 por defecto). Por encima no se publica y queda el anterior;
   upstream rechaza en el cliente más de 2 GiB. Crece con el log: `CAPACIDAD.md`.
 - **Memoria**: constante (dos pasadas por el log en streaming). Corre dentro del contenedor del

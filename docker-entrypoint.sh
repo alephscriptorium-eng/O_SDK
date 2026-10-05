@@ -815,6 +815,41 @@ start_loopback_proxy() {
 
 start_loopback_proxy
 
+# =============================================================================
+# FUNCIÓN: snapshot del pub (Oasis >= 1.2, D-O27, docs/PUB/HUB-PROTOCOL.md §13)
+# Un cliente que acepta un invite le pide al pub un fichero con el historial empaquetado. En upstream
+# lo construye, con un temporizador interno, el backend público que corre junto al sbot del pub.
+# Aquí el pub es SOLO sbot, así que el temporizador vive en este entrypoint: en modo server, y solo
+# con OASIS_PUB_SNAPSHOT_HOURS > 0, un proceso de fondo llama a pub/tools/snapshot-build.js (lee el
+# log por el socket; no publica) a los OASIS_PUB_SNAPSHOT_FIRST_S segundos y luego cada N horas.
+# Nada que instalar en el host: ni cron ni systemd. Si una construcción falla (p. ej. el sbot aún
+# está migrando), reintenta a los 10 minutos. La salida va al log del contenedor, con «[snapshot]».
+# =============================================================================
+start_pub_snapshots() {
+    local every="${OASIS_PUB_SNAPSHOT_HOURS:-0}" first="${OASIS_PUB_SNAPSHOT_FIRST_S:-120}" js=""
+    [ "$MODE" = "server" ] || return 0
+    case "$every" in ''|0|*[!0-9]*) echo "📦 Snapshot del pub: desactivado (OASIS_PUB_SNAPSHOT_HOURS=${every:-vacío})"; return 0 ;; esac
+    case "$first" in ''|*[!0-9]*) first=120 ;; esac
+    # La carpeta del compose puede no llamarse `pub` en un host con otro layout.
+    for js in "$CURRENT_DIR"/pub/tools/snapshot-build.js "$CURRENT_DIR"/*/tools/snapshot-build.js; do [ -f "$js" ] && break; js=""; done
+    if [ -z "$js" ]; then echo "  ⚠ Snapshot del pub: no encuentro tools/snapshot-build.js en la imagen; no se construirá"; return 0; fi
+    echo "📦 Snapshot del pub: primera construcción a los ${first} s y después cada ${every} h ($js)"
+    (
+        set +e
+        sleep "$first"
+        while :; do
+            out="$(node "$js" 2>&1 | tail -1)"
+            echo "[snapshot] $out"
+            case "$out" in
+                *'"ok":true'*|*'supera el techo'*) sleep $(( every * 3600 )) ;;   # hecho, o demasiado grande: hasta la próxima
+                *) echo "[snapshot] la construcción no terminó bien: reintento en 10 minutos"; sleep 600 ;;
+            esac
+        done
+    ) &
+}
+
+start_pub_snapshots
+
 case "$MODE" in
     "server")
         echo "🚀 Iniciando solo servidor SSB..."
