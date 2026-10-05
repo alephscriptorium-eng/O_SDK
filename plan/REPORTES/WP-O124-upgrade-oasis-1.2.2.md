@@ -1,8 +1,9 @@
-# WP-O124 · Upgrade a Oasis 1.2.2 (Phone y Rooms) · fase local
+# WP-O124 · Upgrade a Oasis 1.2.2 (Phone y Rooms) · local y host
 
 2026-10-05 · rama `upgrade/oasis-1.2.2` · upstream `942d39c9` (1.2.1) → `b1f7adfc` (1.2.2).
-**Estado: fase local completa, gates locales en verde (§5). Un hallazgo que cambia el delta declarado:
-HUB y bot publican un `about` cada uno (§5.1).** El host no se ha tocado: sigue en 1.2.1.
+**Estado: desplegado en el host el 2026-10-05 (§7). Pub, HUB y bot en 1.2.2; delta medido igual al
+declarado. El pub se llama ahora `pub.escrivivir.co` (§7.1).** Gates locales en verde (§5); hallazgo
+del `about` de HUB y bot en §5.1.
 
 ## 1. Qué trae 1.2.2
 
@@ -155,9 +156,66 @@ Dos tropiezos de herramienta al correr U4, sin relación con 1.2.2: el frontal l
 (`oasis-pub-web`) estaba parado, y la variable `MSYS_NO_PATHCONV` exportada en la sesión hacía
 fallar el `curl` del gate. Arrancado el frontal y sin la variable: `GATE OK`.
 
-## 6. Qué viaja al host (cuando haya GO)
+## 6. Qué viaja al host
 
 `src/` · `pub/config/ssb/config` del pub (**in place**: el del host lleva datos de instancia; se
 añade solo la clave `phone`) · `pub/config/hub/oasis-config.json` · plantilla del bot y su render ·
 `tools/` no cambia. Orden pub → HUB → bot. En este ciclo HUB y bot se recrean: se retira entonces
 la etiqueta `oasis-pub-scriptorium:1.2.1-pre-o123t`. No cambia el motor: hay rollback por retag.
+
+## 7. Aplicación en el host (2026-10-05, GO del custodio)
+
+GO único del custodio para el ciclo, con los dos `about` de §5.1 aceptados en el delta, y encargo
+de renombrar el pub.
+
+```
+$ upgrade-gates.sh --remote check pre-o124 --expect 'pub:oasisVersion=+1,about=+1 hub:oasisVersion=+1,about=+1 bot:oasisVersion=+1,about=+0..1,pubAvailability=+0..1'
+  pub  v1.2.1 → v1.2.2 · Δseq=2 · oasisVersion+1 about+1 → ok
+  hub  v1.2.1 → v1.2.2 · Δseq=2 · about+1 oasisVersion+1 → ok
+  bot  v1.2.1 → v1.2.2 · Δseq=1 · oasisVersion+1 → ok
+GATE OK
+```
+
+El `about` del pub es el renombrado (abajo). El del HUB salió al pasar el gate del visor. **El del
+bot no había salido en el último `check`**: sale con el primer refresco de fondo tras atender
+peticiones, y el bot no tiene ruta pública. Queda declarado como `about=+0..1`.
+
+| Paso | Qué pasó |
+|---|---|
+| 0 · Medir | `deploy-status.sh`: tres nodos en 1.2.1, HUB y bot aún en la imagen anterior; deriva solo en las dos configs que este ciclo regenera. Foto `pre-o124`: pub 17, HUB 13, bot 60 mensajes propios; las tres fuentes cuadran |
+| 1 · Backups | pub → `devops/backups/oasis-pub/20261005T180828Z`; `wallet.dat` antes y después (`backup-ecoin.sh`); en el host `/srv/oasis/oasis-{hub,wallet-bot}.bak-o124-2026-10-05.tgz` (600; el del HUB pesa 2,0 GB porque incluía 1,28 GB de caché HTTP) y `*.bak-o124-2026-10-05` de las tres configs |
+| 3 · Rollback | tag `:1.2.1` · `/srv/oasis/src-1.2.1.tgz` · `src.old-1.2.1` |
+| 4 · `src/` | `git archive` con `core.eol=lf` a `src.new`; comprobado antes de cambiar: versión 1.2.2, 0 CR en `backend.js` e `is-map`, enlace a `../base/node_modules`, dominio del pub en `snh-invite-code.json`, guards presentes, 24 910 ficheros + el enlace (los 24 911 del repo) |
+| 5 · Config del pub | clave `phone` añadida **in place** al ssb-config del host (mismo inodo; el resto del fichero, idéntico) |
+| 6 · Build y humo | imagen `9b49a2cb36d6`, 1,08 GB. Humo sin red en `server` y `backend`: `running`, versión 1.2.2, tres parches, `GET /c → 200`, sin `.env.prod` ni `src.old*` dentro |
+| 7 · Pub | recreado 18:19:01 UTC, `healthy` a las 18:19:35. `oasisVersion` +1. `/`, `/c` y `/public/status` en 200 (versión 1.2.2). `phone.roomInfo` → `{"count":0,"max":12}` |
+| 8 · HUB | config in place (sha256 del nuevo y del sustituido verificados); `healthy` en un minuto; `prune-cache`; `hub --strict`: `GATE OK` |
+| 9 · Bot | plantilla in place, render con `sudo` (mismo inodo, sin marcadores, `language` en `en`, `phone.relay` en `false`); `hub-wallet.sh pause` → 1.2.2 con el motor apagado, `oasisVersion` +1, misma dirección, `wallet` = 1; `hub-wallet.sh on --yes` → «PUB engine on». Época de octubre ya abierta: ningún `ubiAllocation` nuevo |
+| 9b · Snapshot | el pub lo reconstruyó solo: `[snapshot] {"ok":true,…,"messages":4915,"feeds":83}` |
+| 10 · Cierre | foto `post-o124`, `hub --strict` otra vez en verde, journal, ficha de instancia. Retirada la etiqueta `:1.2.1-pre-o123t` (ya sin contenedores) |
+
+Estado final (`deploy-status.sh`): pub, HUB y bot en 1.2.2, `healthy`, «imagen al día»; directorio
+`online` ciclo 6; `/` 54 %, `/srv/oasis` 33 %. Memoria en reposo: pub 53 MiB, HUB 206 MiB, bot 146 MiB.
+`capacity.sh`: **1 aviso**: seis restos de rollback (los de 1.1.10 y los de 1.2.1).
+
+### 7.1 Renombrado del pub
+
+El custodio pidió que el pub dejara de llamarse `PUB OASIS SCRIPTORIUM` y pasara a
+`pub.escrivivir.co`. El pub es solo sbot (sin formulario de perfil): se publicó con
+`tools/ssb-admin.js publish-about pub.escrivivir.co`, un `about` con **solo `name`** (secuencia 19
+del feed); la descripción publicada antes se conserva.
+
+```
+$ upgrade-gates.sh --remote check pre-rename-o124 --expect 'pub:about=+1 …'
+  pub  v1.2.2 · Δseq=1 · about+1 → ok
+```
+
+Los nodos que ya tenían el nombre viejo en memoria lo muestran hasta su siguiente reinicio
+(`nameCache`, `HUB-PROTOCOL.md` §12 paso 6). El HUB no se ha reiniciado después del renombrado.
+
+### 7.2 Sin medir en el host
+
+- Una llamada o una sala reales por el pub (el relé con tráfico).
+- El `about` del bot: el `check` de cierre se repitió pasados cinco minutos de recrearlo, con el mismo
+  resultado; el bot seguía sin publicarlo. Saldrá cuando alguien visite sus páginas.
+- Medida a las 24 h (memoria y red del pub).

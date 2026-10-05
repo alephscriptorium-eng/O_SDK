@@ -45,7 +45,11 @@ nombre puede cambiar.
 | 2 | `ecoin.escrivivir.co` | ecoin (cartera) · scriptorium | hub-wallet: cartera ECOin del pub, custodia la dote y reparte la RBU; **sin ruta pública** | `oasis-pub-wallet-bot` + `oasis-pub-ecoin` · `/srv/oasis/oasis-wallet-bot`, `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
-Oasis **1.2.1** en pub, HUB y bot-2 desde el 2026-10-04 (WP-O123; antes 1.1.10, WP-O114). Motor de
+Oasis **1.2.2** en pub, HUB y bot-2 desde el 2026-10-05 (WP-O124; antes 1.2.1, WP-O123, 2026-10-04). El pub
+hace de centralita de Phone y Rooms, acotada (`phone` en su ssb-config: relé solo para feeds que sigue,
+aforo de sala 12; `HUB-PROTOCOL.md` §14); HUB y bot-2, no. Nombre del pub (su `about`):
+**`pub.escrivivir.co`**, publicado el 2026-10-05 (cuarto `about` del feed, solo `name`; la descripción
+anterior se conserva). Nombre anterior: `PUB OASIS SCRIPTORIUM`. Motor de
 base de datos **db2** desde esa fecha: los tres nodos migraron su log y no hay vuelta a una versión
 anterior (`UPGRADE-PROTOCOL.md` §0.5). La versión viva se mide con `deploy-status.sh`. Motor de RBU: **encendido**
 desde el 2026-09-19 17:09 UTC (WP-O107; `hub-wallet.sh status`): la casa sale en la lista de pubs de Banking,
