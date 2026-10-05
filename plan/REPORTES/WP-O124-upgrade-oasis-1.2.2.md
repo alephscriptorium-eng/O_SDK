@@ -1,8 +1,8 @@
 # WP-O124 · Upgrade a Oasis 1.2.2 (Phone y Rooms) · fase local
 
 2026-10-05 · rama `upgrade/oasis-1.2.2` · upstream `942d39c9` (1.2.1) → `b1f7adfc` (1.2.2).
-**Estado: overlay, guards, invariantes, configuración y documentación hechos. Build y gates locales
-SIN HACER: Docker local estaba apagado.** El host no se ha tocado: sigue en 1.2.1.
+**Estado: fase local completa, gates locales en verde (§5). Un hallazgo que cambia el delta declarado:
+HUB y bot publican un `about` cada uno (§5.1).** El host no se ha tocado: sigue en 1.2.1.
 
 ## 1. Qué trae 1.2.2
 
@@ -49,53 +49,111 @@ no separa el ancho de banda, que es lo que pesa.
 ## 4. Disposiciones del diff de comportamiento
 
 `upgrade-behaviour-diff.sh 942d39c9 b1f7adfc`: 202 líneas, 145 piden disposición; `annex`: 49 invariantes, ninguno roto. `--check` contra este reporte: sale 0.
-Donde dice «pendiente», la disposición es un gate que aún no se ha corrido.
+Los gates que citan las disposiciones están corridos (§5).
 
-- **roles · el plugin de la centralita y lo que lo carga** (5). `adaptado` en `2ed09ff4` y `documentado` en `HUB-PROTOCOL.md` §14: el sbot carga `phone_module` y `network_pause`; el pub acota la centralita desde su ssb-config. `gate` de arranque del pub (pendiente: Docker local apagado).
+- **roles · el plugin de la centralita y lo que lo carga** (5). `adaptado` en `2ed09ff4` y `documentado` en `HUB-PROTOCOL.md` §14: el sbot carga `phone_module` y `network_pause`; el pub acota la centralita desde su ssb-config. `gate` de arranque del pub (hecho, §5).
   IDs: `ea7cb03a` `dd4c8958` `a7b2b8f1` `aba81af3` `46f6e16c`
-- **roles · resto del código que carga el pub** (11). `gate` U3 (pendiente): leídos los diffs de `SSB_server.js`, `lanRouter.js` (guarda de LAN; el pub va con `local: false`), `ssb_metadata.js` (cartel de arranque: añade «VoIP ID», «Mode», «Workflow»), `config-manager.js` (normaliza `phone`, módulos nuevos), `shared-state.js` (estado en memoria), `banking_model.js` (karma de `room`, filtro de direcciones), `typed_log.js`. De `updater.js`, `desktopNotify.js`, `viewer_filters.js`, `workflows_model.js` y `state-manager.js` solo lo que toca a los guards y al estado. Lo decide la medida: el pub publica `oasisVersion` +1 y nada más.
+- **roles · resto del código que carga el pub** (11). `gate` U3 (hecho, §5): leídos los diffs de `SSB_server.js`, `lanRouter.js` (guarda de LAN; el pub va con `local: false`), `ssb_metadata.js` (cartel de arranque: añade «VoIP ID», «Mode», «Workflow»), `config-manager.js` (normaliza `phone`, módulos nuevos), `shared-state.js` (estado en memoria), `banking_model.js` (karma de `room`, filtro de direcciones), `typed_log.js`. De `updater.js`, `desktopNotify.js`, `viewer_filters.js`, `workflows_model.js` y `state-manager.js` solo lo que toca a los guards y al estado. Lo decide la medida: el pub publica `oasisVersion` +1 y nada más.
   IDs: `fb29c533` `7bbaee7e` `11e046cb` `5c0837d4` `bd892fc9` `9f6ad872` `ad3e9c63` `83e4f40f` `0dfe1974` `8e63beb3` `f870255c`
 - **files · ficheros de Phone y Rooms** (7). `documentado` en `HUB-PROTOCOL.md` §14. Modelos y vistas son de la GUI; en los nodos de soporte nadie la usa.
   IDs: `5502abb6` `435267e7` `bbb8a952` `20d197ee` `8d907d99` `89a70280` `82fbe25b`
 - **files · resto** (3). `no-afecta`: `desktopNotify.js` solo actúa si existe `notify-send` y lo arranca un backend no público; `peer_health.js` y `network_pause.js` acompañan a la pausa de red, que ningún compose activa.
   IDs: `aa01c0d2` `d6cabc13` `c39727ef`
-- **routes · rutas nuevas** (39). `no-afecta` al clearnet: ninguna cae bajo `/c/` (nginx y Caddy no cambian). Son la GUI de Phone, Rooms, pausa de red, Pixelia y bienvenida; las POST son acciones que alguien pulsa, y en HUB y bots nadie lo hace. `gate` `hub --strict` (pendiente).
+- **routes · rutas nuevas** (39). `no-afecta` al clearnet: ninguna cae bajo `/c/` (nginx y Caddy no cambian). Son la GUI de Phone, Rooms, pausa de red, Pixelia y bienvenida; las POST son acciones que alguien pulsa, y en HUB y bots nadie lo hace. `gate` `hub --strict` (hecho, §5).
   IDs: `dc2e46f5` `17e60c85` `edde6593` `cd4abe51` `20a7caf3` `07bb6d12` `359803d6` `48fd1cdf` `540b2c2b` `5e36254b` `f431293b` `be788722` `f5acfde0` `f305465d` `32d5c076` `d6e52237` `f5d5ace2` `e505b340` `16106ba1` `3356031a` `03f38827` `a09d4048` `ed9b2f84` `90b0f583` `6a57ec01` `d9f603b4` `78506945` `aa7fa6db` `b7242be1` `5a25d5a4` `e1a30be7` `5e8e9057` `2495d23a` `f6a82403` `d46e372c` `d89a51fb` `145c6907` `c3316109` `86e3c5ac`
 - **routes · rutas retiradas** (4). `no-afecta`: `/settings/conn/*` pasa a ser `/peers/pause` y `/peers/resume`. Ningún script ni documento del fork las usaba (grep: 0).
   IDs: `5b3d0176` `b3fd6af2` `5a67ff51` `4c2a62be`
 - **loopback** (1). `no-afecta`: acción de la GUI de bienvenida, reservada al loopback.
   IDs: `7b42af71`
-- **publish** (7). `gate` U3/U4 (pendiente): todas salen de una acción de GUI (ajustes de Phone → `about` con `visibilityPrefs.phone`; enviar un mensaje de voz → privado `pam`; salas → `room`, `roomMember`, `tribe-keys`) o son el mismo `publishJoin`/`publishLeaveLarp` con otro manejo de error. Ninguna está en un temporizador. Tipos nuevos posibles en el log: `room`, `roomMember`, `pam` (cifrado).
+- **publish** (7). `gate` U3–U7: **una de ellas no es de GUI** y la primera lectura lo dio por tal (corregido por el gate, §5.1): el `about` con `visibilityPrefs.phone` lo publica también `syncPhoneVisibility()` desde el refresco de fondo del backend. El resto sí salen de una acción de GUI (enviar un mensaje de voz → privado `pam`; salas → `room`, `roomMember`, `tribe-keys`) o son el mismo `publishJoin`/`publishLeaveLarp` con otro manejo de error. Tipos nuevos posibles en el log: `room`, `roomMember`, `pam` (cifrado).
   IDs: `3aa23744` `a0703915` `4987510f` `1d05f40f` `d6e92691` `fec2443a` `5075acb3`
 - **timers · arranque de Phone en el backend** (2). `no-afecta` con el compose actual: `phoneModel.start()` y los avisos de escritorio solo arrancan `if (!config.public)`, y HUB y bot van con `OASIS_PUBLIC=true`. Ojo en un alta: durante el bootstrap del invite (`OASIS_PUBLIC=false`) sí arrancan; sin audio no hacen nada observable. `gate` U4.
   IDs: `8492ef7a` `31761e2f`
 - **timers · plugin phone** (10). `no-afecta`: temporizadores de una llamada o sala en curso en el propio nodo (timbre, buzón, entrada a sala). Sin dispositivo de audio el nodo ignora los timbres y no puede llamar ni entrar en salas; el lado de relé no arma ninguno.
   IDs: `f06976e7` `a8d6bc17` `65bed86d` `71564fee` `2f7d2b6a` `ec033c19` `e82be24f` `6b1d03a9` `2322d7d8` `0d83447a`
-- **timers · resto** (2). `gate` U4 (pendiente): dos temporizadores retirados de `main_models.js`.
+- **timers · resto** (2). `gate` U4 (hecho, §5): dos temporizadores retirados de `main_models.js`.
   IDs: `66f7fe25` `9c4f07ae`
-- **headers** (4). `gate` `hub --strict` (pendiente; «una sola cabecera CSP»): la CSP gana un parámetro de marcos para `GET /games/<id>` (fuera de `/c/`); la cookie `theme` y el `referer` nuevos están en `/welcome/workflow`, loopback. El tema del visor sigue saliendo de la config (invariante `themes?.current`: ok).
+- **headers** (4). `gate` `hub --strict` (hecho, §5; «una sola cabecera CSP»): la CSP gana un parámetro de marcos para `GET /games/<id>` (fuera de `/c/`); la cookie `theme` y el `referer` nuevos están en `/welcome/workflow`, loopback. El tema del visor sigue saliendo de la config (invariante `themes?.current`: ok).
   IDs: `6d79f1e1` `b9825219` `d1aecef4` `fd9ec9e9`
 - **env** (3). `documentado`: `OASIS_NETWORK_PAUSED=1` arranca el nodo sin conexiones; ningún compose debe definirla (hoy: 0). `PATH` lo lee `desktopNotify.js` para buscar `notify-send`. `OASIS_DEBUG` ya existía.
   IDs: `245b8241` `c154d79c` `b75a39cc`
-- **state** (4). `gate` U3/U4 (pendiente): cuatro ficheros nuevos bajo `~/.ssb/oasis/{peers,phone}`. Nacen con el uso; un rollback de imagen los deja inertes. Si un nodo tuviera ya un `lan-peers.json` o `peer-health.json` fuera de sitio, el arranque lo mudaría (solo hacia delante).
+- **state** (4). `gate` U3/U4 (hecho, §5): cuatro ficheros nuevos bajo `~/.ssb/oasis/{peers,phone}`. Nacen con el uso; un rollback de imagen los deja inertes. Si un nodo tuviera ya un `lan-peers.json` o `peer-health.json` fuera de sitio, el arranque lo mudaría (solo hacia delante).
   IDs: `2edffebd` `28685784` `647d52d1` `25eae6c1`
 - **config** (15). `adaptado` en `2ed09ff4`: configs del HUB y del bot regeneradas (`regen-node-configs.js --check`: al día) con `phone.relay = false`. `language` no se mueve en los nodos (el script lo conserva). `blobCache` sigue fijado por el script.
   IDs: `29dde2d3` `fd585f0d` `7c52f483` `8017348e` `b1c87985` `2944e32a` `22253381` `fec2761e` `f8c876ec` `75a15c97` `0c319c95` `8c5fdfc5` `86baaaaa` `33441934` `2491ca0e`
-- **deps** (3). `gate` de arranque (pendiente): en `src/base` cambian `ssb-gossip` (2 ficheros), `ssb-lan` y `openpgp`; los dos primeros llegan ya con los parches nuevos de upstream aplicados (comprobado por grep). Los tres parches del entrypoint (`ssb-ref`, `ssb-blobs`, `multiserver`) no se tocan.
+- **deps** (3). `gate` de arranque (hecho, §5): en `src/base` cambian `ssb-gossip` (2 ficheros), `ssb-lan` y `openpgp`; los dos primeros llegan ya con los parches nuevos de upstream aplicados (comprobado por grep). Los tres parches del entrypoint (`ssb-ref`, `ssb-blobs`, `multiserver`) no se tocan.
   IDs: `ccb241e6` `b95e6275` `cc0f043c`
 - **outside · instalador y parches** (2). `no-afecta`: `oasis.sh` es bare-metal; `scripts/patch-node-modules.js` es del fork y no se ejecuta sobre el repo. Sus parches nuevos vienen ya aplicados en `src/base`.
   IDs: `67d375cc` `afc2198e`
 - **outside · tests de upstream** (23). `no-afecta`: el fork no trae ni ejecuta `test/` de upstream.
   IDs: `253e341f` `597d595e` `fd6ae8c1` `eb3341f1` `eb0d23c5` `b9b0afb6` `83c40863` `919e4b55` `5e7baf16` `7f70e5f9` `9e7860ee` `fdec14f7` `2ce4d229` `cdec2b9b` `27b19e3d` `148eda3d` `01cc7d7c` `807d2a51` `d6e17003` `6b44ae2e` `88e2b2f3` `2597ff10` `cb5fdaad`
 
-## 5. Sin hacer
+## 5. Gates locales (2026-10-05, stack local con identidades desechables)
 
-- **Build local y gates (§3.4 del protocolo)**: arranque del pub con el plugin, log de parches,
-  `check` (el pub publica `oasisVersion` +1 y nada más), HUB `--strict`, bot, snapshot.
-- **Aforo aplicado**: `phone.roomInfo({ rid })` contra el pub local debe devolver `max: 12`.
-- **Memoria del pub** en reposo frente a 1.2.1.
-- **Una llamada real**: no ensayable en contenedores (sin audio); se prueba con dos clientes de
-  escritorio contra el host.
+| Gate | Resultado |
+|---|---|
+| **U0** línea base | tres nodos `healthy` en 1.2.1, `seq` = `registros` = `sbot` (pub 10, HUB 8, bot 20); motor del bot encendido, épocas `2026-09,2026-10`. Copia y foto `pre122` |
+| **U1** árbol | 6 ficheros · `annex` sin `!` (49 invariantes) · `--check` sale 0 |
+| **U2** imagen | build limpio (`nucleo vendorizado: carga en node v22.23.3`), 1,58 GB con la IA local; `node --check` de `backend.js` y `phone_module.js` dentro de la imagen; versión 1.2.2. La anterior queda como `:1.2.1-vieja` |
+| **U3** recrear y medir | los tres `healthy` a los 5 s. Recién arrancados: `oasisVersion` +1 cada uno y nada más. Parches: `ssb-ref` y `multiserver` «patcheado», `ssb-blobs` «ya parcheado», ninguno «no se encontró» |
+| **U4** visor | `hub --strict`: `GATE OK` (10 comprobaciones), también después de que el HUB publicara su `about` |
+| **U5** peor caso del bot | `wallet` y `(cifrado)` no se mueven, misma dirección; `karmaScore` +1. **Desviación: `about` +1** (§5.1) |
+| **U6** invite | parcial: el pub en 1.2.2 emite un invite con el formato esperado (`invite.create` con `external`). No se redimió con un cliente: `test-invite.sh` solo tiene modo host |
+| **U7** repetible | `restore pre122`, render del bot, U3 otra vez: mismo delta que la primera pasada |
+| **US** snapshot | el temporizador del entrypoint construyó solo a los 120 s (`[snapshot] {"ok":true,…,"messages":44,"feeds":5}`); `pub-snapshot.sh --local status`: «cada 6 h»; el pub no publicó nada al construir |
+
+Delta completo tras el ciclo (arranque + visor + páginas del bot), medido dos veces:
+
+```
+$ upgrade-gates.sh --local check pre122 --expect 'pub:oasisVersion=+1 hub:oasisVersion=+1,about=+1 bot:oasisVersion=+1,about=+1,karmaScore=+0..1,pubAvailability=+0..1'
+  pub  v1.2.1 → v1.2.2 · Δseq=1 · oasisVersion+1 → ok
+  hub  v1.2.1 → v1.2.2 · Δseq=2 · about+1 oasisVersion+1 → ok
+  bot  v1.2.1 → v1.2.2 · Δseq=3 · karmaScore+1 oasisVersion+1 about+1 → ok
+GATE OK
+```
+
+### 5.1 Hallazgo: HUB y bot publican un `about` (irreversible en el host)
+
+En 1.2.2, `syncPhoneVisibility()` (`backend.js`) compara lo que el nodo tiene publicado en
+`visibilityPrefs.phone` con lo que le toca. A un backend **público** le toca `'off'`; lo publicado
+por defecto cuenta como `'whole'`. Como difieren, publica **una vez** un `about` propio con sus
+`visibilityPrefs` y `phone: "off"`. No sale en el arranque: sale con el primer refresco de fondo
+tras atender peticiones (en el HUB, al usar el visor; en el bot, al visitar sus páginas). Después
+ya coincide y no vuelve a publicar.
+
+- Medido en HUB y bot locales, dos veces. El pub no lo publica (es solo sbot).
+- El mensaje dice la verdad (el nodo no atiende llamadas) y lo usan los clientes para no llamarle.
+- No hay ajuste de configuración que lo evite: solo un guard más en `src/`. No se propone.
+- **Delta declarado para el host**: `hub:oasisVersion=+1,about=+1` y
+  `bot:oasisVersion=+1,about=+1,pubAvailability=+0..1`. Es decisión del custodio (GO-3 y GO-4a).
+- La primera disposición de esa línea del diff (`3aa23744`) decía «acción de GUI»: era una lectura
+  incompleta. La corrigió el gate U5.
+
+### 5.2 Centralita
+
+```
+config.phone = {"relay":true,"roomMax":12}          (lo que ve el sbot del pub local)
+roomInfo     = {"count":0,"max":12}                 (phone.roomInfo por el socket del pub)
+```
+
+- La clave `phone` del ssb-config llega al plugin y el aforo aplicado es 12.
+- La imagen no trae `parec`, `pw-record`, `arecord` ni `notify-send`: sin audio, los nodos ignoran
+  los timbres y no hay avisos de escritorio.
+- El cartel de arranque del pub imprime un «VoIP ID» aunque no se le pueda llamar: es solo el cartel.
+- Memoria en reposo: pub 40 MiB, HUB 143 MiB, bot 135 MiB. No se tomó la de 1.2.1 antes de subir:
+  no hay comparación.
+- Estado nuevo: en el bot aparece `~/.ssb/oasis/peers/lan-peers.json`; `oasis/phone/` existe vacío.
+
+### 5.3 Sin medir
+
+- **Una llamada o una sala reales**, y por tanto el relé del pub con tráfico: no ensayable en
+  contenedores. Se prueba con dos clientes de escritorio contra el host.
+- **Redimir un invite** con un cliente en 1.2.2 (U6 completo) y el drill del cliente.
+- Memoria y red del pub **retransmitiendo**.
+
+Dos tropiezos de herramienta al correr U4, sin relación con 1.2.2: el frontal local
+(`oasis-pub-web`) estaba parado, y la variable `MSYS_NO_PATHCONV` exportada en la sesión hacía
+fallar el `curl` del gate. Arrancado el frontal y sin la variable: `GATE OK`.
 
 ## 6. Qué viaja al host (cuando haya GO)
 

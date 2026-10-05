@@ -562,6 +562,10 @@ versión. Decisión de esta arquitectura:
   porque el pub sigue anunciando el servicio y lo rechaza al entrar.
 - **Comprobar lo aplicado**: `phone.roomInfo({ rid })` es anónima y de solo lectura; devuelve
   `{ count, max }` y `max` es el aforo vigente.
+- **HUB y bots publican un `about` al subir a 1.2.2** (medido en local): un backend público anuncia
+  una vez `visibilityPrefs.phone = "off"` en su propio perfil, con el primer refresco de fondo tras
+  atender peticiones, no en el arranque. Va en el delta declarado del upgrade
+  (`UPGRADE-PROTOCOL.md` §3.4). El pub, solo sbot, no publica nada.
 - **El pub no tiene número ni se le puede llamar**: sin dispositivo de audio el plugin ignora los
   timbres. Lo mismo HUB y bots.
 - **Carga**: red, no disco. Cifras en `CAPACIDAD.md` §4. El plugin no limita el número de salas ni

@@ -7,8 +7,7 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ### Changed — Oasis 1.2.2 en la rama de upgrade: Phone y Rooms (WP-O124, 2026-10-05)
 
-Reporte `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md`. **No desplegado y sin gates locales
-todavía.** Upstream añade un plugin `phone` al sbot: llamadas y salas de voz cifradas extremo a
+Reporte `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md`. **No desplegado.** Gates locales en verde; al subir, HUB y bot publican un `about` cada uno. Upstream añade un plugin `phone` al sbot: llamadas y salas de voz cifradas extremo a
 extremo, con los pubs de relé. La centralita se queda en el pub, acotada desde su ssb-config
 (`phone`: relé solo para feeds que sigue, aforo de sala 12), y apagada en HUB y bots
 (`regen-node-configs.js`). Invariantes en `upgrade-invariants.d/phone.tsv`; `HUB-PROTOCOL.md` §14,

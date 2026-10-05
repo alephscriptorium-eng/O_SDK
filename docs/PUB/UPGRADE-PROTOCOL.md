@@ -309,6 +309,10 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 - `pubAvailability=+0..1` solo con el motor encendido: al arrancar relee su último anuncio y vuelve
   a anunciar si pasaron más de 12 h o cambió el saldo. Cada anuncio gasta una dirección del
   keypool: `backup-ecoin.sh` antes y después (`ECOIN-PROTOCOL.md` §9).
+- **Al subir a 1.2.2, `about=+1` en HUB y en cada bot** (una sola vez): el backend público anuncia
+  `visibilityPrefs.phone = "off"`. No sale al arrancar sino con el primer refresco de fondo tras
+  atender peticiones, así que el `check` hecho justo después de recrear no lo ve: se declara como
+  `about=+0..1` en ese `check` y como `about=+1` en el de cierre (`HUB-PROTOCOL.md` §14).
 - `ubiAllocation` no se nombra: debe ser 0. Solo es 0 si la **época del mes ya está abierta** antes
   de subir (`épocas=` en la foto). Si no lo está, la abriría la versión nueva con sus reglas:
   irreversible y distinto; decídelo con el custodio antes.

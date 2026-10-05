@@ -808,7 +808,7 @@ Dep: WP-O120, WP-O121, WP-O122.
 
 | **WP-O124** | **P0** | Upgrade a Oasis 1.2.2: Phone y Rooms, centralita en el pub acotada |
 
-**Estado** · 🔶 2026-10-05, rama `upgrade/oasis-1.2.2`: overlay, guards, invariantes, disposiciones, configuración y documentación hechos (`plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md`). **Sin hacer: build y gates locales** (Docker local apagado). Host sin tocar, en 1.2.1.
+**Estado** · 🔶 2026-10-05, rama `upgrade/oasis-1.2.2`: fase local completa y gates locales en verde (`plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md`). Hallazgo: HUB y bot publican un `about` (`visibilityPrefs.phone = off`) al subir; va en el delta declarado. Sin medir: una llamada real y el relé con tráfico. Host sin tocar, en 1.2.1: pendiente de GO.
 
 **BRIEF** · Oasis 1.2.2 carga en el sbot un plugin que retransmite llamadas y aloja salas de voz.
 Decisión del custodio: la centralita se queda en el pub, acotada desde su ssb-config (`phone`:
