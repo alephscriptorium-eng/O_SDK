@@ -29,9 +29,11 @@
     "reportsMod": "on",
     "opinionsMod": "on",
     "padsMod": "on",
+    "roomsMod": "on",
     "wikiMod": "on",
     "emergenciesMod": "on",
     "mailingMod": "on",
+    "phoneMod": "on",
     "logisticsMod": "on",
     "podcastsMod": "on",
     "campaignsMod": "on",
@@ -80,6 +82,15 @@
   "wish": "whole",
   "pmVisibility": "whole",
   "lanBroadcasting": false,
+  "blobCache": {
+    "maxMB": 2048,
+    "pubMaxMB": 2048
+  },
+  "phone": {
+    "visibility": "whole",
+    "dnd": false,
+    "relay": false
+  },
   "inboxMutedBots": [
     "blogs",
     "jobs",
@@ -97,9 +108,5 @@
     "campaigns",
     "logistics",
     "reminders"
-  ],
-  "blobCache": {
-    "maxMB": 2048,
-    "pubMaxMB": 2048
-  }
+  ]
 }

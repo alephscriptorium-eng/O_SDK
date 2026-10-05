@@ -68,3 +68,10 @@ Ninguno publica en SSB.
   libre el doble del log de cada nodo, además de la copia en frío previa.
 - **Build de la imagen**: cada reconstrucción deja capas viejas hasta la poda.
 - **Construcción del snapshot**: escribe un `.tmp` junto al fichero vigente antes de sustituirlo.
+- **Centralita del pub** (Oasis ≥ 1.2.2, `HUB-PROTOCOL.md` §14): no toca disco; gasta **red** y algo
+  de memoria del pub. Cada llamada retransmitida son unos 80 kbit/s por sentido (entran y salen por
+  el pub). En una sala, cada persona que habla cuesta 80 kbit/s por oyente: con el aforo fijado
+  (`phone.roomMax`, 12) unos 0,9 Mbit/s de salida por hablante; con el de fábrica (50), unos
+  4 Mbit/s. El pub retiene como mucho 2 000 tramas por miembro atrasado. El número de salas y de
+  llamadas simultáneas **no tiene techo** en el plugin: lo acota a quién sirve el pub (solo a
+  feeds que sigue). Son cifras leídas del código, no medidas.

@@ -536,3 +536,36 @@ contenedor.
   `POST /settings/invite/accept` no arranca desde el snapshot (medido: el log del nodo no salta).
 - **En cada upgrade**: el formato y la ruta no son API estable; `upgrade-invariants.d/db2.tsv` los
   vigila y el gate US (`UPGRADE-PROTOCOL.md` §3.4) lo mide.
+
+## 14. Centralita del pub: Phone y Rooms (Oasis ≥ 1.2.2)
+
+Desde 1.2.2 el sbot carga un plugin `phone` (`src/server/phone_module.js`): llamadas de voz y salas
+entre habitantes, cifradas extremo a extremo. Dos nodos que se alcanzan hablan directo. Si no, la
+llamada pasa por un pub al que ambos están conectados, o por un pub que sigue el llamado: el pub
+reenvía la señalización (cifrada para el destinatario) y empalma el audio sin poder abrirlo. Una
+sala vive en el pub al que estaba conectado quien la creó. Ve quién llama a quién y cuándo; no el
+contenido. No abre puertos ni instala nada: va por las conexiones SSB que el pub ya tiene.
+
+El plugin vive en el sbot, así que **un pub que es solo sbot ya hace de centralita** al subir de
+versión. Decisión de esta arquitectura:
+
+| Nodo | Qué hace | Cómo |
+|---|---|---|
+| pub | **retransmite y aloja salas, acotado** | clave `phone` en su ssb-config (`pub/config/ssb/config`): `{ "relay": true, "roomMax": 12 }`. Sin `relayOpen`: solo sirve si **sigue** a uno de los dos interlocutores (quien redimió un invite suyo) |
+| HUB y bots | **nada** | `phone.relay = false` en su `oasis-config.json`; lo fija `pub/scripts/regen-node-configs.js`. No tienen audio ni puerto SSB público |
+
+- **De dónde lee la política**: primero la config del sbot (`config.phone`), que llega por el guard
+  `OASIS_SERVER_CONFIG_OVERRIDE`; si no existe, el `oasis-config.json` de la imagen, que trae
+  `relay: true` y aforo 50. Un pub sin la clave retransmite con los valores de fábrica.
+- **Apagarla**: `"phone": { "relay": false }` y recrear el pub (misma versión: no publica). Las
+  llamadas directas siguen; las salas que hayan elegido este pub como sede dejan de admitir gente,
+  porque el pub sigue anunciando el servicio y lo rechaza al entrar.
+- **Comprobar lo aplicado**: `phone.roomInfo({ rid })` es anónima y de solo lectura; devuelve
+  `{ count, max }` y `max` es el aforo vigente.
+- **El pub no tiene número ni se le puede llamar**: sin dispositivo de audio el plugin ignora los
+  timbres. Lo mismo HUB y bots.
+- **Carga**: red, no disco. Cifras en `CAPACIDAD.md` §4. El plugin no limita el número de salas ni
+  de llamadas simultáneas.
+- **No ensayable en contenedores**: una llamada real pide micrófono y altavoz en los dos extremos
+  (PulseAudio, PipeWire o ALSA). Se prueba con dos clientes de escritorio.
+- **En cada upgrade**: nada de esto es API estable; `upgrade-invariants.d/phone.tsv` lo vigila.
