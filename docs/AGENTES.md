@@ -139,6 +139,7 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | Tras un `npm install` en `src/server` cambian miles de ficheros de `src/base` | `src/server/node_modules` es un enlace a `src/base/node_modules`: se escribe a través de él. No se instala nada ahí; `git checkout -- src/base` | UPGRADE §2 |
 | El pub no da invite en el stack local: «Server has no public ip address» | el pub de ensayo anuncia `localhost` y `ssb-invite` no emite invites para un host privado: pedirlo con `invite.create({ uses: 1, external: '<dominio.con.punto>' })` y reescribir el host a la IP del bridge | HUB §3 |
 | Un cliente nuevo no arranca desde el snapshot del pub | el pub solo lo sirve a quien **sigue**; antes del invite responde `not allowed`. Y debe existir: `pub-snapshot.sh status` | HUB §13 |
+| `crontab -l` no devuelve nada y se da por «crontab vacío» | puede ser que el host no tenga `cron`: la orden falla y, con el error tapado, parece vacío. Medir con `command -v crontab` y `systemctl list-timers`. Y antes de instalar nada en el host: lo que una pieza necesita para funcionar va **en el compose o en la imagen**, no en el host | HUB §13 |
 | El backend arranca sin sbot embebido | `OASIS_TEST` definido en el entorno (desde 1.1.3) | UPGRADE §1 |
 | El nombre nuevo de un feed no aparece | `nameCache` es memoria del proceso: reiniciar el nodo que lo muestra | HUB §12 |
 | El build del portal rompe | tokens entre ángulos fuera de código (Vue los lee como etiquetas) o enlaces muertos (`ignoreDeadLinks: false`) | `docs/proyecto.md` |

@@ -33,7 +33,7 @@ pone la pieza: el compose, la config del nodo o nginx.
 | Log | `ssb-data/db2/log.bipf` (Oasis ≥ 1.2) o `flume/log.offset` | la replicación: todo feed a `hops` saltos | `friends.hops` y `friends.dunbar` del `ssb-config` del nodo. No se poda | bajar `hops` o `dunbar` es una decisión de red: cambia a quién se replica |
 | Índices | `ssb-data/db2/indexes`, `db2/jit` | el log | ninguno; son derivables (se regeneran borrándolos, con el nodo parado) | crecen con el log: se actúa sobre el log |
 | Blobs | `ssb-data/blobs` | la replicación y lo que pide el visor | **backend** (HUB, bots): `blobCache.pubMaxMB` en su `oasis-config.json`; lo fija `pub/scripts/regen-node-configs.js`. **pub** (solo sbot, sin recolector): `hub-disk.sh prune-blobs --node pub` | subir el techo o podar. Un blob borrado se vuelve a pedir a la red si alguien lo solicita |
-| Snapshots | `ssb-data/oasis/content/snapshot*.oasissn` | **pub**: `pub-snapshot.sh` (temporizador de systemd en el host). **HUB y bots**: nadie, con `OASIS_SNAPSHOT=off` | techo `SNAPSHOT_MAX_MB` (por encima no se publica y queda el anterior). Crece con el log | subir el techo o retirar el servicio: `pub-snapshot.sh off` |
+| Snapshots | `ssb-data/oasis/content/snapshot*.oasissn` | **pub**: su propio entrypoint, cada `OASIS_PUB_SNAPSHOT_HOURS` horas. **HUB y bots**: nadie, con `OASIS_SNAPSHOT=off` | techo `SNAPSHOT_MAX_MB` (por encima no se publica y queda el anterior). Crece con el log | subir el techo, o dejar de ofrecerlo: `OASIS_PUB_SNAPSHOT_HOURS=0` y recrear el pub |
 | Logs de la aplicación | bind de `/app/logs` | el nodo | ninguno | vaciar con el nodo parado |
 | Log de Docker | `/var/lib/docker/containers/…` | la salida del contenedor | `logging` del compose (`max-size` × `max-file`) en **todos** los servicios | un servicio sin `logging` es un aviso: no tiene techo |
 | Capa del contenedor | `/tmp` (subidas, descarga de un snapshot) y `/app/src/maps/cache` | el backend | ninguno; se vacía al recrear el contenedor | recrear el nodo en la misma versión no publica nada |
@@ -57,7 +57,7 @@ Un backend trae temporizadores que tocan el disco sin que nadie lo pida:
 | Temporizador | Cuándo | Qué hace | En esta arquitectura |
 |---|---|---|---|
 | Recolector de blobs | a los 5 min y cada 6 h | por encima del techo, borra los blobs ajenos menos usados de más de 24 h. Protege los propios, los fijados y los recientes | activo en HUB y bots con el techo de su config. Con el valor de upstream (`pubMaxMB = 0`) no haría nada |
-| Construcción de snapshots | a los 2 min y cada 6 h, en un backend público | carga el log **entero** en memoria, dos veces, y escribe dos ficheros | apagado con `OASIS_SNAPSHOT=off`. El del pub lo construye `pub-snapshot.sh`, con memoria constante |
+| Construcción de snapshots | a los 2 min y cada 6 h, en un backend público | carga el log **entero** en memoria, dos veces, y escribe dos ficheros | apagado con `OASIS_SNAPSHOT=off`. El del pub lo construye su entrypoint (`pub/tools/snapshot-build.js`), con memoria constante |
 | Limpieza de envíos de ficheros | a los 2 min y cada 12 h | borra los trozos de los envíos **propios** caducados | no hace nada en un nodo de soporte: no envía ficheros |
 
 Ninguno publica en SSB.

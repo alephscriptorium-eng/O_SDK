@@ -498,7 +498,7 @@ que nadie pide. Decisión D-O27:
 
 | Nodo | Qué hace | Cómo |
 |---|---|---|
-| pub | **construye y sirve** | `pub/tools/snapshot-build.js` dentro de su contenedor, lanzado por un temporizador del host. Lee el log por el socket; no arranca un backend, no publica |
+| pub | **construye y sirve** | `pub/tools/snapshot-build.js` dentro de su contenedor, lanzado por su propio entrypoint cada `OASIS_PUB_SNAPSHOT_HOURS` horas. Lee el log por el socket; no arranca un backend, no publica |
 | HUB y bots | **ni construyen ni arrancan desde uno** | `OASIS_SNAPSHOT=off` en el compose (interruptor del fork en `backend.js`) |
 
 **Qué lleva el fichero.** Cabecera `OASISSN1` y, en gzip, un registro de metadatos y uno por
@@ -515,31 +515,19 @@ El pub sigue a quien redime un invite suyo. No sale por HTTP.
 bash devops/scripts/pub-snapshot.sh status          # fichero, tamaño, edad, mensajes · solo lectura
 bash devops/scripts/pub-snapshot.sh build           # (re)construye ahora · escribe en el .ssb del pub
 bash devops/scripts/pub-snapshot.sh off --yes       # lo retira: el pub vuelve a decir «not available»
-bash devops/scripts/pub-snapshot.sh timer           # las dos unidades de systemd para el host (cada 6 h)
-bash devops/scripts/pub-snapshot.sh cron            # lo mismo como línea de crontab, si el host tiene cron
 ```
 
-**Temporizador.** Mide antes qué tiene el host (`systemctl list-timers`, `command -v crontab`): un
-`crontab -l` sin salida también es lo que da un host **sin** cron. Con systemd:
+**Quién lo reconstruye.** El propio contenedor del pub, como en upstream lo hace el propio pub. Su
+entrypoint, en modo `server`, lanza un proceso de fondo que llama a `snapshot-build.js` a los dos
+minutos de arrancar y después cada `OASIS_PUB_SNAPSHOT_HOURS` horas. El compose lo deja en 6;
+`0` es «no ofrecerlo». **No hay nada que instalar en el host**: ni cron ni systemd. Quien despliega
+un pub con este compose ya lo ofrece. Si una construcción falla (el sbot aún arrancando o
+migrando), reintenta a los diez minutos. Cada pasada deja una línea `[snapshot] {…}` en el log del
+contenedor.
 
-```bash
-# en la máquina operadora: las unidades salen por stdout, separadas por «# --- <ruta>»
-bash devops/scripts/pub-snapshot.sh timer
-# en el host, con cada bloque en un temporal: validar ANTES de instalar
-systemd-analyze verify /tmp/oasis-pub-snapshot.service /tmp/oasis-pub-snapshot.timer
-sudo install -m 644 -o root -g root /tmp/oasis-pub-snapshot.{service,timer} /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl start oasis-pub-snapshot.service        # una pasada de prueba
-journalctl -u oasis-pub-snapshot.service -n 3 --no-pager   # {"ok":true,…}
-sudo systemctl enable --now oasis-pub-snapshot.timer
-systemctl list-timers oasis-pub-snapshot.timer --no-pager
-```
-
-El servicio es `oneshot`: no se solapa consigo mismo. Su salida queda en el journal. Retirarlo:
-`sudo systemctl disable --now oasis-pub-snapshot.timer`, borrar los dos ficheros y `daemon-reload`.
-
-- **Activarlo** en un host es escribir en el `.ssb` del pub y ofrecer un servicio nuevo: pide GO.
-  Después de `build`, `upgrade-gates.sh --remote check <foto>` debe dar «sin publicaciones».
+- **Activarlo o retirarlo** en un host vivo es cambiar `OASIS_PUB_SNAPSHOT_HOURS` en el env del pub
+  y recrearlo (misma versión: no publica). Ofrecer un servicio nuevo desde el pub pide GO.
+  Después, `upgrade-gates.sh --remote check <foto>` debe dar «sin publicaciones».
 - **Techo**: `SNAPSHOT_MAX_MB` (1024 por defecto). Por encima no se publica y queda el anterior;
   upstream rechaza en el cliente más de 2 GiB. Crece con el log: `CAPACIDAD.md`.
 - **Memoria**: constante (dos pasadas por el log en streaming). Corre dentro del contenedor del

@@ -10,7 +10,7 @@ services:
     command: ["server"]
     restart: unless-stopped
     # Capacidad (docs/PUB/CAPACIDAD.md): el pub no tenía techo de memoria ni rotación de su log.
-    # Dentro de este contenedor corre además, cada 6 h, la construcción del snapshot (pub-snapshot.sh).
+    # Dentro de este contenedor corre además, cada 6 h, la construcción del snapshot (ver abajo).
     mem_limit: ${OASIS_PUB_MEM_LIMIT:-1024m}
     logging:
       driver: json-file
@@ -20,6 +20,10 @@ services:
       OASIS_SKIP_AI_MODEL: "true"
       OASIS_SERVER_CONFIG_OVERRIDE: /home/oasis/.ssb/config
       OASIS_PUB_INTERNAL_SSB_PORT: ${OASIS_PUB_INTERNAL_SSB_PORT:-8008}
+      # Snapshot para clientes nuevos (Oasis >= 1.2, HUB-PROTOCOL §13): el propio pub lo reconstruye
+      # cada N horas, sin nada instalado en el host. 0 = no ofrecerlo. Techo del fichero en MB.
+      OASIS_PUB_SNAPSHOT_HOURS: ${OASIS_PUB_SNAPSHOT_HOURS:-6}
+      SNAPSHOT_MAX_MB: ${OASIS_PUB_SNAPSHOT_MAX_MB:-1024}
       HOME: /home/oasis
       SSB_PATH: /home/oasis/.ssb
     ports:
