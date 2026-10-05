@@ -24,6 +24,9 @@
 //                                       petición y se envían a sí mismos un mensaje CIFRADO. Un nodo
 //                                       de soporte no tiene quien lea su bandeja: silenciados, no
 //                                       publican. La lista sale de INBOX_BOTS en src/models/pm_model.js.
+//   phone.relay = false                 (desde 1.2.2) el sbot trae la centralita de Phone y Rooms. La
+//                                       del pub se acota en su ssb-config (HUB-PROTOCOL §14); un nodo de
+//                                       soporte no retransmite llamadas ni aloja salas.
 // Solo HUB (D-O25: la presentación del visor es del pub; valores de instancia, se conservan):
 //   themes.current, language
 // Solo bot de cartera (plantilla .tpl; los marcadores los rellena render-wallet-bot-config.sh):
@@ -59,6 +62,7 @@ function base() {
   c.ssbLogStream.limit = 20000;
   c.lanBroadcasting = false;
   c.inboxMutedBots = knownBots();
+  if (c.phone) c.phone.relay = false;
   return c;
 }
 

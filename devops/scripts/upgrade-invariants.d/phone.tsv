@@ -1,0 +1,10 @@
+# Invariantes de la centralita del pub (Oasis >= 1.2.2; docs/PUB/HUB-PROTOCOL.md §14). Columnas separadas por TAB:
+# mínimo	fichero	cadena literal (grep -F)	de qué depende la pieza
+# El pub acota la centralita de Phone y Rooms desde su ssb-config (clave «phone»), sin tocar src/. Nada de esto es API estable.
+1	src/server/SSB_server.js	.use(require('./phone_module'))	el plugin se carga en el sbot: un pub que es solo sbot hace de centralita
+1	src/server/phone_module.js	if (config.phone && typeof config.phone === 'object') return config.phone;	la política se lee primero de la config del sbot (pub/config/ssb/config); si no, del oasis-config.json de la imagen
+1	src/server/phone_module.js	if (p.relay === false) return done(false);	interruptor del relé de llamadas y de las salas (HUB y bots: regen-node-configs.js lo fija en false)
+1	src/server/phone_module.js	if (p.relayOpen === true) return done(true);	sin relayOpen el pub solo sirve a feeds que sigue: es lo que acota la carga
+1	src/server/phone_module.js	Number(policy().roomMax) > 0 ? Math.min(ROOM_MAX, Number(policy().roomMax)) : ROOM_MAX	aforo por sala configurable (phone.roomMax)
+1	src/server/phone_module.js	roomInfo(opts, cb) {	RPC anónima de solo lectura con la que se comprueba el aforo aplicado
+1	src/configs/oasis-config.json	"relay": true	valor de fábrica: un nodo sin política propia retransmite

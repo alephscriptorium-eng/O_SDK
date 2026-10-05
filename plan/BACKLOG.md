@@ -799,12 +799,22 @@ Dep: WP-O120.
 
 | **WP-O123** | **P0** | Aplicación en el VPS del upgrade a 1.2.1 |
 
-**Estado** · ✅ 2026-10-04: pub, HUB y bot en 1.2.1 (`plan/REPORTES/WP-O123-aplicacion-vps-1.2.1.md`). Snapshot del pub construido y servido. Temporizador: lo lleva el propio pub en su entrypoint (`OASIS_PUB_SNAPSHOT_HOURS`, HUB §13), sin nada en el host; entra en el host al recrear el pub (pide GO). Medida a las 24 h (2026-10-05): `check post-o123` → pub y HUB sin publicaciones, bot `pubAvailability+2`, GATE OK. Pendiente: el cliente.
+**Estado** · ✅ 2026-10-04: pub, HUB y bot en 1.2.1 (`plan/REPORTES/WP-O123-aplicacion-vps-1.2.1.md`). Snapshot del pub construido y servido. Temporizador: lo lleva el propio pub en su entrypoint (`OASIS_PUB_SNAPSHOT_HOURS`, HUB §13), sin nada en el host; aplicado en el host el 2026-10-05. Medida a las 24 h (2026-10-05): `check post-o123` → pub y HUB sin publicaciones, bot `pubAvailability+2`, GATE OK. Pendiente: el cliente.
 
 **BRIEF** · Convergencia de los ficheros de build del host con el repo, subida de `src/` con
 `src/base`, build, ensayo de migración sobre copia del log real, y pub → HUB → bot con parada, copia
 en frío y `check` por nodo; activación del temporizador de snapshots; cierre con `capacity.sh`.
 Dep: WP-O120, WP-O121, WP-O122.
+
+| **WP-O124** | **P0** | Upgrade a Oasis 1.2.2: Phone y Rooms, centralita en el pub acotada |
+
+**Estado** · ✅ 2026-10-05: pub, HUB y bot en 1.2.2 (`plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md`), mismo delta que en local: `oasisVersion` +1 por nodo y un `about` (`visibilityPrefs.phone = off`) del HUB; el del bot aún no había salido al cerrar. Centralita del pub acotada y comprobada (`roomInfo`: aforo 12). Pub renombrado a `pub.escrivivir.co`. Pendiente: una llamada real por el pub, medida a las 24 h, merge a `main`.
+
+**BRIEF** · Oasis 1.2.2 carga en el sbot un plugin que retransmite llamadas y aloja salas de voz.
+Decisión del custodio: la centralita se queda en el pub, acotada desde su ssb-config (`phone`:
+relé solo para feeds que sigue, `roomMax` 12); apagada en HUB y bots. Sin nodo VoIP aparte ni guard
+nuevo en `src/`. `HUB-PROTOCOL.md` §14. Después: gates locales y host por puertas, con GO.
+Dep: WP-O123.
 
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
