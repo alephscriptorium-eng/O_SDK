@@ -219,3 +219,42 @@ Los nodos que ya tenían el nombre viejo en memoria lo muestran hasta su siguien
 - El `about` del bot: el `check` de cierre se repitió pasados cinco minutos de recrearlo, con el mismo
   resultado; el bot seguía sin publicarlo. Saldrá cuando alguien visite sus páginas.
 - Medida a las 24 h (memoria y red del pub).
+
+## 8. Cliente (nodo personal), 2026-10-05
+
+`CLIENT-PROTOCOL.md` §4-§5. El cliente real estaba parado desde el 2026-10-02, en **1.1.4** y con el
+log en flume: subirlo migra a db2 **sin vuelta** por retag. Feed `@tMJz…IRY=`: secuencia 87 en local
+y 87 en el pub antes de empezar.
+
+| Paso | Resultado |
+|---|---|
+| Copia en frío | `devops/backups/client/20261005T183353Z` (`ssb-data` + `client-state`, 423 MB); `secret` y log iguales por sha256 a los vivos, también justo antes de arrancar |
+| Imagen | la anterior queda como `o-sdk-oasis-client:1.1.4`; build de 1.2.2 con `OASIS_AI=full`: 5,03 GB |
+| Ensayo 1 · migración | copia del log real, **sin el `secret`**, contenedor efímero `--network none`: 4 174 registros y 69 autores antes; `T 4174 · A 69 · D 0` después; guarda a los 2 s; `db2/` 5,2 MB; 89 MiB. Copia borrada |
+| Ensayo 2 · drill | identidad desechable de 1.1.10 a 1.2.2: `healthy`, db2, secuencia 3 → 4 (solo `oasisVersion`), 1 `wallet`, ningún `about` ni tras visitar páginas; `client:ecoin:verify` 14 PASS; tema, cartera e idioma conservados |
+| Cliente real (GO del custodio) | `docker compose up -d --no-build oasis-client`: `healthy` a los 22 s, tres parches, guarda de migración escrita, `db2/log.bipf` |
+
+Healthcheck del cliente real:
+
+```
+feed          @tMJzSfcZSNCsFRF3pl3rMoFDatz6VjDCjQ8/TpjYIRY=.ed25519   (secret: mismo sha256 que la copia)
+propio        seq=88 · último: {"type":"oasisVersion","version":"1.2.2",…}
+log           T 4937 · D 0 · A 83
+GUI           /settings → 1.2.2 · welcome-pm en el log: 0
+verificación  ✓ Your feed: 88 messages, last sequence 88 · ✓ Forks: 0
+              ✗ Files: 160 present, 258 referenced, 9 orphan · ✗ Your own files missing from this device: 3
+pub           seq_pub=88   (a los dos minutos de arrancar)
+cartera       client:ecoin:verify → 14 PASS · 0 FAIL; 1 mensaje wallet; backup en devops/backups/client-wallet/20261005T184201Z
+IA            client:test-ai → POST /ai → HTTP 200
+```
+
+- Publicó solo su versión (secuencia 88) y el pub la recibió.
+- Las dos ✗ de ficheros son blobs, no mensajes: antes del upgrade había 155 ficheros en `blobs/` y
+  después 160. No se midió la verificación antes de subir, así que no hay comparación directa.
+- Entre el ensayo (4 174 registros) y el arranque real (4 937) la diferencia es lo replicado al
+  volver a conectarse tras tres días parado.
+- Phone no funciona en el cliente tal como está: `/phone` dice «not available on this device»; el
+  contenedor no tiene acceso al audio de la máquina.
+- El drill queda parado, con sus datos en `volumes-dev/drill`.
+- El stack local de ensayo del pub se paró entero mientras arrancaba el drill (18:38:29 UTC); la
+  orden lanzada solo levantaba el drill y no se determinó quién lo paró. Sigue parado.
