@@ -6,7 +6,7 @@ corrupción de disco, pérdida del log SSB o daño en el repositorio git. Comple
 
 > **Modelo mental.** Solo hay UNA cosa irremplazable: el `secret` (identidad SSB) y las claves
 > (GPG, SSH). Todo lo demás es derivable: el **log** se re-replica desde el pub, los **índices**
-> (flume) se reconstruyen del log, los **blobs** son content-addressed y se re-descargan, el
+> (`db2/indexes` y `db2/jit`; `flume/` en ≤ 1.1.x) se reconstruyen del log, los **blobs** son content-addressed y se re-descargan, el
 > **código** vive en GitHub y la **imagen** Docker se reconstruye del árbol. El pub es la fuente
 > de verdad de los feeds: lo que el pub no tenga de tu feed, no existe.
 
@@ -135,7 +135,7 @@ docker stop oasis-sync-only && docker start oasis-client
 
 **Tips de diagnóstico SSB:**
 - "Another Oasis instance is already running" también salta con un `OpenError` de LevelDB
-  (flume corrupto), no solo con un lock real (`SSB_server.js`, `isLockError`).
+  (índices corruptos), no solo con un lock real (`SSB_server.js`, `isLockError`).
 - `conn.json` corrupto bloquea el marcado de conexiones y NO siempre se auto-sana → borrarlo;
   se regenera desde `gossip.json`.
 - Conexión al pub verificable sin herramientas: `cat /proc/net/tcp` dentro del contenedor y

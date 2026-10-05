@@ -7,8 +7,9 @@
 > nombres, redes ni directorios de `volumes-dev/` con el cliente (ver §0).
 
 > **Estado.** El protocolo se ha ejercido de punta a punta: alta e importación de una identidad
-> existente (WP-O98, 2026-09-17), cartera (WP-O103, WP-O108) y subida a 1.1.10 en el ensayo con
-> identidad desechable (WP-O113). Los datos de esas ejecuciones —feed, secuencias, rutas, copias—
+> existente (WP-O98, 2026-09-17), cartera (WP-O103, WP-O108), subida a 1.1.10 en el ensayo con
+> identidad desechable (WP-O113) y subida del cliente real de 1.1.4 a 1.2.2, con migración del log a
+> db2 (WP-O124, 2026-10-05). Los datos de esas ejecuciones —feed, secuencias, rutas, copias—
 > están en sus reportes (`plan/REPORTES/`), no aquí. Qué se puede encargar hoy a un agente y con
 > qué garantías: puerta [Cliente Oasis](./roles/cliente.md).
 
@@ -145,11 +146,17 @@ docker tag o-sdk-oasis-client o-sdk-oasis-client:<ver-vieja>     # rollback prep
 npm run build && docker compose up -d oasis-client               # .ssb, ai-models y client-state son binds: se preservan
 ```
 
+- **De ≤ 1.1.x a ≥ 1.2 el primer arranque migra el log a `db2/` y borra el viejo: no hay vuelta por
+  retag.** Antes: copia en frío de `volumes-dev/ssb-data` y `client-state` con el cliente parado, y
+  ensayo de la migración sobre una copia del log **sin el `secret`**, en un contenedor sin red
+  (`PUB/UPGRADE-PROTOCOL.md` §0.5 y §4, «ensayo de migración»). Con identidad real, GO del custodio.
 - Con el log intacto la GUI arranca directa: su `oasisVersion` cae en seq N+1.
-- Si el upgrade obligó a apartar `flume/` (índices corruptos): `Settings › Rebuild database`
-  (`POST /settings/rebuild`, no toca `log.offset`). Si se apartó el **log entero**, entonces §3 antes de la GUI.
+- Si el upgrade obligó a apartar los índices (`db2/indexes` y `db2/jit`; `flume/` en ≤ 1.1.x): `Settings › Rebuild database`
+  (`POST /settings/rebuild`, no toca el log). Si se apartó el **log entero**, entonces §3 antes de la GUI.
 - La config de la GUI y el estado bancario viven en `volumes-dev/client-state` (§8.4): sobreviven al
   rebuild, y las claves nuevas que traiga upstream en `oasis-config.json` entran por el default de la imagen.
+- Phone y Rooms (Oasis ≥ 1.2.2) **no funcionan en el cliente en contenedor**: `/phone` responde
+  «not available on this device» porque el contenedor no tiene acceso al audio de la máquina.
 - Healthcheck: §5 (y `npm run client:ecoin:verify` si usas ECOin, §8). Journal: no aplica (el journal es del pub).
 
 ## 5. Healthcheck
@@ -172,11 +179,13 @@ log; llegan con la replicación.
 ## 6. Rollback
 
 - **Upgrade fallido**: `docker compose stop oasis-client` → `docker tag o-sdk-oasis-client:<ver-vieja> o-sdk-oasis-client` →
-  `docker compose up -d --no-build oasis-client`. `.ssb` intacto (binds).
+  `docker compose up -d --no-build oasis-client`. `.ssb` intacto (binds). **Salvo si el upgrade
+  cambió de motor** (≤ 1.1.x → ≥ 1.2): la imagen vieja no arranca sobre un log migrado; el rollback
+  es restaurar la copia en frío de §4, no el retag.
 - **Importación fallida** (log corrupto al arrancar, `ID-MISMATCH`): `sync-only stop --now`; volver a
   `volumes-dev/ssb-data.pre-import-<ts>` (si lo había) o re-importar desde el backup
   `devops/backups/client/<ts>/`; en último caso solo `secret` + flag + §3.
-- **Nunca** truncar `log.offset` ni tocar `secret`. Ningún camino de este protocolo cambia el `secret`.
+- **Nunca** truncar el log (`db2/log.bipf`; `flume/log.offset` en ≤ 1.1.x) ni tocar `secret`. Ningún camino de este protocolo cambia el `secret`.
 
 ## 7. Retirar instalaciones antiguas
 

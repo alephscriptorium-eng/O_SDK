@@ -7,14 +7,14 @@ encargos:
   - id: cliente
     titulo: Arrancar un cliente Oasis en mi máquina
     estado: ejercido
-    medido: '2026-10-01'
-    prueba: plan/REPORTES/WP-O108-cliente-1.1.4.md
+    medido: '2026-10-05'
+    prueba: plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md
     falta: que arranque también sin GPU NVIDIA y sin el modelo de IA; prueba en frío (WP-O116)
   - id: cliente-con-cartera
     titulo: Arrancar un cliente Oasis con cartera ECOin
     estado: ejercido
-    medido: '2026-10-01'
-    prueba: plan/REPORTES/WP-O113-upgrade-oasis-1.1.10.md
+    medido: '2026-10-05'
+    prueba: plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md
     falta: lo mismo, y una secuencia única de principio a fin; prueba en frío (WP-O116)
 ---
 
@@ -33,6 +33,8 @@ máquina con GPU NVIDIA; y se ha ensayado con una identidad desechable. **Con qu
 arranque normal exige esa GPU (`docker-compose.yml` reserva el dispositivo) y, si no se le dice lo
 contrario, descarga un modelo de IA de unos 4 GB. En una máquina sin ella el arranque falla: el
 agente tiene que parar y decírtelo; no debe improvisar un arreglo sobre tu identidad real.
+**Qué no:** las llamadas y salas de voz de Oasis (Phone y Rooms) no funcionan dentro del
+contenedor, que no tiene acceso al micrófono ni a los altavoces de la máquina.
 
 ## Qué le dices a tu agente
 

@@ -10,7 +10,7 @@ nada que no esté previsto y sin romper las piezas que el fork ha puesto alreded
 su anexo (`HUB-PROTOCOL.md` §5, `ECOIN-PROTOCOL.md` §5, `../CLIENT-PROTOCOL.md` §4).
 
 Deriva de los ciclos 0.8.3→0.8.8, 0.8.8→0.9.6, 0.9.6→1.0.8, 1.0.8→1.1.2, 1.1.2→1.1.4,
-1.1.4→1.1.10 y 1.1.10→1.2.1. Se reescribió en el penúltimo (WP-O112) porque el protocolo anterior comprobaba bien
+1.1.4→1.1.10, 1.1.10→1.2.1 y 1.2.1→1.2.2. Se reescribió en el ciclo 1.1.4→1.1.10 (WP-O112) porque el protocolo anterior comprobaba bien
 lo barato —que los guards de `src/` siguen puestos— y no comprobaba lo caro: que Oasis **se
 comporta** igual. Sus greps decían «esto sigue existiendo», no «esto sigue haciendo lo mismo».
 
@@ -519,6 +519,7 @@ Ciclos registrados (lo que cada uno cambió en el protocolo):
 |---|---|---|
 | 1.0.8 → 1.1.2 | `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md` · `HUB-PROTOCOL.md` §5.5 | primer ciclo con el HUB activo: `/c/assets`, rutas de detalle nuevas |
 | 1.1.2 → 1.1.4 | `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`, `WP-O106-aplicacion-vps-1.1.4.md` · `ECOIN-PROTOCOL.md` §5.4 | `state-manager.js` y la mudanza de estado; quinto guard; `git archive` y CRLF |
+| 1.2.1 → 1.2.2 | `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md` (local, host y cliente) | Una disposición «acción de GUI» leída del código era falsa: el gate U5 destapó que HUB y bots publican un `about` de visibilidad con el primer refresco de fondo (`about=+0..1` en el `check` inmediato, `+1` en el de cierre). El sbot trae un plugin que hace de centralita: se acota por config, sin guard (`HUB-PROTOCOL.md` §14, `phone.tsv`). En el cliente, de ≤ 1.1.x a ≥ 1.2 hay cambio de motor |
 | 1.1.10 → 1.2.1 | `plan/REPORTES/WP-O119-medida-db2.md`, `WP-O120-upgrade-oasis-1.2.1.md` (local), `WP-O121-capacidad.md`, `WP-O122-snapshots-pub.md`, `WP-O123-aplicacion-vps-1.2.1.md` (host: mismo delta que en local) · D-O27 | cambio de motor (flume → db2): migración de un solo sentido, sin rollback tras migrar; la medida daba 0 en silencio sobre el log nuevo; dependencias vendorizadas en `src/base` y un build que no instala nada; snapshots que nuestro pub sirve pero no construía; caché de blobs sin techo en un backend público |
 | 1.1.4 → 1.1.10 | `plan/REPORTES/WP-O112-protocolo-upgrade.md` (este protocolo), `WP-O113-upgrade-oasis-1.1.10.md` (local), `WP-O114-aplicacion-vps-1.1.10.md` (host: mismo delta que en local) | el protocolo no medía comportamiento ni publicación. Todo nodo anuncia su versión (`oasisVersion`), también al volver atrás. Idioma por visitante en `/c` (D-O25). Avisos automáticos que se envían cifrados a uno mismo (`inboxMutedBots`). `GET /wallet` republica la dirección en un bot con el motor encendido. El primer `GET /banking` publica la dirección. El modelo de IA cambia bajo el mismo nombre |
 

@@ -50,10 +50,14 @@ hace de centralita de Phone y Rooms, acotada (`phone` en su ssb-config: relé so
 aforo de sala 12; `HUB-PROTOCOL.md` §14); HUB y bot-2, no. Nombre del pub (su `about`):
 **`pub.escrivivir.co`**, publicado el 2026-10-05 (cuarto `about` del feed, solo `name`; la descripción
 anterior se conserva). Nombre anterior: `PUB OASIS SCRIPTORIUM`. Motor de
-base de datos **db2** desde esa fecha: los tres nodos migraron su log y no hay vuelta a una versión
+base de datos **db2** desde el 2026-10-04 (1.2.1, WP-O123): los tres nodos migraron su log y no hay vuelta a una versión
 anterior (`UPGRADE-PROTOCOL.md` §0.5). La versión viva se mide con `deploy-status.sh`. Motor de RBU: **encendido**
 desde el 2026-09-19 17:09 UTC (WP-O107; `hub-wallet.sh status`): la casa sale en la lista de pubs de Banking,
 sin fondos (✗, pool 0) hasta la dote. Época `2026-09` fijada con pool 0.
+
+Al subir a 1.2.2 el bot 1 publicó además un `about` de visibilidad; en el ensayo local ese mensaje lleva solo
+`visibilityPrefs` con `phone: "off"` (2026-10-05, WP-O124 §5.1); el del bot 2 sale cuando alguien
+visite sus páginas.
 
 Nombres anteriores (siguen en el log de cada feed; D-O14): `azofaifo-scriptorium-skin-bot-1`,
 `azofaifo-scriptorium-wallet-bot-2`.
@@ -90,6 +94,8 @@ description: Bot de soporte nº 2 de pub.escrivivir.co · tipo ecoin (cartera) �
 |---|---|---|
 | Pub (solo sbot) | `UPGRADE-PROTOCOL.md` | journal `deploy-log.sh` |
 | HUB clearnet `/c` | `HUB-PROTOCOL.md` | §10 |
+| Centralita de Phone y Rooms (en el pub, acotada: aforo de sala 12) | `HUB-PROTOCOL.md` §14 · `CAPACIDAD.md` §4 | `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md` §7 |
+| Entrada de habitantes: la portada (`https://pub.escrivivir.co`) muestra un invite de 1000 usos, que sirve el panel (`/public/status`, `PUB_INVITE_USES`). Es público por diseño; no se copia aquí | `../AGENTES.md` §1 | [hoja del habitante](./INSTANCIA-SCRIPTORIUM-HABITANTE.md) |
 | hub-wallet (ECOin) | `ECOIN-PROTOCOL.md` | §13 |
 | Teatro · sidecar RRSS | `TEATRO-PROTOCOL.md` · `RRSS-SIDECAR-PROTOCOL.md` | en cada uno |
 | Teatro P2P | `TEATRO-P2P-PROTOCOL.md` | §5 · *Aleph Cero* **congelada** el 2026-09-19; enlaces en `/teatro/aleph-cero/p2p/p2p.json`, anuncios de Oasis en `p2p/oasis.json` |

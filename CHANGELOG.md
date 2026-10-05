@@ -5,7 +5,17 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
-### Changed — Oasis 1.2.2 en la rama de upgrade: Phone y Rooms (WP-O124, 2026-10-05)
+### Added — Puerta «Habitante» y web al día tras los upgrades (WP-O125, 2026-10-05)
+
+Sexta puerta del portal, para quien solo quiere entrar en la red con su móvil: el manual de
+bienvenida de la red (`docs/habitante/manual.md`, de `ARCHIVO/DISCO/onboarding-sol-es.md`), lo que
+cambia con este SDK (`docs/roles/habitante.md`) y la hoja de la casa
+(`docs/PUB/INSTANCIA-SCRIPTORIUM-HABITANTE.md`), cada una con su etiqueta. Queda escrito para
+agentes cómo entra un habitante: la portada del pub publica un invite de muchos usos. Al día lo
+que los upgrades dejaron viejo en el portal, el README y el sitio del pub (db2 donde decía flume,
+17 tipos, cliente real en 1.2.2, nombres de los nodos). `publish-profile.sh` exige el nombre.
+
+### Changed — Oasis 1.2.2: Phone y Rooms, en el host y en el cliente (WP-O124, 2026-10-05)
 
 Reporte `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md`. **Desplegado el 2026-10-05**: pub, HUB y bot en 1.2.2. Al subir, HUB y bot publican un `about` cada uno (`visibilityPrefs.phone = off`). El pub pasa a llamarse `pub.escrivivir.co`. Upstream añade un plugin `phone` al sbot: llamadas y salas de voz cifradas extremo a
 extremo, con los pubs de relé. La centralita se queda en el pub, acotada desde su ssb-config

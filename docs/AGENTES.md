@@ -51,6 +51,8 @@ a «probado».
 | Dar ECOin al pub: cartera, RBU | [`ECOIN-PROTOCOL.md`](./PUB/ECOIN-PROTOCOL.md) | HUB §3 (mismo bootstrap de bot) |
 | Dar de alta o **renombrar un bot** de soporte | HUB-PROTOCOL [§11-§12](./PUB/HUB-PROTOCOL.md) | §5 de esta página (nombres) |
 | App cliente: alta, importar identidad, cartera | [`CLIENT-PROTOCOL.md`](./CLIENT-PROTOCOL.md) | — |
+| Saber **cómo entra una persona en el pub** (un habitante, con su móvil) | puerta [Habitante](./roles/habitante.md) y su manual | La portada del pub que trae el SDK **publica un invite de muchos usos**: lo crea el panel (`pub/panel-api`, `PUB_INVITE_USES`, 1000 si no se cambia) y lo sirve en `/public/status`. Es público **por diseño**. Los que genera un operador a mano (`devops/scripts/generate-invite.sh`) siguen siendo secreto: no van a logs ni reportes |
+| Acotar o apagar la centralita de llamadas del pub (Phone y Rooms, Oasis ≥ 1.2.2) | [`HUB-PROTOCOL.md`](./PUB/HUB-PROTOCOL.md) §14 | [`CAPACIDAD.md`](./PUB/CAPACIDAD.md) §4 |
 | Acoger y desplegar una obra del Teatro | [`TEATRO-PROTOCOL.md`](./PUB/TEATRO-PROTOCOL.md) · [curaduría](./PUB/TEATRO-CURADURIA-PROTOCOL.md) · [sidecar RRSS](./PUB/RRSS-SIDECAR-PROTOCOL.md) | — |
 | Sacar una obra a la escena P2P (torrent, ed2k) y anunciarla en Oasis | [`TEATRO-P2P-PROTOCOL.md`](./PUB/TEATRO-P2P-PROTOCOL.md) | §3 de esta página: el anuncio es irreversible |
 | Saber qué crece y si hay que limitarlo | [`CAPACIDAD.md`](./PUB/CAPACIDAD.md) · `devops/scripts/capacity.sh` | — |

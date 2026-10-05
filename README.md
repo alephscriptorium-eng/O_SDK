@@ -150,10 +150,11 @@ y el compose raíz levanta el rol cliente.
 ## 🧩 Módulos
 
 Agenda · IA (`42`) · Audios · Banking (ECOin + RBU) · Bookmarks · Calendars ·
-Chats cifrados · Cipher · Courts · Documents · Events · Feed · Forums ·
+Chats cifrados · Cipher · Courts · Documents · Events · Feed · Files · Forums ·
 Games · Governance · Images · Invites · Jobs · Legacy (gestión del `secret`) ·
 Maps offline · Market · Multiverse (federación) · Opinions · Pads
-colaborativos · Parliament · Pixelia · Projects · Reports · Shops · Tags ·
+colaborativos · Parliament · Phone (llamadas de voz cifradas) · Pixelia · Projects ·
+Reports · Rooms (salas de voz) · Shops · Tags ·
 Tasks · Torrents · Transfers (smart-contracts) · Tribes · Videos · Wallet.
 
 ---
