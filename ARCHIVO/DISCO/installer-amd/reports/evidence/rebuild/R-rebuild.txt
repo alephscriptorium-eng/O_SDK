@@ -1,0 +1,193 @@
+== 1. payload del v1
+$ sha256sum /pkg/oasis.deb
+3619386d747695fdd5e474fd9efb3acccc9a6adf393b8135f66f1856d7089cdf  /pkg/oasis.deb
+[exit=0]
+
+$ dpkg-deb -x /pkg/oasis.deb /work/payload
+[exit=0]
+
+$ rsync -a --exclude /node/ /work/payload/opt/oasis/ /work/src/
+[exit=0]
+
+$ ls -la /work/src
+total 84
+drwxr-xr-x  5 root root  4096 Oct  5 21:55 .
+drwxr-xr-x  1 root root  4096 Oct  6 01:30 ..
+-rw-r--r--  1 root root 34523 Oct  5 21:55 LICENSE
+-rw-r--r--  1 root root 18032 Oct  5 21:55 README.md
+drwxr-xr-x  3 root root  4096 Oct  5 21:55 docs
+-rwxr-xr-x  1 root root  4158 Oct  5 21:55 oasis.sh
+drwxr-xr-x  2 root root  4096 Oct  5 21:55 scripts
+drwxr-xr-x 11 root root  4096 Oct  5 21:55 src
+[exit=0]
+
+$ sh -c ls -l /work/src/src/server/node_modules
+lrwxrwxrwx 1 root root 20 Oct  5 21:55 /work/src/src/server/node_modules -> ../base/node_modules
+[exit=0]
+
+$ node -v
+v22.20.0
+[exit=0]
+
+== 2. Node 22.20.0 verificado contra SHASUMS256.txt de nodejs.org
+$ wget -q https://nodejs.org/dist/v22.20.0/SHASUMS256.txt -O /cache/SHASUMS256.txt
+[exit=0]
+
+node-v22.20.0-linux-x64.tar.xz: OK
+== 3. R0 · reproducibilidad: script upstream sin cambios sobre el payload
+$ bash /work/src/scripts/build-deb2.sh
+=== Building Oasis 1.2.2 .deb (amd64) ===
+Copying application files...
+  ✓ Node.js 22.20.0 embedded
+  ✓ src/base (con node_modules)
+  ✓ src/server/node_modules (symlink)
+Building .deb package...
+dpkg-deb: building package 'oasis' in '/tmp/oasis-deb-build/oasis_1.2.2_amd64.deb'.
+
+=== Package built: /tmp/oasis-deb-build/oasis_1.2.2_amd64.deb ===
+Size: 101M
+
+Install: sudo dpkg -i /tmp/oasis-deb-build/oasis_1.2.2_amd64.deb
+         sudo apt-get install -f
+[exit=0]
+
+$ ls -l /tmp/oasis-deb-build/oasis_1.2.2_amd64.deb /pkg/oasis.deb
+-rwxrwxrwx 1 root root 111369992 Oct  6 00:09 /pkg/oasis.deb
+-rw-r--r-- 1 root root 105241676 Oct  6 01:30 /tmp/oasis-deb-build/oasis_1.2.2_amd64.deb
+[exit=0]
+
+$ diff <(dpkg-deb -c v1 | modo,tamaño,ruta) <(dpkg-deb -c R0 | ...)
+[entradas v1=33773 R0=33773]
+
+$ diff control v1 / R0
+2c2
+<  size 111369992 bytes: control archive=1676 bytes.
+---
+>  size 105241676 bytes: control archive=1740 bytes.
+13c13
+<  Installed-Size: 538460
+---
+>  Installed-Size: 538520
+
+$ diff postinst v1 / R0
+identicos
+
+R0 entradas_distintas=0
+== 4. build con packaging/build-deb2.sh
+$ bash /work/src/scripts/build-deb2.sh
+=== Building Oasis 1.2.2-1 .deb (amd64) ===
+Copying application files...
+  ✓ Node.js 22.20.0 embedded (runtime only)
+  ✓ src/base (con node_modules)
+  ✓ src/server/node_modules (symlink)
+Building .deb package...
+dpkg-deb: building package 'oasis' in '/tmp/oasis-deb-build/oasis_1.2.2-1_amd64.deb'.
+
+=== Package built: /tmp/oasis-deb-build/oasis_1.2.2-1_amd64.deb ===
+Size: 99M
+
+Install: sudo dpkg -i /tmp/oasis-deb-build/oasis_1.2.2-1_amd64.deb
+         sudo apt-get install -f
+[exit=0]
+
+$ ls -l /tmp/oasis-deb-build/oasis_1.2.2-1_amd64.deb
+-rw-r--r-- 1 root root 102788488 Oct  6 01:31 /tmp/oasis-deb-build/oasis_1.2.2-1_amd64.deb
+[exit=0]
+
+$ dpkg-deb -I /tmp/oasis-deb-build/oasis_1.2.2-1_amd64.deb
+ new Debian package, version 2.0.
+ size 102788488 bytes: control archive=415664 bytes.
+     127 bytes,     3 lines      conffiles            
+     520 bytes,    15 lines      control              
+ 2315310 bytes, 24924 lines      md5sums              
+    4018 bytes,   108 lines   *  postinst             #!/bin/bash
+     231 bytes,     8 lines   *  postrm               #!/bin/bash
+     104 bytes,     4 lines   *  prerm                #!/bin/bash
+ Package: oasis
+ Version: 1.2.2-1
+ Architecture: amd64
+ Maintainer: SolarNET.HuB <solarnethub@riseup.net>
+ Depends: jq, libc6 (>= 2.28), libstdc++6, libgcc-s1
+ Recommends: xdg-utils
+ Installed-Size: 449680
+ Section: net
+ Priority: optional
+ Homepage: https://solarnethub.com
+ Description: Oasis P2P Social Network
+  Oasis is a P2P encrypted social network built on Secure Scuttlebutt (SSB).
+  Zero browser JavaScript — all rendering is server-side HTML+CSS.
+  Includes embedded Node.js 22.20.0.
+  Part of the SolarNET.HuB ecosystem.
+[exit=0]
+
+$ sh -c ar t '/tmp/oasis-deb-build/oasis_1.2.2-1_amd64.deb'
+debian-binary
+control.tar.xz
+data.tar.xz
+[exit=0]
+
+$ sh -c dpkg-deb --ctrl-tarfile '/tmp/oasis-deb-build/oasis_1.2.2-1_amd64.deb' | tar -tv
+drwxr-xr-x root/root         0 2026-10-06 01:30 ./
+-rw-r--r-- root/root       127 2026-10-06 01:30 ./conffiles
+-rw-r--r-- root/root       520 2026-10-06 01:30 ./control
+-rw-r--r-- root/root   2315310 2026-10-06 01:31 ./md5sums
+-rwxr-xr-x root/root      4018 2026-10-06 01:30 ./postinst
+-rwxr-xr-x root/root       231 2026-10-06 01:30 ./postrm
+-rwxr-xr-x root/root       104 2026-10-06 01:30 ./prerm
+[exit=0]
+
+$ sh -c dpkg-deb --fsys-tarfile '/tmp/oasis-deb-build/oasis_1.2.2-1_amd64.deb' | tar -xO ./opt/oasis/oasis-run
+#!/bin/sh
+# Oasis service runner: reads /var/lib/oasis/.oasisrc and starts oasis.sh accordingly.
+OASIS_HOME="${OASIS_HOME:-/var/lib/oasis}"
+RC="$OASIS_HOME/.oasisrc"
+[ -f "$RC" ] && . "$RC"
+
+MODE="gui"
+[ "${OASIS_PUB:-no}" = "yes" ] && MODE="server"
+
+# A flag given twice becomes an array for the backend and the listener crashes
+# ("hostname must be of type string"). oasis.sh server already passes
+# --public --no-open --host=0.0.0.0, so in that mode only add what it does not set.
+ARGS="--port=${OASIS_PORT:-3000}"
+if [ "$MODE" = "server" ]; then
+    [ -n "${OASIS_DOMAIN:-}" ] && ARGS="$ARGS --allow-host=$OASIS_DOMAIN"
+else
+    ARGS="$ARGS --host=${OASIS_HOST:-127.0.0.1}"
+    [ "${OASIS_NO_OPEN:-yes}" = "yes" ] && ARGS="$ARGS --no-open"
+fi
+[ "${OASIS_DEBUG:-no}" = "yes" ] && ARGS="$ARGS --debug"
+
+export HOME="$OASIS_HOME"
+export PATH="/opt/oasis/node/bin:$PATH"
+cd /opt/oasis || exit 1
+exec /bin/sh /opt/oasis/oasis.sh "$MODE" $ARGS
+[exit=0]
+
+$ sh -c dpkg-deb --fsys-tarfile '/tmp/oasis-deb-build/oasis_1.2.2-1_amd64.deb' | tar -xO ./usr/bin/oasis ./lib/systemd/system/oasis.service
+[Unit]
+Description=Oasis P2P Social Network
+After=network.target
+
+[Service]
+Type=simple
+User=oasis
+Group=oasis
+WorkingDirectory=/opt/oasis
+Environment="PATH=/opt/oasis/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment=HOME=/var/lib/oasis
+Environment=NODE_ENV=production
+ExecStart=/opt/oasis/oasis-run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+#!/bin/sh
+export PATH="/opt/oasis/node/bin:$PATH"
+cd /opt/oasis || exit 1
+exec /bin/sh /opt/oasis/oasis.sh "$@"
+[exit=0]
+
+e1e0496940bfb91db0d13c44c7c65c1efb9fb1b29d62c19f54d5a884f5043ac0  oasis_1.2.2-1_amd64.deb
+== listo: /out/oasis_1.2.2-1_amd64.deb

@@ -1,0 +1,7 @@
+# Debian 12 con dpkg-dev: regenerar el .deb a partir del payload del v1 y un build-deb2.sh.
+FROM debian:12
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends dpkg-dev wget xz-utils zstd ca-certificates binutils rsync diffutils \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /work
