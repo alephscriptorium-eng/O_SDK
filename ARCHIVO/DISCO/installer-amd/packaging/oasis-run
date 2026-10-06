@@ -1,0 +1,25 @@
+#!/bin/sh
+# Oasis service runner: reads /var/lib/oasis/.oasisrc and starts oasis.sh accordingly.
+OASIS_HOME="${OASIS_HOME:-/var/lib/oasis}"
+RC="$OASIS_HOME/.oasisrc"
+[ -f "$RC" ] && . "$RC"
+
+MODE="gui"
+[ "${OASIS_PUB:-no}" = "yes" ] && MODE="server"
+
+# A flag given twice becomes an array for the backend and the listener crashes
+# ("hostname must be of type string"). oasis.sh server already passes
+# --public --no-open --host=0.0.0.0, so in that mode only add what it does not set.
+ARGS="--port=${OASIS_PORT:-3000}"
+if [ "$MODE" = "server" ]; then
+    [ -n "${OASIS_DOMAIN:-}" ] && ARGS="$ARGS --allow-host=$OASIS_DOMAIN"
+else
+    ARGS="$ARGS --host=${OASIS_HOST:-127.0.0.1}"
+    [ "${OASIS_NO_OPEN:-yes}" = "yes" ] && ARGS="$ARGS --no-open"
+fi
+[ "${OASIS_DEBUG:-no}" = "yes" ] && ARGS="$ARGS --debug"
+
+export HOME="$OASIS_HOME"
+export PATH="/opt/oasis/node/bin:$PATH"
+cd /opt/oasis || exit 1
+exec /bin/sh /opt/oasis/oasis.sh "$MODE" $ARGS

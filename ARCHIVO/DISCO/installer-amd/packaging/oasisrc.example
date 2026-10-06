@@ -1,0 +1,18 @@
+# Oasis configuration — read by /opt/oasis/oasis-run (systemd service).
+# Edit this file and restart: sudo systemctl restart oasis
+# Only KEY="VALUE" lines; no shell logic.
+
+# "yes" for a PUB (public server), "no" for a client
+OASIS_PUB="no"
+
+# Only used if OASIS_PUB="yes": public hostname behind the reverse proxy
+OASIS_DOMAIN=""
+
+# Interface of the web UI for a client (127.0.0.1 keeps it private). A PUB always listens on 0.0.0.0.
+OASIS_HOST="127.0.0.1"
+OASIS_PORT="3000"
+
+# "yes": never try to open a browser (a service has none)
+OASIS_NO_OPEN="yes"
+# "yes": verbose logging
+OASIS_DEBUG="no"

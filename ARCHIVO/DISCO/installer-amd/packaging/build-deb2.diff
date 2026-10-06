@@ -1,0 +1,327 @@
+--- upstream/build-deb2.sh	2026-10-06 02:16:41.235341000 +0200
++++ packaging/build-deb2.sh	2026-10-06 03:29:25.592307500 +0200
+@@ -2,6 +2,16 @@
+ # scripts/build-deb2.sh
+ # Genera Oasis .deb con Node.js embebido
+ # NO ejecuta install.sh, NO toca ~/.ssb
++#
++# Propuesta installer-amd (2026-10-06) sobre el script original. Cambios, marcados con [Fn]:
++#   [F1][F4] .oasisrc solo KEY="VALUE"; lo lee /opt/oasis/oasis-run, que es lo que arranca el servicio
++#   [F2]     dpkg-deb -Zxz (zstd no se instala en Debian 11 / Ubuntu <= 21.04)
++#   [F3]     /usr/bin/oasis hace cd /opt/oasis antes de lanzar oasis.sh
++#   [F6]     el asistente admite OASIS_PUB / OASIS_DOMAIN por entorno cuando no hay tty, y no pregunta en upgrades
++#   [F7]     Depends con libc6/libstdc++6/libgcc-s1, Recommends xdg-utils, DEBIAN/md5sums
++#   [F9]     /opt/oasis es de root; el usuario de servicio solo escribe en src/configs y src/server
++#   [F10]    poda de node/ (include, npm, corepack, share) y Version con revisión Debian (1.2.2-1)
++#   [F13]    con PUB=yes en la primera instalación se copia docs/PUB/server-config.json.example (pub: true)
+ 
+ set -e
+ 
+@@ -9,8 +19,10 @@
+ ARCH=$(dpkg --print-architecture)
+ SRC_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ VERSION="$(node -p "require('${SRC_DIR}/src/server/package.json').version")"
++DEB_REVISION="${DEB_REVISION:-1}"                      # [F10]
++PKG_VERSION="${VERSION}-${DEB_REVISION}"               # [F10]
+ BUILD_DIR="/tmp/oasis-deb-build"
+-DEB_ROOT="${BUILD_DIR}/${PKG_NAME}_${VERSION}_${ARCH}"
++DEB_ROOT="${BUILD_DIR}/${PKG_NAME}_${PKG_VERSION}_${ARCH}"
+ INSTALL_DIR="/opt/oasis"
+ NODE_VERSION="22.20.0"
+ NODE_TARBALL="node-v${NODE_VERSION}-linux-x64.tar.xz"
+@@ -18,12 +30,12 @@
+ 
+ if [ "$1" = "--arm64" ]; then
+     ARCH="arm64"
+-    DEB_ROOT="${BUILD_DIR}/${PKG_NAME}_${VERSION}_${ARCH}"
++    DEB_ROOT="${BUILD_DIR}/${PKG_NAME}_${PKG_VERSION}_${ARCH}"
+     NODE_TARBALL="node-v${NODE_VERSION}-linux-arm64.tar.xz"
+     NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/${NODE_TARBALL}"
+ fi
+ 
+-echo "=== Building Oasis ${VERSION} .deb (${ARCH}) ==="
++echo "=== Building Oasis ${PKG_VERSION} .deb (${ARCH}) ==="
+ 
+ # Descargar Node.js si no está en /tmp
+ if [ ! -f "/tmp/${NODE_TARBALL}" ]; then
+@@ -55,7 +67,16 @@
+ # NODE.JS EMBEBIDO
+ # ============================================
+ tar -xf "/tmp/${NODE_TARBALL}" -C "${DEB_ROOT}${INSTALL_DIR}/node" --strip-components=1
+-echo "  ✓ Node.js ${NODE_VERSION} embedded"
++# [F10] en producción solo hace falta el binario y su lib: fuera cabeceras, npm, corepack y docs
++rm -rf "${DEB_ROOT}${INSTALL_DIR}/node/include" \
++       "${DEB_ROOT}${INSTALL_DIR}/node/share" \
++       "${DEB_ROOT}${INSTALL_DIR}/node/lib/node_modules/npm" \
++       "${DEB_ROOT}${INSTALL_DIR}/node/lib/node_modules/corepack" \
++       "${DEB_ROOT}${INSTALL_DIR}/node/bin/npm" \
++       "${DEB_ROOT}${INSTALL_DIR}/node/bin/npx" \
++       "${DEB_ROOT}${INSTALL_DIR}/node/bin/corepack" \
++       "${DEB_ROOT}${INSTALL_DIR}/node/CHANGELOG.md"
++echo "  ✓ Node.js ${NODE_VERSION} embedded (runtime only)"
+ 
+ # ============================================
+ # BASE (node_modules pre-instalados)
+@@ -122,14 +143,50 @@
+ cp "${SRC_DIR}/README.md" "${DEB_ROOT}${INSTALL_DIR}/" 2>/dev/null || true
+ 
+ # ============================================
++# SERVICE RUNNER  [F1][F4]
++# Lee /var/lib/oasis/.oasisrc (solo KEY="VALUE") y arranca oasis.sh con las flags que ya acepta.
++# Es lo que ejecuta la unidad systemd; oasis.sh queda intacto.
++# ============================================
++cat > "${DEB_ROOT}${INSTALL_DIR}/oasis-run" << 'RUNNER'
++#!/bin/sh
++# Oasis service runner: reads /var/lib/oasis/.oasisrc and starts oasis.sh accordingly.
++OASIS_HOME="${OASIS_HOME:-/var/lib/oasis}"
++RC="$OASIS_HOME/.oasisrc"
++[ -f "$RC" ] && . "$RC"
++
++MODE="gui"
++[ "${OASIS_PUB:-no}" = "yes" ] && MODE="server"
++
++# A flag given twice becomes an array for the backend and the listener crashes
++# ("hostname must be of type string"). oasis.sh server already passes
++# --public --no-open --host=0.0.0.0, so in that mode only add what it does not set.
++ARGS="--port=${OASIS_PORT:-3000}"
++if [ "$MODE" = "server" ]; then
++    [ -n "${OASIS_DOMAIN:-}" ] && ARGS="$ARGS --allow-host=$OASIS_DOMAIN"
++else
++    ARGS="$ARGS --host=${OASIS_HOST:-127.0.0.1}"
++    [ "${OASIS_NO_OPEN:-yes}" = "yes" ] && ARGS="$ARGS --no-open"
++fi
++[ "${OASIS_DEBUG:-no}" = "yes" ] && ARGS="$ARGS --debug"
++
++export HOME="$OASIS_HOME"
++export PATH="/opt/oasis/node/bin:$PATH"
++cd /opt/oasis || exit 1
++exec /bin/sh /opt/oasis/oasis.sh "$MODE" $ARGS
++RUNNER
++chmod 755 "${DEB_ROOT}${INSTALL_DIR}/oasis-run"
++
++# ============================================
+ # DEBIAN/control (sin dependencia de nodejs)
++# [F7] el Node embebido y sharp piden glibc >= 2.28 y libstdc++; xdg-utils solo para abrir el navegador
+ # ============================================
+ cat > "${DEB_ROOT}/DEBIAN/control" << EOF
+ Package: ${PKG_NAME}
+-Version: ${VERSION}
++Version: ${PKG_VERSION}
+ Architecture: ${ARCH}
+ Maintainer: SolarNET.HuB <solarnethub@riseup.net>
+-Depends: jq
++Depends: jq, libc6 (>= 2.28), libstdc++6, libgcc-s1
++Recommends: xdg-utils
+ Installed-Size: $(du -sk "${DEB_ROOT}${INSTALL_DIR}" | cut -f1)
+ Section: net
+ Priority: optional
+@@ -165,9 +222,12 @@
+ if ! id -u oasis >/dev/null 2>&1; then
+     useradd --system --home-dir "$OASIS_HOME" --create-home --shell /usr/sbin/nologin oasis
+ fi
++chown oasis:oasis "$OASIS_HOME"
++chmod 750 "$OASIS_HOME"
+ 
+-# Permisos sobre la app
+-chown -R oasis:oasis "$INSTALL_DIR"
++# [F9] La app es de root. El usuario de servicio solo escribe donde la app escribe:
++#      src/configs (oasis.sh edita oasis-config.json) y src/server (.update_required)
++chown -R oasis:oasis "${INSTALL_DIR}/src/configs" "${INSTALL_DIR}/src/server"
+ 
+ # Verificar symlink node_modules
+ if [ ! -e "${INSTALL_DIR}/src/server/node_modules" ]; then
+@@ -176,82 +236,79 @@
+ fi
+ 
+ # ============================================
+-# WIZARD
++# WIZARD  [F6] solo en la primera instalación; con tty pregunta, sin tty lee el entorno
+ # ============================================
+-OASIS_PUB="no"
+-OASIS_DOMAIN=""
++OASIS_PUB="${OASIS_PUB:-}"
++OASIS_DOMAIN="${OASIS_DOMAIN:-}"
+ 
+-if [ -t 0 ]; then
+-    echo ""
+-    echo "========================================="
+-    echo "  Oasis - Setup"
+-    echo "========================================="
+-    echo ""
+-    printf "Is this a PUB (public server)? [y/N]: "
+-    read -r ANSWER
+-
+-    case "$ANSWER" in
+-        [yY]|[yY][eE][sS])
+-            OASIS_PUB="yes"
+-            printf "Public domain (e.g. oasis.example.com): "
+-            read -r OASIS_DOMAIN
+-            OASIS_DOMAIN="${OASIS_DOMAIN:-localhost}"
+-            ;;
++if [ ! -f "$OASISRC" ]; then
++    if [ -z "$OASIS_PUB" ] && [ -t 0 ]; then
++        echo ""
++        echo "========================================="
++        echo "  Oasis - Setup"
++        echo "========================================="
++        echo ""
++        printf "Is this a PUB (public server)? [y/N]: "
++        read -r ANSWER
++        case "$ANSWER" in
++            [yY]|[yY][eE][sS])
++                OASIS_PUB="yes"
++                printf "Public domain (e.g. oasis.example.com): "
++                read -r OASIS_DOMAIN
++                ;;
++        esac
++    fi
++    case "$OASIS_PUB" in
++        [yY]|[yY][eE][sS]) OASIS_PUB="yes"; OASIS_DOMAIN="${OASIS_DOMAIN:-localhost}" ;;
++        *)                 OASIS_PUB="no";  OASIS_DOMAIN="" ;;
+     esac
+-fi
+ 
+-# ============================================
+-# .oasisrc - SOLO CREAR SI NO EXISTE
+-# ============================================
+-if [ ! -f "$OASISRC" ]; then
++    # [F13] Un PUB necesita la forma de PUB en server-config.json (pub: true). Solo en la primera
++    #       instalación: después es un conffile que dpkg respeta.
++    if [ "$OASIS_PUB" = "yes" ] && [ -z "$2" ] && [ -f "${INSTALL_DIR}/docs/PUB/server-config.json.example" ]; then
++        cp "${INSTALL_DIR}/docs/PUB/server-config.json.example" "${INSTALL_DIR}/src/configs/server-config.json"
++        chown oasis:oasis "${INSTALL_DIR}/src/configs/server-config.json"
++        echo "server-config.json: PUB profile (pub: true)"
++    fi
++
++    # Un cliente escucha solo en loopback; la GUI no tiene autenticación. Un PUB escucha en todas.
++    if [ "$OASIS_PUB" = "yes" ]; then OASIS_HOST="0.0.0.0"; else OASIS_HOST="127.0.0.1"; fi
++
++    # [F1] Solo KEY="VALUE": lo lee /opt/oasis/oasis-run. Nada de lógica aquí.
+     cat > "$OASISRC" << EOF
+-# Oasis configuration
++# Oasis configuration — read by /opt/oasis/oasis-run (systemd service).
+ # Edit this file and restart: sudo systemctl restart oasis
++# Only KEY="VALUE" lines; no shell logic.
+ 
+-# ============================================
+-# BASIC SETTINGS
+-# ============================================
+-OASIS_PORT="3000"
+-OASIS_HOST="0.0.0.0"
+-OASIS_NO_OPEN="yes"
+-OASIS_DEBUG="no"
+-
+-# ============================================
+-# MODE
+-# ============================================
+-# Set to "yes" for PUB (public server), "no" for client
++# "yes" for a PUB (public server), "no" for a client
+ OASIS_PUB="$OASIS_PUB"
+ 
+-# Only used if OASIS_PUB="yes"
++# Only used if OASIS_PUB="yes": public hostname behind the reverse proxy
+ OASIS_DOMAIN="$OASIS_DOMAIN"
+ 
+-# ============================================
+-# ARGUMENT BUILDER (no editar debajo)
+-# ============================================
+-if [ "\$OASIS_PUB" = "yes" ]; then
+-    OASIS_MODE="server"
+-    OASIS_ARGS="--public --allow-host=\$OASIS_DOMAIN"
+-else
+-    OASIS_MODE="gui"
+-    OASIS_ARGS=""
+-fi
++# Interface of the web UI for a client (127.0.0.1 keeps it private). A PUB always listens on 0.0.0.0.
++OASIS_HOST="$OASIS_HOST"
++OASIS_PORT="3000"
+ 
+-OASIS_ARGS="--host=\$OASIS_HOST --port=\$OASIS_PORT \$OASIS_ARGS"
+-[ "\$OASIS_NO_OPEN" = "yes" ] && OASIS_ARGS="\$OASIS_ARGS --no-open"
+-[ "\$OASIS_DEBUG" = "yes" ]   && OASIS_ARGS="\$OASIS_ARGS --debug"
++# "yes": never try to open a browser (a service has none)
++OASIS_NO_OPEN="yes"
++# "yes": verbose logging
++OASIS_DEBUG="no"
+ EOF
+     chown oasis:oasis "$OASISRC"
+     chmod 600 "$OASISRC"
+     echo "Created $OASISRC"
+ else
+     echo "$OASISRC already exists, preserving."
++    OASIS_PUB="$(sed -n 's/^OASIS_PUB="\(.*\)"/\1/p' "$OASISRC" | head -1)"
++    OASIS_DOMAIN="$(sed -n 's/^OASIS_DOMAIN="\(.*\)"/\1/p' "$OASISRC" | head -1)"
+ fi
+ 
+ systemctl daemon-reload 2>/dev/null || true
+ 
+ echo ""
+ echo "========================================="
+-echo "  Oasis ${VERSION} installed"
++echo "  Oasis installed"
+ echo "========================================="
+ echo ""
+ echo "Mode:   $([ "$OASIS_PUB" = "yes" ] && echo "PUB ($OASIS_DOMAIN)" || echo "Client")"
+@@ -292,7 +349,7 @@
+ chmod 755 "${DEB_ROOT}/DEBIAN/postrm"
+ 
+ # ============================================
+-# SYSTEMD SERVICE (con PATH al Node embebido)
++# SYSTEMD SERVICE  [F1][F4] arranca el runner, que aplica .oasisrc
+ # ============================================
+ cat > "${DEB_ROOT}/lib/systemd/system/oasis.service" << EOF
+ [Unit]
+@@ -305,22 +362,23 @@
+ Group=oasis
+ WorkingDirectory=${INSTALL_DIR}
+ Environment="PATH=${INSTALL_DIR}/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+-ExecStart=/bin/sh ${INSTALL_DIR}/oasis.sh
+-Restart=on-failure
+-RestartSec=10
+ Environment=HOME=/var/lib/oasis
+ Environment=NODE_ENV=production
++ExecStart=${INSTALL_DIR}/oasis-run
++Restart=on-failure
++RestartSec=10
+ 
+ [Install]
+ WantedBy=multi-user.target
+ EOF
+ 
+ # ============================================
+-# CLI LAUNCHER (también con PATH)
++# CLI LAUNCHER  [F3] oasis.sh usa \$(pwd): hay que entrar en /opt/oasis
+ # ============================================
+ cat > "${DEB_ROOT}/usr/bin/oasis" << 'LAUNCHER'
+ #!/bin/sh
+ export PATH="/opt/oasis/node/bin:$PATH"
++cd /opt/oasis || exit 1
+ exec /bin/sh /opt/oasis/oasis.sh "$@"
+ LAUNCHER
+ chmod 755 "${DEB_ROOT}/usr/bin/oasis"
+@@ -357,11 +415,17 @@
+ EOF
+ 
+ # ============================================
+-# BUILD
++# DEBIAN/md5sums  [F7] para que dpkg -V pueda verificar la instalación
++# ============================================
++(cd "${DEB_ROOT}" && find . -type f ! -path './DEBIAN/*' -exec md5sum {} + | sed 's| \./| |' > DEBIAN/md5sums)
++chmod 644 "${DEB_ROOT}/DEBIAN/md5sums"
++
++# ============================================
++# BUILD  [F2] xz: lo leen todos los dpkg; zstd solo desde dpkg 1.21.18 (Debian 12)
+ # ============================================
+ echo "Building .deb package..."
+-DEB_FILE="${BUILD_DIR}/${PKG_NAME}_${VERSION}_${ARCH}.deb"
+-dpkg-deb --build --root-owner-group "${DEB_ROOT}" "${DEB_FILE}"
++DEB_FILE="${BUILD_DIR}/${PKG_NAME}_${PKG_VERSION}_${ARCH}.deb"
++dpkg-deb -Zxz --build --root-owner-group "${DEB_ROOT}" "${DEB_FILE}"
+ 
+ echo ""
+ echo "=== Package built: ${DEB_FILE} ==="
+@@ -369,4 +433,3 @@
+ echo ""
+ echo "Install: sudo dpkg -i ${DEB_FILE}"
+ echo "         sudo apt-get install -f"
+-
