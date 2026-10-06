@@ -1,0 +1,258 @@
+$ docker exec oasis-deb-v2-t0 sh -c sha256sum\ /pkg/oasis.deb
+e1e0496940bfb91db0d13c44c7c65c1efb9fb1b29d62c19f54d5a884f5043ac0  /pkg/oasis.deb
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c ar\ t\ /pkg/oasis.deb
+debian-binary
+control.tar.xz
+data.tar.xz
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --info\ /pkg/oasis.deb
+ new Debian package, version 2.0.
+ size 102788488 bytes: control archive=415664 bytes.
+     127 bytes,     3 lines      conffiles            
+     520 bytes,    15 lines      control              
+ 2315310 bytes, 24924 lines      md5sums              
+    4018 bytes,   108 lines   *  postinst             #!/bin/bash
+     231 bytes,     8 lines   *  postrm               #!/bin/bash
+     104 bytes,     4 lines   *  prerm                #!/bin/bash
+ Package: oasis
+ Version: 1.2.2-1
+ Architecture: amd64
+ Maintainer: SolarNET.HuB <solarnethub@riseup.net>
+ Depends: jq, libc6 (>= 2.28), libstdc++6, libgcc-s1
+ Recommends: xdg-utils
+ Installed-Size: 449680
+ Section: net
+ Priority: optional
+ Homepage: https://solarnethub.com
+ Description: Oasis P2P Social Network
+  Oasis is a P2P encrypted social network built on Secure Scuttlebutt (SSB).
+  Zero browser JavaScript — all rendering is server-side HTML+CSS.
+  Includes embedded Node.js 22.20.0.
+  Part of the SolarNET.HuB ecosystem.
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --ctrl-tarfile\ /pkg/oasis.deb\ \|\ tar\ -tv
+drwxr-xr-x root/root         0 2026-10-06 01:30 ./
+-rw-r--r-- root/root       127 2026-10-06 01:30 ./conffiles
+-rw-r--r-- root/root       520 2026-10-06 01:30 ./control
+-rw-r--r-- root/root   2315310 2026-10-06 01:31 ./md5sums
+-rwxr-xr-x root/root      4018 2026-10-06 01:30 ./postinst
+-rwxr-xr-x root/root       231 2026-10-06 01:30 ./postrm
+-rwxr-xr-x root/root       104 2026-10-06 01:30 ./prerm
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --ctrl-tarfile\ /pkg/oasis.deb\ \|\ tar\ -xO\ ./conffiles
+/opt/oasis/src/configs/oasis-config.json
+/opt/oasis/src/configs/server-config.json
+/opt/oasis/src/configs/snh-invite-code.json
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --ctrl-tarfile\ /pkg/oasis.deb\ \|\ tar\ -xO\ ./postinst
+#!/bin/bash
+set -e
+
+INSTALL_DIR="/opt/oasis"
+OASIS_HOME="/var/lib/oasis"
+OASISRC="$OASIS_HOME/.oasisrc"
+
+# Crear usuario oasis
+if ! id -u oasis >/dev/null 2>&1; then
+    useradd --system --home-dir "$OASIS_HOME" --create-home --shell /usr/sbin/nologin oasis
+fi
+chown oasis:oasis "$OASIS_HOME"
+chmod 750 "$OASIS_HOME"
+
+# [F9] La app es de root. El usuario de servicio solo escribe donde la app escribe:
+#      src/configs (oasis.sh edita oasis-config.json) y src/server (.update_required)
+chown -R oasis:oasis "${INSTALL_DIR}/src/configs" "${INSTALL_DIR}/src/server"
+
+# Verificar symlink node_modules
+if [ ! -e "${INSTALL_DIR}/src/server/node_modules" ]; then
+    ln -s ../base/node_modules "${INSTALL_DIR}/src/server/node_modules"
+    echo "Created node_modules symlink"
+fi
+
+# ============================================
+# WIZARD  [F6] solo en la primera instalación; con tty pregunta, sin tty lee el entorno
+# ============================================
+OASIS_PUB="${OASIS_PUB:-}"
+OASIS_DOMAIN="${OASIS_DOMAIN:-}"
+
+if [ ! -f "$OASISRC" ]; then
+    if [ -z "$OASIS_PUB" ] && [ -t 0 ]; then
+        echo ""
+        echo "========================================="
+        echo "  Oasis - Setup"
+        echo "========================================="
+        echo ""
+        printf "Is this a PUB (public server)? [y/N]: "
+        read -r ANSWER
+        case "$ANSWER" in
+            [yY]|[yY][eE][sS])
+                OASIS_PUB="yes"
+                printf "Public domain (e.g. oasis.example.com): "
+                read -r OASIS_DOMAIN
+                ;;
+        esac
+    fi
+    case "$OASIS_PUB" in
+        [yY]|[yY][eE][sS]) OASIS_PUB="yes"; OASIS_DOMAIN="${OASIS_DOMAIN:-localhost}" ;;
+        *)                 OASIS_PUB="no";  OASIS_DOMAIN="" ;;
+    esac
+
+    # [F13] Un PUB necesita la forma de PUB en server-config.json (pub: true). Solo en la primera
+    #       instalación: después es un conffile que dpkg respeta.
+    if [ "$OASIS_PUB" = "yes" ] && [ -z "$2" ] && [ -f "${INSTALL_DIR}/docs/PUB/server-config.json.example" ]; then
+        cp "${INSTALL_DIR}/docs/PUB/server-config.json.example" "${INSTALL_DIR}/src/configs/server-config.json"
+        chown oasis:oasis "${INSTALL_DIR}/src/configs/server-config.json"
+        echo "server-config.json: PUB profile (pub: true)"
+    fi
+
+    # Un cliente escucha solo en loopback; la GUI no tiene autenticación. Un PUB escucha en todas.
+    if [ "$OASIS_PUB" = "yes" ]; then OASIS_HOST="0.0.0.0"; else OASIS_HOST="127.0.0.1"; fi
+
+    # [F1] Solo KEY="VALUE": lo lee /opt/oasis/oasis-run. Nada de lógica aquí.
+    cat > "$OASISRC" << EOF
+# Oasis configuration — read by /opt/oasis/oasis-run (systemd service).
+# Edit this file and restart: sudo systemctl restart oasis
+# Only KEY="VALUE" lines; no shell logic.
+
+# "yes" for a PUB (public server), "no" for a client
+OASIS_PUB="$OASIS_PUB"
+
+# Only used if OASIS_PUB="yes": public hostname behind the reverse proxy
+OASIS_DOMAIN="$OASIS_DOMAIN"
+
+# Interface of the web UI for a client (127.0.0.1 keeps it private). A PUB always listens on 0.0.0.0.
+OASIS_HOST="$OASIS_HOST"
+OASIS_PORT="3000"
+
+# "yes": never try to open a browser (a service has none)
+OASIS_NO_OPEN="yes"
+# "yes": verbose logging
+OASIS_DEBUG="no"
+EOF
+    chown oasis:oasis "$OASISRC"
+    chmod 600 "$OASISRC"
+    echo "Created $OASISRC"
+else
+    echo "$OASISRC already exists, preserving."
+    OASIS_PUB="$(sed -n 's/^OASIS_PUB="\(.*\)"/\1/p' "$OASISRC" | head -1)"
+    OASIS_DOMAIN="$(sed -n 's/^OASIS_DOMAIN="\(.*\)"/\1/p' "$OASISRC" | head -1)"
+fi
+
+systemctl daemon-reload 2>/dev/null || true
+
+echo ""
+echo "========================================="
+echo "  Oasis installed"
+echo "========================================="
+echo ""
+echo "Mode:   $([ "$OASIS_PUB" = "yes" ] && echo "PUB ($OASIS_DOMAIN)" || echo "Client")"
+echo "Config: $OASISRC"
+echo ""
+echo "Start:  sudo systemctl enable --now oasis"
+echo "Logs:   journalctl -u oasis -f"
+echo ""
+echo "Open:   http://localhost:3000"
+echo "========================================="
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --ctrl-tarfile\ /pkg/oasis.deb\ \|\ tar\ -xO\ ./prerm\ ./postrm
+#!/bin/bash
+set -e
+if [ "$1" = "purge" ]; then
+    rm -rf /opt/oasis
+    userdel oasis 2>/dev/null || true
+    # /var/lib/oasis NO se toca (contiene .ssb con la identidad del usuario)
+fi
+systemctl daemon-reload 2>/dev/null || true
+#!/bin/bash
+set -e
+systemctl stop oasis 2>/dev/null || true
+systemctl disable oasis 2>/dev/null || true
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --contents\ /pkg/oasis.deb\ \|\ wc\ -l
+27586
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --contents\ /pkg/oasis.deb\ \|\ awk\ \"\{print\ \\\$6\}\"\ \|\ grep\ -v\ node_modules\ \|\ cut\ -d/\ -f1-4\ \|\ sort\ -u
+./
+./lib/
+./lib/systemd/
+./lib/systemd/system
+./opt/
+./opt/oasis/
+./opt/oasis/LICENSE
+./opt/oasis/README.md
+./opt/oasis/docs
+./opt/oasis/node
+./opt/oasis/oasis-run
+./opt/oasis/oasis.sh
+./opt/oasis/scripts
+./opt/oasis/src
+./usr/
+./usr/bin/
+./usr/bin/oasis
+./usr/share/
+./usr/share/applications
+./usr/share/doc
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --contents\ /pkg/oasis.deb\ \|\ grep\ -E\ \"\ -\>\ \"
+lrwxrwxrwx root/root         0 2026-10-06 01:30 ./opt/oasis/src/server/node_modules -> ../base/node_modules
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --contents\ /pkg/oasis.deb\ \|\ grep\ -E\ \"/\(lib/systemd\|usr/bin\|usr/share\)\"\ \|\ grep\ -v\ \"/\$\"
+-rw-r--r-- root/root       405 2026-10-06 01:30 ./lib/systemd/system/oasis.service
+-rwxr-xr-x root/root       112 2026-10-06 01:30 ./usr/bin/oasis
+-rw-r--r-- root/root       195 2026-10-06 01:30 ./usr/share/applications/oasis.desktop
+-rw-r--r-- root/root       306 2026-10-06 01:30 ./usr/share/doc/oasis/copyright
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --fsys-tarfile\ /pkg/oasis.deb\ \|\ tar\ -xO\ ./lib/systemd/system/oasis.service
+[Unit]
+Description=Oasis P2P Social Network
+After=network.target
+
+[Service]
+Type=simple
+User=oasis
+Group=oasis
+WorkingDirectory=/opt/oasis
+Environment="PATH=/opt/oasis/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment=HOME=/var/lib/oasis
+Environment=NODE_ENV=production
+ExecStart=/opt/oasis/oasis-run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --fsys-tarfile\ /pkg/oasis.deb\ \|\ tar\ -xO\ ./usr/bin/oasis
+#!/bin/sh
+export PATH="/opt/oasis/node/bin:$PATH"
+cd /opt/oasis || exit 1
+exec /bin/sh /opt/oasis/oasis.sh "$@"
+[exit=0]
+
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --fsys-tarfile\ /pkg/oasis.deb\ \|\ tar\ -xO\ ./opt/oasis/src/configs/server-config.json\ \|\ grep\ -E\ \"\\\"\(pub\|local\|hops\)\\\"\"
+  "pub": false,
+  "local": true,
+    "hops": 2
+    "local": true,
+          "scope": ["device", "local"],
+            "local",
+[exit=0]
+
+# snh-invite-code.json es conffile y lleva un código de invitación: se lista, no se imprime
+$ docker exec oasis-deb-v2-t0 sh -c dpkg-deb\ --contents\ /pkg/oasis.deb\ \|\ grep\ snh-invite-code
+-rw-r--r-- root/root       306 2026-10-06 01:30 ./opt/oasis/src/configs/snh-invite-code.json
+[exit=0]
+

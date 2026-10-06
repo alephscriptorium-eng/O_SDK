@@ -1,0 +1,229 @@
+$ docker exec oasis-deb-v2-t8a sh -c systemctl\ is-system-running\;\ systemctl\ --version\ \|\ head\ -1
+running
+systemd 252 (252.39-1~deb12u2)
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8a sh -c \ dpkg\ -i\ /pkg/oasis.deb\ \</dev/null\ \|\ tail\ -n\ 12
+=========================================
+  Oasis installed
+=========================================
+
+Mode:   Client
+Config: /var/lib/oasis/.oasisrc
+
+Start:  sudo systemctl enable --now oasis
+Logs:   journalctl -u oasis -f
+
+Open:   http://localhost:3000
+=========================================
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8a sh -c systemctl\ enable\ --now\ oasis\;\ echo\ \"exit=\$\?\"
+Created symlink /etc/systemd/system/multi-user.target.wants/oasis.service → /lib/systemd/system/oasis.service.
+exit=0
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8a sh -c systemctl\ status\ --no-pager\ -l\ oasis
+● oasis.service - Oasis P2P Social Network
+     Loaded: loaded (/lib/systemd/system/oasis.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-10-06 01:34:52 UTC; 45s ago
+   Main PID: 153 (node)
+      Tasks: 11 (limit: 9399)
+     Memory: 110.3M
+        CPU: 2.381s
+     CGroup: /docker/38a219107e29fc59ff827b9e74578c89624da9d4c2447fcb87c2a2e4ac82f538/system.slice/oasis.service
+             └─153 node backend.js --port=3000 --host=127.0.0.1 --no-open
+
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: - Internet Broadcasting:
+Oct 06 01:35:01 38a219107e29 oasis-run[153]:   - Clearnet: disabled
+Oct 06 01:35:01 38a219107e29 oasis-run[153]:   - Multiverse: disabled
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: - Workflow: custom
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: - UX mode: Blocks
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: - Wish: Multiverse
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: =========================
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: Modules loaded: [ 648 ]
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: =========================
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: =========================
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8a sh -c journalctl\ -u\ oasis\ --no-pager\ -n\ 60
+Oct 06 01:34:52 38a219107e29 systemd[1]: Started oasis.service - Oasis P2P Social Network.
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: =========================
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: Running mode: OASIS UX
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: =========================
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - OASIS ID: [ @msdV67L21Fiei16c/+pFR2NA/uzAP/HuRJaJFaGe+ZY=.ed25519 ]
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - Package: @krakenslab/oasis [Version: 1.2.2]
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - GUI: http://127.0.0.1:3000
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - VoIP ID: [ 627-018 ]
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - ECOin ID: disabled
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - Logging Level: notice
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - Engine: db2-legacy
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - Protocol (port): 8008
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - Mode: offline
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - Replication (hops): 2
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - Blockchain backlog: 2000
+Oct 06 01:34:53 38a219107e29 oasis-run[153]: - LAN Broadcasting (UDP): enabled
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: - Internet Broadcasting:
+Oct 06 01:35:01 38a219107e29 oasis-run[153]:   - Clearnet: disabled
+Oct 06 01:35:01 38a219107e29 oasis-run[153]:   - Multiverse: disabled
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: - Workflow: custom
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: - UX mode: Blocks
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: - Wish: Multiverse
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: =========================
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: Modules loaded: [ 648 ]
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: =========================
+Oct 06 01:35:01 38a219107e29 oasis-run[153]: =========================
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8a sh -c ps\ -o\ pid\,user\,args\ -C\ node
+    PID USER     COMMAND
+    153 oasis    node backend.js --port=3000 --host=127.0.0.1 --no-open
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8a sh -c ss\ -ltnp
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                        
+LISTEN 0      511        127.0.0.1:3000      0.0.0.0:*    users:(("node",pid=153,fd=21))
+LISTEN 0      511                *:8008            *:*    users:(("node",pid=153,fd=48))
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8a sh -c curl\ -s\ -m\ 5\ http://127.0.0.1:3000/.well-known/oasis\;\ echo\ \"\ \<-\ /.well-known/oasis\"
+oasis <- /.well-known/oasis
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8a sh -c grep\ -oE\ \"\\\"pub\\\":\ \*\[a-z\]+\"\ /opt/oasis/src/configs/server-config.json\;\ ls\ -la\ /var/lib/oasis/.ssb\ 2\>\&1\ \|\ head\ -5
+"pub": false
+total 40
+drwxr-xr-x 7 oasis oasis 4096 Oct  6 01:34 .
+drwxr-x--- 3 oasis oasis 4096 Oct  6 01:34 ..
+drwxr-xr-x 3 oasis oasis 4096 Oct  6 01:34 blobs
+drwxr-xr-x 2 oasis oasis 4096 Oct  6 01:34 blobs_push
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8a sh -c journalctl\ --no-pager\ -n\ 30\ \|\ grep\ -iE\ \"xdg\|open\|EACCES\|error\"\ \|\ head
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8a sh -c systemctl\ stop\ oasis\;\ systemctl\ is-active\ oasis
+inactive
+[exit=3]
+
+$ docker exec oasis-deb-v2-t8b sh -c systemctl\ is-system-running\;\ systemctl\ --version\ \|\ head\ -1
+running
+systemd 252 (252.39-1~deb12u2)
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8b sh -c OASIS_PUB=yes\ OASIS_DOMAIN=pub.test\ dpkg\ -i\ /pkg/oasis.deb\ \</dev/null\ \|\ tail\ -n\ 12
+=========================================
+  Oasis installed
+=========================================
+
+Mode:   PUB (pub.test)
+Config: /var/lib/oasis/.oasisrc
+
+Start:  sudo systemctl enable --now oasis
+Logs:   journalctl -u oasis -f
+
+Open:   http://localhost:3000
+=========================================
+[exit=0]
+
+# además se fuerza PUB=yes/DOMAIN=pub.test en .oasisrc, por si el postinst no lo hizo
+$ docker exec oasis-deb-v2-t8b sh -c sed\ -i\ -e\ \"s/\^OASIS_PUB=.\*/OASIS_PUB=\\\"yes\\\"/\"\ -e\ \"s/\^OASIS_DOMAIN=.\*/OASIS_DOMAIN=\\\"pub.test\\\"/\"\ /var/lib/oasis/.oasisrc\;\ grep\ -E\ \"\^OASIS_\(PUB\|DOMAIN\|HOST\|PORT\)=\"\ /var/lib/oasis/.oasisrc
+OASIS_PUB="yes"
+OASIS_DOMAIN="pub.test"
+OASIS_HOST="0.0.0.0"
+OASIS_PORT="3000"
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8b sh -c systemctl\ enable\ --now\ oasis\;\ echo\ \"exit=\$\?\"
+Created symlink /etc/systemd/system/multi-user.target.wants/oasis.service → /lib/systemd/system/oasis.service.
+exit=0
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8b sh -c systemctl\ status\ --no-pager\ -l\ oasis
+● oasis.service - Oasis P2P Social Network
+     Loaded: loaded (/lib/systemd/system/oasis.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-10-06 01:35:52 UTC; 45s ago
+   Main PID: 163 (node)
+      Tasks: 11 (limit: 9399)
+     Memory: 109.6M
+        CPU: 2.544s
+     CGroup: /docker/6d1936e66753bf86dff4a3a1929e4c745daa870297100ecdc796cfe8b68634f9/system.slice/oasis.service
+             └─163 node backend.js --public --no-open --host=0.0.0.0 --port=3000 --allow-host=pub.test
+
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]:   - Multiverse: disabled
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: - Workflow: custom
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: - UX mode: Blocks
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: - Wish: Multiverse
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: =========================
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: Modules loaded: [ 648 ]
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: =========================
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: =========================
+Oct 06 01:36:09 6d1936e66753 oasis-run[163]: [ECOin RPC] pub getbalance failed: fetch failed
+Oct 06 01:36:10 6d1936e66753 oasis-run[163]: [UBI] announced unavailable (PUB wallet 0.000000 ECO)
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8b sh -c journalctl\ -u\ oasis\ --no-pager\ -n\ 60
+Oct 06 01:35:52 6d1936e66753 systemd[1]: Started oasis.service - Oasis P2P Social Network.
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: [UBI] PUB engine on: paying UBI through ecoind at http://localhost:7474
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: =========================
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: Running mode: OASIS UX
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: =========================
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - OASIS ID: [ @5RtyiAOJQOAv76dq42hgEhrrEAKHkS0n6DUZmChJveI=.ed25519 ]
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - Package: @krakenslab/oasis [Version: 1.2.2]
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - GUI: http://0.0.0.0:3000
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - VoIP ID: [ 475-590 ]
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - ECOin ID: disabled
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - Logging Level: notice
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - Engine: db2-legacy
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - Protocol (port): 8008
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - Mode: offline
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - Replication (hops): 2
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - Blockchain backlog: 2000
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: - LAN Broadcasting (UDP): enabled
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]: note @5Rt AUTO @5RtyiAOJQOAv76dq42hgEhrrEAKHkS0n6DUZmChJveI=.ed25519 published follow message for %s
+Oct 06 01:35:54 6d1936e66753 oasis-run[163]:   "@0qSCyK3xyL71X4qKkmf84Cb2riP6OeUqxCvbP2Z6HWs=.ed25519"
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: - Internet Broadcasting:
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]:   - Clearnet: disabled
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]:   - Multiverse: disabled
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: - Workflow: custom
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: - UX mode: Blocks
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: - Wish: Multiverse
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: =========================
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: Modules loaded: [ 648 ]
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: =========================
+Oct 06 01:36:02 6d1936e66753 oasis-run[163]: =========================
+Oct 06 01:36:09 6d1936e66753 oasis-run[163]: [ECOin RPC] pub getbalance failed: fetch failed
+Oct 06 01:36:10 6d1936e66753 oasis-run[163]: [UBI] announced unavailable (PUB wallet 0.000000 ECO)
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8b sh -c ps\ -o\ pid\,user\,args\ -C\ node
+    PID USER     COMMAND
+    163 oasis    node backend.js --public --no-open --host=0.0.0.0 --port=3000 --allow-host=pub.test
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8b sh -c ss\ -ltnp
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                        
+LISTEN 0      511          0.0.0.0:3000      0.0.0.0:*    users:(("node",pid=163,fd=21))
+LISTEN 0      511                *:8008            *:*    users:(("node",pid=163,fd=50))
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8b sh -c curl\ -s\ -m\ 5\ http://127.0.0.1:3000/.well-known/oasis\;\ echo\ \"\ \<-\ /.well-known/oasis\"
+oasis <- /.well-known/oasis
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8b sh -c grep\ -oE\ \"\\\"pub\\\":\ \*\[a-z\]+\"\ /opt/oasis/src/configs/server-config.json\;\ ls\ -la\ /var/lib/oasis/.ssb\ 2\>\&1\ \|\ head\ -5
+"pub": true
+total 44
+drwxr-xr-x 8 oasis oasis 4096 Oct  6 01:35 .
+drwxr-x--- 3 oasis oasis 4096 Oct  6 01:35 ..
+drwxr-xr-x 3 oasis oasis 4096 Oct  6 01:35 blobs
+drwxr-xr-x 2 oasis oasis 4096 Oct  6 01:35 blobs_push
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8b sh -c journalctl\ --no-pager\ -n\ 30\ \|\ grep\ -iE\ \"xdg\|open\|EACCES\|error\"\ \|\ head
+[exit=0]
+
+$ docker exec oasis-deb-v2-t8b sh -c systemctl\ stop\ oasis\;\ systemctl\ is-active\ oasis
+inactive
+[exit=3]
+

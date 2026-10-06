@@ -1,0 +1,35 @@
+$ docker exec oasis-deb-v2-main sh -c head\ -n\ 12\ /tmp/oasis-server.log
+Note: src/configs/server-config.json is the desktop config (pub: false, hops 2).
+      For a PUB copy docs/PUB/server-config.json.example there first (pub: true). See docs/PUB/deploy.md, step 4.
+=========================
+Running mode: [38;5;226mOASIS UX[0m
+=========================
+- OASIS ID: [ [38;5;214m@a9+CZY2qU+/E6bBuqPzDTf5zYkskGFYcR7SvGORmMLA=.ed25519[0m ]
+- Package: [38;5;33m@krakenslab/oasis [38;5;226m[Version: 1.2.2][0m
+- GUI: [36m]8;;http://0.0.0.0:3000http://0.0.0.0:3000]8;;[0m
+- VoIP ID: [ [38;5;214m386-893[0m ]
+- ECOin ID: disabled
+- Logging Level: notice
+- Engine: db2-legacy
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c ps\ -o\ pid\,user\,args\ -C\ node
+    PID USER     COMMAND
+    331 oasis    node backend.js --public --no-open --host=0.0.0.0 --port=3000
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c grep\ -E\ \"\\\"\(pub\|hops\)\\\"\"\ /opt/oasis/src/configs/server-config.json
+  "pub": false,
+    "hops": 2
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c curl\ -s\ -o\ /dev/null\ -w\ \"GET\ /\ -\>\ %\{http_code\}\\n\"\ -m\ 10\ http://127.0.0.1:3000/\;\ curl\ -s\ -o\ /dev/null\ -w\ \"POST\ /publish\ -\>\ %\{http_code\}\\n\"\ -m\ 10\ -X\ POST\ http://127.0.0.1:3000/publish
+GET / -> 302
+POST /publish -> 400
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c sleep\ 2\;\ ps\ -C\ node\ -o\ pid\,args\;\ echo\ \"nodos\ vivos:\ \$\(pgrep\ -c\ node\)\"
+    PID COMMAND
+nodos vivos: 0
+[exit=0]
+

@@ -1,0 +1,33 @@
+$ docker exec oasis-deb-v2-main sh -c /opt/oasis/node/bin/node\ -v\;\ /opt/oasis/node/bin/node\ -p\ \"process.versions.modules\ +\ \\\"\ \\\"\ +\ process.arch\"
+v22.20.0
+127 x64
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c ldd\ /opt/oasis/node/bin/node
+	linux-vdso.so.1 (0x00007ffe3f189000)
+	libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007b9dfc508000)
+	libstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007b9dfc2ee000)
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007b9dfc20e000)
+	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007b9dfc1ee000)
+	libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007b9dfc1e9000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007b9dfc005000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007b9dfc511000)
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c cd\ /opt/oasis/src/server\ \&\&\ /opt/oasis/node/bin/node\ -e\ \"for\ \(const\ m\ of\ \[\\\"ssb-db2\\\"\,\\\"secret-stack\\\"\,\\\"sodium-native\\\"\,\\\"leveldown\\\"\,\\\"sharp\\\"\,\\\"koa\\\"\,\\\"bipf\\\"\,\\\"ssb-config\\\"\,\\\"ssb-client\\\"\,\\\"@open-rpc/client-js\\\"\]\)\ \{\ require\(m\)\;\ console.log\(\\\"ok\\\"\,\ m\)\ \}\"
+ok ssb-db2
+ok secret-stack
+ok sodium-native
+ok leveldown
+ok sharp
+ok koa
+ok bipf
+ok ssb-config
+ok ssb-client
+ok @open-rpc/client-js
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c ls\ /opt/oasis/node/bin\;\ du\ -sh\ /opt/oasis/node/include\ /opt/oasis/node/lib/node_modules/npm\ /opt/oasis/node/lib/node_modules/corepack\ 2\>/dev/null\;\ true
+node
+[exit=0]
+

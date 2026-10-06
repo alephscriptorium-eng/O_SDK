@@ -1,0 +1,132 @@
+$ docker exec oasis-deb-v2-main sh -c dpkg\ --version\ \|\ head\ -1\;\ ldd\ --version\ \|\ head\ -1
+Debian 'dpkg' package management program version 1.21.23 (amd64).
+ldd (Debian GLIBC 2.36-9+deb12u14) 2.36
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c s=\$\(date\ +%s\)\;\ dpkg\ -i\ /pkg/oasis.deb\ \</dev/null\;\ rc=\$\?\;\ echo\ \"exit=\$rc\ took=\$\(\(\ \$\(date\ +%s\)-s\ \)\)s\"\;\ exit\ \$rc
+Selecting previously unselected package oasis.
+(Reading database ... 7557 files and directories currently installed.)
+Preparing to unpack /pkg/oasis.deb ...
+Unpacking oasis (1.2.2-1) ...
+Setting up oasis (1.2.2-1) ...
+Created /var/lib/oasis/.oasisrc
+
+=========================================
+  Oasis installed
+=========================================
+
+Mode:   Client
+Config: /var/lib/oasis/.oasisrc
+
+Start:  sudo systemctl enable --now oasis
+Logs:   journalctl -u oasis -f
+
+Open:   http://localhost:3000
+=========================================
+exit=0 took=8s
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c dpkg\ -s\ oasis\ \|\ head\ -8
+Package: oasis
+Status: install ok installed
+Priority: optional
+Section: net
+Installed-Size: 449680
+Maintainer: SolarNET.HuB <solarnethub@riseup.net>
+Architecture: amd64
+Version: 1.2.2-1
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c id\ oasis\;\ getent\ passwd\ oasis
+uid=999(oasis) gid=999(oasis) groups=999(oasis)
+oasis:x:999:999::/var/lib/oasis:/usr/sbin/nologin
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c ls\ -la\ /var/lib/oasis\;\ stat\ -c\ \"%a\ %U:%G\ %n\"\ /var/lib/oasis/.oasisrc
+total 28
+drwxr-x--- 2 oasis oasis 4096 Oct  6 01:32 .
+drwxr-xr-x 1 root  root  4096 Oct  6 01:32 ..
+-rw-r--r-- 1 oasis oasis  220 May  7 20:33 .bash_logout
+-rw-r--r-- 1 oasis oasis 3526 May  7 20:33 .bashrc
+-rw------- 1 oasis oasis  599 Oct  6 01:32 .oasisrc
+-rw-r--r-- 1 oasis oasis  807 May  7 20:33 .profile
+600 oasis:oasis /var/lib/oasis/.oasisrc
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c cat\ /var/lib/oasis/.oasisrc
+# Oasis configuration — read by /opt/oasis/oasis-run (systemd service).
+# Edit this file and restart: sudo systemctl restart oasis
+# Only KEY="VALUE" lines; no shell logic.
+
+# "yes" for a PUB (public server), "no" for a client
+OASIS_PUB="no"
+
+# Only used if OASIS_PUB="yes": public hostname behind the reverse proxy
+OASIS_DOMAIN=""
+
+# Interface of the web UI for a client (127.0.0.1 keeps it private). A PUB always listens on 0.0.0.0.
+OASIS_HOST="127.0.0.1"
+OASIS_PORT="3000"
+
+# "yes": never try to open a browser (a service has none)
+OASIS_NO_OPEN="yes"
+# "yes": verbose logging
+OASIS_DEBUG="no"
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c ls\ -l\ /opt/oasis/src/server/node_modules\;\ ls\ -ld\ /opt/oasis\ /opt/oasis/src\ /opt/oasis/node\;\ stat\ -c\ \"%U:%G\ %n\"\ /opt/oasis/oasis.sh\ /opt/oasis/node/bin/node
+lrwxrwxrwx 1 oasis oasis 20 Oct  6 01:30 /opt/oasis/src/server/node_modules -> ../base/node_modules
+drwxr-xr-x  6 root root 4096 Oct  6 01:32 /opt/oasis
+drwxr-xr-x  4 root root 4096 Oct  6 01:32 /opt/oasis/node
+drwxr-xr-x 11 root root 4096 Oct  6 01:32 /opt/oasis/src
+root:root /opt/oasis/oasis.sh
+root:root /opt/oasis/node/bin/node
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c du\ -sh\ /opt/oasis\ /opt/oasis/node\ /opt/oasis/src/base
+440M	/opt/oasis
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c dpkg\ -V\ oasis\;\ echo\ \"dpkg\ -V\ rc=\$\?\"
+dpkg -V rc=0
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c ls\ /var/lib/dpkg/info/\ \|\ grep\ \^oasis
+oasis.conffiles
+oasis.list
+oasis.md5sums
+oasis.postinst
+oasis.postrm
+oasis.prerm
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c cat\ /usr/bin/oasis\;\ cat\ /lib/systemd/system/oasis.service
+#!/bin/sh
+export PATH="/opt/oasis/node/bin:$PATH"
+cd /opt/oasis || exit 1
+exec /bin/sh /opt/oasis/oasis.sh "$@"
+[Unit]
+Description=Oasis P2P Social Network
+After=network.target
+
+[Service]
+Type=simple
+User=oasis
+Group=oasis
+WorkingDirectory=/opt/oasis
+Environment="PATH=/opt/oasis/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment=HOME=/var/lib/oasis
+Environment=NODE_ENV=production
+ExecStart=/opt/oasis/oasis-run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c grep\ -rl\ oasisrc\ /opt/oasis/oasis.sh\ /opt/oasis/src/backend\ /opt/oasis/src/client\ /opt/oasis/src/server/\*.js\ /lib/systemd/system/oasis.service\ /usr/bin/oasis\ /opt/oasis/oasis-run\;\ echo\ \"ficheros\ que\ mencionan\ oasisrc:\ rc=\$\?\"
+/opt/oasis/oasis-run
+ficheros que mencionan oasisrc: rc=0
+[exit=0]
+

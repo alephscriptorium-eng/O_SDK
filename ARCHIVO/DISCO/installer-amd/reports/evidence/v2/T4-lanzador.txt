@@ -1,0 +1,43 @@
+$ docker exec oasis-deb-v2-main sh -c cd\ /\ \&\&\ oasis\ help\ \|\ head\ -n\ 8
+
+OASIS is a libre, open-source, encrypted, peer-to-peer, distributed & federated
+social network: your data lives on your own device, replicates directly with the
+inhabitants you support and keeps working offline.
+
+Usage: ./oasis.sh [mode] [-- <option>=<value> ...]
+
+Modes:
+[exit=0]
+
+$ docker exec oasis-deb-v2-main sh -c cd\ /tmp\ \&\&\ timeout\ 20\ runuser\ -u\ oasis\ --\ env\ HOME=/var/lib/oasis\ oasis\ --no-open\ --host=127.0.0.1\ --port=3999\;\ echo\ \"exit=\$\?\"
+=========================
+Running mode: [38;5;226mOASIS UX[0m
+=========================
+- OASIS ID: [ [38;5;214m@a9+CZY2qU+/E6bBuqPzDTf5zYkskGFYcR7SvGORmMLA=.ed25519[0m ]
+- Package: [38;5;33m@krakenslab/oasis [38;5;226m[Version: 1.2.2][0m
+- GUI: [36m]8;;http://127.0.0.1:3999http://127.0.0.1:3999]8;;[0m
+- VoIP ID: [ [38;5;214m386-893[0m ]
+- ECOin ID: disabled
+- Logging Level: notice
+- Engine: db2-legacy
+- Protocol (port): 8008
+- Mode: offline
+- Replication (hops): 2
+- Blockchain backlog: 2000
+- LAN Broadcasting (UDP): enabled
+- Internet Broadcasting:
+  - Clearnet: disabled
+  - Multiverse: disabled
+- Workflow: custom
+- UX mode: Blocks
+- Wish: Multiverse
+
+=========================
+Modules loaded: [ 648 ]
+=========================
+=========================
+
+Session terminated, killing shell... ...killed.
+exit=124
+[exit=0]
+

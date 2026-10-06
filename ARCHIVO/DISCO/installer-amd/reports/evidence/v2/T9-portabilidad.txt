@@ -1,0 +1,90 @@
+# imagen debian:11-slim
+$ docker run --rm debian:11-slim bash -c "dpkg -i /pkg/oasis.deb; apt-get install -f ..."
+Debian GNU/Linux 11 (bullseye)
+Debian 'dpkg' package management program version 1.20.14 (amd64).
+ldd (Debian GLIBC 2.31-13+deb11u14) 2.31
+--- dpkg -i
+dpkg: dependency problems prevent configuration of oasis:
+ oasis depends on jq; however:
+  Package jq is not installed.
+
+dpkg: error processing package oasis (--install):
+ dependency problems - leaving unconfigured
+Errors were encountered while processing:
+ oasis
+dpkg -i exit=1
+--- apt-get update && apt-get install -f (resuelve jq)
+Fetched 8706 kB in 1s (6229 kB/s)
+Reading package lists...
+  404  Not Found [IP: 151.101.134.132 80]
+Err:3 http://deb.debian.org/debian-security bullseye-security/main amd64 jq amd64 1.6-2.1+deb11u3
+  404  Not Found [IP: 151.101.134.132 80]
+E: Failed to fetch http://deb.debian.org/debian-security/pool/updates/main/j/jq/libjq1_1.6-2.1%2bdeb11u3_amd64.deb  404  Not Found [IP: 151.101.134.132 80]
+E: Failed to fetch http://deb.debian.org/debian-security/pool/updates/main/j/jq/jq_1.6-2.1%2bdeb11u3_amd64.deb  404  Not Found [IP: 151.101.134.132 80]
+E: Unable to fetch some archives, maybe run apt-get update or try with --fix-missing?
+apt -f exit=100
+Package: oasis
+Status: install ok unpacked
+native ok
+[fin]
+
+# imagen ubuntu:22.04
+$ docker run --rm ubuntu:22.04 bash -c "dpkg -i /pkg/oasis.deb; apt-get install -f ..."
+Ubuntu 22.04.5 LTS
+Debian 'dpkg' package management program version 1.21.1 (amd64).
+ldd (Ubuntu GLIBC 2.35-0ubuntu3.15) 2.35
+--- dpkg -i
+dpkg: dependency problems prevent configuration of oasis:
+ oasis depends on jq; however:
+  Package jq is not installed.
+
+dpkg: error processing package oasis (--install):
+ dependency problems - leaving unconfigured
+Errors were encountered while processing:
+ oasis
+dpkg -i exit=1
+--- apt-get update && apt-get install -f (resuelve jq)
+Fetched 48.9 MB in 4s (12.2 MB/s)
+Reading package lists...
+
+Start:  sudo systemctl enable --now oasis
+Logs:   journalctl -u oasis -f
+
+Open:   http://localhost:3000
+=========================================
+apt -f exit=0
+Package: oasis
+Status: install ok installed
+native ok
+[fin]
+
+# imagen ubuntu:24.04
+$ docker run --rm ubuntu:24.04 bash -c "dpkg -i /pkg/oasis.deb; apt-get install -f ..."
+Ubuntu 24.04.5 LTS
+Debian 'dpkg' package management program version 1.22.6 (amd64).
+ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39
+--- dpkg -i
+dpkg: dependency problems prevent configuration of oasis:
+ oasis depends on jq; however:
+  Package jq is not installed.
+
+dpkg: error processing package oasis (--install):
+ dependency problems - leaving unconfigured
+Errors were encountered while processing:
+ oasis
+dpkg -i exit=1
+--- apt-get update && apt-get install -f (resuelve jq)
+Fetched 33.2 MB in 3s (10.9 MB/s)
+Reading package lists...
+
+Start:  sudo systemctl enable --now oasis
+Logs:   journalctl -u oasis -f
+
+Open:   http://localhost:3000
+=========================================
+apt -f exit=0
+Package: oasis
+Status: install ok installed
+native ok
+[fin]
+
