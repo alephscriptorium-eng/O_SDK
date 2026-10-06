@@ -5,6 +5,18 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Kit `installer-amd`: test del instalador `.deb` de Oasis 1.2.2 y propuesta de arreglo (WP-O126, 2026-10-06)
+
+Rama `test/installer-amd`, sin merge. Un amigo del custodio construye un `.deb` con Node embebido y
+pide testers: en `ARCHIVO/DISCO/installer-amd/` queda un kit FOSS autónomo (AGPL-3.0, saldrá a repo
+propio) con el banco de pruebas en Docker (T0…T9: Debian 12 plano y con systemd, Debian 11, Ubuntu
+22.04/24.04), la evidencia literal del paquete recibido (v1) y del regenerado (v2), la propuesta
+`packaging/build-deb2.sh` con su diff, el rebuild desde el payload del propio `.deb` (R0 demuestra
+que el payload es un árbol fuente fiel) y el informe para el autor. Hallazgos del v1 sellados en
+caliente: nadie lee `.oasisrc`, zstd no instala en Debian 11, el lanzador falla fuera de
+`/opt/oasis`, PUB=yes deja `pub: false`, el conffile deriva en cada arranque. ECOin solo como diseño
+(`docs/ECOIN.md` del kit). Reporte `plan/REPORTES/WP-O126-installer-deb.md`.
+
 ### Added — Puerta «Habitante» y web al día tras los upgrades (WP-O125, 2026-10-05)
 
 Sexta puerta del portal, para quien solo quiere entrar en la red con su móvil: el manual de
