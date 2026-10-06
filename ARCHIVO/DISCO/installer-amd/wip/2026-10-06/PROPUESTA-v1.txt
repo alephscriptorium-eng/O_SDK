@@ -1,0 +1,13 @@
+PROPUESTA DE ESTANDARIZACION DE UBICACION DE ARCHIVOS EN UNA INSTALACION DE OASIS EN UN PAQUETE DEB
+
+El paquete deb realiza una instalación multiusuario que tiene la dualidad de poder ser un servidor con un pub, y también puede tener el rol de "cliente", en cuyo caso, cada usuario del sistema pueda tener su propio perfil.
+
+Lo anterior se consigue con archivos de configuración. El paquete deb crea un usuario "oasis", con `$HOME` en `/var/lib/oasis`. También incluye un asistente que, de forma incondicional, pregunta el interfaz donde se escucha y si va a haber un pub, en cuyo caso pregunta parámetros como el dominio que sirve y el puerto, y todo eso lo guarda en un archivo de configuración global en `/etc/oasis/oasis.conf`.
+
+El paquete instala un wrapper, /usr/bin/oasis. Este wrapper tiene el objetivo de simplificar la ejecución, usando los parámetros existentes en el fichero del usuario. Se puede usar de dos maneras:
+    * Si es un pub, el servicio de systemd creado para el pub (en caso de haber respondido afirmativamente) lo invoca como cualquier otro servicio del sistema en el arranque, y usa las variables del fichero global en /etc/oasis/oasis.conf.
+    * Si es un usuario de escritorio, cada usuario puede ejecutar el wrapper "oasis &" (para liberar la terminal). Tendrá una configuración en ~/.config/oasis/oasis.conf (si no existe, se crea a partir de los parámetros del fichero global, eliminando la variable de ser un pub). En este fichero, se usa una fórmula donde se suma 3000 al $UID para determinar el puerto donde se escucha, de tal manera que se evita el conflicto con el pub y con otros usuarios. Por supuesto, cada usuario puede editar su fichero para cambiar el puerto y volver a lanzar oasis.
+
+En todos los casos, se guardan en ~/.ssb los datos de oasis de cada usuario. En el pub, los datos se guardan en la $HOME del usuario oasis.
+
+La magia la hace el wrapper, que cuando lo ejecuta el usuario "oasis", lee el fichero global y aplica los datos de este fichero. También se puede definir una variable de entorno OASISRC para definir el fichero a usar. Si no se define la variable, en el caso de ser un usuario, el script busca en ~/.config/oasis/oasis.conf, y si no, el fichero global. Con esos datos, construye los argumentos que necesita el script oasis.sh para lanzar

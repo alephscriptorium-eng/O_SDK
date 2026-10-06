@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 632" width="900" height="632" role="img" aria-labelledby="t d">
+  <title id="t">Qué pasa al instalar</title>
+  <desc id="d">El paquete instala el código en /opt/oasis, crea el usuario oasis e instala el wrapper. El asistente pregunta siempre la interfaz y si habrá pub; si lo hay, pregunta dominio y puerto y se crea el servicio systemd. Todo queda en /etc/oasis/oasis.conf.</desc>
+  <style>
+    text{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;fill:#1f2933}
+    .h1{font-size:20px;font-weight:700}
+    .sub{font-size:13px;fill:#5b6770}
+    .b{font-size:14px;font-weight:600}
+    .s{font-size:12.5px;fill:#5b6770}
+    .m{font-family:ui-monospace,'Cascadia Mono',Consolas,'DejaVu Sans Mono',monospace;font-size:12.5px}
+    .nt{fill:#fff;stroke:#9aa5b1;stroke-width:1.5}
+    .pk{fill:#e9effd;stroke:#3b5bdb;stroke-width:1.5}.pkt{fill:#1e3a8a}
+    .pb{fill:#fff3d9;stroke:#d98324;stroke-width:1.5}.pbt{fill:#7a4306}
+    .ln{stroke:#7b8794;stroke-width:1.5;fill:none}
+    .cap{font-size:11.5px;font-weight:700;letter-spacing:.08em;fill:#5b6770}
+    .fr{fill:none;stroke:#9aa5b1;stroke-width:1.5;stroke-dasharray:6 5}
+    .yn{font-size:12.5px;font-weight:700;fill:#1f2933}
+    .ast{font-weight:700;fill:#1f2933}
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#7b8794"/>
+    </marker>
+  </defs>
+  <rect width="900" height="632" rx="10" fill="#faf8f3"/>
+
+  <text x="40" y="42" class="h1">Qué pasa al instalar</text>
+  <text x="40" y="64" class="sub">El paquete prepara la máquina y el asistente deja escrita la configuración global.</text>
+
+  <!-- instalar -->
+  <rect class="nt" x="40" y="82" width="300" height="78" rx="10"/>
+  <text x="56" y="116" class="b">Se instala el paquete</text>
+  <text x="56" y="137" class="m">sudo dpkg -i oasis_…_amd64.deb</text>
+  <path class="ln" marker-end="url(#a)" d="M340 121H398"/>
+
+  <!-- lo que deja el paquete -->
+  <rect class="pk" x="400" y="82" width="460" height="78" rx="10"/>
+  <text x="416" y="106" class="b pkt">Instala el código en /opt/oasis (ahí queda oasis.sh)</text>
+  <text x="416" y="127" class="b pkt">Crea el usuario «oasis», con $HOME en /var/lib/oasis</text>
+  <text x="416" y="148" class="b pkt">Instala el wrapper /usr/bin/oasis</text>
+
+  <path class="ln" marker-end="url(#a)" d="M190 160V208"/>
+
+  <!-- marco asistente -->
+  <rect class="fr" x="40" y="180" width="820" height="250" rx="12"/>
+  <text x="64" y="394" class="cap">ASISTENTE · PREGUNTA SIEMPRE<tspan class="ast"> *</tspan></text>
+  <text x="64" y="413" class="s">«de forma incondicional», dice el texto</text>
+
+  <!-- 1 interfaz -->
+  <rect class="nt" x="64" y="210" width="230" height="68" rx="10"/>
+  <text x="80" y="238" class="b">① ¿En qué interfaz de red</text>
+  <text x="80" y="258" class="b">se escucha?</text>
+  <path class="ln" marker-end="url(#a)" d="M294 244H328"/>
+
+  <!-- 2 pub? -->
+  <path class="nt" d="M330 244L425 196L520 244L425 292Z"/>
+  <text x="425" y="240" text-anchor="middle" class="b">② ¿Va a haber</text>
+  <text x="425" y="259" text-anchor="middle" class="b">un pub?</text>
+
+  <!-- sí -->
+  <path class="ln" marker-end="url(#a)" d="M520 244H574"/>
+  <text x="538" y="236" class="yn">sí</text>
+  <rect class="pb" x="576" y="204" width="260" height="80" rx="10"/>
+  <text x="592" y="236" class="b pbt">③ ¿Qué dominio sirve?</text>
+  <text x="592" y="262" class="b pbt">④ ¿En qué puerto?<tspan class="ast"> *</tspan></text>
+  <path class="ln" marker-end="url(#a)" d="M706 284V328"/>
+  <rect class="pb" x="576" y="330" width="260" height="68" rx="10"/>
+  <text x="592" y="358" class="b pbt">Se crea el servicio systemd</text>
+  <text x="592" y="378" class="s">el pub arrancará con la máquina</text>
+
+  <!-- no -->
+  <path class="ln" marker-end="url(#a)" d="M425 292V468"/>
+  <text x="435" y="318" class="yn">no</text>
+  <text x="435" y="336" class="s">nada más</text>
+  <text x="435" y="352" class="s">que preguntar</text>
+
+  <!-- del pub al fichero -->
+  <path class="ln" marker-end="url(#a)" d="M706 398V515H662"/>
+
+  <!-- fichero resultante -->
+  <rect class="pk" x="190" y="470" width="470" height="90" rx="10"/>
+  <path d="M190 504H660" stroke="#3b5bdb" stroke-width="1" opacity=".4"/>
+  <text x="206" y="493" class="m pkt">/etc/oasis/oasis.conf</text>
+  <text x="644" y="493" text-anchor="end" class="s">configuración global</text>
+  <text x="206" y="526" class="b pkt">interfaz  ·  pub sí/no  ·  dominio y puerto (solo si hay pub)</text>
+  <text x="206" y="547" class="m pkt">OASIS_HOST · OASIS_PUB · OASIS_DOMAIN · OASIS_PORT<tspan class="ast"> *</tspan></text>
+
+  <!-- asterisco -->
+  <path d="M40 578H860" stroke="#d5dae0" stroke-width="1"/>
+  <text x="40" y="598" class="s"><tspan class="ast">*</tspan> Decisiones recomendadas del dosier: el texto no las fija. Se pregunta en la primera instalación (después se respeta</text>
+  <text x="50" y="615" class="s">el fichero); el puerto del pub va de 1024 a 3999, 3000 por defecto; las variables se llaman como en el paquete de hoy.</text>
+</svg>

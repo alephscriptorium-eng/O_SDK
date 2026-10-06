@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 430" width="900" height="430" role="img" aria-labelledby="t d">
+  <title id="t">Un puerto por usuario</title>
+  <desc id="d">Cada usuario de escritorio escucha en el puerto 3000 más su UID: UID 1000 en 4000, UID 1001 en 4001, UID 1002 en 4002. Decisión recomendada: el pub usa un puerto entre 1024 y 3999, 3000 por defecto, y la fórmula solo se aplica a UID entre 1000 y 62535, de modo que las dos bandas no se tocan.</desc>
+  <style>
+    text{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;fill:#1f2933}
+    .h1{font-size:20px;font-weight:700}
+    .sub{font-size:13px;fill:#5b6770}
+    .b{font-size:14px;font-weight:600}
+    .s{font-size:12.5px;fill:#5b6770}
+    .m{font-family:ui-monospace,'Cascadia Mono',Consolas,'DejaVu Sans Mono',monospace;font-size:14px;font-weight:700}
+    .f{font-family:ui-monospace,'Cascadia Mono',Consolas,'DejaVu Sans Mono',monospace;font-size:24px;font-weight:700}
+    .nt{fill:#fff;stroke:#9aa5b1;stroke-width:1.5}
+    .pb{fill:#fff3d9;stroke:#d98324;stroke-width:1.5}.pbt{fill:#7a4306}
+    .us{fill:#e0f5ec;stroke:#1f9d74;stroke-width:1.5}.ust{fill:#0b5e45}
+    .ax{stroke:#7b8794;stroke-width:2;fill:none}
+    .tk{stroke:#7b8794;stroke-width:1.5}
+    .ast{font-weight:700;fill:#1f2933}
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#7b8794"/>
+    </marker>
+  </defs>
+  <rect width="900" height="430" rx="10" fill="#faf8f3"/>
+
+  <text x="40" y="42" class="h1">Un puerto por usuario</text>
+  <text x="40" y="64" class="sub">La fórmula de la configuración personal evita que dos Oasis pidan el mismo puerto.</text>
+
+  <!-- fórmula -->
+  <rect class="us" x="270" y="86" width="360" height="62" rx="12"/>
+  <text x="450" y="126" text-anchor="middle" class="f ust">puerto = 3000 + UID</text>
+
+  <!-- eje -->
+  <path class="ax" marker-end="url(#a)" d="M50 260H860"/>
+  <text x="50" y="284" class="s">0</text>
+  <path class="tk" d="M50 252V268"/>
+
+  <!-- pub -->
+  <path class="tk" d="M205 228V260"/>
+  <rect class="pb" x="170" y="194" width="70" height="34" rx="8"/>
+  <text x="205" y="216" text-anchor="middle" class="m pbt">3000</text>
+  <text x="205" y="284" text-anchor="middle" class="s">pub, por defecto</text>
+  <path d="M110 312V320H300V312" stroke="#d98324" stroke-width="1.5" fill="none"/>
+  <text x="205" y="340" text-anchor="middle" class="s">pub: de 1024 a 3999<tspan class="ast"> *</tspan></text>
+
+  <!-- usuarios -->
+  <path class="tk" d="M370 228V260M470 228V260M570 228V260"/>
+  <rect class="us" x="335" y="194" width="70" height="34" rx="8"/>
+  <text x="370" y="216" text-anchor="middle" class="m ust">4000</text>
+  <text x="370" y="284" text-anchor="middle" class="s">UID 1000</text>
+  <rect class="us" x="435" y="194" width="70" height="34" rx="8"/>
+  <text x="470" y="216" text-anchor="middle" class="m ust">4001</text>
+  <text x="470" y="284" text-anchor="middle" class="s">UID 1001</text>
+  <rect class="us" x="535" y="194" width="70" height="34" rx="8"/>
+  <text x="570" y="216" text-anchor="middle" class="m ust">4002</text>
+  <text x="570" y="284" text-anchor="middle" class="s">UID 1002</text>
+  <text x="632" y="216" class="b ust">…</text>
+  <path d="M335 312V320H605V312" stroke="#1f9d74" stroke-width="1.5" fill="none"/>
+  <text x="470" y="340" text-anchor="middle" class="s">usuarios: uno por cuenta, de 4000 en adelante</text>
+
+  <!-- techo -->
+  <path class="tk" d="M790 228V260"/>
+  <rect class="nt" x="755" y="194" width="70" height="34" rx="8"/>
+  <text x="790" y="216" text-anchor="middle" class="m">65535</text>
+  <text x="790" y="284" text-anchor="middle" class="s">último puerto</text>
+  <text x="860" y="340" text-anchor="end" class="s" font-style="italic">eje sin escala</text>
+
+  <!-- asterisco -->
+  <path d="M40 364H860" stroke="#d5dae0" stroke-width="1"/>
+  <text x="40" y="385" class="s"><tspan class="ast">*</tspan> Decisión recomendada del dosier: el texto no lo fija. El asistente solo acepta para el pub un puerto de 1024 a 3999,</text>
+  <text x="50" y="403" class="s">y el wrapper solo aplica la fórmula a cuentas de persona (UID de 1000 a 62535). Así las dos bandas no se tocan.</text>
+</svg>

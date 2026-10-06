@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 680" width="900" height="680" role="img" aria-labelledby="t d">
+  <title id="t">Cómo elige el wrapper su configuración</title>
+  <desc id="d">Árbol de decisión: si OASISRC está definida se usa ese fichero; si lo ejecuta el usuario oasis, la configuración global; si el usuario ya tiene configuración personal, esa; si no, se crea desde la global sin la variable de pub y con puerto 3000 más UID. Con lo leído se construyen los argumentos y se lanza oasis.sh.</desc>
+  <style>
+    text{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;fill:#1f2933}
+    .h1{font-size:20px;font-weight:700}
+    .sub{font-size:13px;fill:#5b6770}
+    .b{font-size:14px;font-weight:600}
+    .s{font-size:12.5px;fill:#5b6770}
+    .m{font-family:ui-monospace,'Cascadia Mono',Consolas,'DejaVu Sans Mono',monospace;font-size:12.5px}
+    .nt{fill:#fff;stroke:#9aa5b1;stroke-width:1.5}
+    .pk{fill:#e9effd;stroke:#3b5bdb;stroke-width:1.5}.pkt{fill:#1e3a8a}
+    .pb{fill:#fff3d9;stroke:#d98324;stroke-width:1.5}.pbt{fill:#7a4306}
+    .us{fill:#e0f5ec;stroke:#1f9d74;stroke-width:1.5}.ust{fill:#0b5e45}
+    .ast{font-weight:700;fill:#1f2933}
+    .ln{stroke:#7b8794;stroke-width:1.5;fill:none}
+    .yn{font-size:12.5px;font-weight:700;fill:#1f2933}
+    .dk{fill:#1f2933;stroke:#1f2933}.dkt{fill:#fff}
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#7b8794"/>
+    </marker>
+  </defs>
+  <rect width="900" height="680" rx="10" fill="#faf8f3"/>
+
+  <text x="40" y="42" class="h1">Cómo elige el wrapper su configuración</text>
+  <text x="40" y="64" class="sub">Tres preguntas, de arriba abajo. La primera que se cumple decide el fichero.</text>
+
+  <!-- inicio -->
+  <rect class="dk" x="210" y="88" width="180" height="40" rx="20"/>
+  <text x="300" y="113" text-anchor="middle" class="b dkt">alguien ejecuta <tspan class="m dkt" font-weight="700">oasis</tspan></text>
+  <path class="ln" marker-end="url(#a)" d="M300 128V152"/>
+
+  <!-- D1 -->
+  <path class="nt" d="M185 204L300 154L415 204L300 254Z"/>
+  <text x="300" y="200" text-anchor="middle" class="b">¿Está definida</text>
+  <text x="300" y="219" text-anchor="middle" class="m" font-weight="700">OASISRC?</text>
+  <path class="ln" marker-end="url(#a)" d="M415 204H538"/>
+  <text x="468" y="196" class="yn">sí</text>
+  <rect class="pk" x="540" y="174" width="270" height="60" rx="10"/>
+  <text x="556" y="200" class="b pkt">El fichero que diga OASISRC<tspan class="ast"> *</tspan></text>
+  <text x="556" y="219" class="s">gana siempre, también para «oasis»</text>
+
+  <path class="ln" marker-end="url(#a)" d="M300 254V278"/>
+  <text x="310" y="272" class="yn">no</text>
+
+  <!-- D2 -->
+  <path class="nt" d="M185 330L300 280L415 330L300 380Z"/>
+  <text x="300" y="326" text-anchor="middle" class="b">¿Lo ejecuta el</text>
+  <text x="300" y="345" text-anchor="middle" class="b">usuario «oasis»?</text>
+  <path class="ln" marker-end="url(#a)" d="M415 330H538"/>
+  <text x="468" y="322" class="yn">sí</text>
+  <rect class="pb" x="540" y="300" width="270" height="60" rx="10"/>
+  <text x="556" y="326" class="m pbt">/etc/oasis/oasis.conf</text>
+  <text x="556" y="345" class="s">la global: es el pub</text>
+
+  <path class="ln" marker-end="url(#a)" d="M300 380V404"/>
+  <text x="310" y="398" class="yn">no</text>
+
+  <!-- D3 -->
+  <path class="nt" d="M185 456L300 406L415 456L300 506Z"/>
+  <text x="300" y="452" text-anchor="middle" class="b">¿Tiene ya su</text>
+  <text x="300" y="471" text-anchor="middle" class="b">config personal?</text>
+  <path class="ln" marker-end="url(#a)" d="M415 456H538"/>
+  <text x="468" y="448" class="yn">sí</text>
+  <rect class="us" x="540" y="426" width="270" height="60" rx="10"/>
+  <text x="556" y="452" class="m ust">~/.config/oasis/oasis.conf</text>
+  <text x="556" y="471" class="s">la personal: un usuario de escritorio</text>
+
+  <path class="ln" marker-end="url(#a)" d="M300 506V538"/>
+  <text x="310" y="526" class="yn">no</text>
+
+  <!-- crear -->
+  <rect class="us" x="110" y="540" width="380" height="84" rx="10"/>
+  <text x="126" y="566" class="b ust">Se crea a partir de la global<tspan class="ast"> *</tspan></text>
+  <text x="126" y="587" class="s">sin la variable de pub · puerto = 3000 + UID</text>
+  <text x="126" y="606" class="s">interfaz 127.0.0.1<tspan class="ast"> *</tspan> · nunca se lee la global tal cual<tspan class="ast"> *</tspan></text>
+  <path class="ln" marker-end="url(#a)" d="M490 582H675V488"/>
+  <text x="566" y="574" class="s">y se usa</text>
+
+  <!-- colector -->
+  <path class="ln" d="M810 204H846M810 330H846M810 456H846"/>
+  <path class="ln" marker-end="url(#a)" d="M846 204V640H812"/>
+
+  <!-- final -->
+  <rect class="dk" x="540" y="616" width="270" height="48" rx="10"/>
+  <text x="675" y="637" text-anchor="middle" class="b dkt">Construye los argumentos</text>
+  <text x="675" y="655" text-anchor="middle" class="b dkt">y lanza <tspan class="m dkt" font-weight="700">/opt/oasis/oasis.sh</tspan></text>
+
+  <!-- asterisco -->
+  <text x="110" y="654" class="s"><tspan class="ast">*</tspan> Decisión recomendada del dosier: el texto no lo fija.</text>
+</svg>

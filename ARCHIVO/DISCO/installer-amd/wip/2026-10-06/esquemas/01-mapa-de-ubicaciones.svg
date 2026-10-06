@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" width="900" height="700" role="img" aria-labelledby="t d">
+  <title id="t">Dónde vive cada cosa</title>
+  <desc id="d">Árbol de rutas de la propuesta: wrapper en /usr/bin/oasis, configuración global en /etc/oasis/oasis.conf, unidad de systemd en /lib/systemd/system/oasis.service (decisión recomendada), código y oasis.sh en /opt/oasis, casa y datos del pub en /var/lib/oasis, y configuración y datos de cada usuario en su $HOME.</desc>
+  <style>
+    text{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;fill:#1f2933}
+    .h1{font-size:20px;font-weight:700}
+    .sub{font-size:13px;fill:#5b6770}
+    .b{font-size:14px;font-weight:600}
+    .s{font-size:12.5px;fill:#5b6770}
+    .m{font-family:ui-monospace,'Cascadia Mono',Consolas,'DejaVu Sans Mono',monospace;font-size:13px}
+    .pk{fill:#e9effd;stroke:#3b5bdb;stroke-width:1.5}.pkt{fill:#1e3a8a}
+    .pb{fill:#fff3d9;stroke:#d98324;stroke-width:1.5}.pbt{fill:#7a4306}
+    .us{fill:#e0f5ec;stroke:#1f9d74;stroke-width:1.5}.ust{fill:#0b5e45}
+    .ln{stroke:#9aa5b1;stroke-width:1.5;fill:none}
+    .ast{font-weight:700;fill:#1f2933}
+  </style>
+  <rect width="900" height="700" rx="10" fill="#faf8f3"/>
+
+  <text x="40" y="42" class="h1">Dónde vive cada cosa</text>
+  <text x="40" y="64" class="sub">Las rutas de la propuesta, coloreadas por dueño.</text>
+
+  <!-- tronco -->
+  <circle cx="52" cy="100" r="4" fill="#9aa5b1"/>
+  <text x="64" y="105" class="m" fill="#5b6770">/</text>
+  <path class="ln" d="M52 104V508"/>
+  <path class="ln" d="M52 140H70M52 192H70M52 244H70M52 296H70M52 402H70M52 508H70"/>
+  <path class="ln" d="M92 311V342H110"/>
+  <path class="ln" d="M92 417V448H110"/>
+  <path class="ln" d="M92 523V600M92 554H110M92 600H110"/>
+
+  <!-- /usr/bin/oasis -->
+  <rect class="pk" x="70" y="125" width="140" height="30" rx="6"/>
+  <text x="140" y="145" text-anchor="middle" class="m pkt">/usr/bin/oasis</text>
+  <text x="350" y="137" class="b">Wrapper: un solo ejecutable para todos</text>
+  <text x="350" y="155" class="s">Lo instala el paquete. Lo ejecutan systemd (pub) y cada usuario (escritorio).</text>
+
+  <!-- /etc/oasis/oasis.conf -->
+  <rect class="pk" x="70" y="177" width="190" height="30" rx="6"/>
+  <text x="165" y="197" text-anchor="middle" class="m pkt">/etc/oasis/oasis.conf</text>
+  <text x="350" y="189" class="b">Configuración global</text>
+  <text x="350" y="207" class="s">La escribe el asistente al instalar. La usa el pub y es la plantilla de los usuarios.</text>
+
+  <!-- unidad systemd -->
+  <rect class="pk" x="70" y="229" width="262" height="30" rx="6"/>
+  <text x="201" y="249" text-anchor="middle" class="m pkt" font-size="12">/lib/systemd/system/oasis.service</text>
+  <text x="350" y="241" class="b">Servicio systemd del pub<tspan class="ast"> *</tspan></text>
+  <text x="350" y="259" class="s">Solo si se respondió que sí al asistente. Arranca el wrapper como «oasis».</text>
+
+  <!-- /opt/oasis -->
+  <rect class="pk" x="70" y="281" width="120" height="30" rx="6"/>
+  <text x="130" y="301" text-anchor="middle" class="m pkt">/opt/oasis/</text>
+  <text x="350" y="293" class="b">Código de Oasis</text>
+  <text x="350" y="311" class="s">Lo instala el paquete. Es el mismo para el pub y para todos los usuarios.</text>
+
+  <rect class="pk" x="110" y="327" width="90" height="30" rx="6"/>
+  <text x="155" y="347" text-anchor="middle" class="m pkt">oasis.sh</text>
+  <text x="350" y="339" class="b">El script que arranca Oasis</text>
+  <text x="350" y="357" class="s">El wrapper lo lanza con los argumentos que saca de la configuración.</text>
+
+  <!-- /var/lib/oasis -->
+  <rect class="pb" x="70" y="387" width="150" height="30" rx="6"/>
+  <text x="145" y="407" text-anchor="middle" class="m pbt">/var/lib/oasis/</text>
+  <text x="350" y="399" class="b">$HOME del usuario de sistema «oasis»</text>
+  <text x="350" y="417" class="s">El paquete crea ese usuario. Es la casa del pub.</text>
+
+  <rect class="pb" x="110" y="433" width="70" height="30" rx="6"/>
+  <text x="145" y="453" text-anchor="middle" class="m pbt">.ssb/</text>
+  <text x="350" y="445" class="b">Datos del pub</text>
+  <text x="350" y="463" class="s">Los datos de Oasis del servicio: /var/lib/oasis/.ssb</text>
+
+  <!-- /home/<usuario> -->
+  <rect class="us" x="70" y="493" width="160" height="30" rx="6"/>
+  <text x="150" y="513" text-anchor="middle" class="m ust">/home/&lt;usuario&gt;/</text>
+  <text x="350" y="505" class="b">$HOME de cada usuario del sistema</text>
+  <text x="350" y="523" class="s">Un bloque como este por cada persona que use Oasis en la máquina.</text>
+
+  <rect class="us" x="110" y="539" width="220" height="30" rx="6"/>
+  <text x="220" y="559" text-anchor="middle" class="m ust">.config/oasis/oasis.conf</text>
+  <text x="350" y="551" class="b">Configuración personal</text>
+  <text x="350" y="569" class="s">Nace de la global, sin pub y en 127.0.0.1<tspan class="ast"> *</tspan>. Puerto = 3000 + UID. Editable.</text>
+
+  <rect class="us" x="110" y="585" width="70" height="30" rx="6"/>
+  <text x="145" y="605" text-anchor="middle" class="m ust">.ssb/</text>
+  <text x="350" y="597" class="b">Datos de ese usuario</text>
+  <text x="350" y="615" class="s">Su propio perfil: no se mezcla con el pub ni con los demás.</text>
+
+  <!-- asterisco -->
+  <path d="M40 636H860" stroke="#d5dae0" stroke-width="1"/>
+  <text x="40" y="656" class="s"><tspan class="ast">*</tspan> Decisión recomendada del dosier: el texto no lo fija. La unidad se queda donde la pone el paquete de hoy.</text>
+
+  <!-- leyenda -->
+  <rect class="pk" x="40" y="670" width="14" height="14" rx="3"/><text x="60" y="682" class="s">paquete / sistema</text>
+  <rect class="pb" x="190" y="670" width="14" height="14" rx="3"/><text x="210" y="682" class="s">pub (usuario «oasis»)</text>
+  <rect class="us" x="360" y="670" width="14" height="14" rx="3"/><text x="380" y="682" class="s">usuario de escritorio</text>
+</svg>

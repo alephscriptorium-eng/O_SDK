@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="900" height="520" role="img" aria-labelledby="t d">
+  <title id="t">Un wrapper, dos papeles</title>
+  <desc id="d">El mismo /usr/bin/oasis sirve al pub, lanzado por systemd con la configuración global, y a cada usuario de escritorio, lanzado a mano con su configuración personal, su puerto y sus datos.</desc>
+  <style>
+    text{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;fill:#1f2933}
+    .h1{font-size:20px;font-weight:700}
+    .sub{font-size:13px;fill:#5b6770}
+    .b{font-size:14px;font-weight:600}
+    .s{font-size:12.5px;fill:#5b6770}
+    .m{font-family:ui-monospace,'Cascadia Mono',Consolas,'DejaVu Sans Mono',monospace;font-size:12.5px}
+    .pk{fill:#e9effd;stroke:#3b5bdb;stroke-width:1.5}.pkt{fill:#1e3a8a}
+    .pb{fill:#fff3d9;stroke:#d98324;stroke-width:1.5}.pbt{fill:#7a4306}
+    .us{fill:#e0f5ec;stroke:#1f9d74;stroke-width:1.5}.ust{fill:#0b5e45}
+    .ln{stroke:#7b8794;stroke-width:1.5;fill:none}
+    .cap{font-size:11.5px;font-weight:700;letter-spacing:.08em;fill:#5b6770}
+    .div{stroke:#c5ccd3;stroke-width:1;stroke-dasharray:3 5}
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#7b8794"/>
+    </marker>
+  </defs>
+  <rect width="900" height="520" rx="10" fill="#faf8f3"/>
+
+  <text x="40" y="42" class="h1">Un wrapper, dos papeles</text>
+  <text x="40" y="64" class="sub">La misma máquina puede ser servidor (pub) y escritorio de varios usuarios a la vez.</text>
+
+  <!-- cabeceras -->
+  <text x="24" y="104" class="cap">QUIÉN LO LANZA</text>
+  <text x="226" y="104" class="cap">WRAPPER</text>
+  <text x="388" y="104" class="cap">QUÉ CONFIGURACIÓN LEE</text>
+  <text x="640" y="104" class="cap">DÓNDE ESCUCHA Y GUARDA</text>
+
+  <!-- wrapper compartido -->
+  <rect class="pk" x="226" y="120" width="130" height="350" rx="10"/>
+  <text x="291" y="250" text-anchor="middle" class="m pkt">/usr/bin/oasis</text>
+  <path d="M246 264H336" stroke="#3b5bdb" stroke-width="1" opacity=".4"/>
+  <text x="291" y="286" text-anchor="middle" class="s">elige la config,</text>
+  <text x="291" y="303" text-anchor="middle" class="s">arma los argumentos</text>
+  <text x="291" y="320" text-anchor="middle" class="s">y lanza</text>
+  <text x="291" y="340" text-anchor="middle" class="m pkt">oasis.sh</text>
+  <text x="291" y="357" text-anchor="middle" class="s">(en /opt/oasis)</text>
+
+  <!-- fila pub -->
+  <rect class="pb" x="24" y="120" width="170" height="96" rx="10"/>
+  <text x="40" y="148" class="b pbt">systemd</text>
+  <text x="40" y="170" class="s">al arrancar la máquina,</text>
+  <text x="40" y="188" class="s">como usuario «oasis»</text>
+  <rect class="pb" x="388" y="120" width="220" height="96" rx="10"/>
+  <text x="404" y="150" class="m pbt">/etc/oasis/oasis.conf</text>
+  <text x="404" y="174" class="s">global: la que escribió</text>
+  <text x="404" y="192" class="s">el asistente</text>
+  <rect class="pb" x="640" y="120" width="236" height="96" rx="10"/>
+  <text x="656" y="150" class="b pbt">Puerto: el del asistente</text>
+  <text x="656" y="174" class="s">datos en</text>
+  <text x="656" y="192" class="m pbt">/var/lib/oasis/.ssb</text>
+  <path class="ln" marker-end="url(#a)" d="M194 168H224"/>
+  <path class="ln" marker-end="url(#a)" d="M356 168H386"/>
+  <path class="ln" marker-end="url(#a)" d="M608 168H638"/>
+
+  <!-- separador -->
+  <path class="div" d="M24 238H222M360 238H876"/>
+  <text x="876" y="232" text-anchor="end" class="s">servidor ↑</text>
+  <text x="876" y="254" text-anchor="end" class="s">escritorio ↓</text>
+
+  <!-- fila ana -->
+  <rect class="us" x="24" y="264" width="170" height="92" rx="10"/>
+  <text x="40" y="292" class="b ust">ana · UID 1000</text>
+  <text x="40" y="314" class="s">a mano, en su sesión:</text>
+  <text x="40" y="334" class="m ust">$ oasis &amp;</text>
+  <rect class="us" x="388" y="264" width="220" height="92" rx="10"/>
+  <text x="404" y="294" class="m ust">~/.config/oasis/oasis.conf</text>
+  <text x="404" y="316" class="s">personal: se crea sola</text>
+  <text x="404" y="334" class="s">la primera vez</text>
+  <rect class="us" x="640" y="264" width="236" height="92" rx="10"/>
+  <text x="656" y="294" class="b ust">Puerto 4000 = 3000 + 1000</text>
+  <text x="656" y="316" class="s">datos en</text>
+  <text x="656" y="334" class="m ust">/home/ana/.ssb</text>
+  <path class="ln" marker-end="url(#a)" d="M194 310H224"/>
+  <path class="ln" marker-end="url(#a)" d="M356 310H386"/>
+  <path class="ln" marker-end="url(#a)" d="M608 310H638"/>
+
+  <!-- fila luis -->
+  <rect class="us" x="24" y="378" width="170" height="92" rx="10"/>
+  <text x="40" y="406" class="b ust">luis · UID 1001</text>
+  <text x="40" y="428" class="s">a mano, en su sesión:</text>
+  <text x="40" y="448" class="m ust">$ oasis &amp;</text>
+  <rect class="us" x="388" y="378" width="220" height="92" rx="10"/>
+  <text x="404" y="408" class="m ust">~/.config/oasis/oasis.conf</text>
+  <text x="404" y="430" class="s">la suya, no la de ana</text>
+  <text x="404" y="448" class="s">(cada ~ es un $HOME distinto)</text>
+  <rect class="us" x="640" y="378" width="236" height="92" rx="10"/>
+  <text x="656" y="408" class="b ust">Puerto 4001 = 3000 + 1001</text>
+  <text x="656" y="430" class="s">datos en</text>
+  <text x="656" y="448" class="m ust">/home/luis/.ssb</text>
+  <path class="ln" marker-end="url(#a)" d="M194 424H224"/>
+  <path class="ln" marker-end="url(#a)" d="M356 424H386"/>
+  <path class="ln" marker-end="url(#a)" d="M608 424H638"/>
+
+  <text x="24" y="500" class="s">ana y luis son un ejemplo: en Debian las cuentas de persona empiezan en el UID 1000.</text>
+</svg>
