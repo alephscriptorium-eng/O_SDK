@@ -823,6 +823,12 @@ Dep: WP-O123.
 **BRIEF** · Barrido de lo publicado tras WP-O123 y WP-O124; el manual de bienvenida de `ARCHIVO/DISCO/` entra al portal de forma que se distinga lo de la red, lo del SDK y lo de la casa. Queda escrito para agentes cómo entra un habitante (la portada del pub publica un invite de muchos usos).
 Dep: WP-O124.
 
+| **WP-O126** | **P1** | Test del instalador `.deb` de Oasis 1.2.2 (amd64) y propuesta de arreglo, en Docker |
+
+**Estado** · 🔶 2026-10-06, rama `test/installer-amd`: kit FOSS autónomo en `ARCHIVO/DISCO/installer-amd/` (banco de pruebas T0…T9 sobre Debian 12 plano y systemd, Debian 11, Ubuntu 22.04/24.04; propuesta `packaging/build-deb2.sh`; rebuild del paquete desde el payload del v1; informe para el autor en `reports/`). Reporte del WP en `plan/REPORTES/WP-O126-installer-deb.md`.
+**BRIEF** · Un amigo del custodio construye un `.deb` con Node embebido y pide testers. Se le devuelve evidencia (comando + salida), el script corregido y un `.deb` v2 probado. ECOin solo como diseño (`docs/ECOIN.md` del kit). Sin merge a `main` hasta que el custodio lo decida; el kit saldrá a repo propio.
+Dep: WP-O124 (cliente en 1.2.2).
+
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
 **Estado** · ✅ 2026-09-19 en `main`. Asientos D-O20, D-O23.

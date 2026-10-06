@@ -1,0 +1,7 @@
+# Los .deb viajan por SHA256SUMS, nunca por git
+dist/*.deb
+build/
+*.log
+# Payloads y temporales del rebuild
+work/
+reports/evidence/_descartado/

@@ -98,3 +98,7 @@ src/server/node_modules.full/
 !src/base/node_modules/
 !src/base/**/node_modules/
 !src/base/**
+
+# Instalador .deb en pruebas (ARCHIVO/DISCO/installer-amd): los .deb viajan por sha256, nunca por git
+ARCHIVO/DISCO/*.deb
+ARCHIVO/DISCO/installer-amd/dist/*.deb

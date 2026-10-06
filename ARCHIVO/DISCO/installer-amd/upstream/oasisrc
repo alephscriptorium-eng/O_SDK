@@ -1,0 +1,34 @@
+# Oasis configuration
+# Edit this file and restart: sudo systemctl restart oasis
+
+# ============================================
+# BASIC SETTINGS
+# ============================================
+OASIS_PORT="3000"
+OASIS_HOST="0.0.0.0"
+OASIS_NO_OPEN="yes"
+OASIS_DEBUG="no"
+
+# ============================================
+# MODE
+# ============================================
+# Set to "yes" for PUB (public server), "no" for client
+OASIS_PUB="no"
+
+# Only used if OASIS_PUB="yes"
+OASIS_DOMAIN=""
+
+# ============================================
+# ARGUMENT BUILDER (no editar debajo)
+# ============================================
+if [ "$OASIS_PUB" = "yes" ]; then
+    OASIS_MODE="server"
+    OASIS_ARGS="--public --allow-host=$OASIS_DOMAIN"
+else
+    OASIS_MODE="gui"
+    OASIS_ARGS=""
+fi
+
+OASIS_ARGS="--host=$OASIS_HOST --port=$OASIS_PORT $OASIS_ARGS"
+[ "$OASIS_NO_OPEN" = "yes" ] && OASIS_ARGS="$OASIS_ARGS --no-open"
+[ "$OASIS_DEBUG" = "yes" ]   && OASIS_ARGS="$OASIS_ARGS --debug"

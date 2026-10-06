@@ -78,3 +78,6 @@ ARCHIVO/LORE
 ARCHIVO/LORE/**
 pub/rrss-sidecar
 pub/rrss-sidecar/**
+
+# ARCHIVO/DISCO: .deb de 111 MB y kit del instalador, fuera del contexto de build
+ARCHIVO/DISCO/
