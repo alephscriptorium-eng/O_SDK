@@ -1,0 +1,16 @@
+$ docker exec oasis-deb-v1-main sh -c cd\ /\ \&\&\ oasis\ help\ \|\ head\ -n\ 8
+
+OASIS is a libre, open-source, encrypted, peer-to-peer, distributed & federated
+social network: your data lives on your own device, replicates directly with the
+inhabitants you support and keeps working offline.
+
+Usage: ./oasis.sh [mode] [-- <option>=<value> ...]
+
+Modes:
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c cd\ /tmp\ \&\&\ timeout\ 20\ runuser\ -u\ oasis\ --\ env\ HOME=/var/lib/oasis\ oasis\ --no-open\ --host=127.0.0.1\ --port=3999\;\ echo\ \"exit=\$\?\"
+/opt/oasis/oasis.sh: 107: cd: can't cd to /tmp/src/backend
+exit=1
+[exit=0]
+

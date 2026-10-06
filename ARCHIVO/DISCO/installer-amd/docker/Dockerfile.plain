@@ -1,0 +1,9 @@
+# Debian 12 sin init: instalar el .deb, arrancar Oasis a mano, purgar.
+FROM debian:12-slim
+ENV DEBIAN_FRONTEND=noninteractive
+# jq: la única dependencia declarada por el paquete (así dpkg -i no necesita red)
+# curl/procps/iproute2: sondas; binutils: `ar t`; bsdutils/util-linux: `script`, `runuser`
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends jq ca-certificates curl procps iproute2 binutils bsdutils util-linux \
+ && rm -rf /var/lib/apt/lists/*
+CMD ["sleep", "infinity"]

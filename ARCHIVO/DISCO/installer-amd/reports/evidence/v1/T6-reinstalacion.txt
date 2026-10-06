@@ -1,0 +1,48 @@
+$ docker exec oasis-deb-v1-main sh -c md5sum\ /opt/oasis/src/configs/oasis-config.json\;\ dpkg-deb\ --fsys-tarfile\ /pkg/oasis.deb\ \|\ tar\ -xO\ ./opt/oasis/src/configs/oasis-config.json\ \|\ md5sum\;\ dpkg-query\ -W\ -f=\"\\\$\{Conffiles\}\\n\"\ oasis
+14d83bf169fc3c4ee28bd71e3fc7f41a  /opt/oasis/src/configs/oasis-config.json
+d996ce99323d361c8e2c5a2b27091601  -
+ /opt/oasis/src/configs/oasis-config.json d996ce99323d361c8e2c5a2b27091601
+ /opt/oasis/src/configs/server-config.json b8c7be5ea493ab16f669d240bfed8840
+ /opt/oasis/src/configs/snh-invite-code.json bcbedd960fd437582f1ba09e7115e82c
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c dpkg\ -i\ /pkg/oasis.deb\ \</dev/null\;\ echo\ \"exit=\$\?\"
+(Reading database ... 41322 files and directories currently installed.)
+Preparing to unpack /pkg/oasis.deb ...
+Unpacking oasis (1.2.2) over (1.2.2) ...
+Setting up oasis (1.2.2) ...
+/var/lib/oasis/.oasisrc already exists, preserving.
+
+=========================================
+  Oasis  installed
+=========================================
+
+Mode:   Client
+Config: /var/lib/oasis/.oasisrc
+
+Start:  sudo systemctl enable --now oasis
+Logs:   journalctl -u oasis -f
+
+Open:   http://localhost:3000
+=========================================
+exit=0
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c grep\ -c\ .\ /var/lib/oasis/.oasisrc\;\ ls\ -la\ /opt/oasis/src/configs/
+29
+total 40
+drwxr-xr-x  2 oasis oasis 4096 Oct  6 01:28 .
+drwxr-xr-x 11 oasis oasis 4096 Oct  6 01:26 ..
+-rw-r--r--  1 oasis oasis 4440 Oct  5 21:55 config-manager.js
+-rw-r--r--  1 oasis oasis 1930 Oct  6 01:27 oasis-config.json
+-rw-r--r--  1 oasis oasis 1002 Oct  5 21:55 server-config.json
+-rw-r--r--  1 oasis oasis 4813 Oct  5 21:55 shared-state.js
+-rw-r--r--  1 oasis oasis  306 Oct  5 21:55 snh-invite-code.json
+-rw-r--r--  1 oasis oasis 3180 Oct  5 21:55 state-manager.js
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c dpkg\ -V\ oasis\;\ echo\ \"dpkg\ -V\ rc=\$\?\"
+??5?????? c /opt/oasis/src/configs/oasis-config.json
+dpkg -V rc=0
+[exit=0]
+

@@ -1,0 +1,40 @@
+$ docker exec oasis-deb-v1-main sh -c dpkg\ -r\ oasis\;\ echo\ \"exit=\$\?\"
+(Reading database ... 41322 files and directories currently installed.)
+Removing oasis (1.2.2) ...
+exit=0
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c dpkg\ -s\ oasis\ \|\ head\ -3\;\ ls\ -la\ /opt/oasis\ 2\>\&1\ \|\ head\;\ ls\ /opt/oasis/src/configs\ 2\>\&1
+Package: oasis
+Status: deinstall ok config-files
+Priority: optional
+total 12
+drwxr-xr-x 3 oasis oasis 4096 Oct  6 01:28 .
+drwxr-xr-x 1 root  root  4096 Oct  6 01:26 ..
+drwxr-xr-x 3 oasis oasis 4096 Oct  6 01:28 src
+oasis-config.json
+server-config.json
+snh-invite-code.json
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c dpkg\ -P\ oasis\;\ echo\ \"exit=\$\?\"
+(Reading database ... 7564 files and directories currently installed.)
+Purging configuration files for oasis (1.2.2) ...
+exit=0
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c ls\ -ld\ /opt/oasis\ /var/lib/oasis\ 2\>\&1\;\ ls\ -la\ /var/lib/oasis\;\ id\ oasis\ 2\>\&1\;\ stat\ -c\ \"%u:%g\ %n\"\ /var/lib/oasis/.ssb\ 2\>\&1
+ls: cannot access '/opt/oasis': No such file or directory
+drwxr-xr-x 3 999 999 4096 Oct  6 01:26 /var/lib/oasis
+total 32
+drwxr-xr-x 3  999  999 4096 Oct  6 01:26 .
+drwxr-xr-x 1 root root 4096 Oct  6 01:26 ..
+-rw-r--r-- 1  999  999  220 May  7 20:33 .bash_logout
+-rw-r--r-- 1  999  999 3526 May  7 20:33 .bashrc
+-rw------- 1  999  999  977 Oct  6 01:26 .oasisrc
+-rw-r--r-- 1  999  999  807 May  7 20:33 .profile
+drwxr-xr-x 7  999  999 4096 Oct  6 01:27 .ssb
+id: 'oasis': no such user
+999:999 /var/lib/oasis/.ssb
+[exit=0]
+

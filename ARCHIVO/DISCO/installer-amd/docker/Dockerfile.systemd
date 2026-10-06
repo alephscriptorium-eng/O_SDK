@@ -1,0 +1,11 @@
+# Debian 12 con systemd real: el camino del usuario (`systemctl enable --now oasis`).
+# Se lanza con: docker run -d --privileged --cgroupns=host --network none <img>
+FROM debian:12
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends systemd systemd-sysv jq ca-certificates curl procps iproute2 binutils \
+ && rm -rf /var/lib/apt/lists/* \
+ && systemctl mask systemd-udevd.service systemd-udevd-kernel.socket systemd-udevd-control.socket \
+      systemd-logind.service getty.target console-getty.service >/dev/null 2>&1 || true
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]

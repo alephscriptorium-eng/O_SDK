@@ -1,0 +1,11 @@
+T0-integridad ok
+T1-instalacion ok
+T2-nativos ok
+T3-arranque-gui ok
+T3b-arranque-server ok
+T4-lanzador ok
+T5-asistente ok
+T6-reinstalacion ok
+T7-purge ok
+T8-systemd ok
+T9-portabilidad ok

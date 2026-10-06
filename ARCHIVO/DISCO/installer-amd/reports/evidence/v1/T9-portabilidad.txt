@@ -1,0 +1,81 @@
+# imagen debian:11-slim
+$ docker run --rm debian:11-slim bash -c "dpkg -i /pkg/oasis.deb; apt-get install -f ..."
+Debian GNU/Linux 11 (bullseye)
+Debian 'dpkg' package management program version 1.20.14 (amd64).
+ldd (Debian GLIBC 2.31-13+deb11u14) 2.31
+--- dpkg -i
+dpkg-deb: error: archive '/pkg/oasis.deb' uses unknown compression for member 'control.tar.zst', giving up
+dpkg: error processing archive /pkg/oasis.deb (--install):
+ dpkg-deb --control subprocess returned error exit status 2
+Errors were encountered while processing:
+ /pkg/oasis.deb
+dpkg -i exit=1
+--- apt-get update && apt-get install -f (resuelve jq)
+Fetched 8706 kB in 2s (3623 kB/s)
+Reading package lists...
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+apt -f exit=0
+dpkg-query: package 'oasis' is not installed and no information is available
+Use dpkg --info (= dpkg-deb --info) to examine archive files.
+[fin]
+
+# imagen ubuntu:22.04
+$ docker run --rm ubuntu:22.04 bash -c "dpkg -i /pkg/oasis.deb; apt-get install -f ..."
+Ubuntu 22.04.5 LTS
+Debian 'dpkg' package management program version 1.21.1 (amd64).
+ldd (Ubuntu GLIBC 2.35-0ubuntu3.15) 2.35
+--- dpkg -i
+dpkg: dependency problems prevent configuration of oasis:
+ oasis depends on jq; however:
+  Package jq is not installed.
+
+dpkg: error processing package oasis (--install):
+ dependency problems - leaving unconfigured
+Errors were encountered while processing:
+ oasis
+dpkg -i exit=1
+--- apt-get update && apt-get install -f (resuelve jq)
+Fetched 48.9 MB in 5s (10.8 MB/s)
+Reading package lists...
+
+Start:  sudo systemctl enable --now oasis
+Logs:   journalctl -u oasis -f
+
+Open:   http://localhost:3000
+=========================================
+apt -f exit=0
+Package: oasis
+Status: install ok installed
+native ok
+[fin]
+
+# imagen ubuntu:24.04
+$ docker run --rm ubuntu:24.04 bash -c "dpkg -i /pkg/oasis.deb; apt-get install -f ..."
+Ubuntu 24.04.5 LTS
+Debian 'dpkg' package management program version 1.22.6 (amd64).
+ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39
+--- dpkg -i
+dpkg: dependency problems prevent configuration of oasis:
+ oasis depends on jq; however:
+  Package jq is not installed.
+
+dpkg: error processing package oasis (--install):
+ dependency problems - leaving unconfigured
+Errors were encountered while processing:
+ oasis
+dpkg -i exit=1
+--- apt-get update && apt-get install -f (resuelve jq)
+Fetched 33.2 MB in 3s (10.6 MB/s)
+Reading package lists...
+
+Start:  sudo systemctl enable --now oasis
+Logs:   journalctl -u oasis -f
+
+Open:   http://localhost:3000
+=========================================
+apt -f exit=0
+Package: oasis
+Status: install ok installed
+native ok
+[fin]
+

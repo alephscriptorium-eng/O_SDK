@@ -1,0 +1,73 @@
+# arrancado en background: runuser -u oasis -- env HOME=/var/lib/oasis PATH=/opt/oasis/node/bin:... sh -c "cd /opt/oasis && exec sh oasis.sh --host=0.0.0.0 --no-open"
+$ docker exec oasis-deb-v1-main sh -c curl\ -s\ -m\ 5\ http://127.0.0.1:3000/.well-known/oasis\;\ echo\;\ curl\ -s\ -o\ /dev/null\ -w\ \"GET\ /\ -\>\ %\{http_code\}\\n\"\ -m\ 10\ http://127.0.0.1:3000/
+oasis
+GET / -> 302
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c ss\ -ltnp
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess
+LISTEN 0      511          0.0.0.0:3000      0.0.0.0:*          
+LISTEN 0      511                *:8008            *:*          
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c ps\ -o\ pid\,user\,args\ -C\ node
+    PID USER     COMMAND
+    203 oasis    node backend.js --host=0.0.0.0 --no-open
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c tail\ -n\ 40\ /tmp/oasis-gui.log
+=========================
+Running mode: [38;5;226mOASIS UX[0m
+=========================
+- OASIS ID: [ [38;5;214m@i+6qfEMeubDUEnzjJXoVkhsaM1oddCovGIpaDwUmdBc=.ed25519[0m ]
+- Package: [38;5;33m@krakenslab/oasis [38;5;226m[Version: 1.2.2][0m
+- GUI: [36m]8;;http://0.0.0.0:3000http://0.0.0.0:3000]8;;[0m
+- VoIP ID: [ [38;5;214m279-151[0m ]
+- ECOin ID: disabled
+- Logging Level: notice
+- Engine: db2-legacy
+- Protocol (port): 8008
+- Mode: offline
+- Replication (hops): 2
+- Blockchain backlog: 2000
+- LAN Broadcasting (UDP): enabled
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c ls\ -la\ /var/lib/oasis/.ssb\;\ stat\ -c\ \"%a\ %U:%G\ %s\ %n\"\ /var/lib/oasis/.ssb/secret\;\ ls\ /var/lib/oasis/.ssb/db2\ 2\>/dev/null\ \|\ head
+total 40
+drwxr-xr-x 7 oasis oasis 4096 Oct  6 01:26 .
+drwxr-xr-x 3 oasis oasis 4096 Oct  6 01:26 ..
+drwxr-xr-x 3 oasis oasis 4096 Oct  6 01:26 blobs
+drwxr-xr-x 2 oasis oasis 4096 Oct  6 01:26 blobs_push
+-rw-r--r-- 1 oasis oasis    2 Oct  6 01:26 conn.json
+drwxr-xr-x 4 oasis oasis 4096 Oct  6 01:26 db2
+-rw-r--r-- 1 oasis oasis    2 Oct  6 01:26 gossip.json
+drwxr-xr-x 2 oasis oasis 4096 Oct  6 01:26 node_modules
+drwxr-xr-x 9 oasis oasis 4096 Oct  6 01:27 oasis
+-r-------- 1 oasis oasis  869 Oct  6 01:26 secret
+srw------- 1 oasis oasis    0 Oct  6 01:26 socket
+400 oasis:oasis 869 /var/lib/oasis/.ssb/secret
+indexes
+jit
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c ls\ -la\ /opt/oasis/src/server/.update_required\ /var/lib/oasis/.config\ 2\>\&1\ \|\ head
+ls: cannot access '/opt/oasis/src/server/.update_required': No such file or directory
+ls: cannot access '/var/lib/oasis/.config': No such file or directory
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c md5sum\ /opt/oasis/src/configs/oasis-config.json\;\ grep\ -E\ \"\\\"ai\(Nav\)\?Mod\\\"\"\ /opt/oasis/src/configs/oasis-config.json
+798ecfb3163a4aa32a2f7dd9b4fdbc1e  /opt/oasis/src/configs/oasis-config.json
+    "aiMod": "off",
+    "aiNavMod": "on",
+[exit=0]
+
+$ docker exec oasis-deb-v1-main sh -c sleep\ 2\;\ ps\ -C\ node\ -o\ pid\,args\;\ tail\ -n\ 5\ /tmp/oasis-gui.log
+    PID COMMAND
+- Protocol (port): 8008
+- Mode: offline
+- Replication (hops): 2
+- Blockchain backlog: 2000
+- LAN Broadcasting (UDP): enabled
+[exit=0]
+

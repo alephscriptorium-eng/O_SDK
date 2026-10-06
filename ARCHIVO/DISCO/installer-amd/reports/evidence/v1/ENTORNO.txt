@@ -1,0 +1,6 @@
+kit: installer-amd
+fecha: 2026-10-06T01:26:08Z
+paquete: oasis_1.2.2_amd64.deb
+3619386d747695fdd5e474fd9efb3acccc9a6adf393b8135f66f1856d7089cdf
+docker: 29.4.1 linux/amd64
+host: MINGW64_NT-10.0-26200 3.6.5-22c95533.x86_64 x86_64

@@ -1,0 +1,93 @@
+# (a) tty simulado con script(1); respuestas: y, pub.test
+$ docker exec oasis-deb-v1-t5a sh -c printf\ \"y\\npub.test\\n\"\ \|\ script\ -qec\ \"dpkg\ -i\ /pkg/oasis.deb\"\ /dev/null\ \|\ tail\ -n\ 25
+pub.test
+Selecting previously unselected package oasis.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 7557 files and directories currently installed.)
+Preparing to unpack /pkg/oasis.deb ...
+Unpacking oasis (1.2.2) ...
+Setting up oasis (1.2.2) ...
+
+=========================================
+  Oasis - Setup
+=========================================
+
+Is this a PUB (public server)? [y/N]: Public domain (e.g. oasis.example.com): Created /var/lib/oasis/.oasisrc
+
+=========================================
+  Oasis  installed
+=========================================
+
+Mode:   PUB (pub.test)
+Config: /var/lib/oasis/.oasisrc
+
+Start:  sudo systemctl enable --now oasis
+Logs:   journalctl -u oasis -f
+
+Open:   http://localhost:3000
+=========================================
+[exit=0]
+
+$ docker exec oasis-deb-v1-t5a sh -c cat\ /var/lib/oasis/.oasisrc
+# Oasis configuration
+# Edit this file and restart: sudo systemctl restart oasis
+
+# ============================================
+# BASIC SETTINGS
+# ============================================
+OASIS_PORT="3000"
+OASIS_HOST="0.0.0.0"
+OASIS_NO_OPEN="yes"
+OASIS_DEBUG="no"
+
+# ============================================
+# MODE
+# ============================================
+# Set to "yes" for PUB (public server), "no" for client
+OASIS_PUB="yes"
+
+# Only used if OASIS_PUB="yes"
+OASIS_DOMAIN="pub.test"
+
+# ============================================
+# ARGUMENT BUILDER (no editar debajo)
+# ============================================
+if [ "$OASIS_PUB" = "yes" ]; then
+    OASIS_MODE="server"
+    OASIS_ARGS="--public --allow-host=$OASIS_DOMAIN"
+else
+    OASIS_MODE="gui"
+    OASIS_ARGS=""
+fi
+
+OASIS_ARGS="--host=$OASIS_HOST --port=$OASIS_PORT $OASIS_ARGS"
+[ "$OASIS_NO_OPEN" = "yes" ] && OASIS_ARGS="$OASIS_ARGS --no-open"
+[ "$OASIS_DEBUG" = "yes" ]   && OASIS_ARGS="$OASIS_ARGS --debug"
+[exit=0]
+
+$ docker exec oasis-deb-v1-t5a sh -c grep\ -E\ \"\\\"\(pub\|hops\)\\\"\"\ /opt/oasis/src/configs/server-config.json
+  "pub": false,
+    "hops": 2
+[exit=0]
+
+# (b) sin tty, con OASIS_PUB=yes OASIS_DOMAIN=pub.test en el entorno
+$ docker exec oasis-deb-v1-t5b sh -c OASIS_PUB=yes\ OASIS_DOMAIN=pub.test\ dpkg\ -i\ /pkg/oasis.deb\ \</dev/null\ \|\ tail\ -n\ 12
+=========================================
+  Oasis  installed
+=========================================
+
+Mode:   Client
+Config: /var/lib/oasis/.oasisrc
+
+Start:  sudo systemctl enable --now oasis
+Logs:   journalctl -u oasis -f
+
+Open:   http://localhost:3000
+=========================================
+[exit=0]
+
+$ docker exec oasis-deb-v1-t5b sh -c grep\ -E\ \"\^OASIS_\(PUB\|DOMAIN\)=\"\ /var/lib/oasis/.oasisrc\;\ grep\ -oE\ \"\\\"pub\\\":\ \*\[a-z\]+\"\ /opt/oasis/src/configs/server-config.json
+OASIS_PUB="no"
+OASIS_DOMAIN=""
+"pub": false
+[exit=0]
+

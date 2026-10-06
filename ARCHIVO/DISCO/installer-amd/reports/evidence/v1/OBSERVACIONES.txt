@@ -1,0 +1,30 @@
+T0-integridad ar_members=debian-binary control.tar.zst data.tar.zst 
+T0-integridad entries=33773
+T1-instalacion dpkg_i_exit=0
+T1-instalacion oasisrc_pub=OASIS_PUB="no"
+T1-instalacion md5sums_present=yes
+T1-instalacion oasisrc_readers=
+T2-nativos native_require_exit=0
+T3-arranque-gui gui_up=yes
+T3-arranque-gui ssb_dir=blobs blobs_push conn.json db2 gossip.json node_modules oasis secret socket 
+T3b-arranque-server server_up=yes
+T3b-arranque-server desktop_config_note=1
+T4-lanzador help_from_root_exit=0
+T4-lanzador launch_from_tmp=1
+T5-asistente tty_oasisrc=OASIS_PUB="yes" OASIS_DOMAIN="pub.test" 
+T5-asistente tty_server_config_pub="pub": false
+T5-asistente env_oasisrc=OASIS_PUB="no" OASIS_DOMAIN="" 
+T5-asistente env_server_config_pub="pub": false
+T6-reinstalacion conffile_drift=yes
+T7-purge after_purge_opt=absent
+T7-purge after_purge_varlib=kept
+T7-purge after_purge_user=deleted
+T8-systemd client_active=active
+T8-systemd client_node_args=node backend.js
+T8-systemd client_listen=*:8008 [::1]:3000 
+T8-systemd pub_active=active
+T8-systemd pub_node_args=node backend.js
+T8-systemd pub_listen=*:8008 [::1]:3000 
+T9-portabilidad debian_11-slim=dpkg-deb: error: archive '/pkg/oasis.deb' uses unknown compression for member 'control.tar.zst', giving up
+T9-portabilidad ubuntu_22_04=Status: install ok installed
+T9-portabilidad ubuntu_24_04=Status: install ok installed
