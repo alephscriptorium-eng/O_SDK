@@ -837,6 +837,23 @@ Dep: —. Relación: WP-O112, WP-O118.
 **BRIEF** · Ciclo gordo: `backend.js` +1354/−261, `long_text.js`, `pdf.js`, mapas reescritos (PNG → SVG/JPG), `opusscript` para Phone, `ssb-box`/`ssb-conn`/`ssb-gossip` tocados en `src/base` (cierre del pub: invite obligatorio), `outgoing.onion` abierto en `server-config.json` (DECISIÓN: `[]` en HUB y bots), 10 parches en el script de upstream. Riesgo de saltar el ensayo local estimado > 50 %: se ensaya. Sin cambio de motor.
 Dep: WP-O127.
 
+| **WP-O129** | **P1** | Plantilla de organización: del organigrama de un colectivo a la infra de su pub (demo Acampada26S) |
+
+**Estado** · 🔶 2026-10-07, rama `dev/retro-exporter` (desde `main` 00124a7b). Hecho: organigrama de Acampada26S transcrito (`ARCHIVO/DISCO/retro-exporter/entrada/`), mapeo con cinco reglas y trazabilidad por `id` (`MAPEO.md`), plantilla `pub/templates/acampada26s.json` + contrato `SCHEMA.md` (firmas verificadas sobre 1.2.3), protocolo genérico `docs/PUB/TEMPLATE-PROTOCOL.md` con tres vías de activación (guion / fría / caliente) y contrato de la herramienta, `pub/tools/template-seed.js --guion` (25 tribus, 7 salas, 7 calendarios, 4 listas, 4 wikis, 2 mapas; 24 `origen` resueltos; 9 pendientes del colectivo), guion generado en el dosier, presentación doble carril (Acampada / Oasis). Hallazgos medidos que cambiaron el diseño: los modelos publican siempre como el sbot (no hay identidad proxy; la vía caliente es un bot secretaría), el workflow es local al cliente (solo el guion lo lleva), sin intervalo diario, semáforo en `votes` y no en `parliament`. Decisión D-O28.
+
+**BRIEF** · Acampada26S corre Oasis 1.2.3 upstream (`acampada26s.net/c`, consigna «todos con workflow activists») y publicó su organigrama como imagen. Pregunta del custodio: ¿se puede parsear ese modelo a infraestructura Oasis y entregárselo como kit? Respuesta: sí, como **plantilla** (estructura, no mock), con activación por guion humano hoy y automatismos con permiso por bloque después. Método genérico en `docs/PUB`, instancia en `ARCHIVO/DISCO`. Fuera de alcance: el código de `--cold` (WP-O130) y `--hot` (WP-O131).
+Dep: WP-O128 (firmas de 1.2.3).
+
+| **WP-O130** | **P2** | `template-seed.js --cold`: siembra desde plantilla en directorio aislado |
+
+**Estado** · ⬜. Contrato en `TEMPLATE-PROTOCOL.md` §4.3: sbot embebido (`src/client/gui.js`, como `test/seed.js:17-22` de upstream), `ssb_path` ≠ `~/.ssb`, `OASIS_NETWORK_PAUSED=1`, dry-run, `--yes <bloque>`, ledger, `--verify`. Bloqueos previstos: solo corre en contenedor (compose drill con `--entrypoint`); fechas futuras y votos ≥ 7 días; stream vivo de tribus (`process.exit`); salas sin pub conectado quedan sin centralita; parliament exige legislatura.
+Dep: WP-O129.
+
+| **WP-O131** | **P2** | `template-seed.js --hot`: bot secretaría que activa la plantilla en un pub vivo |
+
+**Estado** · ⬜. Servicio `oasis-secretaria` clon de `oasis-wallet-bot` con `command: ["server"]`, fila en la ficha de instancia, `about` aprobado literal, invite redimida; el seeder corre dentro por su socket; gate `whoami ≠ id del pub`. Dos PERMISOS irreversibles en host ajeno; en una instalación upstream sin Docker, segundo sbot a mano (`ssb_path=<dir> node src/server/SSB_server.js start`). Condicionado a que el colectivo acepte una identidad secretaría y decida quién custodia su keyring.
+Dep: WP-O130. Relación: HUB-PROTOCOL §3, §11.
+
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
 **Estado** · ✅ 2026-09-19 en `main`. Asientos D-O20, D-O23.
