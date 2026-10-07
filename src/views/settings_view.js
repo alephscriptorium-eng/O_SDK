@@ -104,7 +104,9 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
             d.files ? row(i18n.updateFilesLabel, `${d.files} · +${d.insertions} −${d.deletions}`) : null,
             d.origin ? row(i18n.updateOriginLabel, span({ class: "bank-address-code" }, d.origin)) : null
           ),
-          p("Upstream Oasis updates are available. For this Dockerized deployment, update from the host repository and rebuild the container. In-app auto-update is disabled.")
+          form({ action: "/update", method: "post" },
+            button({ type: "submit", class: "filter-btn" }, `\u2B07 OASIS${updateInfo.version ? ` ${updateInfo.version}` : ''}`)
+          )
         )
       )
     );
