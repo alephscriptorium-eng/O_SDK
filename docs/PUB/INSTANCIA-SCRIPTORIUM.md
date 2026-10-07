@@ -60,7 +60,8 @@ Al subir a 1.2.2 el bot 1 publicó además un `about` de visibilidad; en el ensa
 visite sus páginas. Al subir a 1.2.3 (2026-10-07) cada nodo publicó solo su `oasisVersion`; el `about` de
 `clearnetSince` que 1.2.3 intenta publicar en cada arranque de un backend no público (bot-2) no salió, y puede
 salir en cualquier reinicio: se declara `about=+0..1` (UPGRADE §0.4). Los tres nodos siguen sin salir por Tor
-(`onion: []` en sus ssb-config; upstream lo abre por defecto desde 1.2.3: DECISIÓN pendiente, HUB §5.2).
+(`onion: []` en sus ssb-config; upstream lo abre por defecto desde 1.2.3; el custodio decidió el 2026-10-07 no
+salir por Tor, HUB §5.2).
 
 Nombres anteriores (siguen en el log de cada feed; D-O14): `azofaifo-scriptorium-skin-bot-1`,
 `azofaifo-scriptorium-wallet-bot-2`.

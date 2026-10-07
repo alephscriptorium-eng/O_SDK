@@ -16,7 +16,7 @@
 > Sala 04 con 16 tipos. Reporte `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md`.
 
 Checklist operativo para **activar, operar, mantener en disco y llevar a través de
-los upgrades** el HUB web de solo lectura de Oasis (`/c`, 17 tipos de contenido desde 1.2.1, con Files; 16 desde 1.1.2; 12 en 1.0.8,
+los upgrades** el HUB web de solo lectura de Oasis (`/c`, 23 tipos de contenido desde 1.2.3, con Calendars, Campaigns, Emergencies, Housing, Maps y Rooms, más el contenido de tribus en `/c/tribe/<id>`; 17 desde 1.2.1, con Files; 16 desde 1.1.2; 12 en 1.0.8,
 `./clearnet.md`). Deriva del plan v2 del 2026-09-13 y de su revisión adversarial
 (20 hallazgos, `dosier/05-revision-adversarial.md`).
 

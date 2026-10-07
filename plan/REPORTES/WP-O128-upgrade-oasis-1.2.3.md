@@ -277,10 +277,10 @@ del modo de permisos con que se abre la sesión: un ciclo de host no se empieza 
 - **Cliente** (`docker-compose.yml`, modo `full`): drill de CLIENT §5 y `client:test-ai` con
   `OASIS_AI=full`; en 1.2.3 el cliente hereda `outgoing.onion` (sin override) y puede publicar el
   `about` de `clearnetSince` si tiene prefs. Journal con `--target client` (nuevo).
-- **Sala 04 del sitio del pub**: los siete tipos nuevos del visor (calendars, campaigns,
-  emergencies, housing, maps, rooms, tribe) no están listados. `deploy-site.sh` sincroniza con
-  `--delete`: se sube fichero a fichero (AGENTES §4).
-- **Tor**: DECISIÓN del custodio; hoy `onion: []` en los tres nodos del pub.
+- Sala 04 del sitio: **hecho** el 2026-10-07 (23 tipos y nota de 1.2.3; el vivo era igual al repo por
+  sha256 y se sustituyó in place, `685d5a48…`). HUB-PROTOCOL §1 al día.
+- Tor: **decidido** por el custodio el 2026-10-07: no; `onion: []` en los tres nodos del pub.
+- Cliente: el custodio decidió no subirlo en este ciclo; sigue en 1.2.2.
 - Phone: una llamada real por el pub (pendiente desde WP-O124); buzón de voz nuevo en 1.2.3, sin
   probar.
 - `capacity.sh` a las 24 h en el host: `network_pause.js` barre `oasisVersion` cada 10 min.

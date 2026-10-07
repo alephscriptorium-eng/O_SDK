@@ -225,7 +225,7 @@
   <div class="cutout tilt-r2">
     <div class="tape tape-tl"></div>
     <div class="tape tape-br"></div>
-    <h3>Los 17 tipos · <code>/c/&lt;tipo&gt;/&lt;id&gt;</code></h3>
+    <h3>Los 23 tipos · <code>/c/&lt;tipo&gt;/&lt;id&gt;</code></h3>
     <table class="tbl">
       <tr>
         <th>Tipo</th>
@@ -284,8 +284,26 @@
       <tr>
         <td>Files</td>
         <td><code>/c/files/&lt;id&gt;</code></td>
-        <td></td>
-        <td></td>
+        <td>Maps</td>
+        <td><code>/c/maps/&lt;id&gt;</code></td>
+      </tr>
+      <tr>
+        <td>Calendars</td>
+        <td><code>/c/calendars/&lt;id&gt;</code></td>
+        <td>Rooms</td>
+        <td><code>/c/rooms/&lt;id&gt;</code></td>
+      </tr>
+      <tr>
+        <td>Campaigns</td>
+        <td><code>/c/campaigns/&lt;id&gt;</code></td>
+        <td>Housing</td>
+        <td><code>/c/housing/&lt;id&gt;</code></td>
+      </tr>
+      <tr>
+        <td>Emergencies</td>
+        <td><code>/c/emergencies/&lt;id&gt;</code></td>
+        <td>Tribus</td>
+        <td><code>/c/tribe/&lt;id&gt;</code></td>
       </tr>
     </table>
     <div class="tiny-note" style="margin-top:8px;">
@@ -296,6 +314,9 @@
     </div>
     <div class="tiny-note" style="margin-top:8px;">
       Con Oasis 1.2.1: Files, ficheros de cualquier tipo que su autor ha marcado como públicos. La ficha está en <code>/c/files/&lt;id&gt;</code> y la descarga sale por <code>/c/blob/&lt;blobId&gt;</code>, como el resto de medios.
+    </div>
+    <div class="tiny-note" style="margin-top:8px;">
+      Con Oasis 1.2.3: seis tipos más (Calendars, Campaigns, Emergencies, Housing, Maps, Rooms), con listado por <code>/c?type=&lt;tipo&gt;</code> y canal RSS como los demás, y el contenido que una tribu decide sacar al clearnet, agrupado en <code>/c/tribe/&lt;id&gt;</code>. Los mapas se dibujan en el servidor como SVG.
     </div>
   </div>
 
