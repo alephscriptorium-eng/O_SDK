@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "id": "acampada26s",
+    "nombre": "Acampada26S",
+    "descripcion": "Estructura asamblearia, horizontal y en red, expresada en objetos de Oasis 1.2.3",
+    "pub": "acampada26s.net",
+    "workflow": "activists",
+    "idioma": "es",
+    "version_oasis": "1.2.3",
+    "organigrama": "ARCHIVO/DISCO/retro-exporter/entrada/acampada26s_organigrama.json",
+    "autoria": "<DECISIÓN del colectivo: qué identidad crea cada tribu; solo el autor la borra o reestructura>"
+  },
+
+  "tribes": [
+    { "id": "asamblea_general", "origen": "asamblea_general", "title": "Asamblea General", "description": "Órgano mayor de representación. Ratifica consensos (semáforo), espacio informativo, exposición de nodos y comisiones, lectura de comunicados.", "tags": ["asamblea", "acampada26s"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum"] },
+    { "id": "asamblea_internodos", "origen": "asamblea_internodos", "title": "Asamblea Internodos", "description": "Portavocías rotativas de los nodos territoriales. Pone en común las propuestas de los nodos y aglutina consensos para la Asamblea General. Sin poder de decisión.", "tags": ["internodos", "portavocias"], "private": true, "inviteMode": "strict", "openInvite": false, "content": ["feed", "forum"], "nota": "La membresía son las portavocías vigentes: rotar = salir + invitar (la clave de la tribu rota en cada salida)." },
+
+    { "id": "nodo_norte", "origen": "nodo_norte", "title": "Nodo Norte", "description": "Asamblea abierta de barrios y territorios del norte. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.", "tags": ["nodo", "norte"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "event"] },
+    { "id": "nodo_oeste", "origen": "nodo_oeste", "title": "Nodo Oeste", "description": "Asamblea abierta de barrios y territorios del oeste. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.", "tags": ["nodo", "oeste"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "event"] },
+    { "id": "nodo_centro", "origen": "nodo_centro", "title": "Nodo Centro", "description": "Asamblea abierta de barrios y territorios del centro. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.", "tags": ["nodo", "centro"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "event"] },
+    { "id": "nodo_este", "origen": "nodo_este", "title": "Nodo Este", "description": "Asamblea abierta de barrios y territorios del este. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.", "tags": ["nodo", "este"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "event"] },
+    { "id": "nodo_sur", "origen": "nodo_sur", "title": "Nodo Sur", "description": "Asamblea abierta de barrios y territorios del sur. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.", "tags": ["nodo", "sur"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "event"] },
+
+    { "id": "comision_comunicacion", "origen": "comision_comunicacion", "title": "Comisión de Comunicación", "description": "Comunicación interna y externa, redes, medios, diseño. Coordina con nodos, comisiones y Asamblea General.", "tags": ["comision", "comunicacion"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "task"] },
+    { "id": "comision_urbanismo", "origen": "comision_urbanismo", "title": "Comisión de Urbanismo", "description": "Vivienda, ciudad, planificación.", "tags": ["comision", "urbanismo", "vivienda"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "task"] },
+    { "id": "comision_cuidados", "origen": "comision_cuidados", "title": "Comisión de Cuidados", "description": "Bienestar, salud, primeros auxilios.", "tags": ["comision", "cuidados"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "task"] },
+    { "id": "comision_dinamizacion", "origen": "comision_dinamizacion", "title": "Comisión de Dinamización", "description": "Facilita las asambleas y los procesos de decisión.", "tags": ["comision", "dinamizacion"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "task"] },
+    { "id": "comision_mediacion", "origen": "comision_mediacion", "title": "Comisión de Mediación", "description": "Resolución de conflictos y convivencia.", "tags": ["comision", "mediacion"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "task"] },
+    { "id": "comision_limpieza", "origen": "comision_limpieza", "title": "Comisión de Limpieza", "description": "Gestión de residuos y mantenimiento.", "tags": ["comision", "limpieza"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "task"] },
+    { "id": "comision_abastecimiento", "origen": "comision_abastecimiento", "title": "Comisión de Abastecimiento", "description": "Alimentación, materiales y suministros.", "tags": ["comision", "abastecimiento"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "task"] },
+
+    { "id": "com_general", "origen": "comision_de_comunicacion", "parent": "comision_comunicacion", "title": "Comunicación · General", "description": "Grupo general de la comisión (antes: grupo de Telegram).", "tags": ["comunicacion"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum"] },
+    { "id": "com_redes", "origen": "comision_de_comunicacion", "parent": "comision_comunicacion", "title": "Comunicación · Redes y contenido digital", "description": "Redes sociales y contenido digital.", "tags": ["comunicacion", "redes"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum", "task"] },
+    { "id": "com_interna", "origen": "comision_de_comunicacion", "parent": "comision_comunicacion", "title": "Comunicación · Interna", "description": "Comunicación interna de la acampada.", "tags": ["comunicacion", "interna"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum"] },
+    { "id": "com_audiovisual", "origen": "comision_de_comunicacion", "parent": "comision_comunicacion", "title": "Comunicación · Audiovisual", "description": "Foto y vídeo. Lo publicado va a Images, Videos, Audios y Podcasts.", "tags": ["comunicacion", "audiovisual"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "media"] },
+    { "id": "com_diseno", "origen": "comision_de_comunicacion", "parent": "comision_comunicacion", "title": "Comunicación · Diseño y branding", "description": "Diseño gráfico e identidad visual. Lo publicado va a Images y Docs.", "tags": ["comunicacion", "diseno"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "media"] },
+    { "id": "com_cultura", "origen": "comision_de_comunicacion", "parent": "comision_comunicacion", "title": "Comunicación · Cultura y eventos", "description": "Programación cultural. Los actos se publican como Events.", "tags": ["comunicacion", "cultura"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "event"] },
+    { "id": "com_piar", "origen": "comision_de_comunicacion", "parent": "comision_comunicacion", "title": "Comunicación · Relaciones públicas (PIAR)", "description": "Relación con medios y entidades. Los comunicados salen por Blogs y la lista «Comunicados».", "tags": ["comunicacion", "prensa"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum"] },
+    { "id": "com_crisis", "origen": "comision_de_comunicacion", "parent": "comision_comunicacion", "title": "Comunicación · Coordinación y gabinete de crisis", "description": "Coordinación y respuesta rápida. Los avisos urgentes van a Emergencies.", "tags": ["comunicacion", "crisis"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed", "forum"] },
+    { "id": "com_correccion", "origen": "comision_de_comunicacion", "parent": "comision_comunicacion", "title": "Comunicación · Corrección de textos", "description": "Revisión de textos antes de publicar. Se trabaja en Pads.", "tags": ["comunicacion", "textos"], "private": false, "inviteMode": "open", "openInvite": true, "content": ["feed"] },
+
+    { "id": "intercsos", "origen": "intercsos", "title": "InterCSOs", "description": "Relación con entidades y actores de la sociedad civil (ámbito estatal e internacional). Tribu de enlace.", "tags": ["articulacion", "intercsos"], "private": false, "inviteMode": "strict", "openInvite": false, "content": ["feed", "forum"] },
+    { "id": "asamblea_colectivos", "origen": "asamblea_de_colectivos", "title": "Asamblea de Colectivos", "description": "Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas. Tribu de enlace.", "tags": ["articulacion", "colectivos"], "private": false, "inviteMode": "strict", "openInvite": false, "content": ["feed", "forum"] }
+  ],
+
+  "rooms": [
+    { "id": "sala_asamblea_general", "origen": "asamblea_general", "title": "Sala · Asamblea General", "description": "Sala abierta de la Asamblea General (voz y texto). Para quien no puede estar en Sol a las 20:00.", "status": "OPEN", "tribe": "asamblea_general", "tags": ["asamblea"] },
+    { "id": "sala_internodos", "origen": "asamblea_internodos", "title": "Sala · Internodos", "description": "Sala de las portavocías, solo por invitación.", "status": "INVITE-ONLY", "tribe": "asamblea_internodos", "tags": ["internodos"] },
+    { "id": "sala_nodo_norte", "origen": "nodo_norte", "title": "Sala · Nodo Norte", "description": "Sala abierta del nodo.", "status": "OPEN", "tribe": "nodo_norte", "tags": ["nodo"] },
+    { "id": "sala_nodo_oeste", "origen": "nodo_oeste", "title": "Sala · Nodo Oeste", "description": "Sala abierta del nodo.", "status": "OPEN", "tribe": "nodo_oeste", "tags": ["nodo"] },
+    { "id": "sala_nodo_centro", "origen": "nodo_centro", "title": "Sala · Nodo Centro", "description": "Sala abierta del nodo.", "status": "OPEN", "tribe": "nodo_centro", "tags": ["nodo"] },
+    { "id": "sala_nodo_este", "origen": "nodo_este", "title": "Sala · Nodo Este", "description": "Sala abierta del nodo.", "status": "OPEN", "tribe": "nodo_este", "tags": ["nodo"] },
+    { "id": "sala_nodo_sur", "origen": "nodo_sur", "title": "Sala · Nodo Sur", "description": "Sala abierta del nodo.", "status": "OPEN", "tribe": "nodo_sur", "tags": ["nodo"] }
+  ],
+
+  "calendars": [
+    { "id": "cal_asamblea_general", "origen": "asamblea_general", "title": "Asamblea General", "status": "OPEN", "tribe": null, "tags": ["asamblea"], "dates": [ { "label": "Asamblea General", "hora": "20:00", "recurrencia": "diaria", "offsetDays": 1, "nota": "Puerta del Sol nº 14. Ratifica consensos con la técnica del semáforo." } ] },
+    { "id": "cal_internodos", "origen": "asamblea_internodos", "title": "Asamblea Internodos", "status": "OPEN", "tribe": "asamblea_internodos", "tags": ["internodos"], "dates": [ { "label": "Asamblea Internodos", "hora": "19:00", "recurrencia": "diaria", "offsetDays": 1, "nota": "Previa a la Asamblea General." } ] },
+    { "id": "cal_nodo_norte", "origen": "nodo_norte", "title": "Nodo Norte", "status": "OPEN", "tribe": "nodo_norte", "tags": ["nodo"], "dates": [ { "label": "Asamblea del nodo", "hora": "<pendiente>", "recurrencia": "variable", "offsetDays": 2, "nota": "Periodicidad según cada nodo." } ] },
+    { "id": "cal_nodo_oeste", "origen": "nodo_oeste", "title": "Nodo Oeste", "status": "OPEN", "tribe": "nodo_oeste", "tags": ["nodo"], "dates": [ { "label": "Asamblea del nodo", "hora": "<pendiente>", "recurrencia": "variable", "offsetDays": 2, "nota": "Periodicidad según cada nodo." } ] },
+    { "id": "cal_nodo_centro", "origen": "nodo_centro", "title": "Nodo Centro", "status": "OPEN", "tribe": "nodo_centro", "tags": ["nodo"], "dates": [ { "label": "Asamblea del nodo", "hora": "<pendiente>", "recurrencia": "variable", "offsetDays": 2, "nota": "Periodicidad según cada nodo." } ] },
+    { "id": "cal_nodo_este", "origen": "nodo_este", "title": "Nodo Este", "status": "OPEN", "tribe": "nodo_este", "tags": ["nodo"], "dates": [ { "label": "Asamblea del nodo", "hora": "<pendiente>", "recurrencia": "variable", "offsetDays": 2, "nota": "Periodicidad según cada nodo." } ] },
+    { "id": "cal_nodo_sur", "origen": "nodo_sur", "title": "Nodo Sur", "status": "OPEN", "tribe": "nodo_sur", "tags": ["nodo"], "dates": [ { "label": "Asamblea del nodo", "hora": "<pendiente>", "recurrencia": "variable", "offsetDays": 2, "nota": "Periodicidad según cada nodo." } ] }
+  ],
+
+  "events": [
+    { "id": "evento_asamblea_general", "origen": "asamblea_general", "title": "Asamblea General · Puerta del Sol", "description": "Cada día a las 20:00 en Puerta del Sol nº 14. Espacio informativo y de consenso; ratificación con la técnica del semáforo.", "offsetDays": 1, "hora": "20:00", "location": "Puerta del Sol nº 14, Madrid", "isPublic": true, "clearnetPublic": true, "recurrencia": "diaria", "tags": ["asamblea", "sol"] }
+  ],
+
+  "mailing": [
+    { "id": "lista_acuerdos", "origen": "asamblea_general", "title": "Acuerdos de la Asamblea General", "description": "Flujo descendente: temas y acuerdos para trabajar en los nodos. Solo publica quien la Asamblea decida; cualquiera se suscribe.", "listType": "OPEN", "tags": ["acuerdos"] },
+    { "id": "lista_comunicados", "origen": "comision_de_comunicacion", "title": "Comunicados", "description": "Comunicados oficiales de la acampada hacia dentro y hacia fuera.", "listType": "OPEN", "tags": ["comunicados"] },
+    { "id": "lista_colectivos", "origen": "asamblea_de_colectivos", "title": "Asamblea de Colectivos", "description": "Coordinación con otros colectivos. Cifrada: solo miembros.", "listType": "CLOSED", "tags": ["articulacion"] },
+    { "id": "lista_intercsos", "origen": "intercsos", "title": "InterCSOs", "description": "Relación con entidades de la sociedad civil. Cifrada: solo miembros.", "listType": "CLOSED", "tags": ["articulacion"] }
+  ],
+
+  "wiki": [
+    { "id": "wiki_organigrama", "origen": "documento", "title": "Organigrama y funcionamiento", "body": "<pendiente: texto del organigrama redactado por el colectivo a partir del JSON de entrada>", "editPolicy": "open", "tags": ["organigrama"] },
+    { "id": "wiki_semaforo", "origen": "tecnica_semaforo", "title": "Técnica del semáforo", "body": "Método de consenso para valorar las propuestas en la Asamblea General. Verde: acuerdo / a favor. Amarillo: dudas / a revisar. Rojo: en contra. En Oasis: una votación (Votes) con las tres opciones VERDE, AMARILLO, ROJO por cada propuesta.", "editPolicy": "author", "tags": ["metodo"] },
+    { "id": "wiki_portavocias", "origen": "portavocias_rotativas", "title": "Portavocías rotativas", "body": "2-3 portavoces por nodo, rotativas, sin poder de decisión: transmiten las propuestas de su nodo a la Asamblea Internodos. En Oasis: ser portavoz = ser miembro de la tribu Asamblea Internodos durante el turno; al terminar, se sale de la tribu y entra la siguiente portavocía.", "editPolicy": "author", "tags": ["metodo"] },
+    { "id": "wiki_onboarding", "origen": "personas", "title": "Oasis para el nodo · manual de bienvenida", "file": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md", "editPolicy": "open", "tags": ["manual"] }
+  ],
+
+  "maps": [
+    { "id": "mapa_sol", "origen": "asamblea_general", "title": "Puerta del Sol nº 14", "description": "Lugar de la Asamblea General, cada día a las 20:00.", "lat": 40.4169, "lng": -3.7035, "mapType": "SINGLE", "tags": ["asamblea", "sol"], "markers": [] },
+    { "id": "mapa_nodos", "origen": "nodos_territoriales", "title": "Nodos territoriales", "description": "Mapa colaborativo: cada nodo marca dónde se reúne.", "lat": 40.4169, "lng": -3.7035, "mapType": "OPEN", "tags": ["nodos"], "markers": [], "nota": "Los marcadores los pone cada nodo; no se inventan coordenadas." }
+  ],
+
+  "votes": {
+    "convencion": { "id": "semaforo", "origen": "tecnica_semaforo", "options": ["VERDE", "AMARILLO", "ROJO"], "minDays": 7, "nota": "Una votación por propuesta que llega a la Asamblea General. El módulo Votes admite opciones libres; la votación interna de Parliament no (YES/NO/ABSTENTION)." },
+    "ejemplo": { "id": "voto_ejemplo", "origen": "asamblea_general", "question": "¿Ratifica la Asamblea General la propuesta «…» del Nodo …?", "offsetDays": 7, "tags": ["semaforo"] }
+  },
+
+  "emergencies": {
+    "convencion": [
+      { "origen": "comision_cuidados", "category": "HEALTH", "uso": "Salud y primeros auxilios en la plaza." },
+      { "origen": "comision_de_comunicacion", "category": "SECURITY", "uso": "Gabinete de crisis: avisos de seguridad." },
+      { "origen": "comision_abastecimiento", "category": "INFRASTRUCTURE", "uso": "Cortes de suministro, materiales críticos." },
+      { "origen": "nodos_territoriales", "category": "NEIGHBORHOOD", "uso": "Avisos de barrio desde cada nodo." }
+    ]
+  },
+
+  "courts": {
+    "convencion": { "origen": "comision_mediacion", "method": "MEDIATION", "uso": "Conflictos de convivencia: la Comisión de Mediación abre el caso con método MEDIATION." }
+  },
+
+  "federation": [
+    { "id": "fed_intercsos", "origen": "intercsos", "nombre": "InterCSOs", "pub": "<pendiente: pub de la entidad, si lo tiene>", "nota": "Cada entidad con pub propio: follow mutuo entre pubs y announce. Sin pub: tribu de enlace + lista CLOSED." },
+    { "id": "fed_colectivos", "origen": "asamblea_de_colectivos", "nombre": "Asamblea de Colectivos", "pub": "<pendiente: pubs de los colectivos aliados>", "nota": "Una federación de pubs es la forma nativa de «asamblea de colectivos» en SSB." }
+  ],
+
+  "addenda": [
+    { "modulo": "housing", "origen": "comision_urbanismo", "porQue": "Vivienda es la demanda central del movimiento: Housing publica alquiler, venta y acogida (couchsurfing) con disponibilidad. Fuera del workflow activists; encenderlo es un clic por cliente." },
+    { "modulo": "market", "origen": "comision_abastecimiento", "porQue": "Dar, pedir e intercambiar bienes y servicios sin dinero (exchange) o con ECOin. Complementa a Logistics (ya dentro)." },
+    { "modulo": "transfers", "origen": "comision_abastecimiento", "porQue": "Transferencias de TIEMPO y CONFIANZA entre habitantes, además de económicas: banco de tiempo de la plaza." },
+    { "modulo": "parliament", "origen": "asamblea_general", "porQue": "Ratificación formal con legislaturas, propuestas y leyes. Requiere abrir una legislatura; su votación interna es sí/no, por eso el semáforo vive en Votes." },
+    { "modulo": "school", "origen": "portavocias_rotativas", "porQue": "Ya dentro de activists: cursos y lecciones para formar portavocías y mesa técnica." },
+    { "modulo": "banking", "origen": "documento", "porQue": "ECOin: un pub con cartera paga renta básica a los habitantes activos. Economía interna opcional; protocolo ECOIN-PROTOCOL.md." }
+  ],
+
+  "guion": {
+    "workflow": "activists",
+    "nota_workflow": "El workflow es un ajuste local de cada cliente (Settings → Workflows → Activists). Ningún mensaje SSB lo transporta: el pub no puede imponerlo. Va en el guion y en el manual.",
+    "invite_asamblea": "./oasis.sh invite 500"
+  }
+}
