@@ -73,8 +73,9 @@ pub/blobstore-sidecar/**
 pub/assets
 pub/assets/**
 
-# Lore del usuario (exports de RRSS, varios GB) y su sidecar: no viajan en la imagen de Oasis
-ARCHIVO/LORE
-ARCHIVO/LORE/**
+# Archivo del usuario (lore, exports de RRSS, kits de instalador con sus .deb) y su sidecar: nada de
+# eso corre dentro del contenedor. Lo que git ignora (dist/) Docker NO lo ignora: de ahí el comodín.
+ARCHIVO
+ARCHIVO/**
 pub/rrss-sidecar
 pub/rrss-sidecar/**

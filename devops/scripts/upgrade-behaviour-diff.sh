@@ -121,9 +121,18 @@ for s in $SECTIONS; do
       done ;;
     files)
       head_of files "ficheros de src/ que nacen o desaparecen (un borrado sin 'git rm' previo deja restos)"
-      git diff --name-status --no-renames "$OLD" "$NEW" -- src ":!$VENDOR" | awk '$1 != "M"' | while read -r st f; do
-        [ "$st" = A ] && emit files + "$f" "nuevo" || emit files - "$f" "borrado por upstream"
-      done ;;
+      # Activos (teselas y datos de mapas, assets del cliente) se colapsan en una línea por carpeta y
+      # signo: en 1.2.3 upstream cambió 10 922 teselas, y una línea (y una disposición) por tesela no
+      # es información (y en Windows, con ~6 procesos por línea, es más de una hora de script).
+      git diff --name-status --no-renames "$OLD" "$NEW" -- src ":!$VENDOR" | tr -d '' | awk '$1 != "M"'         | awk -F'	' '{ f=$2; st=$1
+            if (f ~ /^src\/(maps\/(tiles|cache|data)|client\/assets)\//) { sub(/\/[^\/]*$/, "", f); n=split(f, p, "/"); d=p[1]"/"p[2]"/"p[3]; k=st"	"d; c[k]++ }
+            else print st"	"f }
+          END { for (k in c) { split(k, q, "	"); print q[1]"	"q[2]"/**	"c[k] } }'         | while IFS=$'	' read -r st f n; do
+          case "$st" in
+            A) emit files + "$f" "nuevo${n:+ ($n ficheros)}" ;;
+            *) emit files - "$f" "borrado por upstream${n:+ ($n ficheros)}" ;;
+          esac
+        done ;;
     routes)
       head_of routes "superficie HTTP. Una GET nueva bajo /c/ sale al clearnet; una POST nueva es una acción nueva de la GUI"
       routes_of "$OLD" > "$OUT.a"; routes_of "$NEW" > "$OUT.b"
