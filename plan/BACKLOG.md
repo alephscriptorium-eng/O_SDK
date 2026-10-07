@@ -832,7 +832,7 @@ Dep: —. Relación: WP-O112, WP-O118.
 
 | **WP-O128** | **P0** | Upgrade a Oasis 1.2.3 |
 
-**Estado** · 🔶 2026-10-07, rama `upgrade/oasis-1.2.3` (sobre `fix/upgrade-protocol-o127`): ensayo local hecho, gates U0-U7 y US en verde (`plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md`); delta `oasisVersion` +1 por nodo y nada más, medido dos veces. **Pendiente**: el host (§4 con GO-1..GO-4b; GO-4a lleva el `about` de `clearnetSince` del bot, +0..1), el cliente (drill, `test-ai`, journal `--target client`), la Sala 04 con los siete tipos nuevos, retirar los restos de rollback de 1.1.10/1.2.1, DECISIÓN de Tor (`outgoing.onion`), merge a `main`.
+**Estado** · ✅ 2026-10-07: pub, HUB y bot en 1.2.3 en el host (`plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md` §9), mismo delta que en local: `oasisVersion` +1 por nodo y nada más (el `about` de `clearnetSince` del bot no salió; queda declarado `+0..1` en cada arranque). Rollbacks de 1.1.10 y 1.2.1 retirados. Rama `upgrade/oasis-1.2.3` (sobre `fix/upgrade-protocol-o127`), pendiente de merge. **Pendiente**: el cliente (drill, `test-ai`, journal `--target client`), la Sala 04 con los siete tipos nuevos del visor, backups viejos de `/srv/oasis` fuera de la máquina, medida a las 24 h, DECISIÓN de Tor (`outgoing.onion`), una llamada real por el pub.
 
 **BRIEF** · Ciclo gordo: `backend.js` +1354/−261, `long_text.js`, `pdf.js`, mapas reescritos (PNG → SVG/JPG), `opusscript` para Phone, `ssb-box`/`ssb-conn`/`ssb-gossip` tocados en `src/base` (cierre del pub: invite obligatorio), `outgoing.onion` abierto en `server-config.json` (DECISIÓN: `[]` en HUB y bots), 10 parches en el script de upstream. Riesgo de saltar el ensayo local estimado > 50 %: se ensaya. Sin cambio de motor.
 Dep: WP-O127.

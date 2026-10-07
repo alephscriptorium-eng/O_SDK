@@ -5,9 +5,11 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
-### Changed — Oasis 1.2.3 en local: gates U0-U7 en verde, host pendiente (WP-O128, 2026-10-07)
+### Changed — Oasis 1.2.3 en local y en el host (WP-O128, 2026-10-07)
 
-Reporte `plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md`. **El host no se ha tocado.** Upstream
+Reporte `plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md`. **Desplegado el 2026-10-07**: pub, HUB y bot en
+1.2.3, mismo delta que en local (`oasisVersion` +1 por nodo y nada más); rollbacks de 1.1.10 y 1.2.1
+retirados (`/` del 54 % al 35 %); `test-invite.sh` corregido para el layout del host. Upstream
 `043f4634` «Oasis release 1.2.3»: `backend.js` +1354/−261 (textos largos troceados, borrados con
 `tombstone`, contenido de tribus al clearnet, siete rutas de detalle nuevas bajo `/c/`), mapas
 reescritos (SVG y teselas JPG), `opusscript` y buzón de voz en la centralita, ranking de pares por

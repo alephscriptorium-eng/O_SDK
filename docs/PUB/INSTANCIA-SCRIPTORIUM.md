@@ -45,7 +45,7 @@ nombre puede cambiar.
 | 2 | `ecoin.escrivivir.co` | ecoin (cartera) · scriptorium | hub-wallet: cartera ECOin del pub, custodia la dote y reparte la RBU; **sin ruta pública** | `oasis-pub-wallet-bot` + `oasis-pub-ecoin` · `/srv/oasis/oasis-wallet-bot`, `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
-Oasis **1.2.2** en pub, HUB y bot-2 desde el 2026-10-05 (WP-O124; antes 1.2.1, WP-O123, 2026-10-04). El pub
+Oasis **1.2.3** en pub, HUB y bot-2 desde el 2026-10-07 (WP-O128; antes 1.2.2, WP-O124, 2026-10-05). El pub
 hace de centralita de Phone y Rooms, acotada (`phone` en su ssb-config: relé solo para feeds que sigue,
 aforo de sala 12; `HUB-PROTOCOL.md` §14); HUB y bot-2, no. Nombre del pub (su `about`):
 **`pub.escrivivir.co`**, publicado el 2026-10-05 (cuarto `about` del feed, solo `name`; la descripción
@@ -57,7 +57,10 @@ sin fondos (✗, pool 0) hasta la dote. Época `2026-09` fijada con pool 0.
 
 Al subir a 1.2.2 el bot 1 publicó además un `about` de visibilidad; en el ensayo local ese mensaje lleva solo
 `visibilityPrefs` con `phone: "off"` (2026-10-05, WP-O124 §5.1); el del bot 2 sale cuando alguien
-visite sus páginas.
+visite sus páginas. Al subir a 1.2.3 (2026-10-07) cada nodo publicó solo su `oasisVersion`; el `about` de
+`clearnetSince` que 1.2.3 intenta publicar en cada arranque de un backend no público (bot-2) no salió, y puede
+salir en cualquier reinicio: se declara `about=+0..1` (UPGRADE §0.4). Los tres nodos siguen sin salir por Tor
+(`onion: []` en sus ssb-config; upstream lo abre por defecto desde 1.2.3: DECISIÓN pendiente, HUB §5.2).
 
 Nombres anteriores (siguen en el log de cada feed; D-O14): `azofaifo-scriptorium-skin-bot-1`,
 `azofaifo-scriptorium-wallet-bot-2`.

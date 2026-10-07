@@ -7,8 +7,8 @@ encargos:
   - id: subir-version
     titulo: Subir mi pub a la versión nueva de Oasis
     estado: ejercido
-    medido: '2026-10-05'
-    prueba: plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md
+    medido: '2026-10-07'
+    prueba: plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md
     falta: prueba en frío (WP-O118)
   - id: recuperar
     titulo: Algo se ha roto, recupéralo
@@ -28,11 +28,11 @@ puerta es para quien ya tiene algo corriendo.
 - Subir de versión: <Sello rol="mantener" id="subir-version" />
 - Recuperar: <Sello rol="mantener" id="recuperar" />
 
-La última subida del pub de demostración, de 1.2.1 a 1.2.2, se hizo con este
-protocolo: tres nodos; cada uno publicó su anuncio de versión y, los de soporte,
-además el aviso de perfil que el ensayo local había destapado y que se declaró
-antes de subir. La anterior, de 1.1.10 a 1.2.1, fue un cambio de motor de base de
-datos, de los que no tienen vuelta atrás.
+La última subida del pub de demostración, de 1.2.2 a 1.2.3, se hizo con este
+protocolo: tres nodos, cada uno publicó su anuncio de versión y nada más, el mismo
+día de la release y tras ensayarlo en local, donde una suposición leída del código
+resultó falsa y se corrigió antes de tocar el servidor. La de 1.1.10 a 1.2.1 fue un
+cambio de motor de base de datos, de los que no tienen vuelta atrás.
 
 ## Qué le dices a tu agente
 

@@ -2,7 +2,7 @@
 
 Rama `upgrade/oasis-1.2.3` (sobre `fix/upgrade-protocol-o127`) · 2026-10-07 ·
 `OLD_REF=b1f7adfc` (1.2.2) · `NEW_REF=043f4634` (1.2.3, «Oasis release 1.2.3», 14:13 +0200 del
-mismo día). **El host no se ha tocado.** Sin cambio de motor.
+mismo día). Sin cambio de motor. **Aplicado en el host el mismo día** (§9) tras el ensayo local.
 
 Antes del ciclo se corrigió el protocolo (WP-O127): `NEW_REF` por commit «release», audit de
 parches de `node_modules`, instancia leída de `host.env`, seis cabeceras obligatorias en este
@@ -231,15 +231,15 @@ marcador, así que **lo reintenta en cada arranque**. Consecuencias:
 
 Local, por nodo, desde `pre123` (1.2.2) hasta el cierre de U7:
 
-| Nodo | Esperado | Medido en U3 | Medido en U7 |
-|---|---|---|---|
-| pub (`server`) | `oasisVersion` +1 | `oasisVersion` +1 (seq 11 → 12) | `oasisVersion` +1 |
-| HUB (`backend --public`) | `oasisVersion` +1 | `oasisVersion` +1 (seq 10 → 11) | `oasisVersion` +1 |
-| bot (`backend`, motor encendido) | `oasisVersion` +1, `about` +0..1, `pubAvailability` +0..1 | `oasisVersion` +1 (seq 24 → 25); `about` +0, `pubAvailability` +0 | `oasisVersion` +1; `about` +0, `pubAvailability` +0 |
+| Nodo | Esperado | Medido en U3 | Medido en U7 | Host (§9) |
+|---|---|---|---|---|
+| pub (`server`) | `oasisVersion` +1 | `oasisVersion` +1 (seq 11 → 12) | `oasisVersion` +1 | `oasisVersion` +1 (seq 19 → 20) |
+| HUB (`backend --public`) | `oasisVersion` +1 | `oasisVersion` +1 (seq 10 → 11) | `oasisVersion` +1 | `oasisVersion` +1 (seq 15 → 16) |
+| bot (`backend`, motor encendido) | `oasisVersion` +1, `about` +0..1, `pubAvailability` +0..1 | `oasisVersion` +1 (seq 24 → 25); `about` +0, `pubAvailability` +0 | `oasisVersion` +1; `about` +0, `pubAvailability` +0 | `oasisVersion` +1 (seq 65 → 66); `about` +0, `pubAvailability` +0 |
 
 Además, en U6 el pub publicó el `contact` del invite (esperado, solo si se usa) y en U5/US nadie
-publicó nada. `ubiAllocation` y `(cifrado)`: 0 en todo el ciclo. Host: pendiente (reporte de
-aplicación).
+publicó nada. `ubiAllocation` y `(cifrado)`: 0 en todo el ciclo, en local y en el host. **Mismo delta en el
+host que en local.**
 
 ## 7. Correcciones al protocolo
 
@@ -260,15 +260,20 @@ Aplicadas en esta rama (además de WP-O127, que fue antes del ciclo):
    con `.deb` de 205 MB, ignorado por git y no por Docker, iba a entrar en la imagen).
 6. **HUB-PROTOCOL §5.2**: la fusión de `server-config.json` y la DECISIÓN de Tor (§3, `config`).
 
+7. **`test-invite.sh`**: llevaba `/app/pub/tools` fijo; en el host la carpeta del compose es `OASIS_PUB/` y
+   el canario del invite fallaba desde WP-O123 (que lo probó a mano). Ahora deriva la ruta de
+   `REMOTE_REPO_DIR` (`REMOTE_TOOLS_DIR` para forzarla).
+
 Tropiezos de herramienta sin corrección (anotados): Docker Desktop respondió «tried to kill
 container, but did not receive an exit event» al parar los nodos en U7 (pararon igual: pub y HUB
 con 143, el bot con 137, como en WP-O124); el CLI de Docker tarda hasta 30 s por orden en esta
-máquina y un `docker ps` filtrado puede salir vacío a medias.
+máquina y un `docker ps` filtrado puede salir vacío a medias. En el host: el clasificador de permisos
+de la sesión (modo «auto») denegó toda escritura por shell remoto, también una orden sola; el ciclo
+siguió al salir de ese modo. No es un defecto del protocolo (una orden por paso ya era la regla) sino
+del modo de permisos con que se abre la sesión: un ciclo de host no se empieza en modo «auto».
 
 ## 8. No medido / pendiente
 
-- **Host**: §4 del protocolo entero, con GO-1..GO-4b. Retirar en el paso 2 los restos de rollback
-  de 1.1.10 y 1.2.1 (`capacity.sh` avisa desde WP-O124). GO-4a lleva el `about` del bot.
 - **Cliente** (`docker-compose.yml`, modo `full`): drill de CLIENT §5 y `client:test-ai` con
   `OASIS_AI=full`; en 1.2.3 el cliente hereda `outgoing.onion` (sin override) y puede publicar el
   `about` de `clearnetSince` si tiene prefs. Journal con `--target client` (nuevo).
@@ -279,4 +284,31 @@ máquina y un `docker ps` filtrado puede salir vacío a medias.
 - Phone: una llamada real por el pub (pendiente desde WP-O124); buzón de voz nuevo en 1.2.3, sin
   probar.
 - `capacity.sh` a las 24 h en el host: `network_pause.js` barre `oasisVersion` cada 10 min.
+- Backups de ciclos anteriores en `/srv/oasis/*.bak-o106..o124*.tgz` y `*.cold-o123*` (≈4,5 GB): sacarlos
+  a almacenamiento cifrado fuera de la máquina y retirarlos (pendiente desde WP-O123).
+- Medida a las 24 h en el host (`capacity.sh`, memoria del pub con el ranking de pares).
 - El stack local queda **encendido** en 1.2.3 (tres nodos, caché, ecoind, web, panel).
+
+## 9. Aplicación en el host (2026-10-07, GO-1..GO-4b del custodio)
+
+Una orden por paso (§4 del protocolo). Estado de partida medido: pub, HUB y bot en 1.2.2 `healthy`,
+imagen al día, directorio en verde (ciclo 6), deriva solo en `.dockerignore`, 6 restos de rollback,
+`/` 54 %, `/srv/oasis` 36 %. Foto `pre123` (remote, 16:49Z): pub 19 · HUB 15 · bot 65, los tres
+`seq = registros = sbot`; motor `pub=true`, épocas `2026-09,2026-10`.
+
+| # | Paso | Hecho | Puerta |
+|---|---|---|---|
+| 1 | Backups | pub → `devops/backups/oasis-pub/20261007T164923Z`; `wallet.dat` → `devops/backups/ecoin/20261007T165121Z` (81 920 B, sha256 `42915e8f…`) y, tras encender, `…/20261007T174217Z` (`062cb9d4…`); en el host `/srv/oasis/oasis-hub.bak-o128-2026-10-07.tgz` (813 MB, sin `http-cache`) y `oasis-wallet-bot.bak-o128-2026-10-07.tgz` (78 MB), 600; `.dockerignore.bak-o128-2026-10-07`. Deriva de `.dockerignore` convergida in place: solo se añaden las 4 líneas de `ARCHIVO/**` (diff con su `.bak`) | GO-1 |
+| 2 | Disco | retirados `src.old-1.1.10`, `src.old-1.2.1`, `src-1.1.10.tgz`, `src-1.2.1.tgz`, imágenes `:1.1.10` y `:1.2.1`; `image prune` 0 B, `builder prune` 3,6 GB. `/` pasa del 54 % al 35 % | |
+| 3 | Rollback | `oasis-pub-scriptorium:1.2.2` = `9b49a2cb36d6` (la `latest` de entonces) · `/srv/oasis/src-1.2.2.tgz` (99 MB, 600) | |
+| 4 | `src/` | `git archive` con `core.eol=lf` de `upgrade/oasis-1.2.3` → `src.new` (324 MB, 24 918 ficheros + 1 enlace = 24 919 trackeados). Antes de cambiar: versión 1.2.3, 0 CR en `backend.js` e `is-map`, enlace a `src/base`, `ssb-db2` y `opusscript` vendorizados, dominio del pub en `snh-invite-code.json`, solo 4 JSON en `configs/`, 5461 teselas JPG. `test ! -e src.old-1.2.2 && mv …` | |
+| 5 | Lo demás que viaja | nada (§4 del reporte) | |
+| 6 | Build y humo | `compose build oasis-pub` → `84828fc054c6`, `nucleo vendorizado: carga en node v22.23.3`, `OASIS_AI=none`. Humo: 1.2.3, `node --check` de `backend.js` y `phone_module.js`, ningún `.env.prod` en `/app/OASIS_PUB`, sin `/app/ARCHIVO`, `src/maps` 47 MB; `server` y `backend` efímeros `running` con los tres parches en orden; `/c` → 200 | |
+| 7 | Pub | 17:17:43Z `up -d --no-deps oasis-pub` → `healthy` a los 30 s. `check pre123 --expect 'pub:oasisVersion=+1'` → `GATE OK` (HUB y bot 0). Invite bien formado (canario del override; `test-invite.sh` corregido, §7). `/public/status` → 1.2.3 tras el TTL de 5 min del panel. 0 errores en el log | GO-2 |
+| 8 | HUB | 17:22:58Z `up -d --no-deps oasis-hub` → `healthy` a los 60 s. `hub-disk.sh prune-cache` (1,2 GB → 0) · `hub --strict` → `GATE OK` (sitemap 167 URLs, RSS 30 + 3, todas https) · las 7 rutas nuevas 200 por Caddy → caché (MISS → cacheable, una CSP). `check` a los 5 min: `hub:oasisVersion=+1`, sin `about`. `hub-disk check` OK; 0 errores | GO-3 |
+| 9 | Bot | 17:34:21Z `hub-wallet.sh pause` → 1.2.3 con `pub=false`, `healthy`, misma dirección `EYdruX…`, parches en orden. `check` a los 5 min: `oasisVersion+1`, `about` +0, `wallet` = 1, `(cifrado)` quieto. 17:40:35Z `hub-wallet.sh on --yes` → `pub=true`, «PUB engine on» = 1. `check` a los 5 min: `pubAvailability` +0 (último anuncio reciente, saldo 0), `ubiAllocation` 0 | GO-4a · GO-4b |
+| 9b | Snapshot del pub | lo reconstruyó solo a los 2 min de arrancar: 17:19:48Z, 5601 mensajes, 92 feeds, 2,0 MB; «cada 6 h» | — |
+| 10 | Cierre | `snapshot post123`: pub 20 · HUB 16 · bot 66, los tres cuadran. `deploy-status.sh`: tres nodos 1.2.3 `healthy`, imagen al día, `src/` 1.2.3, restos de rollback = los de este ciclo (3). `capacity.sh`: 0 avisos. Journal: `oasisVersion 1.2.3`, `gitSha 112f492a`. Ficha de instancia al día | |
+
+Pub sin sbot ≈ 30 s; HUB ≈ 60 s; bot ≈ 2 × 50 s. Nada publicado con identidad real fuera de lo
+declarado: **un `oasisVersion` por nodo**. Delta idéntico al del ensayo local.
