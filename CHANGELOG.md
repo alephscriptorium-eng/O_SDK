@@ -5,6 +5,35 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Oasis 1.2.3 en local y en el host (WP-O128, 2026-10-07)
+
+Reporte `plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md`. **Desplegado el 2026-10-07**: pub, HUB y bot en
+1.2.3, mismo delta que en local (`oasisVersion` +1 por nodo y nada más); rollbacks de 1.1.10 y 1.2.1
+retirados (`/` del 54 % al 35 %); `test-invite.sh` corregido para el layout del host. Upstream
+`043f4634` «Oasis release 1.2.3»: `backend.js` +1354/−261 (textos largos troceados, borrados con
+`tombstone`, contenido de tribus al clearnet, siete rutas de detalle nuevas bajo `/c/`), mapas
+reescritos (SVG y teselas JPG), `opusscript` y buzón de voz en la centralita, ranking de pares por
+versión en el sbot, `outgoing.onion` abierto por defecto (los tres nodos del pub lo dejan en `[]`:
+DECISIÓN del custodio). Overlay con los 5 guards (solo `backend.js` había cambiado), 129 líneas del
+diff dispuestas, 0 parches de upstream pendientes en lo vendorizado. Delta medido dos veces:
+`oasisVersion` +1 por nodo y nada más; el `about` de `clearnetSince` que el código anuncia no sale
+(falla a los 3 s y se reintenta en cada arranque: `about=+0..1` en el bot desde ahora). U6 completo
+en local por primera vez (invite redimido por un nodo desechable: el pub publica un `contact`).
+`.dockerignore` excluye `ARCHIVO/**`. Correcciones: UPGRADE §0.4, §3.4, §7; HUB §5.2; AGENTES §4;
+`upgrade-behaviour-diff.sh` colapsa activos en `files`.
+
+### Changed — Protocolo de upgrade: medir lo que se afirmaba de memoria (WP-O127, 2026-10-07)
+
+Antes del ciclo 1.2.3. `upgrade-preflight.sh` resuelve `NEW_REF` como el commit «Oasis release
+X.Y.Z» (no la punta de la rama; `--to` para una intermedia), toma la versión desplegada del último
+registro del pub y cuenta aparte los activos. Nuevo `upgrade-patches-audit.js`: ejecuta en seco el
+`scripts/patch-node-modules.js` de upstream sobre `src/base` y dice por parche si lo vendorizado lo
+trae (sección `patches` del diff de comportamiento; la copia del fork de ese script era la de
+1.2.1). Los gates remotos leen la raíz de datos de `host.env` (`REMOTE_DATA_ROOT`; `GATE_NODES` y
+`HUB_CACHE_CONTAINER` opcionales). El `--check` del diff exige las seis cabeceras del reporte de
+ciclo. El cliente se apunta en el journal. `UPGRADE-PROTOCOL.md` §0.2, §1, §2, §3.1, §3.3, §4, §7;
+`AGENTES.md` §4 (dos trampas).
+
 ### Added — Puerta «Habitante» y web al día tras los upgrades (WP-O125, 2026-10-05)
 
 Sexta puerta del portal, para quien solo quiere entrar en la red con su móvil: el manual de

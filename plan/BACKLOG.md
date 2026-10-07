@@ -766,7 +766,7 @@ Dep: —. Relación: WP-O112 (herramientas que corrige).
 
 | **WP-O120** | **P0** | Upgrade a Oasis 1.2.1 en local: overlay, build sobre `src/base`, gates con migración |
 
-**Estado** · ✅ 2026-10-04 en la rama `upgrade/oasis-1.2.1` (`plan/REPORTES/WP-O120-upgrade-oasis-1.2.1.md`): gates locales en verde; pendiente de merge. Falta el drill del cliente antes de subir el cliente.
+**Estado** · ✅ 2026-10-04 en la rama `upgrade/oasis-1.2.1` (`plan/REPORTES/WP-O120-upgrade-oasis-1.2.1.md`): gates locales en verde; en `main`. El drill del cliente se hizo en WP-O124 §8 (cliente real a 1.2.2, migrado).
 
 **BRIEF** · Overlay de `src/` con `src/base` vendorizado; guards repuestos más el interruptor
 `OASIS_SNAPSHOT`; `Dockerfile` sin `npm install` (Node 22, enlace a `src/base`, IA por `ARG`);
@@ -799,7 +799,7 @@ Dep: WP-O120.
 
 | **WP-O123** | **P0** | Aplicación en el VPS del upgrade a 1.2.1 |
 
-**Estado** · ✅ 2026-10-04: pub, HUB y bot en 1.2.1 (`plan/REPORTES/WP-O123-aplicacion-vps-1.2.1.md`). Snapshot del pub construido y servido. Temporizador: lo lleva el propio pub en su entrypoint (`OASIS_PUB_SNAPSHOT_HOURS`, HUB §13), sin nada en el host; aplicado en el host el 2026-10-05. Medida a las 24 h (2026-10-05): `check post-o123` → pub y HUB sin publicaciones, bot `pubAvailability+2`, GATE OK. Pendiente: el cliente.
+**Estado** · ✅ 2026-10-04: pub, HUB y bot en 1.2.1 (`plan/REPORTES/WP-O123-aplicacion-vps-1.2.1.md`). Snapshot del pub construido y servido. Temporizador: lo lleva el propio pub en su entrypoint (`OASIS_PUB_SNAPSHOT_HOURS`, HUB §13), sin nada en el host; aplicado en el host el 2026-10-05. Medida a las 24 h (2026-10-05): `check post-o123` → pub y HUB sin publicaciones, bot `pubAvailability+2`, GATE OK. El cliente subió en WP-O124 §8.
 
 **BRIEF** · Convergencia de los ficheros de build del host con el repo, subida de `src/` con
 `src/base`, build, ensayo de migración sobre copia del log real, y pub → HUB → bot con parada, copia
@@ -822,6 +822,20 @@ Dep: WP-O123.
 
 **BRIEF** · Barrido de lo publicado tras WP-O123 y WP-O124; el manual de bienvenida de `ARCHIVO/DISCO/` entra al portal de forma que se distinga lo de la red, lo del SDK y lo de la casa. Queda escrito para agentes cómo entra un habitante (la portada del pub publica un invite de muchos usos).
 Dep: WP-O124.
+
+| **WP-O127** | **P1** | Protocolo de upgrade: medir lo que se afirmaba de memoria |
+
+**Estado** · 🔶 2026-10-07 en la rama `fix/upgrade-protocol-o127` (`ada17d6e`), ejercido en el ciclo 1.2.3 (WP-O128): el audit sacó 3 parches pendientes antes del overlay y 0 después; el `--check` de cabeceras y la sección `files` colapsada se usaron por primera vez. Pendiente de merge. Hecho: `NEW_REF` por commit «release» (`--to`); versión de partida por `target=pub` y journal del cliente; `upgrade-patches-audit.js` (el `patch-node-modules.js` de upstream en seco sobre `src/base`) como sección `patches` del diff; `REMOTE_DATA_ROOT`/`GATE_NODES`/`HUB_CACHE_CONTAINER` en `host.env`; `--check` exige las seis cabeceras de §7. Reporte al cerrar el ciclo 1.2.3 (WP-O128).
+
+**BRIEF** · Diagnóstico antes de 1.2.3: el protocolo mide comportamiento y publicación, pero tres cosas se afirmaban sin medir: que `NEW_REF` era la release (era la punta de rama), que lo vendorizado «ya trae» los parches de upstream (la copia del fork del script de parches era la de 1.2.1 y nadie lo vio), y que los gates remotos leen la instancia de `host.env` (`lib-node.sh` leía una clave que no existe y caía al default). WP-O124 se cerró sin «Correcciones al protocolo». Fuera de alcance, anotado: U6 sin redención local de invite, el cliente fuera de `GATE_NODES`, la prueba en frío (WP-O118).
+Dep: —. Relación: WP-O112, WP-O118.
+
+| **WP-O128** | **P0** | Upgrade a Oasis 1.2.3 |
+
+**Estado** · ✅ 2026-10-07: pub, HUB y bot en 1.2.3 en el host (`plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md` §9), mismo delta que en local: `oasisVersion` +1 por nodo y nada más (el `about` de `clearnetSince` del bot no salió; queda declarado `+0..1` en cada arranque). Rollbacks de 1.1.10 y 1.2.1 retirados. Rama `upgrade/oasis-1.2.3` (sobre `fix/upgrade-protocol-o127`), pendiente de merge. **Pendiente**: el cliente (drill, `test-ai`, journal `--target client`), la Sala 04 con los siete tipos nuevos del visor, backups viejos de `/srv/oasis` fuera de la máquina, medida a las 24 h, DECISIÓN de Tor (`outgoing.onion`), una llamada real por el pub.
+
+**BRIEF** · Ciclo gordo: `backend.js` +1354/−261, `long_text.js`, `pdf.js`, mapas reescritos (PNG → SVG/JPG), `opusscript` para Phone, `ssb-box`/`ssb-conn`/`ssb-gossip` tocados en `src/base` (cierre del pub: invite obligatorio), `outgoing.onion` abierto en `server-config.json` (DECISIÓN: `[]` en HUB y bots), 10 parches en el script de upstream. Riesgo de saltar el ensayo local estimado > 50 %: se ensaya. Sin cambio de motor.
+Dep: WP-O127.
 
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 

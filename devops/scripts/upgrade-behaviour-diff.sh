@@ -31,13 +31,19 @@
 #   outside   ficheros de upstream que cambian FUERA de src/ (no los importa el overlay)
 #   annex     invariantes de las piezas del fork (devops/scripts/upgrade-invariants.d/*.tsv),
 #             evaluados sobre el ÁRBOL DE TRABAJO (overlay y guards ya aplicados)
+#   patches   los parches de node_modules del scripts/patch-node-modules.js de NEW, ejecutado EN
+#             SECO sobre el árbol de trabajo (upgrade-patches-audit.js): `!` si lo vendorizado no
+#             trae uno (pendiente) o su anclaje no casa; `=` si ya está, calla o el fichero no viene
 #
 # Salida: TSV  ID  sección  signo  fichero  texto     (signo: + añadido · - quitado · ! invariante roto · = dato)
 #   El ID es estable entre ejecuciones (sha1 corto de sección+signo+fichero+texto).
 #
-# --check <registro.md>: sale 1 si algún ID con signo + - o ! no aparece en ese fichero.
-# Códigos: 0 ok · 1 hay IDs sin disponer (solo con --check) · 2 refs inválidas o uso incorrecto.
-# Solo lectura: git y grep.
+# --check <registro.md>: sale 1 si algún ID con signo + - o ! no aparece en ese fichero, o si al
+#   registro le falta alguna de las seis cabeceras del reporte de ciclo (UPGRADE-PROTOCOL §7):
+#   Estado de partida · Disposiciones · Qué viaja al host · Gates · Delta de publicación ·
+#   Correcciones al protocolo.
+# Códigos: 0 ok · 1 hay IDs sin disponer o cabeceras que faltan (solo con --check) · 2 refs inválidas o uso incorrecto.
+# Solo lectura: git, grep y node (el audit de parches no escribe).
 # =============================================================================
 set -uo pipefail
 
@@ -59,7 +65,7 @@ done
 git rev-parse -q --verify "$OLD^{commit}" >/dev/null || { echo "ref inválida: $OLD" >&2; exit 2; }
 git rev-parse -q --verify "$NEW^{commit}" >/dev/null || { echo "ref inválida: $NEW" >&2; exit 2; }
 [ -z "$CHECK" ] || [ -f "$CHECK" ] || { echo "no existe el registro: $CHECK" >&2; exit 2; }
-ALL="roles files routes loopback publish timers headers env state config deps outside annex"
+ALL="roles files routes loopback publish timers headers env state config deps outside annex patches"
 SECTIONS="${SECTIONS:-$ALL}"; SECTIONS="${SECTIONS//,/ }"
 
 BACKEND="src/backend/backend.js"
@@ -115,9 +121,18 @@ for s in $SECTIONS; do
       done ;;
     files)
       head_of files "ficheros de src/ que nacen o desaparecen (un borrado sin 'git rm' previo deja restos)"
-      git diff --name-status --no-renames "$OLD" "$NEW" -- src ":!$VENDOR" | awk '$1 != "M"' | while read -r st f; do
-        [ "$st" = A ] && emit files + "$f" "nuevo" || emit files - "$f" "borrado por upstream"
-      done ;;
+      # Activos (teselas y datos de mapas, assets del cliente) se colapsan en una línea por carpeta y
+      # signo: en 1.2.3 upstream cambió 10 922 teselas, y una línea (y una disposición) por tesela no
+      # es información (y en Windows, con ~6 procesos por línea, es más de una hora de script).
+      git diff --name-status --no-renames "$OLD" "$NEW" -- src ":!$VENDOR" | tr -d '' | awk '$1 != "M"'         | awk -F'	' '{ f=$2; st=$1
+            if (f ~ /^src\/(maps\/(tiles|cache|data)|client\/assets)\//) { sub(/\/[^\/]*$/, "", f); n=split(f, p, "/"); d=p[1]"/"p[2]"/"p[3]; k=st"	"d; c[k]++ }
+            else print st"	"f }
+          END { for (k in c) { split(k, q, "	"); print q[1]"	"q[2]"/**	"c[k] } }'         | while IFS=$'	' read -r st f n; do
+          case "$st" in
+            A) emit files + "$f" "nuevo${n:+ ($n ficheros)}" ;;
+            *) emit files - "$f" "borrado por upstream${n:+ ($n ficheros)}" ;;
+          esac
+        done ;;
     routes)
       head_of routes "superficie HTTP. Una GET nueva bajo /c/ sale al clearnet; una POST nueva es una acción nueva de la GUI"
       routes_of "$OLD" > "$OUT.a"; routes_of "$NEW" > "$OUT.b"
@@ -193,6 +208,19 @@ for s in $SECTIONS; do
           else emit annex '!' "$file" "[$piece] ROTO ($n < $min) «$pat» — $why"; fi
         done < "$tsv"
       done ;;
+    patches)
+      head_of patches "parches de node_modules de upstream (NEW:scripts/patch-node-modules.js) ejecutados en seco sobre el árbol de trabajo: lo vendorizado debe traerlos ya"
+      if git cat-file -e "$NEW:scripts/patch-node-modules.js" 2>/dev/null; then
+        node "$REPO_ROOT/devops/scripts/upgrade-patches-audit.js" "$NEW" --tsv 2>/dev/null | while IFS=$'	' read -r n st f msg; do
+          case "$st" in pendiente|sin-anclaje) sg='!' ;; *) sg='=' ;; esac
+          emit patches "$sg" "$f" "parche $n: $st — $msg"
+        done
+        if ! git diff --quiet "$OLD" "$NEW" -- scripts/patch-node-modules.js; then
+          emit patches + "scripts/patch-node-modules.js" "upstream cambió su script de parches: sincronizar la copia del fork (UPGRADE-PROTOCOL §2) y confirmar que el entrypoint no se queda corto"
+        fi
+      else
+        emit patches = "scripts/patch-node-modules.js" "NEW no trae scripts/patch-node-modules.js"
+      fi ;;
     *) echo "sección desconocida: $s (válidas: $ALL)" >&2; exit 2 ;;
   esac
 done
@@ -204,12 +232,17 @@ echo "# $total líneas; $todo piden disposición en el registro del ciclo (signo
 
 if [ -n "$CHECK" ]; then
   missing=0
+  # El registro del ciclo lleva seis cabeceras fijas (UPGRADE-PROTOCOL §7): sin ellas no es un reporte de ciclo.
+  for h in 'Estado de partida' 'Disposiciones' 'viaja al host' 'Gates' 'Delta de publicación' 'Correcciones al protocolo'; do
+    grep -qiE "^#+ .*$h" "$CHECK" || { missing=$((missing + 1)); printf 'SIN CABECERA	%s
+' "$h" >&2; }
+  done
   while IFS=$'\t' read -r id sec sg f text; do
     case "$id" in '#'*) continue ;; esac
     [ "$sg" = "=" ] && continue
     grep -qF "$id" "$CHECK" || { missing=$((missing + 1)); printf 'SIN DISPONER\t%s\t%s\t%s\t%s\t%s\n' "$id" "$sec" "$sg" "$f" "$text" >&2; }
   done < "$OUT"
-  if [ "$missing" -gt 0 ]; then echo "# $missing IDs sin disposición en $CHECK" >&2; exit 1; fi
-  echo "# todas las líneas tienen disposición en $CHECK" >&2
+  if [ "$missing" -gt 0 ]; then echo "# $missing IDs sin disposición o cabeceras que faltan en $CHECK" >&2; exit 1; fi
+  echo "# todas las líneas tienen disposición en $CHECK y el registro lleva las seis cabeceras" >&2
 fi
 exit 0

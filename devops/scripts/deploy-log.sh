@@ -5,10 +5,13 @@
 # Journal append-only en JSONL. Lo llaman los flujos de deploy (cliente y pub)
 # al terminar un `up -d --build` exitoso. El timestamp lo pone el host.
 # Objetivo: que una sesión futura sepa QUÉ hay desplegado sin adivinar.
+# `upgrade-preflight.sh` toma como versión desplegada el último registro con
+# `--target pub`; el cliente se apunta con `--target client` (UPGRADE-PROTOCOL §4).
 #
 # Uso:
-#   scripts/deploy-log.sh --target pub --host pub.escrivivir.co \
-#     --version 0.8.8 --caps-shs H5EC... --cycle 6 --feed @/snv...=.ed25519 --mode server
+#   scripts/deploy-log.sh --target pub --host <dominio del pub> \
+#     --version X.Y.Z --caps-shs <caps.shs> --cycle <n> --feed <feed id del pub> --mode server
+#   scripts/deploy-log.sh --target client --host localhost --version X.Y.Z --feed <feed id> --mode full
 #
 # Env: DEPLOY_LOG_PATH sobreescribe la ruta del journal.
 # =============================================================================

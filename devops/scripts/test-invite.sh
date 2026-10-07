@@ -34,7 +34,10 @@ REMOTE_USER="${REMOTE_USER:-}"
 REMOTE_HOST="${REMOTE_HOST:-}"
 KEY_PATH="${KEY_PATH:-}"
 PUB_CONTAINER="${PUB_CONTAINER:-oasis-pub}"
-SSB_ADMIN="node /app/pub/tools/ssb-admin.js"
+# La carpeta del compose dentro de la imagen es la del host (COPY . .): /app/<basename REMOTE_REPO_DIR>/tools.
+# En la casa es OASIS_PUB/, no pub/ (WP-O123 §hallazgos): el canario fallaba en el host desde entonces.
+REMOTE_TOOLS_DIR="${REMOTE_TOOLS_DIR:-/app/$(basename "${REMOTE_REPO_DIR:-pub}")/tools}"
+SSB_ADMIN="node $REMOTE_TOOLS_DIR/ssb-admin.js"
 
 ssh_pub() {
   ssh -i "$KEY_PATH" -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=15 \

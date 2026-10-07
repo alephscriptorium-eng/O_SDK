@@ -117,6 +117,7 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | Un backup de cartera no contiene la dirección publicada | el backup se hizo **antes** de generar la dirección | ECOIN §8 |
 | Un contador sobre `log.offset` no se mueve | `grep -c` en binario cuenta líneas: `grep -a -o … \| wc -l` | RECOVERY §0 |
 | En Git Bash un path `/c/…` o `/app/…` llega destrozado | conversión de rutas de MSYS: `MSYS_NO_PATHCONV=1`; y con él, `git -C /c/…` falla: `cd` + ruta relativa, `cygpath -m` para node | ECOIN §14 · CLIENT §8 |
+| Una sonda a mano (`docker exec … -e HOME=/home/oasis … node -`) dice «could not connect to sbot» y los gates sí conectan | la misma conversión: `HOME` llega como `C:/Program Files/Git/home/oasis` y `ssb-client` busca el socket donde no está. `MSYS_NO_PATHCONV=1` **delante de esa orden**, no exportada: exportada rompe el `curl` del gate `hub` (todo `000`) | UPGRADE §3.4 |
 | `MODULE_NOT_FOUND` al llamar a `ssb-admin.js` | la ruta dentro de la imagen viva depende del layout del host | HUB §9 |
 | Un POST desde el loopback da 403 o 400 | `Host` y el host del `Referer` deben ser idénticos (mismo host:puerto) | ECOIN §3, §14 |
 | «¿Está sincronizado `ecoind`?» da alturas absurdas | la altura de los pares sale de `receive version message … blocks=N`, no de `height=` | ECOIN §3 |
@@ -129,6 +130,8 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | `/c` sale en el idioma (o con el tema) del primer visitante | el backend decide algo por una cabecera o una cookie y la caché lo sirve a todos: en clearnet la presentación es del pub y lo del visitante viaja en la URL (D-O25) | HUB §2 |
 | Se cambió la plantilla de nginx y `hub-cache` sigue igual | la plantilla se renderiza al arrancar el contenedor: `reload` no la relee; `up -d --no-deps --force-recreate hub-cache` | HUB §5.2 |
 | El preflight no encuentra de qué commit partir | upstream no etiqueta las versiones de Oasis; el commit es el titulado `Oasis release X.Y.Z`, y la versión de partida es la **desplegada**, no la de `HEAD`: `--from X.Y.Z` | UPGRADE §1 |
+| El overlay trae cosas que no son de la release | `NEW_REF` es el commit `Oasis release X.Y.Z`, no la punta de `oasis-upstream/main`: si upstream empujó después, el preflight avisa y el `git checkout $NEW_REF -- src/` se hace desde ese commit (`--to X.Y.Z` para una intermedia) | UPGRADE §1, §2 |
+| «Lo vendorizado ya trae ese parche» dicho de memoria | el `scripts/patch-node-modules.js` de upstream es la lista de lo que espera parcheado y el fork no lo corre sobre el repo; la copia del fork se quedó en 1.2.1 sin que nadie lo viera. Se mide con `upgrade-patches-audit.js $NEW_REF` (ningún `pendiente`) | UPGRADE §2 |
 | Un gate de upgrade da «sin cambios» y sí los hubo | se midió sobre un estado que ya había pasado por la versión nueva (el `oasisVersion` ya estaba): `upgrade-gates.sh restore` antes de repetir | UPGRADE §3.4 |
 | Un contador de mensajes da cientos en un bot recién nacido | con `hops` > 0 el log trae los mensajes de media red: contar **por autor** | HUB §12 |
 | El pub anuncia para donaciones una dirección que no es la publicada | cada `pubAvailability` pide `getnewaddress`: es de la misma cartera (keypool). Backup semanal de `wallet.dat` con el motor encendido | ECOIN §9 |

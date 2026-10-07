@@ -10,7 +10,7 @@ nada que no esté previsto y sin romper las piezas que el fork ha puesto alreded
 su anexo (`HUB-PROTOCOL.md` §5, `ECOIN-PROTOCOL.md` §5, `../CLIENT-PROTOCOL.md` §4).
 
 Deriva de los ciclos 0.8.3→0.8.8, 0.8.8→0.9.6, 0.9.6→1.0.8, 1.0.8→1.1.2, 1.1.2→1.1.4,
-1.1.4→1.1.10, 1.1.10→1.2.1 y 1.2.1→1.2.2. Se reescribió en el ciclo 1.1.4→1.1.10 (WP-O112) porque el protocolo anterior comprobaba bien
+1.1.4→1.1.10, 1.1.10→1.2.1, 1.2.1→1.2.2 y 1.2.2→1.2.3. Se reescribió en el ciclo 1.1.4→1.1.10 (WP-O112) porque el protocolo anterior comprobaba bien
 lo barato —que los guards de `src/` siguen puestos— y no comprobaba lo caro: que Oasis **se
 comporta** igual. Sus greps decían «esto sigue existiendo», no «esto sigue haciendo lo mismo».
 
@@ -60,7 +60,7 @@ fila**: una pieza sin fila es una pieza que nadie mira al subir.
 | ecoind | imagen propia | RPC | no se recrea en un upgrade de Oasis | `ECOIN-PROTOCOL.md` | — |
 | cliente | `full` + entrypoint (`persist_client_state`, `wire_wallet_config`, `setup_oasis_config`) | forma de `oasis-config.json`, loopback, contrato de IA | drill del cliente | `../CLIENT-PROTOCOL.md` §4-§5 | `oasisVersion` +1; `wallet` si hay cartera cableada sin publicar |
 | dependencias vendorizadas | `src/base/node_modules` (desde 1.2; entra con el overlay) + enlace `src/server/node_modules` que crea el `Dockerfile` | qué paquetes trae upstream, sus binarios precompilados, la versión de Node que declara | el build prueba que el núcleo carga; invariante `src/base` idéntico a upstream | §2, §3.3 | — |
-| parches de `node_modules` | `apply_node_patches` del entrypoint, sobre `src/base` | versiones de `ssb-ref`, `ssb-blobs`, `multiserver`; qué trae ya parcheado upstream | log de arranque: cada parche dice «patcheado» o «ya parcheado», ninguno «no se encontró» | §3.3 | — |
+| parches de `node_modules` | `apply_node_patches` del entrypoint, sobre `src/base` | versiones de `ssb-ref`, `ssb-blobs`, `multiserver`; qué trae ya parcheado upstream en lo vendorizado y qué parchea su `scripts/patch-node-modules.js` (que el fork no ejecuta sobre el repo) | `upgrade-patches-audit.js $NEW_REF` (sección `patches` del diff): ningún `pendiente` · log de arranque: cada parche del entrypoint dice «patcheado» o «ya parcheado», ninguno «no se encontró» | §2, §3.3 | — |
 | snapshot del pub | `pub/tools/snapshot-build.js`, que lanza el entrypoint del pub cada `OASIS_PUB_SNAPSHOT_HOURS` horas (`pub-snapshot.sh` para mirar o forzar) | formato `OASISSN1`, ruta de `snapshot_plugin.js`, RPC `createLogStream` | gate US (§3.4) · `pub-snapshot.sh status` | `HUB-PROTOCOL.md` §13 | — (construir no publica) |
 | centralita del pub (Phone y Rooms, desde 1.2.2) | clave `phone` del ssb-config del pub + `phone.relay = false` en HUB y bots (`regen-node-configs.js`) | de dónde lee el plugin su política, `relay`, `relayOpen`, `roomMax`, RPC `roomInfo` | `annex` (phone) · `phone.roomInfo` devuelve el aforo fijado | `HUB-PROTOCOL.md` §14 | — (retransmitir no publica) |
 | medida de los nodos | `lib-node.sh`, `pub/tools/log-bipf.js`, `pub/tools/ssb-probe.js` | formato del log, texto de la guarda de migración, RPC `createUserStream` | `annex` (db2) · `snapshot` cuadra en las tres fuentes | §3.4 | — |
@@ -95,7 +95,12 @@ anunció. Lo hace el propio sbot (`SSB_server.js`, a los 7 s) y, en los backends
 
 - Cada nodo publica **uno** al subir. Volver atrás publica **otro**, y volver a subir, otro más.
   **Ningún rollback es gratis**: el de cualquier nodo pide GO.
-- Recrear un nodo en la **misma** versión no publica nada.
+- Recrear un nodo en la **misma** versión no publica nada… con una excepción desde 1.2.3: un
+  backend **no público** (bot, cliente) que ya tenga `visibilityPrefs` publicados intenta a los 3 s
+  de **cada** arranque publicar un `about` con `clearnetSince` (`syncClearnetSince`), una sola vez;
+  si los índices aún no responden (medido: en el stack local nunca llegan a tiempo) no publica ni
+  deja marcador, y lo reintentará en el siguiente arranque. Se declara `about=+0..1` en cada
+  recreación del bot y del cliente, también en la misma versión, hasta que salga.
 - Cualquier otra cosa que aparezca en el feed de un nodo tras recrearlo es una **desviación**:
   parada dura. Para eso está `upgrade-gates.sh check` (§3.4).
 
@@ -121,15 +126,20 @@ Un ciclo es de este tipo si el preflight trae `SSB_server.js` con otra capa de b
 ## 1. Preflight
 
 ```bash
-bash devops/scripts/upgrade-preflight.sh    # drift de versión + de qué commit se parte + drift de ciclo + árbol
+bash devops/scripts/upgrade-preflight.sh [--from X.Y.Z] [--to X.Y.Z]   # drift de versión + de qué commit a cuál + drift de ciclo + árbol
 ```
 
 - Compara `src/server/package.json` local con `oasis-upstream/main`.
 - Imprime `OLD_REF` y `NEW_REF`: el commit de upstream de la versión **desplegada** y el de la
   nueva. Upstream no etiqueta las versiones de Oasis (solo las de Android): el commit de una
-  versión es el titulado `Oasis release X.Y.Z`. La versión de partida sale del journal de deploys;
-  si §0.3 midió otra, `--from X.Y.Z`. Todo lo que sigue usa esos dos commits.
-- Cuántos ficheros cambian por rol (§0.1).
+  versión es el titulado `Oasis release X.Y.Z`, y **los dos** se resuelven así. La versión de
+  partida sale del journal de deploys (último registro del **pub**); si §0.3 midió otra,
+  `--from X.Y.Z`. La de llegada es la de upstream, o `--to X.Y.Z` para subir a una intermedia.
+  `NEW_REF` **no es la punta de la rama**: si upstream empujó algo después de la release, el
+  preflight avisa y el overlay de §2 se hace desde `$NEW_REF`, no desde `oasis-upstream/main`.
+  Todo lo que sigue usa esos dos commits.
+- Cuántos ficheros cambian por rol (§0.1). Los activos (traducciones, CSS, teselas y datos de
+  mapas) se cuentan aparte: son miles y no son código.
 - Deriva el ciclo/cap actual de la red desde el directorio y lo compara con el local (§5).
 - Sale `0` = sin avisos, `1` = hay avisos. (El aviso in-app de Oasis es un no-op en Docker:
   `.dockerignore` excluye `.git` y el updater está gateado por `existsSync('../../.git')`.)
@@ -141,8 +151,9 @@ rama `upgrade/oasis-X.Y.Z`:
 
 ```bash
 git switch -c upgrade/oasis-X.Y.Z
-git rm -r -q src && git checkout oasis-upstream/main -- src/     # overlay LIMPIO: borra lo que upstream borró
+git rm -r -q src && git checkout $NEW_REF -- src/                # overlay LIMPIO: borra lo que upstream borró. Desde NEW_REF, no desde la rama (§1)
 git checkout HEAD -- src/configs/blockchain-cycle.json           # único fichero fork-only bajo src/
+git checkout $NEW_REF -- scripts/patch-node-modules.js           # la copia del fork sigue a upstream (abajo)
 # Guards cuyo fichero upstream NO tocó entre OLD_REF y NEW_REF: se recuperan tal cual.
 git diff --stat $OLD_REF $NEW_REF -- <fichero>                   # vacío → git checkout HEAD -- <fichero>
 # Guards cuyo fichero SÍ cambió: se reponen A MANO sobre el fichero nuevo (tabla de abajo).
@@ -184,17 +195,38 @@ otro para los guards repuestos. Así el diff de los guards se lee solo.
 
 Eso es **todo** lo que puede divergir de upstream dentro de `src/`: 5 guards y un fichero propio.
 Fuera de `src/` el fork se mantiene entero (nunca overlay): `Dockerfile`, `docker-compose*.yml`,
-`docker-entrypoint.sh`, `scripts/patch-node-modules.js`, `pub/**`, `devops/**`, `client/**`.
-`install.sh`/`oasis.sh` son bare-metal: sincronizarlos con upstream es opcional.
+`docker-entrypoint.sh`, `pub/**`, `devops/**`, `client/**`. `install.sh`/`oasis.sh` son
+bare-metal: sincronizarlos con upstream es opcional.
+
+**`scripts/patch-node-modules.js` es de upstream y se sincroniza.** Es el script con el que
+upstream parchea sus dependencias en bare metal (`install.sh`). El fork no lo corre sobre el repo
+(solo el `Dockerfile` sobre `src/AI`, con `OASIS_AI=nav|full`), pero es la **lista de lo que
+upstream espera parcheado**: desde 1.2 lo vendorizado en `src/base` suele traer ya cada parche, y
+cuando no lo trae, un nodo del fork correría sin él mientras el de upstream corre con él. Por eso:
+(1) la copia del fork se trae de `$NEW_REF` en el overlay; (2) se mide, no se lee:
+
+```bash
+node devops/scripts/upgrade-patches-audit.js $NEW_REF   # ejecuta el script de upstream EN SECO sobre src/base
+```
+
+Un parche `pendiente` es lo vendorizado sin el parche: o lo aplica `apply_node_patches` del
+entrypoint (§3.3) en la misma rama, o se dispone por escrito por qué no. `sin-anclaje` es
+upstream contradiciéndose (su parche no casa con su propia dependencia): se dispone igual.
+`ausente` en `src/AI/**` es normal (la pila de IA se instala en el build). Los tres parches del
+entrypoint (`ssb-ref`, `ssb-blobs`, `multiserver`) no se retiran porque upstream los traiga: son
+idempotentes y el log de arranque sigue siendo la prueba (§3.3). En el ciclo 1.2.3 la copia del
+fork era la de 1.2.1 y nadie lo había notado: el audit lo saca como línea `patches` del diff.
 
 ### Verificación de invariantes (bloqueante)
 
 ```bash
-git diff oasis-upstream/main --stat -- src/       # exactamente 6 ficheros
-git diff oasis-upstream/main --stat -- src/base   # vacío: lo vendorizado es el de upstream
+git diff $NEW_REF --stat -- src/                  # exactamente 6 ficheros
+git diff $NEW_REF --stat -- src/base              # vacío: lo vendorizado es el de upstream
+git diff $NEW_REF --stat -- scripts/patch-node-modules.js   # vacío: la lista de parches es la de upstream
 git ls-files -s src/server/node_modules           # modo 120000: sigue siendo un enlace
 node --check src/backend/backend.js               # el edit a mano parsea
 grep -m1 '"version"' src/server/package.json      # = X.Y.Z
+node devops/scripts/upgrade-patches-audit.js $NEW_REF   # exit 0: ningún parche pendiente ni sin anclaje
 ```
 
 ## 3. Qué cambia de comportamiento
@@ -220,6 +252,7 @@ Saca, de forma mecánica, los **candidatos** a cambio de comportamiento. No da v
 | `config`, `deps` | defaults de `src/configs/*.json`, `package.json` | derivados que se regeneran (§3.2); parches y gate del invite |
 | `outside` | lo que upstream cambia fuera de `src/` | el overlay no lo trae: instaladores, tests |
 | `annex` | invariantes de cada pieza (`devops/scripts/upgrade-invariants.d/*.tsv`) sobre el árbol de trabajo | sustituye a los bloques de grep de los anexos |
+| `patches` | el `scripts/patch-node-modules.js` de `NEW_REF` ejecutado en seco sobre el árbol de trabajo (`upgrade-patches-audit.js`) | un `!` es un parche que upstream aplica y lo vendorizado no trae (§2) |
 
 **Cada línea con signo `+`, `-` o `!` se dispone por escrito** en el reporte del WP del upgrade
 (sección «Disposiciones», §7), citando su ID, con una de:
@@ -237,7 +270,11 @@ bash devops/scripts/upgrade-behaviour-diff.sh $OLD_REF $NEW_REF --check plan/REP
 ```
 
 Una línea `!` de `annex` es una pieza del fork cuyo suelo se ha movido: se adapta **en la misma
-rama** y se repite su gate.
+rama** y se repite su gate. Una `!` de `patches` es un parche que upstream aplica y el fork no
+tendría (§2): se aplica en el entrypoint o se dispone por qué no.
+
+El `--check` exige además que el registro lleve las seis cabeceras de §7: sin ellas no es un
+reporte de ciclo.
 
 ### 3.2 Derivados fuera de `src/` y qué viaja al host
 
@@ -261,7 +298,8 @@ esta tabla que haya cambiado. §4 la ejecuta; lo que no esté en la lista no se 
 - **Parches de `node_modules`.** `apply_node_patches` (`docker-entrypoint.sh`) parchea tres módulos
   (`ssb-ref`, `ssb-blobs`, `multiserver`) dentro de `src/base`. Son idempotentes. **Confirmar en el
   log de arranque** que cada uno dice «patcheado» o «ya parcheado» (upstream trae ya el de
-  `ssb-blobs`) y ninguno «no se encontró».
+  `ssb-blobs`) y ninguno «no se encontró». Lo que upstream parchea **además** de esos tres lo
+  mide `upgrade-patches-audit.js` (§2): «ya parcheado» no se afirma por grep sino por ese audit.
 - **Sin instalaciones en caliente.** El entrypoint comprueba que `src/server/node_modules` lleva a
   `src/base` y, si no, no arranca. La pila de IA se instala en el build (`OASIS_AI=none|nav|full`;
   pub, HUB y bots: `none`); sin ella, `aiMod` queda en `off` aunque haya modelo.
@@ -291,7 +329,7 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 | **U3** | Recrear en orden pub → HUB → bot y medir **qué publica cada uno** | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre --expect '…'` | `GATE OK` con el delta declarado (abajo) |
 | **U4** | Visor por delante de la caché | recrear `hub-cache` si cambió la plantilla · `$G hub --strict` | `GATE OK`: MISS→HIT, idioma independiente del visitante, sin cruce, rutas nuevas |
 | **U5** | Peor caso del bot: las páginas donde el backend refresca la cartera por su cuenta (`/banking`, `/transfers`, `/shops`, `/market`, `/school`) | `$G snapshot u5` · `$G worst` · `$G check u5 --expect 'bot:karmaScore=+0..1'` | `wallet` y `(cifrado)` no se mueven; misma dirección. **`/wallet` queda fuera a propósito**: en cualquier versión, con el motor encendido, republica la dirección (`../AGENTES.md` §4) |
-| **U6** | Gates propios de las piezas que el diff ha tocado | invite (`HUB-PROTOCOL.md` §3, si cambian `ssb-*`) · bootstrap de un bot nuevo (`ECOIN-PROTOCOL.md` §3, si cambia la publicación de la dirección) · drill del cliente (`../CLIENT-PROTOCOL.md` §5) | los de cada anexo |
+| **U6** | Gates propios de las piezas que el diff ha tocado | invite (`HUB-PROTOCOL.md` §3, si cambian `ssb-*`; en local, abajo) · bootstrap de un bot nuevo (`ECOIN-PROTOCOL.md` §3, si cambia la publicación de la dirección) · drill del cliente (`../CLIENT-PROTOCOL.md` §5) | los de cada anexo |
 | **U7** | Repetible | parar nodos · `$G restore pre --yes` · **volver a renderizar** la config del bot (`restore` repone también la renderizada vieja, que vive en `volumes-dev/`) · repetir U3 | mismo delta que la primera vez |
 | **UM** | Solo si cambia el motor (§0.5). Migración sobre una **copia** de cada nodo, sin red | copia de `volumes-dev/.gates/pre/<nodo>/ssb-data` · contenedor efímero `--network none` de la imagen nueva en modo `server` · contar antes (`FULL_SCAN=1 node client/scripts/lib/inspect-log-offset.js`) y después (`pub/tools/log-bipf.js`) | guarda presente, `db2/log.bipf` existe, mismo nº de autores, registros = los de antes **+1** (el `oasisVersion` propio), 0 borrados |
 | **UR** | Solo si cambia el motor. No-retorno | la imagen **vieja** en modo `server` sobre una copia ya migrada | el contenedor se cae; la guarda y `db2/log.bipf` no cambian (mismo sha256) |
@@ -313,6 +351,8 @@ G="bash devops/scripts/upgrade-gates.sh --local"
   `visibilityPrefs.phone = "off"`. No sale al arrancar sino con el primer refresco de fondo tras
   atender peticiones, así que el `check` hecho justo después de recrear no lo ve: se declara como
   `about=+0..1` en ese `check` y como `about=+1` en el de cierre (`HUB-PROTOCOL.md` §14).
+- **Desde 1.2.3, `about=+0..1` en el bot** (y en el cliente) en cada recreación, también en la
+  misma versión (§0.4, `clearnetSince`). En el HUB no: es público y no corre esa sincronización.
 - `ubiAllocation` no se nombra: debe ser 0. Solo es 0 si la **época del mes ya está abierta** antes
   de subir (`épocas=` en la foto). Si no lo está, la abriría la versión nueva con sus reglas:
   irreversible y distinto; decídelo con el custodio antes.
@@ -322,6 +362,17 @@ G="bash devops/scripts/upgrade-gates.sh --local"
   se envían **a sí mismos un mensaje cifrado**. En un nodo de soporte van silenciados por config
   (`inboxMutedBots`, desde 1.1.10; `HUB-PROTOCOL.md` §2). Si aparece un cifrado, esa lista está
   incompleta o el nodo corre una versión que aún no la entiende.
+
+**U6 en local, invite completo (desde el ciclo 1.2.3).** `test-invite.sh` solo tiene modo host;
+en local se hace con un **nodo desechable** de la imagen nueva, sin volúmenes, en la red del
+compose: `$G snapshot u6` · invite de un uso en el pub (`invite.create({ uses: 1, external:
+'<dominio.con.punto>' })` por `ssb-client` dentro del contenedor del pub) y reescribir el host a
+la IP del pub en el bridge · `docker run -d --network <red del compose> -e OASIS_SNAPSHOT=off …
+<imagen> backend` · `ssb-probe.js` con `SSB_ACTION=invite-accept` desde el desechable ·
+`$G check u6 --expect 'pub:contact=+1 hub:=0 bot:about=+0..1'` · `docker rm -f` del desechable.
+Salida esperada: `accept: true`, el pub como par `connected`, y el pub publica **exactamente un
+`contact`**. El invite lleva semilla: no se imprime. Todo `docker exec` a mano desde Git Bash lleva
+`MSYS_NO_PATHCONV=1` **solo en esa orden** (`../AGENTES.md` §4).
 
 **Cuándo medir.** Un nodo no publica todo «al arrancar»: el sbot anuncia versión a los 7 s, el motor
 hace su primer tick a los 15 s, y los avisos automáticos esperan a la primera petición con los
@@ -450,6 +501,9 @@ bash devops/scripts/deploy-log.sh --target pub --host <dominio> --version X.Y.Z 
 **Cliente** (`docker-compose.yml`, modo `full`): después del host y con otro GO si la identidad es
 real. `docker tag o-sdk-oasis-client o-sdk-oasis-client:<ver-vieja>` → `npm run build && docker
 compose up -d oasis-client`. Detalle, importación de identidad y sbot puro: `../CLIENT-PROTOCOL.md` §4.
+También se apunta en el journal (`deploy-log.sh --target client --host localhost --version X.Y.Z
+--feed <feed> --mode full`): el preflight solo mira los registros del pub, así que el del cliente
+no lo confunde, y sin él nadie sabe en qué versión quedó.
 
 ## 5. Ciclo de red — dos casos
 
@@ -504,7 +558,8 @@ corrige hacia delante, y la copia en frío del paso 7 solo sirve por `RECOVERY-P
 
 Un upgrade se cierra con (`plan/PRACTICAS.md`): reporte en `plan/REPORTES/`, `CHANGELOG.md`,
 estado en `plan/BACKLOG.md`, journal de deploy y ficha de instancia. El **reporte** es el registro
-del ciclo y lleva, además de lo habitual:
+del ciclo y lleva, además de lo habitual, **seis cabeceras fijas** (como `## n. <cabecera>`; el
+`--check` del diff de comportamiento las exige, y el ciclo 1.2.2 se cerró sin tres de ellas):
 
 1. **Estado de partida**: salida de `deploy-status.sh` y de `snapshot pre`.
 2. **Disposiciones**: una por ID del diff de comportamiento (§3.1); `--check` en verde.
@@ -512,11 +567,17 @@ del ciclo y lleva, además de lo habitual:
 4. **Gates** U0-U7: comando y salida.
 5. **Delta de publicación** medido en local y en el host, por nodo.
 6. **Correcciones al protocolo**: cada tropiezo es un defecto de este documento y se arregla aquí.
+   Si no hubo ninguno, la sección lo dice («ninguna»): una sección que falta no se distingue de
+   un ciclo que no miró.
+
+Un ciclo partido en dos reportes (local y host) lleva las seis en cada uno; lo que no aplica
+(el delta del host en el reporte local) se dice en una línea.
 
 Ciclos registrados (lo que cada uno cambió en el protocolo):
 
 | Ciclo | Reporte | Lo que enseñó |
 |---|---|---|
+| 1.2.2 → 1.2.3 | `plan/REPORTES/WP-O127` (mejoras previas) · `WP-O128-upgrade-oasis-1.2.3.md` (local) | Lo que se afirmaba de memoria se mide: `NEW_REF` por commit «release», audit de parches en seco (la copia del fork del parcheador era la de 1.2.1), instancia de `host.env`, seis cabeceras. Una disposición leída («el bot publica un `about` al subir») salió falsa en U3: `syncClearnetSince` falla a los 3 s y lo reintenta en cada arranque (`about=+0..1` también en la misma versión). U6 completo en local con nodo desechable. El diff colapsa activos (10 922 teselas no son 10 922 disposiciones) |
 | 1.0.8 → 1.1.2 | `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md` · `HUB-PROTOCOL.md` §5.5 | primer ciclo con el HUB activo: `/c/assets`, rutas de detalle nuevas |
 | 1.1.2 → 1.1.4 | `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`, `WP-O106-aplicacion-vps-1.1.4.md` · `ECOIN-PROTOCOL.md` §5.4 | `state-manager.js` y la mudanza de estado; quinto guard; `git archive` y CRLF |
 | 1.2.1 → 1.2.2 | `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md` (local, host y cliente) | Una disposición «acción de GUI» leída del código era falsa: el gate U5 destapó que HUB y bots publican un `about` de visibilidad con el primer refresco de fondo (`about=+0..1` en el `check` inmediato, `+1` en el de cierre). El sbot trae un plugin que hace de centralita: se acota por config, sin guard (`HUB-PROTOCOL.md` §14, `phone.tsv`). En el cliente, de ≤ 1.1.x a ≥ 1.2 hay cambio de motor |
