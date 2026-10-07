@@ -367,6 +367,25 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   cachea como el resto del visor. Supera: UPGRADE §0.4 y §6 en lo que decían
   del rollback de un nodo. Aplicación: WP-O119 a WP-O123.
 
+- **D-O28 · 2026-10-07 · Una plantilla de organización nunca publica con la
+  identidad del pub; la vía caliente es un bot secretaría y la vía por defecto
+  es el guion humano.** Decidido con el custodio al diseñar WP-O129 (demo
+  Acampada26S) tras medir que (1) los modelos de `src/models/*` publican
+  siempre como la identidad del sbot (`tribes_model.js:318`,
+  `rooms_model.js:418`) y el token de sala se firma con sus claves
+  (`phone_module.js:1262`); (2) `add` no está en el manifest top-level de
+  ssb-db2 y `db.create({keys})` pasaría una clave privada por el socket
+  (ley 4); (3) el workflow es un ajuste local de cada cliente
+  (`workflows_model.js:111-118`): ningún mensaje SSB lo transporta. Por
+  tanto: **la plantilla es estructura, no mock** (`pub/templates/SCHEMA.md`),
+  trazable por `origen` y sin fechas absolutas ni secretos; **guion** como
+  vía por defecto para un pub vivo con autoría humana; **fría** para ensayo
+  o pub nuevo antes de anunciarse; **caliente** solo desde un sbot propio
+  (patrón bots de soporte, HUB §11), con dry-run, un permiso por bloque y
+  recuento antes/después; descartada la identidad proxy por el socket del
+  pub y descartado publicar como el pub. Método: `docs/PUB/TEMPLATE-PROTOCOL.md`.
+  Aplicación: WP-O129 (guion), WP-O130 (fría), WP-O131 (caliente).
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |
