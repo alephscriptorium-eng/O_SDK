@@ -60,7 +60,7 @@ fila**: una pieza sin fila es una pieza que nadie mira al subir.
 | ecoind | imagen propia | RPC | no se recrea en un upgrade de Oasis | `ECOIN-PROTOCOL.md` | — |
 | cliente | `full` + entrypoint (`persist_client_state`, `wire_wallet_config`, `setup_oasis_config`) | forma de `oasis-config.json`, loopback, contrato de IA | drill del cliente | `../CLIENT-PROTOCOL.md` §4-§5 | `oasisVersion` +1; `wallet` si hay cartera cableada sin publicar |
 | dependencias vendorizadas | `src/base/node_modules` (desde 1.2; entra con el overlay) + enlace `src/server/node_modules` que crea el `Dockerfile` | qué paquetes trae upstream, sus binarios precompilados, la versión de Node que declara | el build prueba que el núcleo carga; invariante `src/base` idéntico a upstream | §2, §3.3 | — |
-| parches de `node_modules` | `apply_node_patches` del entrypoint, sobre `src/base` | versiones de `ssb-ref`, `ssb-blobs`, `multiserver`; qué trae ya parcheado upstream | log de arranque: cada parche dice «patcheado» o «ya parcheado», ninguno «no se encontró» | §3.3 | — |
+| parches de `node_modules` | `apply_node_patches` del entrypoint, sobre `src/base` | versiones de `ssb-ref`, `ssb-blobs`, `multiserver`; qué trae ya parcheado upstream en lo vendorizado y qué parchea su `scripts/patch-node-modules.js` (que el fork no ejecuta sobre el repo) | `upgrade-patches-audit.js $NEW_REF` (sección `patches` del diff): ningún `pendiente` · log de arranque: cada parche del entrypoint dice «patcheado» o «ya parcheado», ninguno «no se encontró» | §2, §3.3 | — |
 | snapshot del pub | `pub/tools/snapshot-build.js`, que lanza el entrypoint del pub cada `OASIS_PUB_SNAPSHOT_HOURS` horas (`pub-snapshot.sh` para mirar o forzar) | formato `OASISSN1`, ruta de `snapshot_plugin.js`, RPC `createLogStream` | gate US (§3.4) · `pub-snapshot.sh status` | `HUB-PROTOCOL.md` §13 | — (construir no publica) |
 | centralita del pub (Phone y Rooms, desde 1.2.2) | clave `phone` del ssb-config del pub + `phone.relay = false` en HUB y bots (`regen-node-configs.js`) | de dónde lee el plugin su política, `relay`, `relayOpen`, `roomMax`, RPC `roomInfo` | `annex` (phone) · `phone.roomInfo` devuelve el aforo fijado | `HUB-PROTOCOL.md` §14 | — (retransmitir no publica) |
 | medida de los nodos | `lib-node.sh`, `pub/tools/log-bipf.js`, `pub/tools/ssb-probe.js` | formato del log, texto de la guarda de migración, RPC `createUserStream` | `annex` (db2) · `snapshot` cuadra en las tres fuentes | §3.4 | — |
@@ -121,15 +121,20 @@ Un ciclo es de este tipo si el preflight trae `SSB_server.js` con otra capa de b
 ## 1. Preflight
 
 ```bash
-bash devops/scripts/upgrade-preflight.sh    # drift de versión + de qué commit se parte + drift de ciclo + árbol
+bash devops/scripts/upgrade-preflight.sh [--from X.Y.Z] [--to X.Y.Z]   # drift de versión + de qué commit a cuál + drift de ciclo + árbol
 ```
 
 - Compara `src/server/package.json` local con `oasis-upstream/main`.
 - Imprime `OLD_REF` y `NEW_REF`: el commit de upstream de la versión **desplegada** y el de la
   nueva. Upstream no etiqueta las versiones de Oasis (solo las de Android): el commit de una
-  versión es el titulado `Oasis release X.Y.Z`. La versión de partida sale del journal de deploys;
-  si §0.3 midió otra, `--from X.Y.Z`. Todo lo que sigue usa esos dos commits.
-- Cuántos ficheros cambian por rol (§0.1).
+  versión es el titulado `Oasis release X.Y.Z`, y **los dos** se resuelven así. La versión de
+  partida sale del journal de deploys (último registro del **pub**); si §0.3 midió otra,
+  `--from X.Y.Z`. La de llegada es la de upstream, o `--to X.Y.Z` para subir a una intermedia.
+  `NEW_REF` **no es la punta de la rama**: si upstream empujó algo después de la release, el
+  preflight avisa y el overlay de §2 se hace desde `$NEW_REF`, no desde `oasis-upstream/main`.
+  Todo lo que sigue usa esos dos commits.
+- Cuántos ficheros cambian por rol (§0.1). Los activos (traducciones, CSS, teselas y datos de
+  mapas) se cuentan aparte: son miles y no son código.
 - Deriva el ciclo/cap actual de la red desde el directorio y lo compara con el local (§5).
 - Sale `0` = sin avisos, `1` = hay avisos. (El aviso in-app de Oasis es un no-op en Docker:
   `.dockerignore` excluye `.git` y el updater está gateado por `existsSync('../../.git')`.)
@@ -141,8 +146,9 @@ rama `upgrade/oasis-X.Y.Z`:
 
 ```bash
 git switch -c upgrade/oasis-X.Y.Z
-git rm -r -q src && git checkout oasis-upstream/main -- src/     # overlay LIMPIO: borra lo que upstream borró
+git rm -r -q src && git checkout $NEW_REF -- src/                # overlay LIMPIO: borra lo que upstream borró. Desde NEW_REF, no desde la rama (§1)
 git checkout HEAD -- src/configs/blockchain-cycle.json           # único fichero fork-only bajo src/
+git checkout $NEW_REF -- scripts/patch-node-modules.js           # la copia del fork sigue a upstream (abajo)
 # Guards cuyo fichero upstream NO tocó entre OLD_REF y NEW_REF: se recuperan tal cual.
 git diff --stat $OLD_REF $NEW_REF -- <fichero>                   # vacío → git checkout HEAD -- <fichero>
 # Guards cuyo fichero SÍ cambió: se reponen A MANO sobre el fichero nuevo (tabla de abajo).
@@ -184,17 +190,38 @@ otro para los guards repuestos. Así el diff de los guards se lee solo.
 
 Eso es **todo** lo que puede divergir de upstream dentro de `src/`: 5 guards y un fichero propio.
 Fuera de `src/` el fork se mantiene entero (nunca overlay): `Dockerfile`, `docker-compose*.yml`,
-`docker-entrypoint.sh`, `scripts/patch-node-modules.js`, `pub/**`, `devops/**`, `client/**`.
-`install.sh`/`oasis.sh` son bare-metal: sincronizarlos con upstream es opcional.
+`docker-entrypoint.sh`, `pub/**`, `devops/**`, `client/**`. `install.sh`/`oasis.sh` son
+bare-metal: sincronizarlos con upstream es opcional.
+
+**`scripts/patch-node-modules.js` es de upstream y se sincroniza.** Es el script con el que
+upstream parchea sus dependencias en bare metal (`install.sh`). El fork no lo corre sobre el repo
+(solo el `Dockerfile` sobre `src/AI`, con `OASIS_AI=nav|full`), pero es la **lista de lo que
+upstream espera parcheado**: desde 1.2 lo vendorizado en `src/base` suele traer ya cada parche, y
+cuando no lo trae, un nodo del fork correría sin él mientras el de upstream corre con él. Por eso:
+(1) la copia del fork se trae de `$NEW_REF` en el overlay; (2) se mide, no se lee:
+
+```bash
+node devops/scripts/upgrade-patches-audit.js $NEW_REF   # ejecuta el script de upstream EN SECO sobre src/base
+```
+
+Un parche `pendiente` es lo vendorizado sin el parche: o lo aplica `apply_node_patches` del
+entrypoint (§3.3) en la misma rama, o se dispone por escrito por qué no. `sin-anclaje` es
+upstream contradiciéndose (su parche no casa con su propia dependencia): se dispone igual.
+`ausente` en `src/AI/**` es normal (la pila de IA se instala en el build). Los tres parches del
+entrypoint (`ssb-ref`, `ssb-blobs`, `multiserver`) no se retiran porque upstream los traiga: son
+idempotentes y el log de arranque sigue siendo la prueba (§3.3). En el ciclo 1.2.3 la copia del
+fork era la de 1.2.1 y nadie lo había notado: el audit lo saca como línea `patches` del diff.
 
 ### Verificación de invariantes (bloqueante)
 
 ```bash
-git diff oasis-upstream/main --stat -- src/       # exactamente 6 ficheros
-git diff oasis-upstream/main --stat -- src/base   # vacío: lo vendorizado es el de upstream
+git diff $NEW_REF --stat -- src/                  # exactamente 6 ficheros
+git diff $NEW_REF --stat -- src/base              # vacío: lo vendorizado es el de upstream
+git diff $NEW_REF --stat -- scripts/patch-node-modules.js   # vacío: la lista de parches es la de upstream
 git ls-files -s src/server/node_modules           # modo 120000: sigue siendo un enlace
 node --check src/backend/backend.js               # el edit a mano parsea
 grep -m1 '"version"' src/server/package.json      # = X.Y.Z
+node devops/scripts/upgrade-patches-audit.js $NEW_REF   # exit 0: ningún parche pendiente ni sin anclaje
 ```
 
 ## 3. Qué cambia de comportamiento
@@ -220,6 +247,7 @@ Saca, de forma mecánica, los **candidatos** a cambio de comportamiento. No da v
 | `config`, `deps` | defaults de `src/configs/*.json`, `package.json` | derivados que se regeneran (§3.2); parches y gate del invite |
 | `outside` | lo que upstream cambia fuera de `src/` | el overlay no lo trae: instaladores, tests |
 | `annex` | invariantes de cada pieza (`devops/scripts/upgrade-invariants.d/*.tsv`) sobre el árbol de trabajo | sustituye a los bloques de grep de los anexos |
+| `patches` | el `scripts/patch-node-modules.js` de `NEW_REF` ejecutado en seco sobre el árbol de trabajo (`upgrade-patches-audit.js`) | un `!` es un parche que upstream aplica y lo vendorizado no trae (§2) |
 
 **Cada línea con signo `+`, `-` o `!` se dispone por escrito** en el reporte del WP del upgrade
 (sección «Disposiciones», §7), citando su ID, con una de:
@@ -237,7 +265,11 @@ bash devops/scripts/upgrade-behaviour-diff.sh $OLD_REF $NEW_REF --check plan/REP
 ```
 
 Una línea `!` de `annex` es una pieza del fork cuyo suelo se ha movido: se adapta **en la misma
-rama** y se repite su gate.
+rama** y se repite su gate. Una `!` de `patches` es un parche que upstream aplica y el fork no
+tendría (§2): se aplica en el entrypoint o se dispone por qué no.
+
+El `--check` exige además que el registro lleve las seis cabeceras de §7: sin ellas no es un
+reporte de ciclo.
 
 ### 3.2 Derivados fuera de `src/` y qué viaja al host
 
@@ -261,7 +293,8 @@ esta tabla que haya cambiado. §4 la ejecuta; lo que no esté en la lista no se 
 - **Parches de `node_modules`.** `apply_node_patches` (`docker-entrypoint.sh`) parchea tres módulos
   (`ssb-ref`, `ssb-blobs`, `multiserver`) dentro de `src/base`. Son idempotentes. **Confirmar en el
   log de arranque** que cada uno dice «patcheado» o «ya parcheado» (upstream trae ya el de
-  `ssb-blobs`) y ninguno «no se encontró».
+  `ssb-blobs`) y ninguno «no se encontró». Lo que upstream parchea **además** de esos tres lo
+  mide `upgrade-patches-audit.js` (§2): «ya parcheado» no se afirma por grep sino por ese audit.
 - **Sin instalaciones en caliente.** El entrypoint comprueba que `src/server/node_modules` lleva a
   `src/base` y, si no, no arranca. La pila de IA se instala en el build (`OASIS_AI=none|nav|full`;
   pub, HUB y bots: `none`); sin ella, `aiMod` queda en `off` aunque haya modelo.
@@ -450,6 +483,9 @@ bash devops/scripts/deploy-log.sh --target pub --host <dominio> --version X.Y.Z 
 **Cliente** (`docker-compose.yml`, modo `full`): después del host y con otro GO si la identidad es
 real. `docker tag o-sdk-oasis-client o-sdk-oasis-client:<ver-vieja>` → `npm run build && docker
 compose up -d oasis-client`. Detalle, importación de identidad y sbot puro: `../CLIENT-PROTOCOL.md` §4.
+También se apunta en el journal (`deploy-log.sh --target client --host localhost --version X.Y.Z
+--feed <feed> --mode full`): el preflight solo mira los registros del pub, así que el del cliente
+no lo confunde, y sin él nadie sabe en qué versión quedó.
 
 ## 5. Ciclo de red — dos casos
 
@@ -504,7 +540,8 @@ corrige hacia delante, y la copia en frío del paso 7 solo sirve por `RECOVERY-P
 
 Un upgrade se cierra con (`plan/PRACTICAS.md`): reporte en `plan/REPORTES/`, `CHANGELOG.md`,
 estado en `plan/BACKLOG.md`, journal de deploy y ficha de instancia. El **reporte** es el registro
-del ciclo y lleva, además de lo habitual:
+del ciclo y lleva, además de lo habitual, **seis cabeceras fijas** (como `## n. <cabecera>`; el
+`--check` del diff de comportamiento las exige, y el ciclo 1.2.2 se cerró sin tres de ellas):
 
 1. **Estado de partida**: salida de `deploy-status.sh` y de `snapshot pre`.
 2. **Disposiciones**: una por ID del diff de comportamiento (§3.1); `--check` en verde.
@@ -512,6 +549,11 @@ del ciclo y lleva, además de lo habitual:
 4. **Gates** U0-U7: comando y salida.
 5. **Delta de publicación** medido en local y en el host, por nodo.
 6. **Correcciones al protocolo**: cada tropiezo es un defecto de este documento y se arregla aquí.
+   Si no hubo ninguno, la sección lo dice («ninguna»): una sección que falta no se distingue de
+   un ciclo que no miró.
+
+Un ciclo partido en dos reportes (local y host) lleva las seis en cada uno; lo que no aplica
+(el delta del host en el reporte local) se dice en una línea.
 
 Ciclos registrados (lo que cada uno cambió en el protocolo):
 

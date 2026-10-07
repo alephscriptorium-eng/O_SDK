@@ -5,6 +5,18 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Protocolo de upgrade: medir lo que se afirmaba de memoria (WP-O127, 2026-10-07)
+
+Antes del ciclo 1.2.3. `upgrade-preflight.sh` resuelve `NEW_REF` como el commit «Oasis release
+X.Y.Z» (no la punta de la rama; `--to` para una intermedia), toma la versión desplegada del último
+registro del pub y cuenta aparte los activos. Nuevo `upgrade-patches-audit.js`: ejecuta en seco el
+`scripts/patch-node-modules.js` de upstream sobre `src/base` y dice por parche si lo vendorizado lo
+trae (sección `patches` del diff de comportamiento; la copia del fork de ese script era la de
+1.2.1). Los gates remotos leen la raíz de datos de `host.env` (`REMOTE_DATA_ROOT`; `GATE_NODES` y
+`HUB_CACHE_CONTAINER` opcionales). El `--check` del diff exige las seis cabeceras del reporte de
+ciclo. El cliente se apunta en el journal. `UPGRADE-PROTOCOL.md` §0.2, §1, §2, §3.1, §3.3, §4, §7;
+`AGENTES.md` §4 (dos trampas).
+
 ### Added — Puerta «Habitante» y web al día tras los upgrades (WP-O125, 2026-10-05)
 
 Sexta puerta del portal, para quien solo quiere entrar en la red con su móvil: el manual de

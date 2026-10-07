@@ -31,13 +31,19 @@
 #   outside   ficheros de upstream que cambian FUERA de src/ (no los importa el overlay)
 #   annex     invariantes de las piezas del fork (devops/scripts/upgrade-invariants.d/*.tsv),
 #             evaluados sobre el ÁRBOL DE TRABAJO (overlay y guards ya aplicados)
+#   patches   los parches de node_modules del scripts/patch-node-modules.js de NEW, ejecutado EN
+#             SECO sobre el árbol de trabajo (upgrade-patches-audit.js): `!` si lo vendorizado no
+#             trae uno (pendiente) o su anclaje no casa; `=` si ya está, calla o el fichero no viene
 #
 # Salida: TSV  ID  sección  signo  fichero  texto     (signo: + añadido · - quitado · ! invariante roto · = dato)
 #   El ID es estable entre ejecuciones (sha1 corto de sección+signo+fichero+texto).
 #
-# --check <registro.md>: sale 1 si algún ID con signo + - o ! no aparece en ese fichero.
-# Códigos: 0 ok · 1 hay IDs sin disponer (solo con --check) · 2 refs inválidas o uso incorrecto.
-# Solo lectura: git y grep.
+# --check <registro.md>: sale 1 si algún ID con signo + - o ! no aparece en ese fichero, o si al
+#   registro le falta alguna de las seis cabeceras del reporte de ciclo (UPGRADE-PROTOCOL §7):
+#   Estado de partida · Disposiciones · Qué viaja al host · Gates · Delta de publicación ·
+#   Correcciones al protocolo.
+# Códigos: 0 ok · 1 hay IDs sin disponer o cabeceras que faltan (solo con --check) · 2 refs inválidas o uso incorrecto.
+# Solo lectura: git, grep y node (el audit de parches no escribe).
 # =============================================================================
 set -uo pipefail
 
@@ -59,7 +65,7 @@ done
 git rev-parse -q --verify "$OLD^{commit}" >/dev/null || { echo "ref inválida: $OLD" >&2; exit 2; }
 git rev-parse -q --verify "$NEW^{commit}" >/dev/null || { echo "ref inválida: $NEW" >&2; exit 2; }
 [ -z "$CHECK" ] || [ -f "$CHECK" ] || { echo "no existe el registro: $CHECK" >&2; exit 2; }
-ALL="roles files routes loopback publish timers headers env state config deps outside annex"
+ALL="roles files routes loopback publish timers headers env state config deps outside annex patches"
 SECTIONS="${SECTIONS:-$ALL}"; SECTIONS="${SECTIONS//,/ }"
 
 BACKEND="src/backend/backend.js"
@@ -193,6 +199,19 @@ for s in $SECTIONS; do
           else emit annex '!' "$file" "[$piece] ROTO ($n < $min) «$pat» — $why"; fi
         done < "$tsv"
       done ;;
+    patches)
+      head_of patches "parches de node_modules de upstream (NEW:scripts/patch-node-modules.js) ejecutados en seco sobre el árbol de trabajo: lo vendorizado debe traerlos ya"
+      if git cat-file -e "$NEW:scripts/patch-node-modules.js" 2>/dev/null; then
+        node "$REPO_ROOT/devops/scripts/upgrade-patches-audit.js" "$NEW" --tsv 2>/dev/null | while IFS=$'	' read -r n st f msg; do
+          case "$st" in pendiente|sin-anclaje) sg='!' ;; *) sg='=' ;; esac
+          emit patches "$sg" "$f" "parche $n: $st — $msg"
+        done
+        if ! git diff --quiet "$OLD" "$NEW" -- scripts/patch-node-modules.js; then
+          emit patches + "scripts/patch-node-modules.js" "upstream cambió su script de parches: sincronizar la copia del fork (UPGRADE-PROTOCOL §2) y confirmar que el entrypoint no se queda corto"
+        fi
+      else
+        emit patches = "scripts/patch-node-modules.js" "NEW no trae scripts/patch-node-modules.js"
+      fi ;;
     *) echo "sección desconocida: $s (válidas: $ALL)" >&2; exit 2 ;;
   esac
 done
@@ -204,12 +223,17 @@ echo "# $total líneas; $todo piden disposición en el registro del ciclo (signo
 
 if [ -n "$CHECK" ]; then
   missing=0
+  # El registro del ciclo lleva seis cabeceras fijas (UPGRADE-PROTOCOL §7): sin ellas no es un reporte de ciclo.
+  for h in 'Estado de partida' 'Disposiciones' 'viaja al host' 'Gates' 'Delta de publicación' 'Correcciones al protocolo'; do
+    grep -qiE "^#+ .*$h" "$CHECK" || { missing=$((missing + 1)); printf 'SIN CABECERA	%s
+' "$h" >&2; }
+  done
   while IFS=$'\t' read -r id sec sg f text; do
     case "$id" in '#'*) continue ;; esac
     [ "$sg" = "=" ] && continue
     grep -qF "$id" "$CHECK" || { missing=$((missing + 1)); printf 'SIN DISPONER\t%s\t%s\t%s\t%s\t%s\n' "$id" "$sec" "$sg" "$f" "$text" >&2; }
   done < "$OUT"
-  if [ "$missing" -gt 0 ]; then echo "# $missing IDs sin disposición en $CHECK" >&2; exit 1; fi
-  echo "# todas las líneas tienen disposición en $CHECK" >&2
+  if [ "$missing" -gt 0 ]; then echo "# $missing IDs sin disposición o cabeceras que faltan en $CHECK" >&2; exit 1; fi
+  echo "# todas las líneas tienen disposición en $CHECK y el registro lleva las seis cabeceras" >&2
 fi
 exit 0

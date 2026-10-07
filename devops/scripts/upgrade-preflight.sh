@@ -10,15 +10,18 @@
 #   1) Drift de versión: local src/server/package.json vs oasis-upstream/main, y
 #      de qué commit de upstream se parte (OLD_REF) para el diff de comportamiento
 #      (devops/scripts/upgrade-behaviour-diff.sh). La versión de partida es la
-#      DESPLEGADA (último registro del journal), no la de HEAD: en la rama de
-#      upgrade HEAD ya es la versión nueva. Se puede forzar con --from X.Y.Z.
+#      DESPLEGADA (último registro del journal con target=pub), no la de HEAD: en la
+#      rama de upgrade HEAD ya es la versión nueva. Se puede forzar con --from X.Y.Z.
+#      La versión nueva (NEW_REF) es el commit "Oasis release <UPSTREAM>" más reciente,
+#      no la punta de la rama: si upstream empujó algo después de la release, se avisa.
+#      Se puede fijar otra con --to X.Y.Z (p. ej. subir a una intermedia).
 #   2) Drift de ciclo de red: caps.shs local vs el cap actual de la red, derivado
 #      en vivo del directorio https://oasis-project.pub/api/pubs.
 #   3) Presencia de nuestro pub en el directorio (cycle/shs/status) — distingue
 #      "atraso de cap/deploy" de "descubribilidad" (falta follow-back).
 #   4) Estado del árbol git.
 #
-# Uso: bash devops/scripts/upgrade-preflight.sh [--from X.Y.Z]
+# Uso: bash devops/scripts/upgrade-preflight.sh [--from X.Y.Z] [--to X.Y.Z]
 #      (UPSTREAM_REMOTE / UPSTREAM_BRANCH por entorno; por defecto oasis-upstream/main)
 #
 # Salida: bloque "=== UPGRADE PREFLIGHT ===" con GO / N x WARN, y las líneas
@@ -37,12 +40,14 @@ UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-oasis-upstream}"
 UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-main}"
 JOURNAL="${DEPLOY_LOG_PATH:-$REPO_ROOT/devops/logs/deploy-history.jsonl}"
 
-FROM_VER=""
+FROM_VER=""; TO_VER=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --from) FROM_VER="${2:-}"; shift ;;
     --from=*) FROM_VER="${1#--from=}" ;;
-    -h|--help) sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --to) TO_VER="${2:-}"; shift ;;
+    --to=*) TO_VER="${1#--to=}" ;;
+    -h|--help) sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
   esac
   shift
 done
@@ -89,34 +94,54 @@ fi
 
 # De qué commit de upstream se parte. Upstream no etiqueta las versiones de Oasis (solo las de
 # Android): el commit de una versión es el que se titula "Oasis release X.Y.Z".
+release_ref() { # $1 versión -> commit más reciente titulado "release X.Y.Z" cuyo package.json dice X.Y.Z
+  local esc ref
+  esc="$(printf '%s' "$1" | sed 's/\./\\./g')"
+  ref="$(git log --format=%h -1 --grep="release $esc\$" "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" 2>/dev/null)"
+  [ -n "$ref" ] && [ "$(git show "$ref:src/server/package.json" 2>/dev/null | pkg_version)" = "$1" ] && printf '%s' "$ref"
+}
 DEPLOYED_VER="$FROM_VER"
 if [ -z "$DEPLOYED_VER" ] && [ -f "$JOURNAL" ]; then
-  DEPLOYED_VER="$(tail -n 1 "$JOURNAL" | grep -o '"oasisVersion":"[^"]*"' | cut -d'"' -f4)"
+  # El último registro DEL PUB: el journal también apunta otros targets (cliente).
+  DEPLOYED_VER="$(grep '"target":"pub"' "$JOURNAL" | tail -n 1 | grep -o '"oasisVersion":"[^"]*"' | cut -d'"' -f4)"
 fi
 DEPLOYED_VER="${DEPLOYED_VER:-$LOCAL_VER}"
-note "DESPLEGADA=${DEPLOYED_VER:-?}  (journal o --from; mídela con deploy-status.sh, bloque «Piezas vivas»)"
-NEW_REF="$(git rev-parse --short "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" 2>/dev/null)"
-OLD_REF=""
-if [ -n "$DEPLOYED_VER" ]; then
-  esc="$(printf '%s' "$DEPLOYED_VER" | sed 's/\./\\./g')"
-  OLD_REF="$(git log --format=%h -1 --grep="release $esc\$" "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" 2>/dev/null)"
+note "DESPLEGADA=${DEPLOYED_VER:-?}  (journal, target=pub, o --from; mídela con deploy-status.sh, bloque «Piezas vivas»)"
+
+# A qué versión se sube: la de upstream, o la que diga --to. NEW_REF es el commit de ESA release,
+# no la punta de la rama: lo que upstream empuje después de la release no es parte del ciclo.
+TARGET_VER="${TO_VER:-$UP_VER}"
+TIP_REF="$(git rev-parse --short "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" 2>/dev/null)"
+NEW_REF=""
+[ -n "$TARGET_VER" ] && NEW_REF="$(release_ref "$TARGET_VER")"
+if [ -z "$NEW_REF" ]; then
+  warn "no encuentro en $UPSTREAM_REMOTE/$UPSTREAM_BRANCH el commit «release ${TARGET_VER:-?}»; NEW_REF cae a la punta de la rama ($TIP_REF)"
+  NEW_REF="$TIP_REF"
+elif [ "$(git rev-parse "$NEW_REF")" != "$(git rev-parse "$TIP_REF")" ]; then
+  warn "la punta de $UPSTREAM_REMOTE/$UPSTREAM_BRANCH ($TIP_REF) va más allá de la release $TARGET_VER ($NEW_REF): el overlay de §2 debe hacerse desde NEW_REF, no desde la rama"
 fi
-if [ -n "$OLD_REF" ] && [ "$(git show "$OLD_REF:src/server/package.json" 2>/dev/null | pkg_version)" = "$DEPLOYED_VER" ]; then
+note "OBJETIVO=${TARGET_VER:-?}  (upstream o --to)"
+OLD_REF=""
+[ -n "$DEPLOYED_VER" ] && OLD_REF="$(release_ref "$DEPLOYED_VER")"
+if [ -n "$OLD_REF" ]; then
   echo "OLD_REF=$OLD_REF"
   echo "NEW_REF=$NEW_REF"
   # Riesgo por rol. El pub (modo server) no ejecuta «src/server»: ejecuta el CIERRE de requires de
   # SSB_server.js, que sale de esa carpeta (banking_model.js, state-manager…). Los backends (HUB,
   # bots) y el cliente pueden cargar todo src/.
   # src/base (desde 1.2) son dependencias vendorizadas: se cuentan aparte, no como código de Oasis.
-  n_all="$(git diff --name-only "$OLD_REF" "$NEW_REF" -- src ':!src/client/assets' ':!src/base' | wc -l | tr -d ' ')"
-  n_vendor="$(git diff --name-only "$OLD_REF" "$NEW_REF" -- src/base | wc -l | tr -d ' ')"
+  # Activos (traducciones, CSS, teselas y datos de mapas) se cuentan aparte: son miles y no son código.
+  assets_ex=(':!src/client/assets' ':!src/maps/tiles' ':!src/maps/cache' ':!src/maps/data')
+  n_all="$(git -c diff.renameLimit=1 diff --name-only "$OLD_REF" "$NEW_REF" -- src ':!src/base' "${assets_ex[@]}" 2>/dev/null | wc -l | tr -d ' ')"
+  n_assets="$(git -c diff.renameLimit=1 diff --name-only "$OLD_REF" "$NEW_REF" -- src/client/assets src/maps/tiles src/maps/cache src/maps/data 2>/dev/null | wc -l | tr -d ' ')"
+  n_vendor="$(git -c diff.renameLimit=1 diff --name-only "$OLD_REF" "$NEW_REF" -- src/base 2>/dev/null | wc -l | tr -d ' ')"
   closure="$(node "$REPO_ROOT/devops/scripts/upgrade-closure.js" "$NEW_REF" src/server/SSB_server.js 2>/dev/null)"
   if [ -n "$closure" ]; then
-    changed="$(git diff --name-only "$OLD_REF" "$NEW_REF" -- src | grep -Fx -f <(printf '%s\n' "$closure") | grep -v 'package-lock.json')"
-    note "Código que cambia por rol: pub en modo server = $(printf '%s' "$changed" | grep -c .) de los $(printf '%s\n' "$closure" | grep -c .) ficheros que carga · backends y cliente = $n_all · dependencias vendorizadas (src/base) = $n_vendor"
+    changed="$(git -c diff.renameLimit=1 diff --name-only "$OLD_REF" "$NEW_REF" -- src 2>/dev/null | grep -Fx -f <(printf '%s\n' "$closure") | grep -v 'package-lock.json')"
+    note "Código que cambia por rol: pub en modo server = $(printf '%s' "$changed" | grep -c .) de los $(printf '%s\n' "$closure" | grep -c .) ficheros que carga · backends y cliente = $n_all · activos (assets, mapas) = $n_assets · dependencias vendorizadas (src/base) = $n_vendor"
     printf '%s\n' "$changed" | grep . | sed 's/^/      pub: /'
   else
-    warn "no pude calcular el cierre de requires del modo server (¿node?): cuenta solo src/server = $(git diff --name-only "$OLD_REF" "$NEW_REF" -- src/server | wc -l | tr -d ' ')"
+    warn "no pude calcular el cierre de requires del modo server (¿node?): cuenta solo src/server = $(git -c diff.renameLimit=1 diff --name-only "$OLD_REF" "$NEW_REF" -- src/server 2>/dev/null | wc -l | tr -d ' ')"
   fi
   note "Siguiente: bash devops/scripts/upgrade-behaviour-diff.sh $OLD_REF $NEW_REF"
 else

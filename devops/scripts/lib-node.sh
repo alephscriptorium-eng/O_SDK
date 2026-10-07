@@ -51,7 +51,9 @@ node_run_setup() {
     run_cmd() { MSYS_NO_PATHCONV=1 bash -c "$1"; }
   else
     NODE_COMPOSE_DIR="${REMOTE_REPO_DIR:?REMOTE_REPO_DIR vacío (host.env)}"; NODE_ENV_FILE="${REMOTE_ENV_FILE:-.env.prod}"
-    NODE_DATA="${WALLET_DATA_ROOT:-/srv/oasis}"; NODE_SUDO="sudo -n"
+    # Raíz de datos de TODOS los nodos (ecoin/, oasis-hub/, src-*.tgz…). host.env lleva la del pub
+    # (REMOTE_DATA_ROOT=<raíz>/oasis-pub): si no hay WALLET_DATA_ROOT, es su carpeta padre.
+    NODE_DATA="${WALLET_DATA_ROOT:-${REMOTE_DATA_ROOT:+$(dirname "$REMOTE_DATA_ROOT")}}"; NODE_DATA="${NODE_DATA:-/srv/oasis}"; NODE_SUDO="sudo -n"
     [ -n "${REMOTE_USER:-}" ] && [ -n "${REMOTE_HOST:-}" ] || { echo "ERROR: REMOTE_USER/REMOTE_HOST vacíos" >&2; return 3; }
     [ -f "${KEY_PATH:-}" ] || { echo "ERROR: clave SSH no encontrada: ${KEY_PATH:-} (vive en devops/.ssh/, fuera de git)" >&2; return 3; }
     # En Windows la clave suele quedar con permisos abiertos y ssh la rechaza: copia temporal a 600.
