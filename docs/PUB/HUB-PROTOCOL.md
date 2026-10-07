@@ -228,7 +228,13 @@ tema, dispositivo).
   lista de `inboxMutedBots` sale de `INBOX_BOTS` en `src/models/pm_model.js`: si upstream añade un
   aviso nuevo, entra al regenerar.
 - `pub/config/hub/ssb-config` reemplaza **arrays enteros** de `src/configs/server-config.json`
-  (`mergeDeep`): si upstream cambia `connections.incoming/outgoing`, replicar el cambio.
+  (`mergeDeep`): si upstream cambia `connections.incoming/outgoing`, **decidir** si se replica.
+  Orden de fusión en `ssb_config.js` (guard): `~/.ssb/config` ← `server-config.json` ← el fichero
+  de `OASIS_SERVER_CONFIG_OVERRIDE`; pub, HUB y bot apuntan el override a su propio `~/.ssb/config`,
+  así que lo que diga ese fichero manda. Caso vigente (1.2.3): upstream abre
+  `outgoing.onion: [{transform: shs}]` (marcar `.onion` de otros pubs); los tres nodos llevan
+  `"onion": []` y **no salen por Tor** (no hay proxy en el stack). Replicarlo es una DECISIÓN del
+  custodio y pide proxy; hasta entonces, `[]`.
 - `pub/config/hub/nginx.conf.template`: lo que digan `routes` y `headers`. Se renderiza con
   `envsubst` **al arrancar** `hub-cache`: tras cambiarla (in place) hay que **recrear** el
   contenedor (`up -d --no-deps --force-recreate hub-cache`); `nginx -s reload` no la relee.

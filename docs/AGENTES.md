@@ -117,6 +117,7 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | Un backup de cartera no contiene la dirección publicada | el backup se hizo **antes** de generar la dirección | ECOIN §8 |
 | Un contador sobre `log.offset` no se mueve | `grep -c` en binario cuenta líneas: `grep -a -o … \| wc -l` | RECOVERY §0 |
 | En Git Bash un path `/c/…` o `/app/…` llega destrozado | conversión de rutas de MSYS: `MSYS_NO_PATHCONV=1`; y con él, `git -C /c/…` falla: `cd` + ruta relativa, `cygpath -m` para node | ECOIN §14 · CLIENT §8 |
+| Una sonda a mano (`docker exec … -e HOME=/home/oasis … node -`) dice «could not connect to sbot» y los gates sí conectan | la misma conversión: `HOME` llega como `C:/Program Files/Git/home/oasis` y `ssb-client` busca el socket donde no está. `MSYS_NO_PATHCONV=1` **delante de esa orden**, no exportada: exportada rompe el `curl` del gate `hub` (todo `000`) | UPGRADE §3.4 |
 | `MODULE_NOT_FOUND` al llamar a `ssb-admin.js` | la ruta dentro de la imagen viva depende del layout del host | HUB §9 |
 | Un POST desde el loopback da 403 o 400 | `Host` y el host del `Referer` deben ser idénticos (mismo host:puerto) | ECOIN §3, §14 |
 | «¿Está sincronizado `ecoind`?» da alturas absurdas | la altura de los pares sale de `receive version message … blocks=N`, no de `height=` | ECOIN §3 |
