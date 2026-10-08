@@ -24,10 +24,10 @@ encargos:
     falta: prueba en frío (WP-O118)
   - id: plantilla
     titulo: Convertir el organigrama de mi colectivo en las tribus, salas y calendarios de mi pub
-    estado: en-obras
+    estado: ejercido
     medido: '2026-10-08'
-    prueba: ARCHIVO/DISCO/scriptorium-exported/README.md
-    falta: drill local y alta del bot secretaría en el VPS (WP-O131); la vía fría (WP-O130)
+    prueba: plan/REPORTES/WP-O131-retro-bot-via-caliente.md
+    falta: prueba en frío; la vía fría (WP-O130)
 ---
 
 # Pub Oasis

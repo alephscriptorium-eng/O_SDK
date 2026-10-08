@@ -24,3 +24,26 @@ con sus desviaciones corregidas en el protocolo). Patrón: ECOIN-PROTOCOL §3 co
 
 Rollback: `$C --profile retro stop oasis-retro-bot` deja el pub y el HUB como estaban; lo publicado no se
 retira (el feed del bot se puede dejar de seguir desde el pub: `contact` irreversible, PERMISO).
+
+## Ejecución · 2026-10-08 (GO del custodio; un PERMISO por irreversible)
+
+| # | Resultado | Evidencia |
+|---|---|---|
+| 0 | ✅ | `deploy-status`: 3 nodos 1.2.3 healthy; `backup-oasis-pub.sh` → `devops/backups/oasis-pub/20261008T114641Z/`; `snapshot pre-retro` (pub seq 20, hub 16, bot-2 67); 2 GB de memoria disponibles, `/` 43 %, `/srv/oasis` 37 % |
+| 1 | ✅ | `/srv/oasis/oasis-retro-bot/{ssb-data,logs,assets}` uid 999, `ssb-data` 700 |
+| 2 | ✅ | 42 ficheros del kit + `avatar.png` en `assets/`; sha256 iguales a los locales (avatar `ab832497…`, tribu `f4facb42…`) |
+| 3 | ✅ | `.env.prod.bak-retro-20261008T114927Z`; bloque `OASIS_RETRO_BOT_*` (6 variables) añadido con `cat >>` |
+| 4 | ✅ | `tools/` (seeder, lib, `ssb-admin.js` con `--image`, probe, conn-fix; backups `.bak-retro-*` de los que existían), `templates/campamento.json`, `config/retro-bot/ssb-config`, `scripts/retro-seed.sh`; compose vivo = repo sin bloque retro (diff vacío) → sustituido in place con backup; `config` de los 7 servicios existentes: 0 líneas de diferencia |
+| 5 | ⚠️ → ✅ | **Parada**: `read-only file system` al crear `/app/pub/templates/assets/campamento`: un bind anidado dentro de `/app/pub/templates:ro` no se puede crear si la imagen no trae `/app/pub` (la local sí lo trae). Corrección: assets en `/app/pub/assets/<plantilla>` (compose, `retro-seed.sh`, protocolo); segundo `up` → `healthy` en 50 s; feed `@fJG3E7UKNlYVh0Aoc89LKPAAQsKNfy4iMaJtdVH0I8I=.ed25519`; 43 assets visibles |
+| 6 PERMISO | ✅ con corrección | `invite.create 1` (host `pub.escrivivir.co` → bridge `172.18.0.4`); probe `accept: true`; `hub-conn-fix` → `remember` + `connect` ok; CONNECTED en el pub; `check pre-retro`: pub `contact+1`, hub 0, bot-2 0. **Desviación**: el feed del bot quedó en 0 (reinicié justo tras el `accept` y sus `contact`/`pub` no se escribieron; en local sí). Dentro del PERMISO 6, `ssb-admin.js follow <pub>` → seq 1; reinicio → seq 2 (`contact`, `oasisVersion`); el pub tiene el feed (seq 2, `followsMe: true`), el bot replica al pub (seq 21). `snapshot retro-base` |
+| 7 PERMISO | ✅ | descripción por stdin (416 B); `publish-about --image` → seq 3, `%lrtuvolSEp80ksfp9rwXRk4zKxuSTPAm5Yuvxz71FUo=.sha256`, `description_len 408`, `image` = blob previsto; `check retro-base`: solo `retro:about=+1` |
+| 8 | ✅ | dry-run: gates `true`, 10 bloques, 160 previstos; `snapshot retro-seed0` |
+| 9 PERMISO | ✅ | tribes 16 · subtribes 9 · invites 44 · rooms 7 · calendars 36 · events 7 · mailing 4 · wiki 5 · maps 3: **delta = previsto en los nueve**, seq 3 → 134; salas con `hub` = pub; 43 blobs en bot y pub; ledger 91 claves; `check retro-seed0`: pub 0, hub 0, bot-2 0 |
+| 9c PERMISO | ✅ | `clearnet` 14/14, seq 134 → 148; el HUB ya tenía el feed (seq 148) sin reiniciar |
+| 10 | ✅ | `hub-disk.sh prune-cache` (518935 → 0 B); sitemap público 191 URL (1 calendario, 7 eventos, 1 mapa, 27 wikis…); `/c/blob/<png>` 11863 B `image/png`; wiki de reparto con cuerpo y portada; matriz HUB §4 GATE OK; guía con el ledger del VPS: 32 enlaces `/c/…` en 200 y sin «not accessible» (24 tribus, 1 calendario, 1 mapa, 5 wikis, 1 evento) |
+| 11 | ✅ | `site/parlament/index.html` vivo (CRLF, distinto del repo): **solo +1 línea** sobre el vivo, a nivel de bytes, backup `.bak-retro-*`; `campamento/index.html` nuevo; `https://pub.escrivivir.co/parlament/campamento/` 200 con 24 enlaces a `/c/tribe/` |
+| 12 | ✅ | backup `secret` + `oasis/keys` + `conn.json` → `devops/backups/oasis-retro-bot/20261008T120750Z/` (fuera de git; mover a cifrado); `snapshot retro-final`; `deploy-log.sh … --mode …+retro`; `deploy-status`: 4 nodos healthy, `config/retro-bot/ssb-config` igual que HEAD; ficha §3-§4 al día |
+
+Trampas nuevas para el protocolo: en Git Bash con `MSYS_NO_PATHCONV=1` exportado, `curl -o /tmp/x` y
+`-D /tmp/x` escriben en `C:\tmp` (inexistente) y la matriz del HUB da `000`: la variable va **delante de
+cada `docker exec`**, nunca exportada (ya lo decía AGENTES §4 para el gate `hub`; aquí costó dos medidas falsas).

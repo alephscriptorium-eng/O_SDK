@@ -17,7 +17,7 @@
 | Host | VPS Debian, 4 GB; definición en `devops/hosts/scriptorium/host.env` |
 | Layout vivo | `/opt/oasis-scriptorium/OASIS_PUB` (pre-refactor, **sin git**). `host.env` lleva esa ruta (el layout medido): los scripts de `devops/` no piden ningún `export`. Migración al layout canónico: pendiente (`devops/MIGRATION-2026-07.md`) |
 | Acceso | SSH con la clave `devops/.ssh/gandi_pub_ed25519` (carpeta fuera de git; nombre en `KEY_FILE` de `host.env`). Los scripts la toman solos |
-| Nodos de Oasis | tres contenedores de la misma imagen: `oasis-pub-scriptorium` (`server`), `oasis-pub-hub` (`backend`), `oasis-pub-wallet-bot` (`backend`). Versión y modo de cada uno: `deploy-status.sh`, bloque «Piezas vivas» |
+| Nodos de Oasis | cuatro contenedores de la misma imagen: `oasis-pub-scriptorium` (`server`), `oasis-pub-hub` (`backend`), `oasis-pub-wallet-bot` (`backend`), `oasis-pub-retro-bot` (`server`, desde 2026-10-08). Versión y modo de cada uno: `deploy-status.sh`, bloque «Piezas vivas» |
 | Datos | volumen `/srv/oasis` (un subdirectorio por servicio) |
 | Edge | Caddy, 6 vhosts; solo `validate` + `reload` |
 | Visor clearnet (`/c`) | tema `Dark-SNH`, idioma por defecto **`es`** (claves `themes.current` y `language` de `pub/config/hub/oasis-config.json`, D-O25). El visitante cambia de idioma con `?lang=` |
@@ -43,7 +43,7 @@ nombre puede cambiar.
 |---|---|---|---|---|---|---|
 | 1 | `clearnet.escrivivir.co` | clearnet · scriptorium | HUB web de solo lectura `/c` (Sala 04) | `oasis-pub-hub` · `/srv/oasis/oasis-hub` | `@KM+ZBipR18VSyjNTFjAOnsmz6EiobGYHb3ZCZ4ZxQYI=.ed25519` | 2026-09-13 (WP-O46) |
 | 2 | `ecoin.escrivivir.co` | ecoin (cartera) · scriptorium | hub-wallet: cartera ECOin del pub, custodia la dote y reparte la RBU; **sin ruta pública** | `oasis-pub-wallet-bot` + `oasis-pub-ecoin` · `/srv/oasis/oasis-wallet-bot`, `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102) |
-| 3 | `retro.escrivivir.co` | retro (secretaría de plantillas) · scriptorium | activa plantillas de organización (`TEMPLATE-PROTOCOL.md` §4.5): tribus, salas, calendarios, listas, wikis, mapas, bloque a bloque y con permiso; custodia las claves de las tribus que crea; **modo `server`, sin ruta pública**. Avatar: logo «Scriptorium Skins» 512×512 (blob previsto `&q4Mkl/fcUGNELIrsmVyMBBdZsCXxyh5LmGN/XovlHDg=.sha256`) | `oasis-pub-retro-bot` · `/srv/oasis/oasis-retro-bot` | **propuesto** · se mide al darlo de alta | **propuesto** 2026-10-08 (WP-O131; drill local pendiente, VPS pendiente de GO) |
+| 3 | `retro.escrivivir.co` | retro (secretaría de plantillas) · scriptorium | activa plantillas de organización (`TEMPLATE-PROTOCOL.md` §4.5): tribus, salas, calendarios, listas, wikis, mapas, bloque a bloque y con permiso; custodia las claves de las tribus que crea; **modo `server`, sin ruta pública**. Avatar: logo «Scriptorium Skins» 512×512 (blob previsto `&q4Mkl/fcUGNELIrsmVyMBBdZsCXxyh5LmGN/XovlHDg=.sha256`) | `oasis-pub-retro-bot` · `/srv/oasis/oasis-retro-bot` | `@fJG3E7UKNlYVh0Aoc89LKPAAQsKNfy4iMaJtdVH0I8I=.ed25519` | 2026-10-08 (WP-O131) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
 Oasis **1.2.3** en pub, HUB y bot-2 desde el 2026-10-07 (WP-O128; antes 1.2.2, WP-O124, 2026-10-05). El pub
@@ -93,7 +93,7 @@ description: Bot de soporte nº 2 de pub.escrivivir.co · tipo ecoin (cartera) �
              él el pub escrivivir.co. Antes: azofaifo-scriptorium-wallet-bot-2.
 ```
 
-**Bot 3** — **propuesto 2026-10-08** (WP-O131); se publica una sola vez, con imagen, por `ssb-admin.js publish-about --image` (HUB §12):
+**Bot 3** — **publicado 2026-10-08** (WP-O131; primer `about` del feed, seq 3, clave `%lrtuvolSEp80ksfp9rwXRk4zKxuSTPAm5Yuvxz71FUo=.sha256`), con imagen (`&q4Mkl/fcUGNELIrsmVyMBBdZsCXxyh5LmGN/XovlHDg=.sha256`), por `ssb-admin.js publish-about --image` (HUB §12). Sin nombres anteriores:
 
 ```
 name:        retro.escrivivir.co
@@ -114,7 +114,7 @@ image:       ARCHIVO/DISCO/scriptorium-exported/assets/avatar-retro-512.png
 | Centralita de Phone y Rooms (en el pub, acotada: aforo de sala 12) | `HUB-PROTOCOL.md` §14 · `CAPACIDAD.md` §4 | `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md` §7 |
 | Entrada de habitantes: la portada (`https://pub.escrivivir.co`) muestra un invite de 1000 usos, que sirve el panel (`/public/status`, `PUB_INVITE_USES`). Es público por diseño; no se copia aquí | `../AGENTES.md` §1 | [hoja del habitante](./INSTANCIA-SCRIPTORIUM-HABITANTE.md) |
 | hub-wallet (ECOin) | `ECOIN-PROTOCOL.md` | §13 |
-| Plantillas de organización (bot retro, Campamento) | `TEMPLATE-PROTOCOL.md` | §8 · `ARCHIVO/DISCO/scriptorium-exported/` · guía de reparto en la Sala 02 (`site/parlament/campamento/`, generada) |
+| Plantillas de organización (bot retro, Campamento **sembrada el 2026-10-08**: 25 tribus, 7 salas, 7 calendarios, 7 eventos, 4 listas, 5 wikis, 2 mapas, 14 `clearnetItem`; feed del bot en 148) | `TEMPLATE-PROTOCOL.md` | §8 · `ARCHIVO/DISCO/scriptorium-exported/` (ledger del VPS en `vps/`) · guía de reparto en la Sala 02 (`site/parlament/campamento/`, generada con los enlaces reales) |
 | Teatro · sidecar RRSS | `TEATRO-PROTOCOL.md` · `RRSS-SIDECAR-PROTOCOL.md` | en cada uno |
 | Teatro P2P | `TEATRO-P2P-PROTOCOL.md` | §5 · *Aleph Cero* **congelada** el 2026-09-19; enlaces en `/teatro/aleph-cero/p2p/p2p.json`, anuncios de Oasis en `p2p/oasis.json` |
 
@@ -125,6 +125,7 @@ guarda la plantilla; en el host, estas llevan valores fusionados a mano y no se 
 |---|---|
 | `site/scriptorium/index.html` | un valor real donde la plantilla dice «SOLICITAR», una orden `curl` completa y una ruta del layout del host en un diagrama |
 | `site/admin/index.html` | la ruta del env local según el layout del host; finales de línea CRLF |
+| `site/parlament/index.html` | finales de línea CRLF (el repo lleva LF); el 2026-10-08 se insertó **solo** la línea del enlace a `campamento/` sobre el vivo, con backup `.bak-retro-*` |
 
 `site/hub/` (Sala 04) sí es idéntica a la del repo. Cómo se sube un cambio: `../AGENTES.md` §4.
 

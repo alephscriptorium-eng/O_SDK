@@ -74,3 +74,21 @@ invitaciones abiertas, 7 salas con centralita en el pub, 7 calendarios (36 mensa
 - Capturas para la presentación: con el drill vivo, `http://localhost:8088/c` (tras vaciar caché) y, si el
   cliente aguanta, `http://127.0.0.1:3000/tribes`.
 - `hub-disk.sh --local prune-cache` sobre volumen nombrado: pendiente (hallazgo 11).
+
+## 5. Fase 3 · VPS (2026-10-08, GO del custodio, un PERMISO por irreversible)
+
+Ejecutada entera: `ARCHIVO/DISCO/scriptorium-exported/runbook-vps.md`, tabla «Ejecución». Resultado: bot nº 3
+`retro.escrivivir.co` = `@fJG3E7UKNlYVh0Aoc89LKPAAQsKNfy4iMaJtdVH0I8I=.ed25519` en `/srv/oasis/oasis-retro-bot`,
+modo `server`, `about` con el avatar previsto (seq 3); Campamento sembrada en `pub.escrivivir.co` con delta
+exacto en los 10 bloques (feed del bot en 148); el pub publicó **solo** su `contact`; HUB y bot-2 a 0; el HUB
+replicó el feed sin reiniciar; sitemap público con 191 URL; 32 enlaces de la guía en 200; Sala 02 con la guía
+generada (`/parlament/campamento/`, +1 línea sobre la página viva). Backup del `secret` y los keyrings fuera
+del host. Journal con `+retro`.
+
+Hallazgos nuevos (13 y 14), corregidos: un bind anidado dentro de otro `:ro` no se puede crear si la imagen
+del host no trae `/app/pub` (assets en `/app/pub/assets/<plantilla>`); reiniciar el bot justo tras
+`invite.accept` pierde sus `contact`/`pub` (esperar `seq ≥ 2`; el `contact` se publicó con `ssb-admin.js follow`
+dentro del PERMISO 6). Y una trampa de medida: `MSYS_NO_PATHCONV=1` exportado rompe `curl -o /tmp/…` y la
+matriz del HUB da `000` (dos lecturas falsas del sitemap antes de verlo).
+
+Estado del WP: **✅ ejercido en la demo**. Pendiente: prueba en frío; WP-O130 (`--cold`); vista del cliente local.

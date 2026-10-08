@@ -24,7 +24,7 @@ ejecutó al vuelo), **(2) drill local** con identidad desechable, **(3) VPS** co
 | **Herramienta**: `--hot` (planificador puro + ejecutor por socket), `--reparto` | `pub/tools/template-seed.js` · `pub/tools/lib/{seed-plan,seed-hot,reparto}.js` · `pub/scripts/retro-seed.sh` | ensayada en el drill (146 mensajes; 4 correcciones medidas) |
 | **Bot retro**: servicio, config, variables, `about` con imagen | `pub/docker-compose.pub.yml` (`oasis-retro-bot`, perfil `retro`) · `pub/config/retro-bot/ssb-config` · `pub/.env.*.example` · `pub/tools/ssb-admin.js publish-about --image` | arrancado, bootstrapeado y con `about` en local |
 | Fase 2 · drill local, gates G0-G11 con comando y salida | `runbook-drill.md` · reporte `plan/REPORTES/WP-O131-retro-bot-via-caliente.md` | **ejecutado 2026-10-08**: G0-G10 ✅, cliente local no medido, G11 no ejecutado (estado vivo) |
-| Fase 3 · VPS, pasos con PERMISO | `runbook-vps.md` | runbook; sin GO |
+| Fase 3 · VPS, pasos con PERMISO | `runbook-vps.md` · evidencia `vps/` (dry-run, un jsonl por bloque, ledger sin códigos) | **ejecutado 2026-10-08**: bot nº 3 en el VPS, Campamento sembrada, 36 enlaces públicos en 200 |
 | Dry-run y evidencia del seeder (fase 2) | `dry-run/hot-*.jsonl` · `ledger-drill.json` · `guia-reparto-drill.md` | del drill (identidad desechable; el ledger no lleva códigos) |
 | Decisión · Backlog | `plan/DECISIONES.md` D-O29 · `plan/BACKLOG.md` WP-O131 (adelantado a O130) | asentados |
 
