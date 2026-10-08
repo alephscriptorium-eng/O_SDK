@@ -80,6 +80,12 @@ PUB_WALLET_DIR_VARS=(
   OASIS_WALLET_BOT_LOGS_DIR
   OASIS_WALLET_BOT_BANKING_DIR
 )
+# bot retro (WP-O131): mismas reglas que el de cartera. ASSETS_DIR es un bind :ro que puede vivir en el repo
+# (local) o en el volumen de datos (VPS): se valida como ruta persistente solo si está bajo /srv.
+PUB_RETRO_DIR_VARS=(
+  OASIS_RETRO_BOT_SSB_DATA_DIR
+  OASIS_RETRO_BOT_LOGS_DIR
+)
 
 validate_vps_persistent_paths() {
   if ! is_canonical_vps_layout; then
@@ -97,11 +103,14 @@ validate_vps_persistent_paths() {
   require_vps_persistent_path "OASIS_HUB_HTTP_CACHE_DIR" "${OASIS_HUB_HTTP_CACHE_DIR:-../volumes-dev/oasis-hub/http-cache}"
 
   local wallet_var
-  for wallet_var in "${PUB_WALLET_DIR_VARS[@]}" OASIS_WALLET_BOT_OASIS_CONFIG_FILE; do
+  for wallet_var in "${PUB_WALLET_DIR_VARS[@]}" OASIS_WALLET_BOT_OASIS_CONFIG_FILE "${PUB_RETRO_DIR_VARS[@]}"; do
     if [ -n "${!wallet_var:-}" ]; then
       require_vps_persistent_path "$wallet_var" "${!wallet_var}"
     fi
   done
+  if [ -n "${OASIS_RETRO_BOT_ASSETS_DIR:-}" ] && [[ "${OASIS_RETRO_BOT_ASSETS_DIR}" == /srv/* ]]; then
+    require_vps_persistent_path "OASIS_RETRO_BOT_ASSETS_DIR" "${OASIS_RETRO_BOT_ASSETS_DIR}"
+  fi
 }
 
 ensure_runtime_dirs() {
@@ -116,7 +125,7 @@ ensure_runtime_dirs() {
   mkdir_pub_path "${OASIS_HUB_HTTP_CACHE_DIR:-../volumes-dev/oasis-hub/http-cache}"
 
   local wallet_var
-  for wallet_var in "${PUB_WALLET_DIR_VARS[@]}"; do
+  for wallet_var in "${PUB_WALLET_DIR_VARS[@]}" "${PUB_RETRO_DIR_VARS[@]}"; do
     if [ -n "${!wallet_var:-}" ]; then
       mkdir_pub_path "${!wallet_var}"
     fi

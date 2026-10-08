@@ -68,7 +68,7 @@ async function main() {
       commands: [
         'whoami',
         'invite.create [uses]',
-        'publish-about <name> [description]',
+        'publish-about <name> [description] [--image <ruta png>]',
         'announce-pub <host> [port]',
         'follow <feedId>',
         'publish-json <json>'
@@ -92,8 +92,13 @@ async function main() {
     }
 
     if (command === 'publish-about') {
-      const name = args[0];
-      const description = args.slice(1).join(' ');
+      // --image <ruta>: sube el fichero como blob (mismo camino que publishProfileEdit, main_models.js:1973-1988)
+      // y lo publica en el mismo `about`. Un `about` es irreversible (AGENTES.md §3): una sola llamada, contada antes y después.
+      const imgAt = args.indexOf('--image');
+      const imagePath = imgAt >= 0 ? args[imgAt + 1] : null;
+      const rest = imgAt >= 0 ? args.filter((_, i) => i !== imgAt && i !== imgAt + 1) : args;
+      const name = rest[0];
+      const description = rest.slice(1).join(' ');
       if (!name) throw new Error('publish-about requires a name');
       const identity = await call(sbot, 'whoami');
       const content = {
@@ -102,6 +107,15 @@ async function main() {
         name
       };
       if (description) content.description = description;
+      if (imagePath) {
+        const pull = serverRequire('pull-stream');
+        const buf = fs.readFileSync(imagePath);
+        if (!/\.(png|jpe?g|webp)$/i.test(imagePath)) throw new Error('--image: solo png/jpg/webp');
+        if (buf.length > 50 * 1024 * 1024) throw new Error('--image: máximo 50 MB');
+        const blobId = await new Promise((resolve, reject) => pull(pull.values([buf]), sbot.blobs.add((err, id) => (err ? reject(err) : resolve(id)))));
+        await call(sbot, 'blobs.push', [blobId]).catch(() => {});
+        content.image = blobId;
+      }
       print(await call(sbot, 'publish', [content]));
       return;
     }
