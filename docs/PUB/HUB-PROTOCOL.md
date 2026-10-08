@@ -429,7 +429,7 @@ declara en su `about` y **no se lista a sí mismo**. El pub no se toca para aña
   cuyo protocolo es `ECOIN-PROTOCOL.md` y reutiliza el bootstrap de §3 tal cual).
 - **Alta de uno nuevo**: fila en la ficha de instancia → contenedor propio + estado en el volumen →
   bootstrap de §3 → `about` con §12 → transcribir el literal en la ficha.
-- **Bot en modo `server`** (sin backend; el de la casa: bot 3, `retro.escrivivir.co`, TEMPLATE-PROTOCOL §4.5):
+- **Bot en modo `server`** (sin backend; p. ej. el bot secretaría de plantillas, TEMPLATE-PROTOCOL §4.5):
   el bootstrap de §3 se hace por el socket, no por HTTP: `pub/tools/ssb-probe.js` con
   `SSB_ACTION=invite-accept` y `SSB_INVITE='<host:port:@key~seed>'` (precedente UPGRADE U6) en lugar de
   `POST /settings/invite/accept`; **reiniciar** antes de `hub-conn-fix.js` (un nodo `server` escribe

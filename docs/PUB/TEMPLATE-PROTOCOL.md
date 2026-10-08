@@ -1,13 +1,12 @@
 # Protocolo de plantilla · del organigrama de un colectivo a la infraestructura de su pub
 
-> **Estado · EN OBRAS 2026-10-08** (WP-O129 → WP-O131, rama `dev/scriptorium-exported`). Existen las vías
-> **guion** (`--guion`), **reparto** (`--reparto`, la guía del operador) y **caliente** (`--hot`, desde el bot
-> secretaría; **drill local ejecutado el 2026-10-08**, G0-G10 en verde con 12 hallazgos medidos:
-> `plan/REPORTES/WP-O131-retro-bot-via-caliente.md`; **alta en el VPS y siembra de Campamento en
-> `pub.escrivivir.co` el 2026-10-08**, bot nº 3 `retro.escrivivir.co`, 148 mensajes, 36 enlaces públicos en 200). La vía
-> **fría** (WP-O130) tiene contrato y no código: el custodio adelantó la caliente. Demos: Acampada26S
-> (`ARCHIVO/DISCO/retro-exporter/`, vía guion) y la plantilla genérica **Campamento** con kit visual y bot
-> retro (`ARCHIVO/DISCO/scriptorium-exported/`).
+> **Estado · EJERCIDO EN LA DEMO 2026-10-08** (WP-O129 → WP-O131). Existen las vías **guion** (`--guion`),
+> **reparto** (`--reparto`, la guía del operador) y **caliente** (`--hot`, desde el bot secretaría: drill local
+> G0-G10 en verde con 12 hallazgos medidos, y después alta del bot nº 3 de la demo y siembra de la plantilla
+> Campamento en su pub, 148 mensajes, 36 enlaces públicos en 200; reporte
+> `plan/REPORTES/WP-O131-retro-bot-via-caliente.md`). La vía **fría** (WP-O130) tiene contrato y no código: el
+> custodio adelantó la caliente. Demos: Acampada26S (`ARCHIVO/DISCO/retro-exporter/`, vía guion) y la plantilla
+> genérica **Campamento** con kit visual y bot secretaría (dosier enlazado desde la ficha de instancia).
 
 Método para convertir lo que un colectivo ya tiene en papel (asambleas, nodos, comisiones, canales,
 métodos de decisión) en objetos de Oasis 1.2.3 (tribus, salas, calendarios, listas, wikis, mapas,
@@ -25,7 +24,7 @@ sirve a cualquier colectivo y a cualquier pub; la instancia que lo ejercita es A
 
 | Es | No es |
 |---|---|
-| Un JSON (`pub/templates/<org>.json`, contrato en [`pub/templates/SCHEMA.md`](https://github.com/alephscriptorium-eng/O_SDK/blob/main/pub/templates/SCHEMA.md)) con tribus, salas, calendarios, eventos, listas, wikis, mapas y convenciones | Contenido de prueba (`test/seed.js` de upstream llena un directorio de mentira; esto llena uno de verdad con lo que el colectivo decidió) |
+| Un JSON (`pub/templates/<org>.json`, contrato en `pub/templates/SCHEMA.md` del repo) con tribus, salas, calendarios, eventos, listas, wikis, mapas y convenciones | Contenido de prueba (`test/seed.js` de upstream llena un directorio de mentira; esto llena uno de verdad con lo que el colectivo decidió) |
 | Trazable: cada entrada lleva `origen` = `id` del organigrama | Un snapshot `.oasissn` (`HUB-PROTOCOL.md` §13): aquello replica mensajes ya publicados; esto los crea |
 | Sin fechas absolutas (`offsetDays`) y **sin secretos** | Un `.ssb` para copiar (las identidades nacen en destino, ley 4) |
 
@@ -61,7 +60,7 @@ completa en el mapeo de la demo: `ARCHIVO/DISCO/retro-exporter/MAPEO.md` §2.
 
 ## 3. Plantilla
 
-Formato y firma de modelo de cada campo: [`pub/templates/SCHEMA.md`](https://github.com/alephscriptorium-eng/O_SDK/blob/main/pub/templates/SCHEMA.md).
+Formato y firma de modelo de cada campo: `pub/templates/SCHEMA.md` (en el repo, junto a las plantillas).
 Dos reglas que no se negocian: **sin fechas absolutas** y **sin secretos** (ni `secret`, ni códigos de
 invitación, ni carteras). Lo no decidido va como `<pendiente: …>` y la herramienta lo lista al final.
 
@@ -165,7 +164,7 @@ contrato del directorio en `pub/templates/assets/README.md`. Medido en 1.2.3:
 ### 4.5 Secretaría: el bot de soporte que siembra
 
 Un bot más de la serie del pub (HUB §11): cuenta SSB propia, contenedor propio, estado en el volumen, fila y
-`about` literal en la ficha de instancia. En la casa es el **bot nº 3, `retro.escrivivir.co`**, tipo retro
+`about` literal en la ficha de instancia. En la demo es el **bot nº 3** (nombre, feed y literal en su ficha), tipo retro
 (secretaría de plantillas). Qué lo distingue de los otros dos:
 
 - **Modo `server`** (`command: ["server"]`, solo sbot, sin HTTP). Un backend tendría su propio keyring de
@@ -245,6 +244,6 @@ activa, los señala.
 | Fecha | Qué | Dónde |
 |---|---|---|
 | 2026-10-07 | Primera plantilla (Acampada26S), guion generado, vías fría y caliente con contrato | WP-O129, `ARCHIVO/DISCO/retro-exporter/` |
-| 2026-10-08 | Vía caliente escrita (`--hot`, bot retro en modo `server`, bloque `clearnet`), kit visual, guía de reparto (`--reparto`, tres salidas), plantilla genérica Campamento | WP-O131, `ARCHIVO/DISCO/scriptorium-exported/` |
-| 2026-10-08 | **Drill local ejecutado**: bootstrap por socket, `about` con avatar, 146 mensajes en 10 bloques, una parada por delta (`calendarNote`), reejecución sin duplicados, `/c` del HUB con lo marcado y solo eso, 36 enlaces de la guía en 200. 12 hallazgos, 7 correcciones aplicadas | `plan/REPORTES/WP-O131-retro-bot-via-caliente.md` · `ARCHIVO/DISCO/scriptorium-exported/runbook-drill.md` |
-| 2026-10-08 | **VPS**: bot nº 3 dado de alta en `pub.escrivivir.co` (PERMISOS: invite, `about`, 9 bloques, `clearnet`), Campamento sembrada con delta exacto en los 10 bloques (145 + 3 del bootstrap = 148), el pub solo publicó su `contact`; HUB con el feed sin reiniciar; sitemap público con 191 URL; guía con enlaces reales en la Sala 02. Dos hallazgos nuevos: el bind de assets no puede anidarse en otro `:ro` si la imagen no trae `/app/pub`; reiniciar justo tras el `accept` pierde el `contact`/`pub` del bot (esperar `seq ≥ 2`) | `ARCHIVO/DISCO/scriptorium-exported/runbook-vps.md` |
+| 2026-10-08 | Vía caliente escrita (`--hot`, bot retro en modo `server`, bloque `clearnet`), kit visual, guía de reparto (`--reparto`, tres salidas), plantilla genérica Campamento | WP-O131, dosier del WP en `ARCHIVO/DISCO/` (enlazado desde la ficha de instancia) |
+| 2026-10-08 | **Drill local ejecutado**: bootstrap por socket, `about` con avatar, 146 mensajes en 10 bloques, una parada por delta (`calendarNote`), reejecución sin duplicados, `/c` del HUB con lo marcado y solo eso, 36 enlaces de la guía en 200. 12 hallazgos, 7 correcciones aplicadas | `plan/REPORTES/WP-O131-retro-bot-via-caliente.md` · runbook del drill en el dosier del WP |
+| 2026-10-08 | **Host de la demo**: bot nº 3 dado de alta en su pub (PERMISOS: invite, `about`, 9 bloques, `clearnet`), Campamento sembrada con delta exacto en los 10 bloques (145 + 3 del bootstrap = 148), el pub solo publicó su `contact`; HUB con el feed sin reiniciar; sitemap público con 191 URL; guía con enlaces reales en la Sala 02. Dos hallazgos nuevos: el bind de assets no puede anidarse en otro `:ro` si la imagen no trae `/app/pub`; reiniciar justo tras el `accept` pierde el `contact`/`pub` del bot (esperar `seq ≥ 2`) | runbook del host en el dosier del WP |
