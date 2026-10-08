@@ -92,3 +92,18 @@ dentro del PERMISO 6). Y una trampa de medida: `MSYS_NO_PATHCONV=1` exportado ro
 matriz del HUB da `000` (dos lecturas falsas del sitemap antes de verlo).
 
 Estado del WP: **✅ ejercido en la demo**. Pendiente: prueba en frío; WP-O130 (`--cold`); vista del cliente local.
+
+## 6. Merge, web y mapa de entrada (2026-10-08)
+
+- `main` ← `dev/retro-exporter` ← `dev/scriptorium-exported`, dos merges `--no-ff` (f76bb835, a6965c15), push de `main` y
+  de las dos ramas. Antes: gate de ceguera (TEMPLATE 0 → 9 y HUB 14 → 15 **fallaban**; despersonalizados, 38f3365a) y
+  `docs:verificar` completo sobre `main`. CI `Docs` run 37778218664: `docs:build` ✓ (33 s), `deploy Pages` ✓; el
+  workflow llevaba en `failure` desde el 2026-10-07 (el error de Vue en UPGRADE-PROTOCOL): la web estaba parada en
+  WP-O124. En vivo: `/PUB/TEMPLATE-PROTOCOL`, `/habitante/manual`, `/roles/habitante`, `/roles/pub` → 200, `oasisVersion` 1.2.3.
+- **Mapa de entrada** (PERMISO del custodio, literal aprobado): corrección de alcance del custodio, «no una wiki
+  nueva: los recursos ya existen, se enlazan (DRY)». `mensaje-entrada.mjs` genera el texto desde la plantilla y el
+  ledger del VPS (4880 B, 27 enlaces, 25 en 200 antes del merge y los 2 de la web tras él; sin códigos). Publicado por
+  el bot 3 por su socket: `post` `%PbJ+F75RZoHpKWBIrmLtWVT+VV5mlRu+gY50J7tj1zk=.sha256` (seq 149) + `clearnetItem`
+  `kind: posts` (seq 150); `check pre-mensaje`: pub 0, hub 0, bot-2 0, retro `post+1 clearnetItem+1`, GATE OK.
+  Medido en el visor: un `post` es entrada de Blog (`/c/blog/<clave>`, Blogs en los clientes), un `feed` tiene tope de
+  280 caracteres; el markdown de `/c` solo enlaza URL absolutas.

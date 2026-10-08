@@ -20,7 +20,9 @@ roles/pub, nav del sitio. Dosier: `ARCHIVO/DISCO/scriptorium-exported/`. **Drill
 (146 mensajes en 10 bloques, `/c` del HUB con lo marcado, 12 hallazgos y 7 correcciones:
 `plan/REPORTES/WP-O131-retro-bot-via-caliente.md`). **Desplegado el 2026-10-08**: bot nº 3
 `retro.escrivivir.co` dado de alta en `pub.escrivivir.co` y la plantilla Campamento sembrada (148 mensajes del
-bot, el pub solo su `contact`), guía de reparto con enlaces reales en la Sala 02. D-O29.
+bot, el pub solo su `contact`), guía de reparto con enlaces reales en la Sala 02; mapa de entrada a la
+exposición publicado por el bot como entrada de Blog (DRY: enlaza lo que ya existe, sin wiki nueva). D-O29.
+Mergeado a `main` el 2026-10-08; la web vuelve a desplegarse (CI roto desde WP-O127) y pasa el gate de ceguera.
 
 ### Changed — Oasis 1.2.3 en local y en el host (WP-O128, 2026-10-07)
 

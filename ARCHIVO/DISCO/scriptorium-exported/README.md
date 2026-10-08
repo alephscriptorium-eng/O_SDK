@@ -26,6 +26,7 @@ ejecutó al vuelo), **(2) drill local** con identidad desechable, **(3) VPS** co
 | Fase 2 · drill local, gates G0-G11 con comando y salida | `runbook-drill.md` · reporte `plan/REPORTES/WP-O131-retro-bot-via-caliente.md` | **ejecutado 2026-10-08**: G0-G10 ✅, cliente local no medido, G11 no ejecutado (estado vivo) |
 | Fase 3 · VPS, pasos con PERMISO | `runbook-vps.md` · evidencia `vps/` (dry-run, un jsonl por bloque, ledger sin códigos) | **ejecutado 2026-10-08**: bot nº 3 en el VPS, Campamento sembrada, 36 enlaces públicos en 200 |
 | Dry-run y evidencia del seeder (fase 2) | `dry-run/hot-*.jsonl` · `ledger-drill.json` · `guia-reparto-drill.md` | del drill (identidad desechable; el ledger no lleva códigos) |
+| **Mapa de entrada**: un solo mensaje de Blog del bot 3 que enlaza lo que ya existe (código, protocolo, portada con el invite abierto, manual, Sala 02, tribus, calendario, evento, wikis, mapa); sin wiki nueva (DRY) | `mensaje-entrada.mjs` → `mensaje-entrada.md` / `.json` | **publicado 2026-10-08**: `%PbJ+F75RZoHpKWBIrmLtWVT+VV5mlRu+gY50J7tj1zk=.sha256` + `clearnetItem` (seq 149-150) |
 | Decisión · Backlog | `plan/DECISIONES.md` D-O29 · `plan/BACKLOG.md` WP-O131 (adelantado a O130) | asentados |
 
 ## Comandos que regeneran todo (en este orden)
