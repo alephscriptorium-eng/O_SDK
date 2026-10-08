@@ -129,5 +129,5 @@ guarda la plantilla; en el host, estas llevan valores fusionados a mano y no se 
 
 `site/hub/` (Sala 04) sí es idéntica a la del repo. Cómo se sube un cambio: `../AGENTES.md` §4.
 
-Backups de cartera: `devops/backups/ecoin/` (no versionado). Particularidades del host que ya
+Backups de cartera: `devops/backups/ecoin/` (no versionado). Copias de estado de los nodos (`/srv/oasis/*.bak-*.tgz`, `*.cold-*.tgz`): en el host solo la última por nodo; las descargadas viven en `devops/backups/srv-oasis/<ts>/` (no versionado) y en el almacenamiento seguro del custodio (WP-O133). Contienen `secret`: nunca a git ni a un reporte. Particularidades del host que ya
 costaron una parada: `HUB-PROTOCOL.md` §9 y `ECOIN-PROTOCOL.md` §11.
