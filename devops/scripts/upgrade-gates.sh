@@ -266,14 +266,42 @@ case "$CMD" in
     get "$BASE/c?lang=es&$stamp=c2" >/dev/null; le="$(lang_of "$tmp/body")"
     if [ "$ld" = de ] && [ "$le" = es ]; then
       ok "?lang= elige el idioma (de, es)"
-      # Cruce: el idioma es una variable global del proceso. Peticiones simultáneas en dos idiomas.
+      # Cruce: el idioma es una variable global del proceso. Peticiones simultáneas en seis idiomas, tres
+      # tandas (WP-O132: con dos idiomas y una tanda el cruce no asomaba; con seis y tres salían 6 de 18 en el host).
       cross=0; total=0
-      for i in 1 2 3 4 5 6 7 8; do
-        for l in de es; do ( curl -s --max-time 60 "$BASE/c?lang=$l&$stamp=x$i$l" | grep -o '<html lang="[^"]*"' | head -1 | cut -d'"' -f2 > "$tmp/x.$i.$l" ) & done
-      done; wait
+      for i in 1 2 3; do
+        for l in de es fr ar ru zh; do ( curl -s --max-time 60 "$BASE/c?lang=$l&$stamp=x$i$l" | grep -o '<html lang="[^"]*"' | head -1 | cut -d'"' -f2 > "$tmp/x.$i.$l" ) & done
+        wait
+      done
       for f in "$tmp"/x.*; do total=$((total + 1)); want="${f##*.}"; [ "$(cat "$f")" = "$want" ] || cross=$((cross + 1)); done
-      [ "$cross" = 0 ] && ok "sin cruce de idiomas en $total peticiones concurrentes" || ko "cruce de idiomas: $cross de $total páginas salieron en el idioma de otra petición"
+      [ "$cross" = 0 ] && ok "sin cruce de idiomas en $total peticiones concurrentes (6 idiomas)" || ko "cruce de idiomas: $cross de $total páginas salieron en el idioma de otra petición (guard WP-O132 ausente o roto)"
+      # Selector y <html lang> coherentes con la petición (el guard re-afirma el idioma antes del render).
+      get "$BASE/c?lang=ar&$stamp=c3" >/dev/null; sel="$(grep -o 'cn-lang-current">[^<]*' "$tmp/body" | head -1 | cut -d'>' -f2)"
+      [ "$(lang_of "$tmp/body")" = ar ] && [ "$sel" = AR ] && ok "?lang=ar: <html lang> y selector en AR" || ko "?lang=ar: <html lang> «$(lang_of "$tmp/body")», selector «$sel»"
     else soft "?lang= no cambia el idioma (de→«$ld», es→«$le»): visor anterior a 1.1.10"; fi
+    # Tema (WP-O132, D-O30): por defecto el de la config del HUB; el visitante lo cambia con ?theme=, que viaja en la
+    # URL y entra en la clave de caché; un valor desconocido no cambia nada; los enlaces conservan lang y theme.
+    bg_of() { grep -o -- '--bg:#[0-9A-Fa-f]*' "$1" | head -1; }
+    get "$BASE/c?$stamp=t0" >/dev/null; t0="$(bg_of "$tmp/body")"; has_sel="$(grep -c 'cn-theme-current' "$tmp/body")"
+    if [ "$has_sel" -ge 1 ]; then
+      ok "selector de tema presente (por defecto $t0)"
+      get "$BASE/c?theme=Clear-SNH&$stamp=t1" >/dev/null; t1="$(bg_of "$tmp/body")"
+      get "$BASE/c?theme=Matrix-SNH&$stamp=t2" >/dev/null; t2="$(bg_of "$tmp/body")"
+      get "$BASE/c?theme=xx&$stamp=t3" >/dev/null; t3="$(bg_of "$tmp/body")"
+      [ "$t1" = '--bg:#F9F9F9' ] && [ "$t2" = '--bg:#000000' ] && [ "$t3" = "$t0" ] && ok "?theme= elige la paleta (Clear $t1, Matrix $t2) y un tema desconocido deja la de la config ($t3)" || ko "?theme=: Clear «$t1», Matrix «$t2», desconocido «$t3» (por defecto «$t0»)"
+      get "$BASE/c?theme=Clear-SNH&lang=de&$stamp=t4" >/dev/null
+      nl="$(grep -o 'href="/c[^"]*"' "$tmp/body" | grep -c 'lang=de')"; nt="$(grep -o 'href="/c[^"]*"' "$tmp/body" | grep -c 'theme=Clear-SNH')"
+      [ "$nl" -gt 0 ] && [ "$nt" -gt 0 ] && ok "los enlaces /c… conservan lang y theme ($nl con lang, $nt con theme)" || ko "los enlaces /c… no conservan lang/theme ($nl con lang, $nt con theme)"
+      get "$BASE/c?theme=Clear-SNH&$stamp=t1" >/dev/null; c2="$(cache_of)"
+      case "$c2" in HIT|STALE|UPDATING) ok "la variante ?theme= se cachea aparte ($c2)" ;; *) soft "variante ?theme=: $c2 en la segunda petición" ;; esac
+      tcross=0; ttotal=0
+      for i in 1 2 3; do
+        for t in Clear-SNH Matrix-SNH Purple-SNH; do ( curl -s --max-time 60 "$BASE/c?theme=$t&$stamp=y$i$t" | grep -o -- '--bg:#[0-9A-Fa-f]*' | head -1 > "$tmp/y.$i.$t" ) & done
+        wait
+      done
+      for f in "$tmp"/y.*; do ttotal=$((ttotal + 1)); case "${f##*.}" in Clear-SNH) want='--bg:#F9F9F9' ;; Matrix-SNH) want='--bg:#000000' ;; *) want='--bg:#4B0A6D' ;; esac; [ "$(cat "$f")" = "$want" ] || tcross=$((tcross + 1)); done
+      [ "$tcross" = 0 ] && ok "sin cruce de temas en $ttotal peticiones concurrentes" || ko "cruce de temas: $tcross de $ttotal"
+    else soft "sin selector de tema en /c (visor sin el guard WP-O132)"; fi
     # Listado por tipo: la página de Files (1.2.1) sale por la misma location genérica que el resto.
     code="$(get "$BASE/c?type=files&$stamp=f")"
     [ "$code" = 200 ] && ok "/c?type=files → 200" || soft "/c?type=files → $code (tipo nuevo de 1.2.1)"

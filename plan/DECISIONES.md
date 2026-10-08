@@ -406,6 +406,24 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   materiales reproducibles → drill local → VPS con GO por paso. Supera: el nombre
   «secretaria» de TEMPLATE §4.3 y el orden O130 → O131 del backlog. Aplicación: WP-O131.
 
+- **D-O30 · 2026-10-08 · El visor `/c` fija idioma y tema por petición, lo que elige el
+  visitante viaja en la URL (`?lang=`, `?theme=`), y eso es el sexto guard del fork, el
+  primero en una vista.** Decidido con el custodio tras medir en el host que el idioma del
+  visor es una variable global del proceso (`src/views/main_views.js:628-640`) que cualquier
+  petición cambia mientras la ruta `/c` espera a construir el índice: 6 de 18 páginas
+  concurrentes salieron en el idioma de otra petición (el gate de D-O25, con dos idiomas y
+  una tanda, no lo veía), y el custodio vio el selector en «AR» con el texto en ES. Se
+  descartó la salida de emergencia de D-O25 (nginx descarta `lang`) porque dejaría el
+  selector decorativo y no permitiría el selector de tema pendiente. El guard: el backend
+  deja siempre el idioma resuelto en el scope de la petición (AsyncLocalStorage, que sí es por
+  petición) y valida `?theme=` contra la lista del visor; el visor re-afirma ese idioma justo
+  antes del render síncrono, pinta el selector de tema y propaga `lang` y `theme` a todo
+  enlace y formulario de `/c`. D-O25 sigue: los **defaults** son de la config del HUB
+  (`language`, `themes.current`); nada por cookies ni cabeceras; la variante va en la clave
+  de caché. Supera: «el HUB no añade guards» (HUB §1 y §5) y «5 guards» en AGENTS.md y
+  UPGRADE §2. Aplicación: WP-O132 (`upgrade-gates.sh hub --strict` con 6 idiomas, tema y cruce
+  de temas; invariantes en `hub.tsv`).
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |

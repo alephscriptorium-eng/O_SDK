@@ -1,6 +1,6 @@
 # 03 · Lo que añade nuestro pub, y por dónde se engancha a Oasis
 
-Principio: **ni una línea en `src/`**. El fork mantiene Oasis 1-1 con upstream más 5 guards contados;
+Principio: **ni una línea en `src/`**. El fork mantiene Oasis 1-1 con upstream más 6 guards contados;
 todo lo de aquí vive en `pub/`, `devops/` y `docs/`, al lado.
 
 ## El reparto

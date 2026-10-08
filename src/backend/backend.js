@@ -14373,7 +14373,7 @@ const middleware = [
     isPublic: !!config.public,
     onBlocked: (ctx) => sendErrorPage(ctx, "Sorry, many actions are unavailable when Oasis is running in public mode. Please run Oasis in the default mode and try again.", { status: 403 })
   }),
-  async (ctx, next) => { applyFirstRunLanguage(ctx); setLanguage(isClearnetPath(ctx.request) ? clearnetLanguage(ctx) : (ctx.cookies.get("language") || getConfig().language || "en")); await next(); },
+  async (ctx, next) => { applyFirstRunLanguage(ctx); setLanguage(isClearnetPath(ctx.request) ? clearnetLanguage(ctx) : (ctx.cookies.get("language") || getConfig().language || "en")); if (isClearnetPath(ctx.request)) clearnetTheme(ctx); await next(); },
   async (ctx, next) => {
     try { require('../views/comments_view').setCommentsOpen(ctx.method === 'GET' && String(ctx.query.comments || '') === 'open'); } catch (_) {}
     await next();
@@ -14709,13 +14709,30 @@ const supportedLanguages = () => Object.keys(require('../client/assets/translati
 function clearnetLanguage(ctx) {
   const supported = supportedLanguages();
   const wanted = String(ctx.query.lang || '').trim().toLowerCase();
+  // guard o-sdk (WP-O132, D-O30): el idioma resuelto se guarda SIEMPRE en el scope de la petición
+  // (`store.lang`); el visor lo re-afirma antes de renderizar porque el global del proceso puede haber cambiado
+  // mientras la ruta esperaba. `cnLang` sigue significando «lo pidió el visitante en la URL».
+  const store = require('../models/typed_log').requestScope.getStore();
   if (supported.includes(wanted)) {
-    const store = require('../models/typed_log').requestScope.getStore();
-    if (store) store.cnLang = wanted;
+    if (store) { store.cnLang = wanted; store.lang = wanted; }
     return wanted;
   }
   const detected = require('../models/onboarding_model').browserLanguage(ctx.get('accept-language'), supported);
-  return detected || getConfig().language || 'en';
+  const resolved = detected || getConfig().language || 'en';
+  if (store) store.lang = resolved;
+  return resolved;
+}
+// guard o-sdk (WP-O132, D-O30): tema del visor elegido por el visitante (`?theme=`), validado contra la lista
+// del visor y guardado en el scope de su petición. Sin parámetro válido manda la config del HUB.
+function clearnetTheme(ctx) {
+  const wanted = String(ctx.query.theme || '').trim();
+  if (!wanted) return null;
+  let themes = [];
+  try { themes = require('../views/clearnet_view').THEMES || []; } catch (_) {}
+  if (!themes.includes(wanted)) return null;
+  const store = require('../models/typed_log').requestScope.getStore();
+  if (store) store.cnTheme = wanted;
+  return wanted;
 }
 function applyFirstRunLanguage(ctx) {
   if (firstRunLanguageSettled || isClearnetPath(ctx.request)) return;

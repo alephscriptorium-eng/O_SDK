@@ -15,7 +15,7 @@ gente de Oasis vea por dónde extendemos desde su upstream sin tocar su código.
 - **[NV]** no verificado.
 - `pendiente` dato o decisión que falta.
 
-Base de código: o-sdk `main` en `74d5c6a` (2026-09-19), con `src/` = **Oasis 1.1.4** más 5 guards.
+Base de código: o-sdk `main` en `74d5c6a` (2026-09-19), con `src/` = **Oasis 1.1.4** más 5 guards (6 desde WP-O132).
 
 ## Mapa de ficheros
 

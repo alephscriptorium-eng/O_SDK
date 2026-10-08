@@ -18,7 +18,7 @@ comporta** igual. Sus greps decían «esto sigue existiendo», no «esto sigue h
 |---|---|---|---|
 | §0 | Qué se sube, qué hay desplegado | host (lectura) | — |
 | §1 | Preflight: de qué versión a cuál | repo | — |
-| §2 | Overlay de `src/` + guards | rama `upgrade/oasis-X.Y.Z` | invariante de 6 ficheros |
+| §2 | Overlay de `src/` + guards | rama `upgrade/oasis-X.Y.Z` | invariante de 7 ficheros |
 | §3 | Qué cambia de comportamiento; derivados; gates locales | repo + Docker local | gates U0-U7 |
 | §4 | Deploy por rol | host | **GO del custodio** |
 | §5 | Ciclo de red (solo si rota) | repo + host | GO |
@@ -186,14 +186,15 @@ otro para los guards repuestos. Así el diff de los guards se lee solo.
 
 | Fichero | Qué reponer sobre el fichero nuevo |
 |---|---|
-| `src/backend/backend.js` | **Dos edits.** (1) En `.post("/update")`: conservar `isLoopbackRequest` y `safeRefererRedirect`; sustituir las dos `exec` (`git reset --hard && git pull`, `sh install.sh`) por el `console.warn` del fork. (2) Interruptor de snapshots (D-O27): `const snapshotsOff = process.env.OASIS_SNAPSHOT === 'off';` antes de `runSnapshotBuild`, y `|| snapshotsOff` en la primera condición de `runSnapshotBuild` y de `bootstrapFromPub` |
+| `src/backend/backend.js` | **Tres edits.** (1) En `.post("/update")`: conservar `isLoopbackRequest` y `safeRefererRedirect`; sustituir las dos `exec` (`git reset --hard && git pull`, `sh install.sh`) por el `console.warn` del fork. (2) Interruptor de snapshots (D-O27): `const snapshotsOff = process.env.OASIS_SNAPSHOT === 'off';` antes de `runSnapshotBuild`, y `|| snapshotsOff` en la primera condición de `runSnapshotBuild` y de `bootstrapFromPub` |
 | `src/server/ssb_config.js` | `mergeDeep` en vez del spread (`config = mergeDeep(config, configData)`); bloque `OASIS_SERVER_CONFIG_OVERRIDE` antes de `const megabyte`; `blobs.max` = 50 MB. Conservar `config.statePath` y `config.db2` de upstream |
 | `src/backend/updater.js` | Los dos `console.log("...new code updates are available!...")` pasan a ser el mensaje del fork. Conservar el fix de ruta con `__dirname` |
 | `src/views/settings_view.js` | El `form({ action: "/update" })` pasa a ser el `p(...)` informativo |
 | `src/configs/snh-invite-code.json` | **Solo `url`** = dominio del pub de la instancia (D-O22): base de los enlaces de «compartir en clearnet». El invite de upstream se conserva |
+| `src/views/clearnet_view.js` | **Sexto guard (WP-O132, D-O30), tres piezas marcadas `// guard o-sdk (WP-O132, D-O30)`:** (a) `cnWithQuery`/`propagateQuery` (los antiguos `cnWithLang`/`propagateLang` pasan a envolverlos): `lang` y `theme` del visitante viajan a todo `href="/c…"` y formulario; (b) `THEMES` + `renderThemeSelector` + `getCurrentTheme` (prioridad `cnScope().cnTheme` → `config.themes.current` → `Dark-SNH`) y el selector pintado junto al de idioma en `renderClearnetPage`; (c) en `renderClearnetPage`, **re-afirmar `cnScope().lang`** con `mv().setLanguage` antes del render (el idioma es global del proceso y la ruta esperó). Y en `backend.js`, edit (3): `clearnetLanguage` guarda siempre `store.lang`, y `clearnetTheme(ctx)` valida `?theme=` contra `THEMES` y guarda `store.cnTheme`; el middleware lo llama tras `setLanguage` en rutas `/c`. Invariantes en `upgrade-invariants.d/hub.tsv`; gate `upgrade-gates.sh hub --strict` (cruce 0 en 18 peticiones de 6 idiomas, `?theme=`, enlaces con los dos parámetros) |
 | `src/configs/blockchain-cycle.json` | fork-only (marcador de ciclo; se preserva) |
 
-Eso es **todo** lo que puede divergir de upstream dentro de `src/`: 5 guards y un fichero propio.
+Eso es **todo** lo que puede divergir de upstream dentro de `src/`: 6 guards (en 6 ficheros) y un fichero propio.
 Fuera de `src/` el fork se mantiene entero (nunca overlay): `Dockerfile`, `docker-compose*.yml`,
 `docker-entrypoint.sh`, `pub/**`, `devops/**`, `client/**`. `install.sh`/`oasis.sh` son
 bare-metal: sincronizarlos con upstream es opcional.
@@ -220,11 +221,12 @@ fork era la de 1.2.1 y nadie lo había notado: el audit lo saca como línea `pat
 ### Verificación de invariantes (bloqueante)
 
 ```bash
-git diff $NEW_REF --stat -- src/                  # exactamente 6 ficheros
+git diff $NEW_REF --stat -- src/                  # exactamente 7 ficheros (6 guards + blockchain-cycle.json)
 git diff $NEW_REF --stat -- src/base              # vacío: lo vendorizado es el de upstream
 git diff $NEW_REF --stat -- scripts/patch-node-modules.js   # vacío: la lista de parches es la de upstream
 git ls-files -s src/server/node_modules           # modo 120000: sigue siendo un enlace
 node --check src/backend/backend.js               # el edit a mano parsea
+node --check src/views/clearnet_view.js           # ídem, sexto guard
 grep -m1 '"version"' src/server/package.json      # = X.Y.Z
 node devops/scripts/upgrade-patches-audit.js $NEW_REF   # exit 0: ningún parche pendiente ni sin anclaje
 ```
@@ -324,7 +326,7 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 | Gate | Qué | Comando | Salida esperada |
 |---|---|---|---|
 | **U0** | Línea base **como el host**: stack local en la versión vieja, con cada pieza en el mismo modo que en §0.3 (motor encendido si allí lo está, época del mes abierta). Copia del estado | parar nodos · `$G backup pre` · arrancar · `$G snapshot pre` | tres nodos healthy en la versión vieja; `seq` = `registros` = `sbot` en los tres |
-| **U1** | Árbol | verificación de §2 · `annex` · `--check` del reporte | 6 ficheros · ningún `!` · 0 IDs sin disponer |
+| **U1** | Árbol | verificación de §2 · `annex` · `--check` del reporte | 7 ficheros · ningún `!` · 0 IDs sin disponer |
 | **U2** | Imagen nueva | etiquetar la vieja (`docker tag …:latest …:X.Y.Z-vieja`) · `npm run build` (o el build del compose del pub) | build limpio; `node --check` dentro de la imagen |
 | **U3** | Recrear en orden pub → HUB → bot y medir **qué publica cada uno** | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre --expect '…'` | `GATE OK` con el delta declarado (abajo) |
 | **U4** | Visor por delante de la caché | recrear `hub-cache` si cambió la plantilla · `$G hub --strict` | `GATE OK`: MISS→HIT, idioma independiente del visitante, sin cruce, rutas nuevas |
@@ -476,6 +478,7 @@ grep -c $'\r' src.new/src/backend/backend.js                  # = 0  (sin CRLF)
 test -L src.new/src/server/node_modules && test -d src.new/src/base/node_modules/ssb-db2   # (desde 1.2) el enlace es un enlace y lo vendorizado llegó
 grep -c $'\r' src.new/src/base/node_modules/is-map/index.js    # = 0  (un paquete con .gitattributes propio)
 grep '"url"' src.new/src/configs/snh-invite-code.json         # el dominio del pub (5.º guard)
+grep -c 'guard o-sdk (WP-O132' src.new/src/views/clearnet_view.js src.new/src/backend/backend.js   # 4 y 2 (6.º guard)
 ls src.new/src/configs/*.json                                 # ningún JSON de estado
 # y cambiar. El destino del `mv` NO debe existir: `mv src src.old` con un src.old presente mete src DENTRO.
 test ! -e src.old-<ver-vieja> && mv src src.old-<ver-vieja> && mv src.new/src src && rmdir src.new
@@ -577,6 +580,7 @@ Ciclos registrados (lo que cada uno cambió en el protocolo):
 
 | Ciclo | Reporte | Lo que enseñó |
 |---|---|---|
+| 1.2.3 (mismo ciclo) | `plan/REPORTES/WP-O132-visor-idioma-tema.md` | Sexto guard, el primero en una vista: idioma y tema del visor `/c` por petición (scope), selector de tema por `?theme=`. Se midió un cruce de idiomas real en el host (6 de 18 páginas) que el gate antiguo (2 idiomas) no veía; el gate pasa a 6 idiomas. Recrear solo el HUB en la misma versión no publica nada |
 | 1.2.2 → 1.2.3 | `plan/REPORTES/WP-O127` (mejoras previas) · `WP-O128-upgrade-oasis-1.2.3.md` (local) | Lo que se afirmaba de memoria se mide: `NEW_REF` por commit «release», audit de parches en seco (la copia del fork del parcheador era la de 1.2.1), instancia de `host.env`, seis cabeceras. Una disposición leída («el bot publica un `about` al subir») salió falsa en U3: `syncClearnetSince` falla a los 3 s y lo reintenta en cada arranque (`about=+0..1` también en la misma versión). U6 completo en local con nodo desechable. El diff colapsa activos (10 922 teselas no son 10 922 disposiciones) |
 | 1.0.8 → 1.1.2 | `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md` · `HUB-PROTOCOL.md` §5.5 | primer ciclo con el HUB activo: `/c/assets`, rutas de detalle nuevas |
 | 1.1.2 → 1.1.4 | `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`, `WP-O106-aplicacion-vps-1.1.4.md` · `ECOIN-PROTOCOL.md` §5.4 | `state-manager.js` y la mudanza de estado; quinto guard; `git archive` y CRLF |
