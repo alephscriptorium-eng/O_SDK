@@ -3,13 +3,17 @@
 //
 // Lee una plantilla (pub/templates/<org>.json, contrato en pub/templates/SCHEMA.md), la valida y:
 //   --guion   emite un guion markdown para activarla a mano desde la UI (WP-O129)
+//   --reparto emite la guía de reparto de accesos: libro del operador, sin códigos (WP-O131)
+//   --hot     siembra desde la identidad «secretaría» (bot retro, modo server) por su socket (WP-O131)
 //   --cold    siembra en un directorio SSB aislado           (pendiente WP-O130)
-//   --hot     siembra desde una identidad «secretaría»        (pendiente WP-O131)
-// Método: docs/PUB/TEMPLATE-PROTOCOL.md. No toca SSB en modo --guion: es JSON → markdown.
+// Método: docs/PUB/TEMPLATE-PROTOCOL.md. --guion y --reparto no tocan SSB: JSON → markdown.
 //
 // Uso:
-//   node pub/tools/template-seed.js --template pub/templates/acampada26s.json \
-//        [--organigrama <json de entrada>] [--out <fichero.md>] --guion
+//   node pub/tools/template-seed.js --template pub/templates/campamento.json \
+//        [--organigrama <json>] [--assets <dir>] [--out <fichero.md>] --guion
+//   node pub/tools/template-seed.js --template <json> --reparto [--ledger <json>] [--html <plantilla>] [--out <md|html>]
+//   node pub/tools/template-seed.js --template <json> --assets <dir> --hot [--yes <bloque>]... [--pub-id <feed>]
+//        [--ledger <json>] [--evidence <json>] [--reconcile]          (dentro del contenedor del bot)
 
 const fs = require('fs');
 const path = require('path');
@@ -30,9 +34,11 @@ function parseArgs(argv) {
   const args = { yes: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--guion' || a === '--cold' || a === '--hot' || a === '--verify') args.mode = a.slice(2);
-    else if (a === '--template' || a === '--organigrama' || a === '--out' || a === '--ledger') args[a.slice(2)] = argv[++i];
+    if (a === '--guion' || a === '--reparto' || a === '--cold' || a === '--hot' || a === '--verify') args.mode = a.slice(2);
+    else if (['--template', '--organigrama', '--out', '--ledger', '--assets', '--pub-id', '--evidence', '--html'].includes(a)) args[a.slice(2).replace('-id', 'Id')] = argv[++i];
     else if (a === '--yes') args.yes.push(argv[++i]);
+    else if (a === '--reconcile') args.reconcile = true;
+    else if (a === '--dry-run') args.dryRun = true;
     else if (a === '-h' || a === '--help') args.help = true;
     else { console.error(`argumento desconocido: ${a}`); process.exit(2); }
   }
@@ -61,7 +67,7 @@ function organigramaIds(org) {
   return ids;
 }
 
-function validate(t, orgIds) {
+function validate(t, orgIds, assetsDir, requireFiles) {
   const errors = [];
   const pending = [];
   const err = (m) => errors.push(m);
@@ -70,6 +76,25 @@ function validate(t, orgIds) {
   const checkOrigen = (where, origen) => {
     if (!origen) return err(`${where}: falta "origen"`);
     if (orgIds && !orgIds.has(origen)) err(`${where}: "origen" ${origen} no existe en el organigrama`);
+  };
+  // responsable: órgano del organigrama al que le toca repartir el acceso (o <pendiente>). Sin él la guía
+  // de reparto no sabe a quién asignar el objeto. Se exige en lo que da acceso: tribus, salas, calendarios, listas, mapas.
+  const checkResponsable = (where, x) => {
+    if (!x.responsable) return err(`${where}: falta "responsable" (órgano del organigrama o <pendiente: …>)`);
+    if (isPending(x.responsable)) return notePending(`${where}.responsable`, x.responsable);
+    if (orgIds && !orgIds.has(x.responsable)) err(`${where}: "responsable" ${x.responsable} no existe en el organigrama`);
+  };
+  // image: nombre de fichero bajo --assets. Solo PNG/JPG/WebP: /c/blob no reconoce SVG y lo sirve como adjunto (WP-O131 H5).
+  const checkImage = (where, x) => {
+    if (x.image === undefined || x.image === null || x.image === '') return;
+    if (typeof x.image !== 'string' || /[\/\\]/.test(x.image)) return err(`${where}: "image" es un nombre de fichero (sin rutas) bajo --assets`);
+    if (!/\.(png|jpe?g|webp)$/i.test(x.image)) return err(`${where}: "image" ${x.image}: solo png/jpg/webp (svg no se sirve en /c)`);
+    if (assetsDir && !fs.existsSync(path.join(assetsDir, x.image))) err(`${where}: "image" ${x.image} no existe en ${assetsDir}`);
+  };
+  // clearnetPublic: solo tiene efecto en objetos sin tribu (backend.js:655-751); con tribu es un error de plantilla.
+  const checkClearnet = (where, x) => {
+    if (x.clearnetPublic !== undefined && typeof x.clearnetPublic !== 'boolean') err(`${where}: clearnetPublic debe ser true/false`);
+    if (x.clearnetPublic === true && x.tribe) err(`${where}: clearnetPublic con tribe ${x.tribe}: lo que lleva tribu nunca sale en /c`);
   };
 
   if (!t.meta || !t.meta.id) err('meta.id obligatorio');
@@ -88,6 +113,7 @@ function validate(t, orgIds) {
     if (x.openInvite && x.inviteMode !== 'open') err(`${w}: openInvite exige inviteMode "open"`);
     (x.content || []).forEach(c => { if (!TRIBE_CONTENT.includes(c)) err(`${w}: content "${c}" no es un kind de tribes_content_model`); });
     notePending(w, x.description);
+    checkResponsable(w, x); checkImage(w, x);
   });
   (t.tribes || []).forEach((x, i) => {
     if (x.parent && !tribeIds.has(x.parent)) err(`tribes[${i}] ${x.id}: parent ${x.parent} no existe`);
@@ -101,6 +127,7 @@ function validate(t, orgIds) {
     if (!x.title) err(`${w}: falta title`);
     if (!ROOM_STATUS.includes(x.status)) err(`${w}: status ∉ ${ROOM_STATUS.join('|')}`);
     refTribe(w, x.tribe);
+    checkResponsable(w, x); checkImage(w, x); checkClearnet(w, x);
   });
 
   (t.calendars || []).forEach((x, i) => {
@@ -109,6 +136,7 @@ function validate(t, orgIds) {
     if (!x.title) err(`${w}: falta title`);
     refTribe(w, x.tribe);
     if (!Array.isArray(x.dates) || !x.dates.length) err(`${w}: dates[] vacío (el modelo exige firstDate)`);
+    checkResponsable(w, x); checkClearnet(w, x);
     (x.dates || []).forEach((d, j) => {
       if (!(Number.isInteger(d.offsetDays) && d.offsetDays >= 1)) err(`${w}.dates[${j}]: offsetDays entero ≥ 1`);
       if (!RECURRENCES.includes(d.recurrencia)) err(`${w}.dates[${j}]: recurrencia ∉ ${RECURRENCES.join('|')}`);
@@ -122,6 +150,7 @@ function validate(t, orgIds) {
     if (!x.title) err(`${w}: falta title`);
     if (!(Number.isInteger(x.offsetDays) && x.offsetDays >= 1)) err(`${w}: offsetDays entero ≥ 1 (fecha futura obligatoria)`);
     if (x.recurrencia && !RECURRENCES.includes(x.recurrencia)) err(`${w}: recurrencia ∉ ${RECURRENCES.join('|')}`);
+    checkImage(w, x);
   });
 
   (t.mailing || []).forEach((x, i) => {
@@ -129,6 +158,7 @@ function validate(t, orgIds) {
     checkOrigen(w, x.origen);
     if (!x.title) err(`${w}: falta title`);
     if (!LIST_TYPES.includes(x.listType)) err(`${w}: listType ∉ ${LIST_TYPES.join('|')}`);
+    checkResponsable(w, x);
   });
 
   (t.wiki || []).forEach((x, i) => {
@@ -136,9 +166,11 @@ function validate(t, orgIds) {
     checkOrigen(w, x.origen);
     if (!x.title) err(`${w}: falta title`);
     if (!x.body && !x.file) err(`${w}: body o file`);
-    if (x.file && !fs.existsSync(x.file)) err(`${w}: file ${x.file} no existe`);
+    // El fichero de una wiki solo hace falta para sembrar (--hot); --reparto es quien genera uno de ellos.
+    if (x.file && requireFiles && !fs.existsSync(x.file)) err(`${w}: file ${x.file} no existe`);
     if (x.editPolicy && !EDIT_POLICIES.includes(x.editPolicy)) err(`${w}: editPolicy ∉ ${EDIT_POLICIES.join('|')}`);
     notePending(w, x.body);
+    checkImage(w, x); checkClearnet(w, x);
   });
 
   (t.maps || []).forEach((x, i) => {
@@ -147,6 +179,8 @@ function validate(t, orgIds) {
     if (typeof x.lat !== 'number' || typeof x.lng !== 'number') err(`${w}: lat/lng numéricos`);
     if (!MAP_TYPES.includes(x.mapType)) err(`${w}: mapType ∉ ${MAP_TYPES.join('|')}`);
     if (x.mapType === 'SINGLE' && (x.markers || []).length) err(`${w}: SINGLE no admite marcadores`);
+    notePending(`${w}.nota`, x.nota);
+    checkResponsable(w, x); checkImage(w, x); checkClearnet(w, x);
   });
 
   if (t.votes) {
@@ -229,6 +263,8 @@ function guion(t, args) {
     li(`Status: **${x.private ? 'Privada' : 'Pública'}** · Mode: **${x.inviteMode === 'strict' ? 'Estricto (solo el autor invita)' : 'Abierta (cualquier miembro invita)'}**`);
     if (x.openInvite) li('Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.');
     if ((x.content || []).length) li(`Dentro se usará: ${x.content.join(', ')}`);
+    if (x.image) li(`Imagen: \`${x.image}\` (kit visual, \`--assets\`)`);
+    if (x.responsable) li(`Responsable del reparto: \`${x.responsable}\``);
     if (x.nota) li(`Nota: ${x.nota}`);
     out();
   });
@@ -364,15 +400,15 @@ function guion(t, args) {
 (function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help || !args.template) { usage(); process.exit(args.help ? 0 : 2); }
-  if (args.mode === 'cold' || args.mode === 'hot' || args.mode === 'verify') {
-    console.error(`--${args.mode}: pendiente (${args.mode === 'cold' ? 'WP-O130' : 'WP-O131'}). Contrato en docs/PUB/TEMPLATE-PROTOCOL.md §4. Hoy solo --guion.`);
+  if (args.mode === 'cold' || args.mode === 'verify') {
+    console.error(`--${args.mode}: pendiente (WP-O130). Contrato en docs/PUB/TEMPLATE-PROTOCOL.md §4.`);
     process.exit(2);
   }
-  if (args.mode !== 'guion') { console.error('modo obligatorio: --guion (--cold y --hot, pendientes)'); process.exit(2); }
+  if (!['guion', 'reparto', 'hot'].includes(args.mode)) { console.error('modo obligatorio: --guion | --reparto | --hot (--cold pendiente)'); process.exit(2); }
 
   const t = readJson(args.template);
   const orgIds = args.organigrama ? organigramaIds(readJson(args.organigrama)) : null;
-  const { errors, pending } = validate(t, orgIds);
+  const { errors, pending } = validate(t, orgIds, args.assets, args.mode === 'hot');
 
   const counts = {
     tribes: (t.tribes || []).filter(x => !x.parent).length,
@@ -394,13 +430,30 @@ function guion(t, args) {
     process.exit(1);
   }
 
-  let text = guion(t, args);
-  if (pending.length) {
-    text += `\n## 14. Pendiente de decidir por el colectivo (${pending.length})\n\n` + pending.map(p => `- ${p}`).join('\n') + '\n';
+  if (args.mode === 'hot') {
+    // Todo lo que toca SSB vive aparte: --guion y --reparto siguen sin dependencias (corren en cualquier Node).
+    const plan = require('./lib/seed-plan').plan(t, { assets: args.assets });
+    return require('./lib/seed-hot').run({ t, args, plan, pending }).then(
+      (code) => process.exit(code),
+      (e) => { console.error(`[seed-hot] ${(e && e.stack) || e}`); process.exit(1); }
+    );
+  }
+
+  let text;
+  if (args.mode === 'reparto') {
+    const ledger = args.ledger && fs.existsSync(args.ledger) ? readJson(args.ledger) : null;
+    const rp = require('./lib/reparto');
+    text = rp.reparto(t, { template: args.template, ledger, pending, organigrama: args.organigrama ? readJson(args.organigrama) : null });
+    if (args.html) text = rp.toHtml(text, t, fs.readFileSync(args.html, 'utf8'));
+  } else {
+    text = guion(t, args);
+    if (pending.length) {
+      text += `\n## 14. Pendiente de decidir por el colectivo (${pending.length})\n\n` + pending.map(p => `- ${p}`).join('\n') + '\n';
+    }
   }
   if (args.out) {
     fs.writeFileSync(args.out, text);
-    console.error(`guion escrito en ${args.out} (${pending.length} pendientes)`);
+    console.error(`${args.mode} escrito en ${args.out} (${pending.length} pendientes)`);
   } else {
     process.stdout.write(text);
   }
