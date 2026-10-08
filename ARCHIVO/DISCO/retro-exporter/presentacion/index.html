@@ -1,0 +1,365 @@
+<title>Acampada26S en Oasis</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: una columna de lectura (72ch) con figuras a ancho completo; un conmutador de carril arriba
+   que cambia los textos (Acampada / Oasis) y deja las figuras iguales. */
+:root{
+  --bg:#f3f1ec; --surface:#ffffff; --fg:#1d1a26; --muted:#5b566b; --line:#d9d4cc;
+  --accent:#5d3b9c;          /* el morado del workflow «activists» (tema Purple-SNH) */
+  --accent-soft:#e9e1f6; --lane-a:#5d3b9c; --lane-o:#1b6f6a; --lane-o-soft:#dcefed;
+  --ok:#2f8f4e; --warn:#c98a12; --bad:#c3392b;
+  --display:"Barlow Condensed","Arial Narrow",Impact,sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#15131c; --surface:#1f1c29; --fg:#ece8f3; --muted:#aba5bb; --line:#3a3548;
+  --accent:#b79ae6; --accent-soft:#2c2340; --lane-a:#b79ae6; --lane-o:#6cc9c2; --lane-o-soft:#17322f;
+  --ok:#5fc27e; --warn:#e2b04a; --bad:#ef6f61; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#15131c; --surface:#1f1c29; --fg:#ece8f3; --muted:#aba5bb; --line:#3a3548;
+  --accent:#b79ae6; --accent-soft:#2c2340; --lane-a:#b79ae6; --lane-o:#6cc9c2; --lane-o-soft:#17322f;
+  --ok:#5fc27e; --warn:#e2b04a; --bad:#ef6f61; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:17px;line-height:1.55}
+.wrap{max-width:980px;margin:0 auto;padding-block:0 64px;padding-inline:16px}
+h1,h2,h3{font-family:var(--display);line-height:1.05;text-wrap:balance;margin:0}
+h1{font-size:clamp(40px,8vw,76px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:clamp(28px,4.5vw,40px);font-weight:800;margin-top:8px}
+h3{font-size:22px;font-weight:600}
+p{max-width:72ch;margin:0}
+a{color:var(--accent)}
+code,.mono{font-family:var(--mono);font-size:.86em}
+code{background:var(--accent-soft);padding:1px 5px;border-radius:3px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+/* barra */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;padding:10px 0;margin-bottom:28px}
+.bar .name{font-family:var(--display);font-weight:800;font-size:22px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface)}
+.seg button{font:600 15px var(--body);border:0;background:transparent;color:var(--muted);padding:6px 14px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{color:#fff;background:var(--lane-a)}
+body[data-lane="oasis"] .seg button[aria-pressed="true"]{background:var(--lane-o)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* carriles */
+[data-lane]{border-left:3px solid var(--lane-a);padding-left:14px}
+[data-lane="oasis"]{border-color:var(--lane-o)}
+body[data-lane="acampada"] [data-lane="oasis"]{display:none}
+body[data-lane="oasis"] [data-lane="acampada"]{display:none}
+.lane-tag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--lane-a)}
+[data-lane="oasis"] .lane-tag{color:var(--lane-o)}
+
+section{margin-top:56px;display:grid;gap:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
+.grid2>*,.grid3>*{min-width:0}
+figure{margin:0;display:grid;gap:8px}
+figure img,figure svg{max-width:100%;height:auto;display:block}
+figcaption{color:var(--muted);font-size:15px;max-width:72ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 18px;display:grid;gap:8px;align-content:start}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat div{background:var(--surface);border:1px solid var(--line);padding:10px 12px;border-radius:6px}
+.stat b{display:block;font-family:var(--display);font-size:34px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+@media (max-width:720px){.stat{grid-template-columns:repeat(2,1fr)}}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.scroll{overflow-x:auto}
+.pill{display:inline-block;font:600 12px var(--mono);padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)} .pill.muted{color:var(--muted)}
+
+/* rejilla de módulos */
+.mods{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
+.mod{font:600 13px var(--mono);padding:7px 9px;border-radius:4px;border:1px solid var(--line);color:var(--muted);background:var(--surface)}
+.mod.on{color:var(--fg);border-color:var(--accent);background:var(--accent-soft)}
+.mod.add{color:var(--fg);border-color:var(--warn);border-style:dashed}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:14px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:6px;border-radius:3px;border:1px solid var(--line);background:var(--surface)}
+.legend i.on{background:var(--accent-soft);border-color:var(--accent)} .legend i.add{border:1px dashed var(--warn)}
+
+/* un día en la plaza */
+.day{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative}
+.day::before{content:"";position:absolute;left:4%;right:4%;top:17px;border-top:2px solid var(--line)}
+.step{position:relative;padding:40px 10px 0;display:grid;gap:4px}
+.step::before{content:"";position:absolute;top:9px;left:calc(50% - 9px);width:18px;height:18px;border-radius:50%;background:var(--accent);border:3px solid var(--bg)}
+.step .t{font-family:var(--display);font-size:24px;font-weight:800}
+.step small{color:var(--muted)}
+@media (max-width:720px){.day{grid-template-columns:1fr}.day::before{left:9px;right:auto;top:0;bottom:0;border-top:0;border-left:2px solid var(--line)}
+  .step{padding:0 0 14px 30px}.step::before{left:0;top:6px}}
+.sem{display:inline-flex;gap:6px;vertical-align:middle}
+.sem i{width:12px;height:12px;border-radius:50%;display:inline-block}
+.sem .v{background:var(--ok)} .sem .a{background:var(--warn)} .sem .r{background:var(--bad)}
+
+.foot{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (prefers-reduced-motion:no-preference){.seg button{transition:background .15s,color .15s}}
+</style>
+
+<div class="wrap">
+<div class="bar">
+  <div class="name">Acampada26S en Oasis</div>
+  <div class="seg" role="group" aria-label="Carril de lectura">
+    <button id="laneA" aria-pressed="true">Acampada</button>
+    <button id="laneO" aria-pressed="false">Oasis</button>
+  </div>
+</div>
+
+<header style="display:grid;gap:18px">
+  <div class="eyebrow">Plantilla de organización · Oasis 1.2.3 · workflow activists</div>
+  <h1>Lo que la plaza ya tiene en papel, en la red que ya usa.</h1>
+  <div data-lane="acampada">
+    <div class="lane-tag">Para la acampada</div>
+    <p>Vuestro organigrama (asambleas, nodos, comisiones, semáforo, portavocías) cabe en vuestro pub tal cual: cada órgano es una tribu, cada reunión un calendario y una sala, cada canal de Telegram una sub-tribu. Esta página enseña cómo queda, qué hace falta decidir y cómo se activa sin publicar nada que nadie haya pedido.</p>
+  </div>
+  <div data-lane="oasis">
+    <div class="lane-tag">Para Oasis</div>
+    <p>Un organigrama en JSON se traduce con cinco reglas a una <em>plantilla</em> (objetos de los modelos de 1.2.3), se valida contra el organigrama y se activa por una de tres vías. El proceso está formalizado en <code>docs/PUB/TEMPLATE-PROTOCOL.md</code> y sirve para cualquier colectivo; Acampada26S es la demo.</p>
+  </div>
+  <div class="grid2">
+    <figure>
+      <img src="esquema.jpg" alt="Organigrama y funcionamiento de Acampada26S: Asamblea General, Asamblea Internodos, cinco nodos territoriales, comisiones de trabajo, comisión de comunicación, otros espacios de articulación, técnica del semáforo y portavocías rotativas" width="1200" height="770">
+      <figcaption>El organigrama que publica el pub (<code>acampada26s.net/c</code>), transcrito a JSON con 24 identificadores.</figcaption>
+    </figure>
+    <div style="display:grid;gap:10px;align-content:start">
+      <div class="eyebrow">La misma estructura, en objetos de Oasis</div>
+      <div class="stat">
+        <div><b>16</b><span>tribus raíz</span></div>
+        <div><b>9</b><span>sub-tribus</span></div>
+        <div><b>7</b><span>salas</span></div>
+        <div><b>7</b><span>calendarios</span></div>
+        <div><b>4</b><span>listas de correo</span></div>
+        <div><b>4</b><span>wikis</span></div>
+        <div><b>2</b><span>mapas</span></div>
+        <div><b>8</b><span>decisiones pendientes</span></div>
+      </div>
+      <p style="font-size:15px;color:var(--muted)">Recuento de <code>pub/templates/acampada26s.json</code>, generado y validado el 2026-10-07. Nada de esto está publicado todavía: es el plano.</p>
+    </div>
+  </div>
+</header>
+
+<section id="mapeo">
+  <div class="eyebrow">1 · El parseo</div>
+  <h2>Cinco reglas convierten el organigrama en infraestructura</h2>
+  <figure>
+    <svg viewBox="0 0 960 640" role="img" aria-label="Diagrama de mapeo: cada órgano del organigrama, a la izquierda, se conecta con el objeto de Oasis que lo materializa, a la derecha; las flechas llevan la regla que las justifica" xmlns="http://www.w3.org/2000/svg" style="color:var(--fg);font-family:var(--body);font-size:13px">
+      <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+      <text x="40" y="28" font-family="JetBrains Mono, monospace" font-size="12" letter-spacing="1.5" fill="currentColor" opacity=".7">ORGANIGRAMA</text>
+      <text x="620" y="28" font-family="JetBrains Mono, monospace" font-size="12" letter-spacing="1.5" fill="currentColor" opacity=".7">OASIS 1.2.3</text>
+      <!-- izquierda -->
+      <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+        <rect x="40" y="48" width="300" height="52" rx="4"/>
+        <rect x="40" y="118" width="300" height="52" rx="4"/>
+        <rect x="40" y="188" width="300" height="52" rx="4"/>
+        <rect x="40" y="258" width="300" height="52" rx="4"/>
+        <rect x="40" y="328" width="300" height="52" rx="4"/>
+        <rect x="40" y="398" width="300" height="52" rx="4"/>
+        <rect x="40" y="468" width="300" height="52" rx="4"/>
+        <rect x="40" y="538" width="300" height="52" rx="4"/>
+      </g>
+      <g fill="currentColor">
+        <text x="56" y="70" font-weight="600">Asamblea General</text><text x="56" y="88" opacity=".7">diaria 20:00 · Sol 14 · semáforo</text>
+        <text x="56" y="140" font-weight="600">Asamblea Internodos</text><text x="56" y="158" opacity=".7">diaria 19:00 · portavocías rotativas</text>
+        <text x="56" y="210" font-weight="600">Nodos territoriales ×5</text><text x="56" y="228" opacity=".7">asambleas abiertas por barrio</text>
+        <text x="56" y="280" font-weight="600">Comisiones de trabajo ×7</text><text x="56" y="298" opacity=".7">abiertas a toda la población</text>
+        <text x="56" y="350" font-weight="600">Subgrupos de Comunicación ×9</text><text x="56" y="368" opacity=".7">hoy en Telegram</text>
+        <text x="56" y="420" font-weight="600">Técnica del semáforo</text><text x="56" y="438" opacity=".7">verde · amarillo · rojo</text>
+        <text x="56" y="490" font-weight="600">Otros espacios de articulación</text><text x="56" y="508" opacity=".7">InterCSOs · Asamblea de Colectivos</text>
+        <text x="56" y="560" font-weight="600">Personas</text><text x="56" y="578" opacity=".7">participación individual</text>
+      </g>
+      <!-- derecha -->
+      <g fill="var(--surface)" stroke="var(--accent)" stroke-width="1.6">
+        <rect x="620" y="48" width="300" height="52" rx="4"/>
+        <rect x="620" y="118" width="300" height="52" rx="4"/>
+        <rect x="620" y="188" width="300" height="52" rx="4"/>
+        <rect x="620" y="258" width="300" height="52" rx="4"/>
+        <rect x="620" y="328" width="300" height="52" rx="4"/>
+        <rect x="620" y="398" width="300" height="52" rx="4"/>
+        <rect x="620" y="468" width="300" height="52" rx="4"/>
+        <rect x="620" y="538" width="300" height="52" rx="4"/>
+      </g>
+      <g fill="currentColor">
+        <text x="636" y="70" font-weight="600">Tribu pública + calendario + sala</text><text x="636" y="88" opacity=".7">+ mapa SINGLE en Sol 14 · evento en /c</text>
+        <text x="636" y="140" font-weight="600">Tribu privada, modo estricto</text><text x="636" y="158" opacity=".7">miembros = portavocías del turno · sala solo invitación</text>
+        <text x="636" y="210" font-weight="600">5 tribus abiertas con QR</text><text x="636" y="228" opacity=".7">feed, foro, calendario, sala, mapa OPEN</text>
+        <text x="636" y="280" font-weight="600">7 tribus abiertas con QR</text><text x="636" y="298" opacity=".7">feed, foro, tareas</text>
+        <text x="636" y="350" font-weight="600">9 sub-tribus + lista «Comunicados»</text><text x="636" y="368" opacity=".7">heredan la privacidad de la comisión</text>
+        <text x="636" y="420" font-weight="600">Votación con 3 opciones</text><text x="636" y="438" opacity=".7">VERDE / AMARILLO / ROJO · ≥ 7 días</text>
+        <text x="636" y="490" font-weight="600">Federación de pubs</text><text x="636" y="508" opacity=".7">+ tribu de enlace + lista cifrada</text>
+        <text x="636" y="560" font-weight="600">Habitantes con invite del pub</text><text x="636" y="578" opacity=".7">./oasis.sh invite 500 · manual en la wiki</text>
+      </g>
+      <!-- flechas con regla -->
+      <g stroke="currentColor" stroke-width="1.4" fill="none" marker-end="url(#arr)">
+        <line x1="340" y1="74" x2="618" y2="74"/>
+        <line x1="340" y1="144" x2="618" y2="144"/>
+        <line x1="340" y1="214" x2="618" y2="214"/>
+        <line x1="340" y1="284" x2="618" y2="284"/>
+        <line x1="340" y1="354" x2="618" y2="354"/>
+        <line x1="340" y1="424" x2="618" y2="424"/>
+        <line x1="340" y1="494" x2="618" y2="494"/>
+        <line x1="340" y1="564" x2="618" y2="564"/>
+      </g>
+      <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+        <rect x="440" y="58" width="80" height="18" rx="9" fill="var(--bg)"/><text x="480" y="71">R1 + R2</text>
+        <rect x="440" y="128" width="80" height="18" rx="9" fill="var(--bg)"/><text x="480" y="141">R1 + R2</text>
+        <rect x="440" y="198" width="80" height="18" rx="9" fill="var(--bg)"/><text x="480" y="211">R1</text>
+        <rect x="440" y="268" width="80" height="18" rx="9" fill="var(--bg)"/><text x="480" y="281">R1</text>
+        <rect x="440" y="338" width="80" height="18" rx="9" fill="var(--bg)"/><text x="480" y="351">R4</text>
+        <rect x="440" y="408" width="80" height="18" rx="9" fill="var(--bg)"/><text x="480" y="421">R3</text>
+        <rect x="440" y="478" width="80" height="18" rx="9" fill="var(--bg)"/><text x="480" y="491">R5</text>
+        <rect x="440" y="548" width="80" height="18" rx="9" fill="var(--bg)"/><text x="480" y="561">invite</text>
+      </g>
+      <!-- flujo de decisión -->
+      <g stroke="var(--accent)" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr)">
+        <path d="M30 564 C 10 564, 10 74, 30 74"/>
+      </g>
+      <text x="14" y="330" font-size="11" fill="var(--accent)" transform="rotate(-90 14 330)" text-anchor="middle">propuestas suben · acuerdos bajan</text>
+      <g stroke="var(--accent)" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr)">
+        <path d="M930 74 C 950 74, 950 564, 930 564"/>
+      </g>
+      <text x="946" y="330" font-size="11" fill="var(--accent)" transform="rotate(90 946 330)" text-anchor="middle">foro del nodo → Internodos → votación · lista «Acuerdos» → feed</text>
+      <text x="40" y="622" font-size="12" fill="currentColor" opacity=".7">R1 órgano → tribu · R2 reunión → calendario + sala · R3 método → convención de voto · R4 canal externo → sub-tribu o lista · R5 espacio externo → federación</text>
+    </svg>
+    <figcaption>Cada órgano del organigrama se conecta con el objeto de Oasis que lo materializa; la regla va sobre la flecha. Lo que sube (propuestas) va por foros y votaciones; lo que baja (acuerdos) por una lista de correo y el feed del pub.</figcaption>
+  </figure>
+  <div data-lane="acampada">
+    <div class="lane-tag">Qué significa para vosotros</div>
+    <p>Nada cambia en cómo os organizáis. Cambia dónde vive: la comisión de Cuidados es una tribu con su feed, su foro y sus tareas; el grupo «Audiovisual» de Telegram es una sub-tribu dentro de Comunicación; «cada día a las 20:00 en Sol» es un calendario con siete fechas semanales y una sala para quien no llega a la plaza. El semáforo no se instala: es cómo se crea cada votación (tres opciones, no sí/no).</p>
+  </div>
+  <div data-lane="oasis">
+    <div class="lane-tag">Lo que el modelo no cubre y se deja explícito</div>
+    <p>SSB no tiene jerarquía: <code>nivel_jerarquico</code> se emula con autoría y custodia de claves (solo el autor borra o reestructura una tribu). No hay intervalo diario en calendarios ni eventos (<code>calendars_model.js:352-362</code>): «diaria» son siete fechas semanales. La votación interna de Parliament es sí/no/abstención y exige legislatura (<code>parliament_model.js:896,911</code>): el semáforo vive en <code>votes</code>, que admite opciones libres (<code>votes_model.js:181</code>). Las categorías de emergencia son seis y cerradas. Tabla completa: <code>ARCHIVO/DISCO/retro-exporter/MAPEO.md</code> §2.</p>
+  </div>
+</section>
+
+<section id="modulos">
+  <div class="eyebrow">2 · El workflow</div>
+  <h2>La consigna «activad activists» ya acota el mapa</h2>
+  <div class="legend"><span><i class="on"></i>encendido en <code>activists</code></span><span><i class="add"></i>addenda: fuera del workflow, resolvería algo del organigrama</span><span><i></i>apagado</span></div>
+  <div class="mods" id="mods"></div>
+  <div data-lane="acampada">
+    <div class="lane-tag">Qué significa para vosotros</div>
+    <p>Todo lo que usa la plantilla está encendido con un solo ajuste por móvil (Settings → Workflows → Activists): tribus, votaciones, calendarios, salas, listas, wikis, mapas, emergencias, tribunales. Lo punteado son módulos que apagasteis y que tocan demandas vuestras: <strong>Housing</strong> (vivienda), <strong>Market</strong> y <strong>Transfers</strong> (abastecimiento, banco de tiempo). Encenderlos es un clic; no hace falta cambiar nada más.</p>
+  </div>
+  <div data-lane="oasis">
+    <div class="lane-tag">Hallazgo que condiciona la activación</div>
+    <p>El workflow es un ajuste <strong>local</strong> de cada cliente: <code>applyWorkflow</code> escribe <code>oasis-config.json</code> (<code>workflows_model.js:111-118</code>) y ningún tipo de mensaje SSB lo transporta. Un pub no puede recomendarlo ni imponerlo. Por eso toda plantilla lleva siempre un guion humano, aunque exista automatismo. Candidato de mejora para upstream: un mensaje <code>about</code> del pub con <code>recommendedWorkflow</code> que el wizard de bienvenida lea.</p>
+  </div>
+</section>
+
+<section id="dia">
+  <div class="eyebrow">3 · Un día en la plaza</div>
+  <h2>De la propuesta de un barrio al acuerdo de todos</h2>
+  <div class="day">
+    <div class="step"><span class="t">tarde</span><strong>Nodo Centro</strong><small>Debate en el foro de su tribu; la portavocía recoge la propuesta.</small></div>
+    <div class="step"><span class="t">19:00</span><strong>Internodos</strong><small>Tribu privada: las cinco portavocías ponen en común. Sala solo invitación.</small></div>
+    <div class="step"><span class="t">20:00</span><strong>Asamblea General</strong><small>Sol 14 o su sala abierta. Cada propuesta sale como votación.</small></div>
+    <div class="step"><span class="t"><span class="sem"><i class="v"></i><i class="a"></i><i class="r"></i></span></span><strong>Semáforo</strong><small>VERDE / AMARILLO / ROJO, plazo de 7 días para quien no estuvo.</small></div>
+    <div class="step"><span class="t">después</span><strong>Acuerdos bajan</strong><small>Lista «Acuerdos», feed del pub, <code>/c</code> para quien no tiene cuenta.</small></div>
+  </div>
+  <div data-lane="acampada">
+    <div class="lane-tag">Qué significa para vosotros</div>
+    <p>La secuencia diaria del organigrama es la misma; lo nuevo es que queda escrita, cifrada donde debe (Internodos) y pública donde debe (acuerdos). Quien no llega a Sol vota igual, con plazo. Las portavocías rotan saliendo de la tribu Internodos y entrando las siguientes: cada salida cambia la clave, así quien ya no es portavoz deja de leer lo nuevo.</p>
+  </div>
+  <div data-lane="oasis">
+    <div class="lane-tag">Modelos implicados</div>
+    <p><code>tribes_content_model.create(id,'forum')</code> en el nodo → foro de la tribu Internodos → <code>votes_model.createVote(q, deadline, ['VERDE','AMARILLO','ROJO'])</code> → <code>mailing_model.createList({listType:'OPEN'})</code>. Las ratificaciones se crean fuera de la tribu de portavocías: dentro de una tribu todo miembro vota, y las portavocías «no tienen poder de decisión» como órgano.</p>
+  </div>
+</section>
+
+<section id="activacion">
+  <div class="eyebrow">4 · Activación</div>
+  <h2>Tres vías, y nunca con la identidad del pub</h2>
+  <div class="grid3">
+    <div class="card"><span class="pill ok">disponible</span><h3>Guion</h3><p style="font-size:15px">Un markdown paso a paso: menú de la UI, campos, quién lo crea. Lo ejecutan personas desde su Oasis. No publica nada por sí mismo.</p><code>template-seed.js --guion</code></div>
+    <div class="card"><span class="pill warn">contrato · WP-O130</span><h3>Fría</h3><p style="font-size:15px">Siembra real en un directorio aislado con la red pausada. Para ensayar, formar a la mesa técnica o preparar un pub nuevo antes de anunciarlo. Se borra y no pasó nada.</p><code>--cold · ssb_path · OASIS_NETWORK_PAUSED=1</code></div>
+    <div class="card"><span class="pill warn">contrato · WP-O131</span><h3>Caliente</h3><p style="font-size:15px">Una identidad «secretaría» con sbot propio redime un invite del pub y publica la plantilla. Lo publicado es permanente; su feed se puede dejar de seguir.</p><code>--hot · bot secretaría</code></div>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr><th>Escenario</th><th>Vía</th><th>Reversible</th><th>Permisos expresos</th></tr></thead>
+    <tbody>
+      <tr><td>Ensayo, formación, capturas</td><td>fría</td><td>sí</td><td>ninguno</td></tr>
+      <tr><td>Pub nuevo, antes de anunciarse</td><td>fría sobre el directorio definitivo</td><td>no, pero nadie lo replicó aún</td><td>tribus, about</td></tr>
+      <tr><td>Pub vivo, autoría humana (hoy Acampada)</td><td><strong>guion</strong></td><td>—</td><td>los que ejerza cada persona</td></tr>
+      <tr><td>Pub vivo, autoría delegable</td><td>caliente</td><td>el feed se deja de seguir; el contenido no desaparece</td><td>about de la secretaría, invite, cada bloque de tribus</td></tr>
+    </tbody>
+  </table></div>
+  <div data-lane="acampada">
+    <div class="lane-tag">Qué significa para vosotros</div>
+    <p>Hoy os toca la vía del guion: vuestro pub ya está vivo y las tribus las deben crear las personas que vayan a ser sus autoras (solo el autor puede borrarlas o reestructurarlas). El guion lista 25 tribus, 7 salas, 7 calendarios, 4 listas, 4 wikis y 2 mapas, y termina con 8 cosas que solo vosotros podéis decidir: quién crea qué, a qué hora se reúne cada nodo, el texto del organigrama para la wiki y qué colectivos aliados tienen pub.</p>
+  </div>
+  <div data-lane="oasis">
+    <div class="lane-tag">Por qué no hay «identidad proxy»</div>
+    <p>Los modelos publican siempre como la identidad del sbot (<code>tribes_model.js:318</code>, <code>rooms_model.js:418</code>); el token de sala se firma con sus claves y el pub lo verifica contra el autor (<code>phone_module.js:756,1262</code>); <code>add</code> no está en el manifest top-level de ssb-db2 (<code>compat/db.js:11-15</code>) y <code>db.create({keys})</code> pasaría una clave privada por el socket. Publicar como el pub mismo dejaría todas las claves de tribu en un nodo que solo replica. Queda el patrón de bots de soporte (<code>HUB-PROTOCOL.md</code> §11): un sbot propio, un feed dedicado.</p>
+  </div>
+</section>
+
+<section id="addenda">
+  <div class="eyebrow">5 · Addenda</div>
+  <h2>Lo que el organigrama pide y el workflow deja apagado</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Módulo</th><th>Del organigrama</th><th>Qué aporta</th><th>Coste</th></tr></thead>
+    <tbody>
+      <tr><td><code>housing</code></td><td>Urbanismo: vivienda</td><td>alquiler, venta y acogida con disponibilidad; visible en <code>/c</code></td><td>un clic por cliente</td></tr>
+      <tr><td><code>market</code></td><td>Abastecimiento</td><td>dar, pedir, intercambiar sin dinero o con ECOin</td><td>un clic por cliente</td></tr>
+      <tr><td><code>transfers</code></td><td>Abastecimiento, comisiones</td><td>banco de tiempo y de confianza (TIME / TRUST)</td><td>un clic por cliente</td></tr>
+      <tr><td><code>parliament</code></td><td>Asamblea General</td><td>legislaturas, propuestas, leyes; voto interno sí/no</td><td>abrir legislatura; el semáforo sigue en votes</td></tr>
+      <tr><td><code>school</code> (ya dentro)</td><td>Portavocías</td><td>cursos para formar portavocías y mesa técnica</td><td>—</td></tr>
+      <tr><td><code>banking</code> + <code>wallet</code></td><td>el movimiento</td><td>un pub con cartera paga renta básica a los activos</td><td>nodo de cartera: decisión del colectivo</td></tr>
+    </tbody>
+  </table></div>
+  <div data-lane="acampada"><div class="lane-tag">Qué significa para vosotros</div><p>Es un camino, no una obligación: empezáis con lo que ya tenéis encendido y cada módulo de esta tabla se enciende el día que una comisión lo pida.</p></div>
+  <div data-lane="oasis"><div class="lane-tag">Qué significa para el sistema</div><p>La addenda es la parte de la plantilla que no se activa: solo señala. Es la lista de módulos cuyo encaje con un organigrama real conviene mirar al diseñar el siguiente workflow o preset.</p></div>
+</section>
+
+<section id="pedimos">
+  <div class="eyebrow">6 · Siguiente paso</div>
+  <h2>Qué pedimos a cada lado</h2>
+  <div class="grid2">
+    <div class="card"><div class="lane-tag" style="color:var(--lane-a)">A la acampada</div>
+      <ul style="margin:0;padding-left:18px;font-size:15px;display:grid;gap:6px">
+        <li>Confirmar los nombres y la privacidad de las 25 tribus (¿algún nodo quiere ser privado?).</li>
+        <li>Decidir quién crea cada tribu: esa persona será su autora.</li>
+        <li>Hora de reunión de cada nodo y texto del organigrama para la wiki.</li>
+        <li>Qué colectivos aliados tienen pub propio (para federar).</li>
+        <li>Si queréis ensayar antes: una tarde con la mesa técnica y la vía fría.</li>
+      </ul></div>
+    <div class="card"><div class="lane-tag" style="color:var(--lane-o)">A la gente de Oasis</div>
+      <ul style="margin:0;padding-left:18px;font-size:15px;display:grid;gap:6px">
+        <li>Revisar las cinco reglas de mapeo y el contrato <code>pub/templates/SCHEMA.md</code>.</li>
+        <li>Intervalo diario en calendarios y eventos.</li>
+        <li>Opciones libres (o semáforo) en la votación interna de Parliament.</li>
+        <li>Un modo de que un pub <em>recomiende</em> un workflow al wizard de bienvenida.</li>
+        <li>Llevar <code>test/seed.js</code> hacia una siembra desde plantilla (<code>--cold</code>) en upstream.</li>
+      </ul></div>
+  </div>
+</section>
+
+<div class="foot">
+  Fuentes: <code>ARCHIVO/DISCO/retro-exporter/</code> (entrada, mapeo, guion), <code>pub/templates/acampada26s.json</code>, <code>docs/PUB/TEMPLATE-PROTOCOL.md</code>; firmas de modelo verificadas sobre Oasis 1.2.3 (<code>043f4634</code>) el 2026-10-07. Ningún código de invitación, clave ni dirección aparece en esta página ni en la plantilla.
+</div>
+</div>
+
+<script>
+(function(){
+  var ALL=['agenda','ai','aiNav','emergencies','audios','backup','banking','blogs','bookmarks','calendars','campaigns','chats','cipher','courts','dev','docs','events','favorites','fediverse','feed','files','forum','games','graphos','housing','images','industry','invites','jobs','larp','logistics','logs','mailing','maps','market','melody','opinions','pads','wiki','parliament','phone','pixelia','podcasts','polls','projects','reports','rooms','school','shops','tags','tasks','torrents','transfers','trending','tribes','videos','votes','wallet'];
+  var GOV=['tribes','larp','votes','polls','school','parliament','courts','emergencies','logs'];
+  var OFF=['agenda','calendars','campaigns','events','tasks','reports','mailing','phone','favorites'];
+  var ACT=GOV.concat(OFF,['forum','chats','rooms','feed','blogs','opinions','pads','wiki','docs','images','videos','audios','podcasts','files','torrents','maps','bookmarks','graphos','melody','cipher','fediverse','projects','logistics','invites','tags','trending','backup']);
+  var ADD=['housing','market','transfers','banking','wallet'];
+  var box=document.getElementById('mods');
+  ALL.forEach(function(m){var d=document.createElement('div');d.className='mod'+(ACT.indexOf(m)>=0?' on':'')+(ADD.indexOf(m)>=0?' add':'');d.textContent=m;d.title=ACT.indexOf(m)>=0?'encendido en activists':(ADD.indexOf(m)>=0?'addenda':'apagado');box.appendChild(d);});
+
+  var A=document.getElementById('laneA'),O=document.getElementById('laneO');
+  function setLane(l){document.body.setAttribute('data-lane',l);A.setAttribute('aria-pressed',l==='acampada');O.setAttribute('aria-pressed',l==='oasis');try{localStorage.setItem('lane',l);}catch(e){}}
+  A.addEventListener('click',function(){setLane('acampada');});
+  O.addEventListener('click',function(){setLane('oasis');});
+  var init='acampada';
+  try{var s=localStorage.getItem('lane');if(s==='oasis'||s==='acampada')init=s;}catch(e){}
+  if(location.hash==='#oasis')init='oasis';if(location.hash==='#acampada')init='acampada';
+  setLane(init);
+})();
+</script>

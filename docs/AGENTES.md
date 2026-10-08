@@ -55,6 +55,7 @@ a «probado».
 | Acotar o apagar la centralita de llamadas del pub (Phone y Rooms, Oasis ≥ 1.2.2) | [`HUB-PROTOCOL.md`](./PUB/HUB-PROTOCOL.md) §14 | [`CAPACIDAD.md`](./PUB/CAPACIDAD.md) §4 |
 | Acoger y desplegar una obra del Teatro | [`TEATRO-PROTOCOL.md`](./PUB/TEATRO-PROTOCOL.md) · [curaduría](./PUB/TEATRO-CURADURIA-PROTOCOL.md) · [sidecar RRSS](./PUB/RRSS-SIDECAR-PROTOCOL.md) | — |
 | Sacar una obra a la escena P2P (torrent, ed2k) y anunciarla en Oasis | [`TEATRO-P2P-PROTOCOL.md`](./PUB/TEATRO-P2P-PROTOCOL.md) | §3 de esta página: el anuncio es irreversible |
+| Convertir el organigrama de un colectivo en tribus, salas, calendarios y listas de su pub (plantilla) | [`TEMPLATE-PROTOCOL.md`](./PUB/TEMPLATE-PROTOCOL.md) | §3 de esta página: cada tribu es permanente; nunca con la identidad del pub (D-O28) |
 | Saber qué crece y si hay que limitarlo | [`CAPACIDAD.md`](./PUB/CAPACIDAD.md) · `devops/scripts/capacity.sh` | — |
 | Algo se ha roto (disco, repo, identidad) | [`RECOVERY-PROTOCOL.md`](./PUB/RECOVERY-PROTOCOL.md) | **no toques nada antes de §0** |
 
