@@ -84,6 +84,7 @@ node_ssb_dir() { # en local Docker Desktop devuelve rutas de Windows: allí mand
   if [ "${NODE_LOCAL:-0}" = 1 ]; then
     case "$1" in
       *wallet-bot*) echo "$NODE_DATA/oasis-wallet-bot/ssb-data" ;;
+      *retro-bot*)  echo "$NODE_DATA/oasis-retro-bot/ssb-data" ;;   # antes del comodín: si no, el bot retro se mediría contra el .ssb del pub
       *hub*)        echo "$NODE_DATA/oasis-hub/ssb-data" ;;
       *)            echo "$NODE_DATA/oasis-pub/ssb-data" ;;
     esac

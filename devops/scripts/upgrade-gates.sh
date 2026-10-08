@@ -76,12 +76,12 @@ case "$CMD" in
   *) usage; exit 64 ;;
 esac
 
-GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot}"
+GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot retro:oasis-pub-retro-bot:oasis-retro-bot}"
 LOG_ERR_RE='EROFS|EACCES|ReferenceError|TypeError|Cannot find module|Another Oasis|no inicializada|UnhandledPromiseRejection'
 
 trap node_run_cleanup EXIT
 if [ "$MODE" = local ]; then node_run_setup 1 || exit 3; else node_run_setup 0 || exit 3; fi
-compose_local() { (cd "$REPO_ROOT/pub" && MSYS_NO_PATHCONV=1 docker compose -f docker-compose.pub.yml --env-file .env.local --profile wallet "$@"); }
+compose_local() { (cd "$REPO_ROOT/pub" && MSYS_NO_PATHCONV=1 docker compose -f docker-compose.pub.yml --env-file .env.local --profile wallet --profile retro "$@"); }
 container_of() { for n in $GATE_NODES; do [ "${n%%:*}" = "$1" ] && { n="${n#*:}"; echo "${n%%:*}"; return 0; }; done; return 1; }
 service_of()   { for n in $GATE_NODES; do [ "${n%%:*}" = "$1" ] && { echo "${n##*:}"; return 0; }; done; return 1; }
 
@@ -297,7 +297,7 @@ case "$CMD" in
 
   backup|restore)
     tag="${ARGS[0]:-}"; [ -n "$tag" ] || { echo "uso: $CMD <tag>" >&2; exit 64; }
-    store="$REPO_ROOT/volumes-dev/.gates/$tag"; dirs="oasis-pub oasis-hub oasis-wallet-bot"
+    store="$REPO_ROOT/volumes-dev/.gates/$tag"; dirs="oasis-pub oasis-hub oasis-wallet-bot oasis-retro-bot"
     for n in $GATE_NODES; do c="${n#*:}"; c="${c%%:*}"
       [ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" = true ] && { echo "ERROR: $c está corriendo: para los nodos antes (un log copiado en caliente puede quedar a medias)." >&2; exit 3; }
     done
