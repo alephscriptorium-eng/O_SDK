@@ -5,7 +5,7 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
-### Fixed/Added — Visor `/c`: idioma por petición y selector de tema, sexto guard (WP-O132, 2026-10-08, en obras)
+### Fixed/Added — Visor `/c`: idioma por petición y selector de tema, sexto guard (WP-O132, 2026-10-08)
 
 El idioma del visor era una variable global del proceso y el selector podía salir en el idioma de
 otra petición concurrente (medido en el host: 6 de 18). Guard D-O30 en `src/views/clearnet_view.js`
@@ -13,7 +13,8 @@ y `src/backend/backend.js`: el idioma resuelto va al scope de la petición y se 
 render; `?theme=` (Dark, Clear, Matrix, Purple) con selector junto al de idioma; `lang` y `theme`
 viajan en todos los enlaces y formularios de `/c`. Gate `upgrade-gates.sh hub --strict` ampliado
 (6 idiomas × 3 tandas, tema, cruce de temas); invariantes en `hub.tsv`; UPGRADE §2 pasa a 7
-ficheros. Defaults intactos (config del HUB, D-O25).
+ficheros. Defaults intactos (config del HUB, D-O25). **Desplegado el 2026-10-08** en el HUB de la demo (solo ese nodo,
+misma versión, nadie publicó nada); reporte `plan/REPORTES/WP-O132-visor-idioma-tema.md`.
 
 ### Added — Vía caliente de plantillas: bot retro, kit visual y guía de reparto (WP-O131, 2026-10-08)
 
