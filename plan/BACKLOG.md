@@ -856,6 +856,11 @@ Dep: WP-O129.
 **BRIEF** · Tres fases pedidas por el custodio: (1) dosier y materiales reproducibles sin ejecutar nada al vuelo, con el protocolo entrando en la web de forma armónica; (2) drill local con identidad desechable; (3) VPS con PERMISO en invite, `about` y cada `--yes <bloque>` (incluido `clearnet`). Fuera de alcance: `--cold`, `installer-amd/`, `src/`.
 Dep: WP-O129. Relación: HUB-PROTOCOL §3, §11-§12; D-O28, D-O29.
 
+| **WP-O132** | **P1** | Visor `/c`: idioma por petición (ES por defecto, sin cruces) y selector de tema — sexto guard con gate |
+
+**Estado** · 🔶 2026-10-08, rama `wp/O132-visor-idioma-tema`. Síntoma del custodio: texto en ES y selector en «AR». Medido: sin cookies ni cabeceras `/c` sale en ES (nginx no reenvía nada del visitante, D-O25); pero el idioma es una variable **global del proceso** (`main_views.js`) y la ruta `/c` espera entre fijarlo y renderizar: con 18 peticiones concurrentes en 6 idiomas, **6 páginas salieron en otro idioma** (el gate antiguo, con 2 idiomas, no lo veía). Guard (D-O30): `backend.js` guarda siempre el idioma resuelto en el scope de la petición y valida `?theme=`; `clearnet_view.js` re-afirma ese idioma antes del render síncrono, pinta el selector de tema (`Dark`, `Clear`, `Matrix`, `Purple`) y propaga `lang` y `theme` a todos los enlaces y formularios. Gate `hub --strict` ampliado (6 idiomas × 3 tandas, tema, enlaces, cruce de temas); invariantes en `hub.tsv`; 7 ficheros en el delta. Pendiente: gate local con la imagen reconstruida, protocolo, y despliegue al host (solo el HUB) con GO.
+Dep: WP-O131. Relación: UPGRADE §2, HUB §1 y §5, D-O25.
+
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
 **Estado** · ✅ 2026-09-19 en `main`. Asientos D-O20, D-O23.

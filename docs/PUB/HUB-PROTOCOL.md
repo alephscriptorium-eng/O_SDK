@@ -79,8 +79,10 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
   normal de un pub). Secuencia del feed del pub antes/después = +1, una vez.
 - **Todo el estado nuevo bajo `/srv/oasis/oasis-hub/*`** (volumen de datos, 40 GB).
   `df -h /` igual antes y después: sin rebuild, solo `docker pull nginx:alpine`.
-- **Delta del fork en `src/`: cero.** El HUB vive en la zona *wholesale* (`pub/**`,
-  `devops/**`). Los 5 guards de `UPGRADE-PROTOCOL.md` §2 siguen siendo los únicos.
+- **Delta del fork en `src/`: solo los guards contados.** El HUB vive en la zona *wholesale* (`pub/**`,
+  `devops/**`); desde WP-O132 (D-O30) lleva **un** guard propio en `src/views/clearnet_view.js` (idioma y tema
+  del visor por petición, selector de tema), el sexto de `UPGRADE-PROTOCOL.md` §2, con invariante en
+  `upgrade-invariants.d/hub.tsv` y gate en `upgrade-gates.sh hub --strict`.
 - **`CA-ANTI-AUTORIDAD`** (D-O6): el opt-in viaja con el feed del habitante; el HUB no
   decide quién aparece y **no se lista a sí mismo** (su `about` no lleva `vis_*`).
 - **La cuenta se declara con nombre propio de bot de soporte** (D-O20, que supera la forma de
@@ -188,8 +190,8 @@ del pub; `docker stop` del pub deja `/c` sirviendo `STALE` desde la caché.
 
 ## 5. Upgrades de Oasis con el HUB activo (anexo de `UPGRADE-PROTOCOL.md`)
 
-El HUB **no añade guards** a `src/`, pero **depende de comportamientos de upstream que no
-son API estable**. Un upgrade puede romperlo sin tocar ninguno de los 5 guards. El orden y las
+El HUB lleva **un guard** en `src/` (el sexto, el del visor: §1) y además **depende de comportamientos de
+upstream que no son API estable**. Un upgrade puede romperlo sin tocar ninguno de los 6 guards. El orden y las
 puertas los da `UPGRADE-PROTOCOL.md`; aquí está lo que es propio del HUB.
 
 **5.1 Invariantes y diff (UPGRADE §3.1).** Lo que el HUB necesita de upstream está en
