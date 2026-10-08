@@ -22,6 +22,12 @@ encargos:
     medido: '2026-09-18'
     prueba: plan/REPORTES/WP-O100-teatro-puerta-semantica.md
     falta: prueba en frío (WP-O118)
+  - id: plantilla
+    titulo: Convertir el organigrama de mi colectivo en las tribus, salas y calendarios de mi pub
+    estado: en-obras
+    medido: '2026-10-08'
+    prueba: ARCHIVO/DISCO/scriptorium-exported/README.md
+    falta: drill local y alta del bot secretaría en el VPS (WP-O131); la vía fría (WP-O130)
 ---
 
 # Pub Oasis
@@ -35,6 +41,7 @@ Corre la misma imagen que el cliente, en otro modo.
 - Pub simple: <Sello rol="pub" id="pub-minimo" />
 - HUB clearnet: <Sello rol="pub" id="hub-clearnet" />
 - Teatro: <Sello rol="pub" id="teatro" />
+- Plantilla de organización: <Sello rol="pub" id="plantilla" />
 
 **Qué funciona hoy.** Hay un pub de demostración en producción, con su HUB, su economía y su
 Teatro, desplegado y subido de versión con este repo, y un protocolo por pieza. **Con qué

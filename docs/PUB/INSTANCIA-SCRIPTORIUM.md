@@ -43,6 +43,7 @@ nombre puede cambiar.
 |---|---|---|---|---|---|---|
 | 1 | `clearnet.escrivivir.co` | clearnet · scriptorium | HUB web de solo lectura `/c` (Sala 04) | `oasis-pub-hub` · `/srv/oasis/oasis-hub` | `@KM+ZBipR18VSyjNTFjAOnsmz6EiobGYHb3ZCZ4ZxQYI=.ed25519` | 2026-09-13 (WP-O46) |
 | 2 | `ecoin.escrivivir.co` | ecoin (cartera) · scriptorium | hub-wallet: cartera ECOin del pub, custodia la dote y reparte la RBU; **sin ruta pública** | `oasis-pub-wallet-bot` + `oasis-pub-ecoin` · `/srv/oasis/oasis-wallet-bot`, `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102) |
+| 3 | `retro.escrivivir.co` | retro (secretaría de plantillas) · scriptorium | activa plantillas de organización (`TEMPLATE-PROTOCOL.md` §4.5): tribus, salas, calendarios, listas, wikis, mapas, bloque a bloque y con permiso; custodia las claves de las tribus que crea; **modo `server`, sin ruta pública**. Avatar: logo «Scriptorium Skins» 512×512 (blob previsto `&q4Mkl/fcUGNELIrsmVyMBBdZsCXxyh5LmGN/XovlHDg=.sha256`) | `oasis-pub-retro-bot` · `/srv/oasis/oasis-retro-bot` | **propuesto** · se mide al darlo de alta | **propuesto** 2026-10-08 (WP-O131; drill local pendiente, VPS pendiente de GO) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
 Oasis **1.2.3** en pub, HUB y bot-2 desde el 2026-10-07 (WP-O128; antes 1.2.2, WP-O124, 2026-10-05). El pub
@@ -64,7 +65,7 @@ salir en cualquier reinicio: se declara `about=+0..1` (UPGRADE §0.4). Los tres 
 salir por Tor, HUB §5.2).
 
 Nombres anteriores (siguen en el log de cada feed; D-O14): `azofaifo-scriptorium-skin-bot-1`,
-`azofaifo-scriptorium-wallet-bot-2`.
+`azofaifo-scriptorium-wallet-bot-2`. El bot 3 nace ya con su nombre definitivo.
 
 ## 4. `about` literal de cada bot
 
@@ -92,6 +93,18 @@ description: Bot de soporte nº 2 de pub.escrivivir.co · tipo ecoin (cartera) �
              él el pub escrivivir.co. Antes: azofaifo-scriptorium-wallet-bot-2.
 ```
 
+**Bot 3** — **propuesto 2026-10-08** (WP-O131); se publica una sola vez, con imagen, por `ssb-admin.js publish-about --image` (HUB §12):
+
+```
+name:        retro.escrivivir.co
+description: Bot de soporte nº 3 de pub.escrivivir.co · tipo retro (secretaría de plantillas) · piel
+             Scriptorium · familia Azofaifo. Activa en el pub las plantillas de organización (tribus,
+             salas, calendarios, listas, wikis, mapas) que un colectivo aprueba, bloque a bloque y con
+             permiso expreso. Custodia las claves de las tribus que crea. No tiene web pública ni
+             publica por nadie. Responde por él el pub escrivivir.co.
+image:       ARCHIVO/DISCO/scriptorium-exported/assets/avatar-retro-512.png
+```
+
 ## 5. Qué hay activo y con qué protocolo
 
 | Pieza | Protocolo | Registro |
@@ -101,6 +114,7 @@ description: Bot de soporte nº 2 de pub.escrivivir.co · tipo ecoin (cartera) �
 | Centralita de Phone y Rooms (en el pub, acotada: aforo de sala 12) | `HUB-PROTOCOL.md` §14 · `CAPACIDAD.md` §4 | `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md` §7 |
 | Entrada de habitantes: la portada (`https://pub.escrivivir.co`) muestra un invite de 1000 usos, que sirve el panel (`/public/status`, `PUB_INVITE_USES`). Es público por diseño; no se copia aquí | `../AGENTES.md` §1 | [hoja del habitante](./INSTANCIA-SCRIPTORIUM-HABITANTE.md) |
 | hub-wallet (ECOin) | `ECOIN-PROTOCOL.md` | §13 |
+| Plantillas de organización (bot retro, Campamento) | `TEMPLATE-PROTOCOL.md` | §8 · `ARCHIVO/DISCO/scriptorium-exported/` · guía de reparto en la Sala 02 (`site/parlament/campamento/`, generada) |
 | Teatro · sidecar RRSS | `TEATRO-PROTOCOL.md` · `RRSS-SIDECAR-PROTOCOL.md` | en cada uno |
 | Teatro P2P | `TEATRO-P2P-PROTOCOL.md` | §5 · *Aleph Cero* **congelada** el 2026-09-19; enlaces en `/teatro/aleph-cero/p2p/p2p.json`, anuncios de Oasis en `p2p/oasis.json` |
 

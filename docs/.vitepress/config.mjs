@@ -106,6 +106,7 @@ export default defineConfig({
           { text: 'Protocolo de curaduría del Teatro', link: '/PUB/TEATRO-CURADURIA-PROTOCOL' },
           { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' },
           { text: 'Protocolo de ECOin (hub-wallet)', link: '/PUB/ECOIN-PROTOCOL' },
+          { text: 'Protocolo de plantilla de organización', link: '/PUB/TEMPLATE-PROTOCOL' },
           { text: 'Protocolo del cliente', link: '/CLIENT-PROTOCOL' }
         ]
       },
@@ -137,6 +138,7 @@ export default defineConfig({
           { text: 'Protocolo de curaduría del Teatro', link: '/PUB/TEATRO-CURADURIA-PROTOCOL' },
           { text: 'Protocolo del HUB clearnet', link: '/PUB/HUB-PROTOCOL' },
           { text: 'Protocolo de ECOin (hub-wallet)', link: '/PUB/ECOIN-PROTOCOL' },
+          { text: 'Protocolo de plantilla de organización', link: '/PUB/TEMPLATE-PROTOCOL' },
           { text: 'Protocolo del cliente', link: '/CLIENT-PROTOCOL' }
         ]
       },

@@ -367,8 +367,8 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 en local se hace con un **nodo desechable** de la imagen nueva, sin volúmenes, en la red del
 compose: `$G snapshot u6` · invite de un uso en el pub (`invite.create({ uses: 1, external:
 '<dominio.con.punto>' })` por `ssb-client` dentro del contenedor del pub) y reescribir el host a
-la IP del pub en el bridge · `docker run -d --network <red del compose> -e OASIS_SNAPSHOT=off …
-<imagen> backend` · `ssb-probe.js` con `SSB_ACTION=invite-accept` desde el desechable ·
+la IP del pub en el bridge · `docker run -d --network <red del compose> -e OASIS_SNAPSHOT=off … <imagen> backend`
+· `ssb-probe.js` con `SSB_ACTION=invite-accept` desde el desechable ·
 `$G check u6 --expect 'pub:contact=+1 hub:=0 bot:about=+0..1'` · `docker rm -f` del desechable.
 Salida esperada: `accept: true`, el pub como par `connected`, y el pub publica **exactamente un
 `contact`**. El invite lleva semilla: no se imprime. Todo `docker exec` a mano desde Git Bash lleva

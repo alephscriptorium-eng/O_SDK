@@ -179,5 +179,6 @@ pub de Banking**, junto a los de otros pubs. La regla:
 5. **Cambiar el nombre** es publicar otro `about`: irreversible (§3) y con procedimiento propio, HUB §12.
    El feed id no cambia nunca; lo que identifica al bot es el id, el nombre es cortesía.
 
-Ejemplo (instancia Scriptorium): `clearnet.escrivivir.co` y `ecoin.escrivivir.co`. Sus descripciones
-literales, en la ficha de instancia.
+Ejemplo (instancia Scriptorium): `clearnet.escrivivir.co`, `ecoin.escrivivir.co` y `retro.escrivivir.co`
+(secretaría de plantillas, modo `server`: TEMPLATE-PROTOCOL §4.5). Sus descripciones literales, en la ficha
+de instancia. Un `about` puede llevar avatar (`image`): se publica en el mismo mensaje, una sola vez (HUB §12).
