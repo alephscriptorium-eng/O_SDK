@@ -1,0 +1,315 @@
+{
+  "documento": {
+    "titulo": "Campamento",
+    "subtitulo": "Organigrama y funcionamiento",
+    "descripcion": "Estructura asamblearia, horizontal y en red (plantilla genérica para una acampada)",
+    "tipo": "organigrama",
+    "objetivo_del_movimiento": "<pendiente: objetivo del movimiento, redactado por el colectivo>"
+  },
+  "organos": [
+    {
+      "id": "asamblea_general",
+      "nombre": "Asamblea General",
+      "tipo": "asamblea",
+      "nivel_jerarquico": 1,
+      "descripcion": "Órgano mayor de representación",
+      "funciones": [
+        "Ratifica consensos (técnica del semáforo)",
+        "Espacio informativo y de consenso",
+        "Exposición de nodos y comisiones",
+        "Lectura de comunicados y eventos",
+        "Revisión de acuerdos y temas para los nodos"
+      ],
+      "periodicidad": "diaria",
+      "hora": "20:00",
+      "lugar": "<pendiente: plaza o lugar de la Asamblea General>",
+      "usa_metodo": "tecnica_semaforo"
+    },
+    {
+      "id": "asamblea_internodos",
+      "nombre": "Asamblea Internodos",
+      "tipo": "asamblea",
+      "nivel_jerarquico": 2,
+      "descripcion": "Reunión de portavocías de los nodos territoriales",
+      "funciones": [
+        "Pone en común las propuestas de los nodos",
+        "Aglutina consensos para la Asamblea General",
+        "Portavocías rotativas, sin poder de decisión"
+      ],
+      "periodicidad": "diaria",
+      "hora": "19:00",
+      "nota_horario": "previa a la Asamblea General",
+      "composicion": "portavocias_rotativas"
+    },
+    {
+      "id": "nodos_territoriales",
+      "nombre": "Nodos territoriales",
+      "tipo": "grupo_de_asambleas",
+      "nivel_jerarquico": 3,
+      "funciones": [
+        "Asambleas abiertas por barrios/territorios",
+        "Debaten los temas de la Asamblea General",
+        "Elaboran propuestas y buscan consensos",
+        "Eligen 2-3 portavoces (rotativos) para la Asamblea Internodos",
+        "Periodicidad variable (según cada nodo)"
+      ],
+      "periodicidad": "variable según cada nodo",
+      "miembros": [
+        {
+          "id": "nodo_norte",
+          "nombre": "Nodo Norte"
+        },
+        {
+          "id": "nodo_oeste",
+          "nombre": "Nodo Oeste"
+        },
+        {
+          "id": "nodo_centro",
+          "nombre": "Nodo Centro"
+        },
+        {
+          "id": "nodo_este",
+          "nombre": "Nodo Este"
+        },
+        {
+          "id": "nodo_sur",
+          "nombre": "Nodo Sur"
+        }
+      ]
+    },
+    {
+      "id": "personas",
+      "nombre": "Personas",
+      "tipo": "base",
+      "nivel_jerarquico": 4,
+      "descripcion": "Participación individual",
+      "formas_de_participacion": [
+        "Acudiendo a su nodo territorial",
+        "Uniéndose a una comisión de trabajo",
+        "Siguiendo los canales de comunicación",
+        "Participando en las actividades y eventos"
+      ]
+    },
+    {
+      "id": "comisiones_de_trabajo",
+      "nombre": "Comisiones de trabajo",
+      "tipo": "grupo_de_comisiones",
+      "descripcion": "Funcionamiento, convivencia y desarrollo de el campamento.",
+      "acceso": "Abiertas a toda la población",
+      "miembros": [
+        {
+          "id": "comision_comunicacion",
+          "nombre": "Comunicación",
+          "descripcion": "Comunicación interna y externa, redes, medios, diseño, etc.",
+          "ver_detalle": "comision_de_comunicacion"
+        },
+        {
+          "id": "comision_urbanismo",
+          "nombre": "Urbanismo",
+          "descripcion": "Vivienda, ciudad, planificación."
+        },
+        {
+          "id": "comision_cuidados",
+          "nombre": "Cuidados",
+          "descripcion": "Bienestar, salud, primeros auxilios."
+        },
+        {
+          "id": "comision_dinamizacion",
+          "nombre": "Dinamización",
+          "descripcion": "Facilita las asambleas y procesos de decisión."
+        },
+        {
+          "id": "comision_mediacion",
+          "nombre": "Mediación",
+          "descripcion": "Resolución de conflictos y convivencia."
+        },
+        {
+          "id": "comision_limpieza",
+          "nombre": "Limpieza",
+          "descripcion": "Gestión de residuos y mantenimiento."
+        },
+        {
+          "id": "comision_abastecimiento",
+          "nombre": "Abastecimiento",
+          "descripcion": "Alimentación, materiales y suministros."
+        }
+      ]
+    },
+    {
+      "id": "comision_de_comunicacion",
+      "nombre": "Comisión de Comunicación",
+      "tipo": "comision",
+      "descripcion": "Facilita la comunicación dentro y fuera de el campamento. Coordina con nodos, comisiones y Asamblea General.",
+      "coordina_con": [
+        "nodos_territoriales",
+        "comisiones_de_trabajo",
+        "asamblea_general"
+      ],
+      "subgrupos": {
+        "plataforma": "Telegram",
+        "lista": [
+          "General",
+          "Redes / contenido digital",
+          "Comunicación interna",
+          "Audiovisual (foto/vídeo)",
+          "Diseño y branding",
+          "Cultura y eventos",
+          "Relaciones públicas (PIAR)",
+          "Coordinación / gabinete de crisis",
+          "Corrección de textos"
+        ]
+      }
+    },
+    {
+      "id": "otros_espacios_de_articulacion",
+      "nombre": "Otros espacios de articulación",
+      "tipo": "grupo_de_espacios_externos",
+      "miembros": [
+        {
+          "id": "intercsos",
+          "nombre": "InterCSOs",
+          "descripcion": "Relación con entidades y actores de la sociedad civil (ámbito estatal e internacional)."
+        },
+        {
+          "id": "asamblea_de_colectivos",
+          "nombre": "Asamblea de Colectivos",
+          "descripcion": "Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas."
+        }
+      ]
+    }
+  ],
+  "relaciones": [
+    {
+      "origen": "personas",
+      "destino": "nodos_territoriales",
+      "direccion": "unidireccional",
+      "etiqueta": "Participan, debaten y proponen",
+      "sentido": "ascendente"
+    },
+    {
+      "origen": "nodos_territoriales",
+      "destino": "personas",
+      "direccion": "unidireccional",
+      "etiqueta": "Información, acuerdos y convocatorias",
+      "sentido": "descendente"
+    },
+    {
+      "origen": "asamblea_internodos",
+      "destino": [
+        "nodo_norte",
+        "nodo_oeste",
+        "nodo_centro",
+        "nodo_este",
+        "nodo_sur"
+      ],
+      "direccion": "bidireccional",
+      "etiqueta": null,
+      "nota": "Línea ramificada con flechas hacia cada nodo y de vuelta hacia la Asamblea Internodos (vía portavocías)"
+    },
+    {
+      "origen": "asamblea_internodos",
+      "destino": "asamblea_general",
+      "direccion": "unidireccional",
+      "etiqueta": "Propuestas de los nodos",
+      "sentido": "ascendente"
+    },
+    {
+      "origen": "asamblea_general",
+      "destino": "asamblea_internodos",
+      "direccion": "unidireccional",
+      "etiqueta": "Temas y acuerdos para trabajar en los nodos",
+      "sentido": "descendente"
+    },
+    {
+      "origen": "comisiones_de_trabajo",
+      "destino": "asamblea_general",
+      "direccion": "unidireccional",
+      "etiqueta": "Exponen trabajo y necesidades"
+    },
+    {
+      "origen": "comision_de_comunicacion",
+      "destino": "asamblea_general",
+      "direccion": "unidireccional",
+      "etiqueta": "Lleva propuestas y consensos"
+    },
+    {
+      "origen": "nodos_territoriales",
+      "destino": "comisiones_de_trabajo",
+      "direccion": "unidireccional",
+      "etiqueta": null
+    },
+    {
+      "origen": "nodos_territoriales",
+      "destino": "otros_espacios_de_articulacion",
+      "direccion": "bidireccional",
+      "etiqueta": null
+    }
+  ],
+  "flujo_de_decision": {
+    "ascendente": [
+      "personas",
+      "nodos_territoriales",
+      "asamblea_internodos",
+      "asamblea_general"
+    ],
+    "descendente": [
+      "asamblea_general",
+      "asamblea_internodos",
+      "nodos_territoriales",
+      "personas"
+    ],
+    "secuencia_diaria": [
+      {
+        "hora": "19:00",
+        "organo": "asamblea_internodos"
+      },
+      {
+        "hora": "20:00",
+        "organo": "asamblea_general"
+      }
+    ]
+  },
+  "metodos_y_conceptos": [
+    {
+      "id": "tecnica_semaforo",
+      "nombre": "Técnica del semáforo",
+      "descripcion": "Método de consenso para valorar las propuestas en la Asamblea General.",
+      "aplicado_en": "asamblea_general",
+      "valores": [
+        {
+          "color": "verde",
+          "significado": "Acuerdo / A favor"
+        },
+        {
+          "color": "amarillo",
+          "significado": "Dudas / A revisar"
+        },
+        {
+          "color": "rojo",
+          "significado": "En contra"
+        }
+      ]
+    },
+    {
+      "id": "portavocias_rotativas",
+      "nombre": "Portavocías rotativas",
+      "aplicado_en": [
+        "nodos_territoriales",
+        "asamblea_internodos"
+      ],
+      "caracteristicas": [
+        "2-3 portavoces por nodo",
+        "Rotativas",
+        "Sin poder de decisión",
+        "Transmiten las propuestas de su nodo"
+      ]
+    }
+  ],
+  "metadatos": {
+    "derivado_de": "ARCHIVO/DISCO/retro-exporter/entrada/acampada26s_organigrama.json",
+    "como": "ARCHIVO/DISCO/scriptorium-exported/entrada/derivar-campamento.py (sustituciones de nombre y lugar; la estructura no cambia)",
+    "notas": [
+      "Ningún órgano, relación o método se ha inventado: todo sale del organigrama de origen con los nombres propios neutralizados."
+    ]
+  }
+}

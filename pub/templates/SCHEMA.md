@@ -147,3 +147,35 @@ técnica crea un invite de muchos usos). Lo que no se puede automatizar y siempr
 `tribes` (raíz) → `tribes` (con `parent`) → invitaciones abiertas → `rooms` → `calendars` → `events` →
 `mailing` → `wiki` → `maps` → `votes` (solo guion) → `emergencies` (solo guion) → `courts` (solo guion)
 → `federation` (solo guion). Cada bloque es una unidad de permiso (`--yes <bloque>`).
+
+## Imágenes, visibilidad en `/c` y reparto (desde WP-O131)
+
+Tres campos transversales. Los tres son opcionales en la plantilla salvo donde se indica; la herramienta
+los valida y `--hot` los ejecuta.
+
+| campo | dónde | valores | qué hace |
+|---|---|---|---|
+| `image` | `tribes[]`, `rooms[]`, `maps[]`, `events[]`, `wiki[]` | nombre de fichero (sin ruta) bajo `--assets <dir>`; **png/jpg/webp** | `--hot` lo sube como blob (`blobs.add` + `blobs.push`) y pasa el id: tribu/sala/mapa en `image` (`tribes_model.js:319`, `rooms_model.js:427`, `maps_model.js:494`), evento en `media.images` (`events_model.js:228`), wiki como portada `![image:<título>](&blob)` al inicio del cuerpo (`wiki_model.js:49,182`). **SVG no**: `/c/blob/:id` no lo reconoce y `serveBlob` lo sirve como adjunto (`blobHandler.js:305-313`). Techo 50 MB; recomendado ≤ 1 MB. Calendarios y listas no tienen imagen |
+| `clearnetPublic` | `rooms[]`, `calendars[]`, `maps[]`, `wiki[]` (eventos ya lo tenían) | `true` / `false` | `true` → el bloque `clearnet` de `--hot` publica `{type:'clearnetItem', target, kind, on:true}` (`backend.js:751`), que es lo que hace que el objeto salga en `/c` y en `sitemap.xml`. **Error** si el objeto lleva `tribe`: lo que tiene tribu nunca sale en `/c` (`backend.js:655-751`). Las tribus no llevan este campo: salen en `/c/tribe/:id` solo cuando tienen contenido expuesto |
+| `responsable` | `tribes[]`, `rooms[]`, `calendars[]`, `mailing[]`, `maps[]` (**obligatorio**), `events[]`, `wiki[]` (opcional) | `id` de órgano del organigrama o `<pendiente: …>` | A qué órgano le toca repartir el acceso. Es un hecho del organigrama (no se inventa); **quién dentro del órgano** lo recibe es DECISIÓN del colectivo y va en `meta.reparto`. Lo lee `--reparto` |
+| `meta.reparto` | `meta` | `{ mesa_tecnica, entrega }` | Cabecera de la guía de reparto: quién entrega y por qué canal (QR impreso, en mano…). Nunca el canal que deje el código escrito |
+
+El kit visual que produce esos ficheros: `pub/tools/template-kit.py` (PNG 512×512 por objeto, determinista,
+`manifest.json` con el blob id previsto `&<base64(sha256)>.sha256`); contrato en `pub/templates/assets/README.md`.
+
+### Bloque `clearnet` (nuevo, último del orden de activación)
+
+`tribes` → `subtribes` → `invites` → `rooms` → `calendars` → `events` → `mailing` → `wiki` → `maps` → **`clearnet`**.
+Un `clearnetItem` por objeto con `clearnetPublic: true` y sin `tribe`; `kind` ∈ `rooms | calendars | maps | wiki | events`.
+Es una unidad de permiso como las demás (`--yes clearnet`): hace público en la web abierta lo que antes solo
+veían los habitantes.
+
+### Guía de reparto (`--reparto`)
+
+Libro del **operador**: una sección por `responsable` con sus objetos, el tipo de acceso (tribu abierta →
+botón/QR en la tarjeta; estricta → códigos del autor; lista `CLOSED` → alta por el autor; sala `INVITE-ONLY`
+→ invitación de sala; calendario/mapa suelto `OPEN` → invitación pública en la tarjeta) y **dónde se obtiene**
+en la UI. Con `--ledger` (tras `--hot`) añade el enlace `/c/…` de cada objeto público (`/c/tribe/:id`,
+`/c/calendars/:id`, `/c/rooms/:id`, `/c/maps/:id`, `/c/wiki/:id`, `/c/events/:eventId`). **Nunca** códigos ni
+semillas. Misma fuente para tres salidas: markdown del dosier, wiki en Oasis (`wiki[]` con `file:`) y página
+del sitio (`--html <plantilla poster>`).

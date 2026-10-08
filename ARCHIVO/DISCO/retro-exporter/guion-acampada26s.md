@@ -19,12 +19,14 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum
+- Responsable del reparto: `asamblea_general`
 
 ### 1.2 Asamblea Internodos  `origen: asamblea_internodos`
 - Description: Portavocías rotativas de los nodos territoriales. Pone en común las propuestas de los nodos y aglutina consensos para la Asamblea General. Sin poder de decisión.
 - Tags: internodos, portavocias
 - Status: **Privada** · Mode: **Estricto (solo el autor invita)**
 - Dentro se usará: feed, forum
+- Responsable del reparto: `asamblea_internodos`
 - Nota: La membresía son las portavocías vigentes: rotar = salir + invitar (la clave de la tribu rota en cada salida).
 
 ### 1.3 Nodo Norte  `origen: nodo_norte`
@@ -33,6 +35,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, event
+- Responsable del reparto: `nodo_norte`
 
 ### 1.4 Nodo Oeste  `origen: nodo_oeste`
 - Description: Asamblea abierta de barrios y territorios del oeste. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
@@ -40,6 +43,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, event
+- Responsable del reparto: `nodo_oeste`
 
 ### 1.5 Nodo Centro  `origen: nodo_centro`
 - Description: Asamblea abierta de barrios y territorios del centro. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
@@ -47,6 +51,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, event
+- Responsable del reparto: `nodo_centro`
 
 ### 1.6 Nodo Este  `origen: nodo_este`
 - Description: Asamblea abierta de barrios y territorios del este. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
@@ -54,6 +59,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, event
+- Responsable del reparto: `nodo_este`
 
 ### 1.7 Nodo Sur  `origen: nodo_sur`
 - Description: Asamblea abierta de barrios y territorios del sur. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
@@ -61,6 +67,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, event
+- Responsable del reparto: `nodo_sur`
 
 ### 1.8 Comisión de Comunicación  `origen: comision_comunicacion`
 - Description: Comunicación interna y externa, redes, medios, diseño. Coordina con nodos, comisiones y Asamblea General.
@@ -68,6 +75,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, task
+- Responsable del reparto: `comision_comunicacion`
 
 ### 1.9 Comisión de Urbanismo  `origen: comision_urbanismo`
 - Description: Vivienda, ciudad, planificación.
@@ -75,6 +83,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, task
+- Responsable del reparto: `comision_urbanismo`
 
 ### 1.10 Comisión de Cuidados  `origen: comision_cuidados`
 - Description: Bienestar, salud, primeros auxilios.
@@ -82,6 +91,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, task
+- Responsable del reparto: `comision_cuidados`
 
 ### 1.11 Comisión de Dinamización  `origen: comision_dinamizacion`
 - Description: Facilita las asambleas y los procesos de decisión.
@@ -89,6 +99,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, task
+- Responsable del reparto: `comision_dinamizacion`
 
 ### 1.12 Comisión de Mediación  `origen: comision_mediacion`
 - Description: Resolución de conflictos y convivencia.
@@ -96,6 +107,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, task
+- Responsable del reparto: `comision_mediacion`
 
 ### 1.13 Comisión de Limpieza  `origen: comision_limpieza`
 - Description: Gestión de residuos y mantenimiento.
@@ -103,6 +115,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, task
+- Responsable del reparto: `comision_limpieza`
 
 ### 1.14 Comisión de Abastecimiento  `origen: comision_abastecimiento`
 - Description: Alimentación, materiales y suministros.
@@ -110,18 +123,21 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
 - Dentro se usará: feed, forum, task
+- Responsable del reparto: `comision_abastecimiento`
 
 ### 1.15 InterCSOs  `origen: intercsos`
 - Description: Relación con entidades y actores de la sociedad civil (ámbito estatal e internacional). Tribu de enlace.
 - Tags: articulacion, intercsos
 - Status: **Pública** · Mode: **Estricto (solo el autor invita)**
 - Dentro se usará: feed, forum
+- Responsable del reparto: `intercsos`
 
 ### 1.16 Asamblea de Colectivos  `origen: asamblea_de_colectivos`
 - Description: Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas. Tribu de enlace.
 - Tags: articulacion, colectivos
 - Status: **Pública** · Mode: **Estricto (solo el autor invita)**
 - Dentro se usará: feed, forum
+- Responsable del reparto: `asamblea_de_colectivos`
 
 ## 2. Sub-tribus (9) — abrir la tribu madre → Create sub-tribe
 
