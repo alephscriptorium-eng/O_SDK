@@ -16,8 +16,9 @@ blob id previsto en `manifest.json`); plantilla genérica `pub/templates/campame
 de la de Acampada26S; `ssb-admin.js publish-about --image`. Campos nuevos en `SCHEMA.md`: `image`,
 `clearnetPublic`, `responsable`, `meta.reparto`. Devops: el cuarto nodo en `upgrade-gates`, `capacity`,
 `lib-node`, `deploy-status`. Docs: TEMPLATE-PROTOCOL §4.3-§4.6, HUB §11-§12, fichas, AGENTES §5,
-roles/pub, nav del sitio. Dosier: `ARCHIVO/DISCO/scriptorium-exported/`. **Pendiente**: drill local
-(Docker apagado al escribirlo) y alta en el VPS con GO. D-O29.
+roles/pub, nav del sitio. Dosier: `ARCHIVO/DISCO/scriptorium-exported/`. **Drill local ejecutado**
+(146 mensajes en 10 bloques, `/c` del HUB con lo marcado, 12 hallazgos y 7 correcciones:
+`plan/REPORTES/WP-O131-retro-bot-via-caliente.md`). **Pendiente**: alta en el VPS con GO. D-O29.
 
 ### Changed — Oasis 1.2.3 en local y en el host (WP-O128, 2026-10-07)
 

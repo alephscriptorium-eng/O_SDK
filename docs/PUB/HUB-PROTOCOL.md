@@ -432,8 +432,11 @@ declara en su `about` y **no se lista a sí mismo**. El pub no se toca para aña
 - **Bot en modo `server`** (sin backend; el de la casa: bot 3, `retro.escrivivir.co`, TEMPLATE-PROTOCOL §4.5):
   el bootstrap de §3 se hace por el socket, no por HTTP: `pub/tools/ssb-probe.js` con
   `SSB_ACTION=invite-accept` y `SSB_INVITE='<host:port:@key~seed>'` (precedente UPGRADE U6) en lugar de
-  `POST /settings/invite/accept`; `hub-conn-fix.js` igual; el `about`, con `ssb-admin.js publish-about` (§12,
-  variante sin formulario). No hay ventana `PUBLIC=false` que abrir ni cerrar: nada escucha en HTTP.
+  `POST /settings/invite/accept`; **reiniciar** antes de `hub-conn-fix.js` (un nodo `server` escribe
+  `conn.json` al parar: recién aceptado el invite está vacío) y reiniciar después; el `about`, con
+  `ssb-admin.js publish-about` (§12, variante sin formulario). No hay ventana `PUBLIC=false` que abrir ni
+  cerrar: nada escucha en HTTP. El feed queda con `contact` + `pub` (de `invite.accept`) + `oasisVersion`
+  (del reinicio): es lo esperado, no una desviación (medido, WP-O131).
 
 ## 12. Poner o cambiar el nombre de un bot (`about`)
 
@@ -473,8 +476,11 @@ sin ángulos ni etiquetas (el saneado los elimina; el formulario no comprueba el
    ```
 
    La descripción viaja en un fichero (`-F 'campo=</ruta'` lee su contenido): una línea, UTF-8, sin salto
-   final; se sube al host, se copia al contenedor con `docker cp` y se borra después. Así no hay comillas
-   ni acentos que escapar a través de ssh y `docker exec`.
+   final; entra al contenedor **por stdin** (`printf '%s' "$DESC" | docker exec -i <ctr> sh -c 'cat >
+   /tmp/desc.txt'`) y se borra después. Así no hay comillas ni acentos que escapar a través de ssh y
+   `docker exec`. **No con `docker cp` desde una ruta del host**: en Git Bash `/tmp/desc.txt` es `C:\tmp`, el
+   `cp` falla y el `$(cat …)` queda vacío: en el drill de WP-O131 un `about` salió sin descripción por eso.
+   Antes del paso 4, leer el mensaje publicado y comprobar que `description` no está vacía.
 
    **Con imagen (avatar)**: el mismo formulario admite `-F 'image=@/tmp/avatar.png;type=image/png'`
    (`backend.js:6299-6303` → `publishProfileEdit`, `main_models.js:1967-1988`: sube el blob y lo pone en el

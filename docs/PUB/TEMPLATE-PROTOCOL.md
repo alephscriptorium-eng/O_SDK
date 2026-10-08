@@ -2,7 +2,8 @@
 
 > **Estado · EN OBRAS 2026-10-08** (WP-O129 → WP-O131, rama `dev/scriptorium-exported`). Existen las vías
 > **guion** (`--guion`), **reparto** (`--reparto`, la guía del operador) y **caliente** (`--hot`, desde el bot
-> secretaría; código escrito, **drill local pendiente de Docker** y alta en el VPS pendiente de GO). La vía
+> secretaría; **drill local ejecutado el 2026-10-08**, G0-G10 en verde con 12 hallazgos medidos:
+> `plan/REPORTES/WP-O131-retro-bot-via-caliente.md`; alta en el VPS pendiente de GO). La vía
 > **fría** (WP-O130) tiene contrato y no código: el custodio adelantó la caliente. Demos: Acampada26S
 > (`ARCHIVO/DISCO/retro-exporter/`, vía guion) y la plantilla genérica **Campamento** con kit visual y bot
 > retro (`ARCHIVO/DISCO/scriptorium-exported/`).
@@ -75,7 +76,7 @@ termina con exit 0 y todos los `origen` resueltos; cada firma citada en SCHEMA e
 |---|---|---|---|---|
 | **Guion** (`--guion`) | emite un markdown paso a paso: menú de la UI, campos, quién lo crea; incluye lo que no se automatiza (workflow por cliente, invite de asamblea, federación) | cualquier Node, sin SSB | no publica nada | **disponible** (WP-O129) |
 | **Fría** (`--cold`) | siembra con el sbot embebido (`src/client/gui.js`, como `test/seed.js:17-22` de upstream) en un `ssb_path` aislado con la red pausada | contenedor (`src/server/node_modules` es un enlace que solo existe en la imagen) | sí: se borra el directorio | contrato aquí; código en WP-O130 |
-| **Caliente** (`--hot`) | siembra desde una identidad **«secretaría»**: sbot propio (patrón bots de soporte, `HUB-PROTOCOL.md` §3 y §11) que redime un invite del pub y publica como ella; el seeder corre dentro, por su socket unix | contenedor del bot en modo `server` (`oasis-retro-bot`, §4.5) o segundo sbot a mano en una instalación upstream (`ssb_path=<dir> node src/server/SSB_server.js start`) | el feed de la secretaría se puede dejar de seguir o bloquear; lo publicado no desaparece | **código escrito** (WP-O131, `pub/tools/lib/seed-hot.js`); drill local y VPS pendientes |
+| **Caliente** (`--hot`) | siembra desde una identidad **«secretaría»**: sbot propio (patrón bots de soporte, `HUB-PROTOCOL.md` §3 y §11) que redime un invite del pub y publica como ella; el seeder corre dentro, por su socket unix | contenedor del bot en modo `server` (`oasis-retro-bot`, §4.5) o segundo sbot a mano en una instalación upstream (`ssb_path=<dir> node src/server/SSB_server.js start`) | el feed de la secretaría se puede dejar de seguir o bloquear; lo publicado no desaparece | **ensayada en local** (WP-O131: 146 mensajes, 10 bloques, una parada por delta y reejecución sin duplicados); VPS pendiente de GO |
 | **Reparto** (`--reparto`) | emite la **guía de reparto de accesos**: por órgano responsable, qué objetos le tocan, qué tipo de acceso y dónde se obtiene; con ledger, los enlaces `/c/…` | cualquier Node, sin SSB | no publica nada | **disponible** (WP-O131, §4.6) |
 
 **Descartado y por qué**: publicar desde una «identidad proxy» por el socket del pub. Los modelos
@@ -130,7 +131,10 @@ node pub/tools/template-seed.js --template <json> (--guion | --reparto | --hot |
   devuelve `generateOpenInvite` **no se guardan ni se imprimen**.
 - **Trampas conocidas**: el stream vivo de tribus obliga a `process.exit`; `parliament` exige legislatura
   activa; eventos y calendarios exigen fecha futura; votaciones ≥ 7 días; `diaria` no existe (7 fechas
-  semanales); una `hora` `<pendiente>` siembra a las 12:00 y queda listada como pendiente.
+  semanales); una `hora` `<pendiente>` siembra a las 12:00 y queda listada como pendiente. Medidas en el
+  drill: una `nota` en la primera fecha de un calendario es un mensaje más (`calendarNote`,
+  `calendars_model.js:452-467`); el cuerpo de una wiki > 6000 B va a un `bodyBlob` que el modelo añade sin
+  `push` (el seeder lo empuja: sin eso la página sale vacía en el HUB).
 - **Secretaría** (`--hot`): el bot `oasis-retro-bot` (§4.5). Las claves de tribu quedan en su keyring
   (`oasis/keys/tribes-keys.json`): quién lo custodia es DECISIÓN del colectivo y entra en el backup del volumen.
 
@@ -149,10 +153,13 @@ contrato del directorio en `pub/templates/assets/README.md`. Medido en 1.2.3:
   a un `want`. Que el HUB sirva `/c/blob/<id>` con `image/png` es un gate del drill, no una suposición.
 - **Nada sale en `/c` por existir**: salas, calendarios, mapas, wikis y eventos de un autor solo aparecen con
   `about.visibilityPrefs.clearnet*` del autor o con un mensaje `{type:'clearnetItem', target, kind, on:true}`
-  por objeto (`backend.js:655-751`); lo que lleva `tribe` **nunca**. Por eso existe el bloque **`clearnet`**:
-  publica un `clearnetItem` por objeto con `clearnetPublic: true` y sin tribu, y es una unidad de permiso
-  como las demás (hace público en la web abierta lo que antes solo veían los habitantes). Las tribus salen en
-  `/c/tribe/:id` cuando tienen contenido expuesto.
+  por objeto (`backend.js:655-751`; para eventos también, `backend.js:1019`: su propio `clearnetPublic` **no
+  basta**, medido); lo que lleva `tribe` **nunca**; y tampoco lo que el modelo **cifra para sí** aunque esté
+  suelto: mapa `SINGLE`/`CLOSED` (`maps_model.js:500-507`), calendario `CLOSED`, sala `INVITE-ONLY` (la
+  validación lo rechaza). Por eso existe el bloque **`clearnet`**: publica un `clearnetItem` por objeto con
+  `clearnetPublic: true` (y uno por repetición de un evento recurrente), y es una unidad de permiso como las
+  demás (hace público en la web abierta lo que antes solo veían los habitantes). Las tribus públicas salen en
+  `/c/tribe/:id` (medido: 24 de 24 con contenido).
 
 ### 4.5 Secretaría: el bot de soporte que siembra
 
@@ -165,12 +172,20 @@ Un bot más de la serie del pub (HUB §11): cuenta SSB propia, contenedor propio
   automáticos, ni `about` de `clearnetSince`, ni PM de bienvenida. Lo único que el sbot publica por su cuenta es
   `oasisVersion` tras el primer mensaje del feed (`SSB_server.js:325-340`): se declara en los gates.
 - **Sin `oasis-config.json`** (en modo server apenas se lee; `regen-node-configs.js` no lo genera).
-- **Bootstrap sin backend** (HUB §3 por el socket): `invite.create` en el pub → host reescrito a la IP del
-  bridge → `ssb-probe.js` con `SSB_ACTION=invite-accept` (precedente: UPGRADE U6) → verificar por estado
-  (`conn.json` del bot, `contact` +1 en el pub) → `hub-conn-fix.js` → `docker restart` → CONNECTED.
-- **`about` con imagen**: `ssb-admin.js publish-about '<nombre>' '<descripción>' --image <png>` sube el blob y
-  publica un único `about` (`name`, `description`, `image`). Irreversible: literal aprobado, contar antes y
-  después (HUB §12). El avatar del bot entra por bind (`OASIS_RETRO_BOT_ASSETS_DIR`) o `docker cp`: los PNG no
+- **Bootstrap sin backend** (HUB §3 por el socket): `invite.create` en el pub (en un pub local, con
+  `external: '<dominio.con.punto>'`) → host reescrito a la IP del bridge → `ssb-probe.js` con
+  `SSB_ACTION=invite-accept` (precedente: UPGRADE U6) → **`docker restart`** (un nodo `server` persiste
+  `conn.json` al parar: antes del reinicio está vacío) → `hub-conn-fix.js` → `docker restart` → CONNECTED;
+  verificar por estado (`conn.json` sin seed, `contact` +1 en el pub). El feed del bot queda en 3:
+  `contact` y `pub` (los publica `invite.accept`) y `oasisVersion` (el reinicio). La **foto base** para medir
+  la siembra se toma **después** de esto: un sbot sin mensajes no tiene `db2/log.bipf` y `snapshot` lo da
+  por ilegible.
+- **`about` con imagen**: `ssb-admin.js publish-about '<nombre>' "$(cat /tmp/desc.txt)" --image <png>` sube el
+  blob y publica un único `about` (`name`, `description`, `image`). Irreversible: literal aprobado, contar
+  antes y después (HUB §12). La descripción entra al contenedor **por stdin** (`printf … | docker exec -i …
+  'cat > /tmp/desc.txt'`), nunca con `docker cp` de una ruta del host: en el drill ese `cp` falló en Windows
+  y el `about` salió sin descripción. Antes de dar el `about` por bueno: leer el mensaje y comprobar
+  `description` no vacía e `image` = el blob id previsto. El avatar del bot entra por bind (`OASIS_RETRO_BOT_ASSETS_DIR`) o `docker cp`: los PNG no
   viajan en la imagen Docker (`.dockerignore`).
 - **Qué monta**: `ssb-data`, `logs`, `config/retro-bot/ssb-config:ro` (`pub:false`, `hops:3`, `onion: []`),
   `pub/tools:ro`, `pub/templates:ro` y el directorio de assets `:ro`. Sin `ports`, sin ruta en Caddy.
@@ -196,9 +211,14 @@ la tarjeta) y **dónde se obtiene** en la UI. Lo genera `--reparto` desde el cam
 
 ## 5. Verificación tras activar
 
+- **Antes de medir `/c`**: que el HUB tenga el feed de la secretaría (`ssb-probe.js` con `SSB_FEED=<bot>` en
+  el HUB: `seq` = el del bot). Está a 2 saltos (sigue al pub, el pub al bot) y la replicación no llegó sola en
+  el drill: hizo falta reiniciar el HUB (20 s). Y **vaciar la caché** del HUB (VPS: `hub-disk.sh
+  prune-cache`): el sitemap y las listas de antes de la siembra se sirven 7 días.
 - Recuento por tipo en el visor público: `/c/sitemap.xml` y `/c/rss/<módulo>`. Aparecen **solo** los objetos
-  sin tribu que llevan su `clearnetItem` (bloque `clearnet`, §4.4); los que tienen tribu, nunca; las tribus,
-  cuando tienen contenido expuesto. Cada imagen del kit: `/c/blob/<id>` responde `200 image/png`.
+  que llevan su `clearnetItem` y que el HUB puede leer (bloque `clearnet`, §4.4); los que tienen tribu o van
+  cifrados, nunca; las tribus públicas, en `/c/tribe/:id`. Cada imagen del kit: `/c/blob/<id>` responde
+  `200 image/png`. Medido en el drill: 1 calendario, 7 eventos, 1 mapa, 5 wikis, 24 tribus; 0 salas (todas con tribu).
 - `./oasis.sh status` (pares) y, si hubo secretaría, su `sequence` subiendo en el pub
   (`pub/tools/ssb-probe.js`).
 - Las tribus con invitación abierta muestran código y QR en su tarjeta; **el código no se copia a
@@ -223,4 +243,5 @@ activa, los señala.
 | Fecha | Qué | Dónde |
 |---|---|---|
 | 2026-10-07 | Primera plantilla (Acampada26S), guion generado, vías fría y caliente con contrato | WP-O129, `ARCHIVO/DISCO/retro-exporter/` |
-| 2026-10-08 | Vía caliente escrita (`--hot`, bot retro en modo `server`, bloque `clearnet`), kit visual, guía de reparto (`--reparto`, tres salidas), plantilla genérica Campamento. Drill local y VPS: pendientes | WP-O131, `ARCHIVO/DISCO/scriptorium-exported/` |
+| 2026-10-08 | Vía caliente escrita (`--hot`, bot retro en modo `server`, bloque `clearnet`), kit visual, guía de reparto (`--reparto`, tres salidas), plantilla genérica Campamento | WP-O131, `ARCHIVO/DISCO/scriptorium-exported/` |
+| 2026-10-08 | **Drill local ejecutado**: bootstrap por socket, `about` con avatar, 146 mensajes en 10 bloques, una parada por delta (`calendarNote`), reejecución sin duplicados, `/c` del HUB con lo marcado y solo eso, 36 enlaces de la guía en 200. 12 hallazgos, 7 correcciones aplicadas | `plan/REPORTES/WP-O131-retro-bot-via-caliente.md` · `ARCHIVO/DISCO/scriptorium-exported/runbook-drill.md` |

@@ -21,11 +21,11 @@ ejecutó al vuelo), **(2) drill local** con identidad desechable, **(3) VPS** co
 | Fuente del kit | `assets/fonts/DejaVuSans-Bold.ttf` (+ LICENSE) · sha256 `e6476c1b80502924294eed40894c5b18e06c181444ca953e5334262df9c27724` | vendorizada (ni el repo ni PIL traían TTF) |
 | **Guion** de activación humana | `guion-campamento.md` (`npm run pub:template:guion`) | regenerable |
 | **Guía de reparto** (libro del operador) · misma fuente que la wiki `wiki_reparto` y que la Sala 02 | `guia-reparto-campamento.md` (`npm run pub:template:reparto`) · `pub/site/parlament/campamento/index.html` (`npm run pub:template:reparto:html`) | sin enlaces `/c` hasta tener ledger (fase 2) |
-| **Herramienta**: `--hot` (planificador puro + ejecutor por socket), `--reparto` | `pub/tools/template-seed.js` · `pub/tools/lib/{seed-plan,seed-hot,reparto}.js` · `pub/scripts/retro-seed.sh` | escrito; sin ejecutar contra un sbot todavía |
-| **Bot retro**: servicio, config, variables, `about` con imagen | `pub/docker-compose.pub.yml` (`oasis-retro-bot`, perfil `retro`) · `pub/config/retro-bot/ssb-config` · `pub/.env.*.example` · `pub/tools/ssb-admin.js publish-about --image` | escrito; `docker compose config` pendiente (Docker apagado) |
-| Fase 2 · drill local, gates G0-G11 con salida esperada | `runbook-drill.md` | **pendiente de ejecutar** |
+| **Herramienta**: `--hot` (planificador puro + ejecutor por socket), `--reparto` | `pub/tools/template-seed.js` · `pub/tools/lib/{seed-plan,seed-hot,reparto}.js` · `pub/scripts/retro-seed.sh` | ensayada en el drill (146 mensajes; 4 correcciones medidas) |
+| **Bot retro**: servicio, config, variables, `about` con imagen | `pub/docker-compose.pub.yml` (`oasis-retro-bot`, perfil `retro`) · `pub/config/retro-bot/ssb-config` · `pub/.env.*.example` · `pub/tools/ssb-admin.js publish-about --image` | arrancado, bootstrapeado y con `about` en local |
+| Fase 2 · drill local, gates G0-G11 con comando y salida | `runbook-drill.md` · reporte `plan/REPORTES/WP-O131-retro-bot-via-caliente.md` | **ejecutado 2026-10-08**: G0-G10 ✅, cliente local no medido, G11 no ejecutado (estado vivo) |
 | Fase 3 · VPS, pasos con PERMISO | `runbook-vps.md` | runbook; sin GO |
-| Dry-run y evidencia del seeder (fase 2) | `dry-run/` | vacío hasta el drill |
+| Dry-run y evidencia del seeder (fase 2) | `dry-run/hot-*.jsonl` · `ledger-drill.json` · `guia-reparto-drill.md` | del drill (identidad desechable; el ledger no lleva códigos) |
 | Decisión · Backlog | `plan/DECISIONES.md` D-O29 · `plan/BACKLOG.md` WP-O131 (adelantado a O130) | asentados |
 
 ## Comandos que regeneran todo (en este orden)
