@@ -188,7 +188,8 @@ Un bot más de la serie del pub (HUB §11): cuenta SSB propia, contenedor propio
   `description` no vacía e `image` = el blob id previsto. El avatar del bot entra por bind (`OASIS_RETRO_BOT_ASSETS_DIR`) o `docker cp`: los PNG no
   viajan en la imagen Docker (`.dockerignore`).
 - **Qué monta**: `ssb-data`, `logs`, `config/retro-bot/ssb-config:ro` (`pub:false`, `hops:3`, `onion: []`),
-  `pub/tools:ro`, `pub/templates:ro` y el directorio de assets `:ro`. Sin `ports`, sin ruta en Caddy.
+  `pub/tools:ro`, `pub/templates:ro` y el directorio de assets `:ro` en `/app/pub/assets/<plantilla>` (hermano, no anidado:
+  un bind dentro de otro `:ro` no se puede crear si la imagen no trae `/app/pub`; medido en el VPS). Sin `ports`, sin ruta en Caddy.
   Variables `OASIS_RETRO_BOT_*` en `pub/.env.*.example`; perfil compose `retro` (`npm run pub:local:retro-bot:up`).
 - Los scripts que enumeran nodos lo conocen: `upgrade-gates.sh`, `capacity.sh`, `lib-node.sh`
   (`*retro-bot*` antes del comodín, o se mediría contra el `.ssb` del pub), `deploy-status.sh`.

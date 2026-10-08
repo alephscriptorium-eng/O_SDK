@@ -248,7 +248,9 @@ services:
       # imagen Docker (.dockerignore excluye *.png): entran por este bind.
       - ./tools:/app/pub/tools:ro
       - ./templates:/app/pub/templates:ro
-      - "${OASIS_RETRO_BOT_ASSETS_DIR:-./templates/assets/campamento}:/app/pub/templates/assets/campamento:ro"
+      # Hermano de templates, no anidado: un bind dentro de otro bind :ro no se puede crear si la imagen no trae
+      # /app/pub (medido en el VPS, WP-O131 fase 3: «read-only file system» al crear el punto de montaje).
+      - "${OASIS_RETRO_BOT_ASSETS_DIR:-./templates/assets/campamento}:/app/pub/assets/campamento:ro"
     # sin ports y sin ruta en Caddy: 8008 solo en oasis_pub_net. Sin oasis-config.json: en modo server apenas se lee.
     mem_limit: ${OASIS_RETRO_BOT_MEM_LIMIT:-512m}
     logging:

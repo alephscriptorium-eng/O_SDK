@@ -13,7 +13,7 @@
 // Se ejecuta DENTRO del contenedor del bot (las dependencias solo existen en la imagen):
 //   docker exec -i -u oasis -e HOME=/home/oasis -e OASIS_PUB_ID='@…' oasis-pub-retro-bot sh -lc \
 //     'cd /app/src/server && node /app/pub/tools/template-seed.js --template /app/pub/templates/campamento.json \
-//      --assets /app/pub/templates/assets/campamento --hot [--yes tribes] [--evidence /app/logs/seed-<tag>.json]'
+//      --assets /app/pub/assets/campamento --hot [--yes tribes] [--evidence /app/logs/seed-<tag>.json]'
 'use strict';
 const fs = require('fs');
 const path = require('path');

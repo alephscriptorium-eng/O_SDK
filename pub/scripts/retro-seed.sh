@@ -30,4 +30,4 @@ fi
 export MSYS_NO_PATHCONV=1
 exec docker exec -i -u oasis -e HOME=/home/oasis -e OASIS_PUB_ID="$PUB_ID" "$CTR" sh -lc \
   "cd /app/src/server && node /app/pub/tools/template-seed.js --template /app/pub/templates/${TEMPLATE}.json \
-   --assets /app/pub/templates/assets/${TEMPLATE} --hot --evidence /app/logs/seed-${TAG}.json ${YES[*]:-}"
+   --assets /app/pub/assets/${TEMPLATE} --hot --evidence /app/logs/seed-${TAG}.json ${YES[*]:-}"
