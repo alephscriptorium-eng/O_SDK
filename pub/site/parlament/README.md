@@ -29,6 +29,12 @@ La landing cuenta el proceso en 3 etapas:
 - Si se añaden páginas hijas, deben extender las 3 etapas sin duplicar los cinco índices.
 - Mantener estética del PUB: `assets/fanzine.css`, diagramas ASCII, tablas y cutouts.
 
+## Páginas hijas
+
+| Página | Fuente | Regla |
+|---|---|---|
+| `campamento/index.html` | **generada** por `npm run pub:template:reparto:html` (`pub/tools/template-seed.js --reparto --html pub/site-templates/poster/guia.html`) desde `pub/templates/campamento.json` y, tras la activación, su ledger | no se edita a mano; es la misma guía que la wiki «Guía de reparto de accesos» del pub y que `ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.md`. Enlaza a `/c/…`; no repite lo que el visor ya muestra. Sin códigos (WP-O131, TEMPLATE-PROTOCOL §4.6) |
+
 ## Futuras páginas opcionales
 
 ```text
