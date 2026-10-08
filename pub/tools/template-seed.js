@@ -92,9 +92,14 @@ function validate(t, orgIds, assetsDir, requireFiles) {
     if (assetsDir && !fs.existsSync(path.join(assetsDir, x.image))) err(`${where}: "image" ${x.image} no existe en ${assetsDir}`);
   };
   // clearnetPublic: solo tiene efecto en objetos sin tribu (backend.js:655-751); con tribu es un error de plantilla.
-  const checkClearnet = (where, x) => {
+  const checkClearnet = (where, x, section) => {
     if (x.clearnetPublic !== undefined && typeof x.clearnetPublic !== 'boolean') err(`${where}: clearnetPublic debe ser true/false`);
     if (x.clearnetPublic === true && x.tribe) err(`${where}: clearnetPublic con tribe ${x.tribe}: lo que lleva tribu nunca sale en /c`);
+    // Medido en el drill (WP-O131 G8): un objeto suelto que el modelo cifra para sí (mapa SINGLE/CLOSED,
+    // calendario CLOSED, sala INVITE-ONLY) no lo puede leer el HUB aunque lleve clearnetItem.
+    if (x.clearnetPublic === true && section === 'maps' && x.mapType !== 'OPEN') err(`${where}: clearnetPublic con mapType ${x.mapType}: solo un mapa OPEN sale en /c (los demás van cifrados, maps_model.js:500-507)`);
+    if (x.clearnetPublic === true && section === 'calendars' && x.status !== 'OPEN') err(`${where}: clearnetPublic con status ${x.status}: solo un calendario OPEN suelto sale en /c (lleva invitación pública)`);
+    if (x.clearnetPublic === true && section === 'rooms' && x.status !== 'OPEN') err(`${where}: clearnetPublic con status ${x.status}: solo una sala OPEN suelta sale en /c`);
   };
 
   if (!t.meta || !t.meta.id) err('meta.id obligatorio');
@@ -127,7 +132,7 @@ function validate(t, orgIds, assetsDir, requireFiles) {
     if (!x.title) err(`${w}: falta title`);
     if (!ROOM_STATUS.includes(x.status)) err(`${w}: status ∉ ${ROOM_STATUS.join('|')}`);
     refTribe(w, x.tribe);
-    checkResponsable(w, x); checkImage(w, x); checkClearnet(w, x);
+    checkResponsable(w, x); checkImage(w, x); checkClearnet(w, x, 'rooms');
   });
 
   (t.calendars || []).forEach((x, i) => {
@@ -136,7 +141,7 @@ function validate(t, orgIds, assetsDir, requireFiles) {
     if (!x.title) err(`${w}: falta title`);
     refTribe(w, x.tribe);
     if (!Array.isArray(x.dates) || !x.dates.length) err(`${w}: dates[] vacío (el modelo exige firstDate)`);
-    checkResponsable(w, x); checkClearnet(w, x);
+    checkResponsable(w, x); checkClearnet(w, x, 'calendars');
     (x.dates || []).forEach((d, j) => {
       if (!(Number.isInteger(d.offsetDays) && d.offsetDays >= 1)) err(`${w}.dates[${j}]: offsetDays entero ≥ 1`);
       if (!RECURRENCES.includes(d.recurrencia)) err(`${w}.dates[${j}]: recurrencia ∉ ${RECURRENCES.join('|')}`);
@@ -167,10 +172,11 @@ function validate(t, orgIds, assetsDir, requireFiles) {
     if (!x.title) err(`${w}: falta title`);
     if (!x.body && !x.file) err(`${w}: body o file`);
     // El fichero de una wiki solo hace falta para sembrar (--hot); --reparto es quien genera uno de ellos.
-    if (x.file && requireFiles && !fs.existsSync(x.file)) err(`${w}: file ${x.file} no existe`);
+    // En --hot el repo no está en el contenedor: vale la copia que template-kit.py deja en <assets>/wiki/<id>.md.
+    if (x.file && requireFiles && !fs.existsSync(x.file) && !(assetsDir && fs.existsSync(path.join(assetsDir, 'wiki', `${x.id}.md`)))) err(`${w}: file ${x.file} no existe (ni ${assetsDir || '<assets>'}/wiki/${x.id}.md)`);
     if (x.editPolicy && !EDIT_POLICIES.includes(x.editPolicy)) err(`${w}: editPolicy ∉ ${EDIT_POLICIES.join('|')}`);
     notePending(w, x.body);
-    checkImage(w, x); checkClearnet(w, x);
+    checkImage(w, x); checkClearnet(w, x, 'wiki');
   });
 
   (t.maps || []).forEach((x, i) => {
@@ -180,7 +186,7 @@ function validate(t, orgIds, assetsDir, requireFiles) {
     if (!MAP_TYPES.includes(x.mapType)) err(`${w}: mapType ∉ ${MAP_TYPES.join('|')}`);
     if (x.mapType === 'SINGLE' && (x.markers || []).length) err(`${w}: SINGLE no admite marcadores`);
     notePending(`${w}.nota`, x.nota);
-    checkResponsable(w, x); checkImage(w, x); checkClearnet(w, x);
+    checkResponsable(w, x); checkImage(w, x); checkClearnet(w, x, 'maps');
   });
 
   if (t.votes) {

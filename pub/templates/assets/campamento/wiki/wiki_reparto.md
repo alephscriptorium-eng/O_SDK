@@ -19,7 +19,7 @@ Libro del **operador** (la mesa técnica): a qué órgano le toca cada tribu, sa
 | **Sala · Asamblea General** (rooms) | sala abierta | nadie reparte: es abierta | Entra cualquier miembro de su tribu; sin tribu, cualquiera que la vea en Rooms. | no |
 | **Asamblea General** (calendars) | calendario suelto OPEN | nadie reparte: es abierto | Invitación pública en la tarjeta del calendario (Menú → Calendars). | sí (tras la activación) |
 | **Acuerdos de la Asamblea General** (mailing) | lista abierta | nadie | Quien escribe queda suscrito; nada que repartir. | no |
-| **La plaza** (maps) | mapa SINGLE | el autor | El autor invita desde la tarjeta. | sí (tras la activación) |
+| **La plaza** (maps) | mapa SINGLE | el autor | El autor invita desde la tarjeta. | no |
 | **Asamblea General · en la plaza** (events) | evento público | nadie | Menú → Events. Los públicos los ve cualquiera. | sí (tras la activación) |
 
 ## 2. Asamblea Internodos  `responsable: asamblea_internodos`

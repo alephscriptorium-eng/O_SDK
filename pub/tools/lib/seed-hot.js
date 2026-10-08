@@ -22,7 +22,7 @@ const { createRequire } = require('module');
 const SRC = process.env.OASIS_SRC_DIR || '/app/src';
 const BLOCK_TYPES = {
   tribes: ['tribe'], subtribes: ['tribe'], invites: ['tribe-invite-msg', 'tribe-open-invite'],
-  rooms: ['room', 'tribe-keys'], calendars: ['calendar', 'tribe-keys', 'tombstone', 'calendarDate'],
+  rooms: ['room', 'tribe-keys'], calendars: ['calendar', 'tribe-keys', 'tombstone', 'calendarDate', 'calendarNote'],
   events: ['event', 'tribe-keys'], mailing: ['mailingList'], wiki: ['wikiPage'], maps: ['map', 'tribe-keys', 'mapMarker'],
   clearnet: ['clearnetItem']
 };
@@ -188,6 +188,9 @@ async function run({ t, args, plan, pending }) {
           if (c.file) body = fs.readFileSync(path.join(args.assets, 'wiki', `${c.id}.md`), 'utf8');
           if (c.image) { const id = await uploadAsset(c.image); body = `![image:${c.args.title}](${id})\n\n${body || ''}`; }
           const r = await M.wiki.createPage({ title: c.args.title, body, tags: c.args.tags, aliases: [], editPolicy: c.args.editPolicy, license: '', tribeId: null });
+          // Un cuerpo > 6000 B va a un blob (wiki_model.js:86-98) que el modelo añade sin `push`: sin esto el HUB
+          // no lo trae y la página sale vacía (medido en el drill, G8).
+          try { const m = await cbp(sbot.get, r.key); if (m && m.content && m.content.bodyBlob) await cbp(sbot.blobs.push, m.content.bodyBlob); } catch (_) {}
           return r.key;
         }
         case 'maps.createMap': {

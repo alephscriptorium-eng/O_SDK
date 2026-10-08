@@ -92,7 +92,7 @@ for x in t['mailing']:
 for x in t['maps']:
     x['responsable'] = x['origen']
     x['image'] = img('mapa', x)
-    x['clearnetPublic'] = True
+    x['clearnetPublic'] = x['mapType'] == 'OPEN'   # un mapa SINGLE/CLOSED suelto va cifrado: nunca sale en /c (medido, G8)
     x['lat'] = 0.0; x['lng'] = 0.0
     x['nota'] = (x.get('nota', '') + ' ' if x.get('nota') else '') + '<pendiente: coordenadas de la plaza; 0,0 es el valor sin decidir, no una ubicación>'
     x['tags'] = [('plaza' if g == 'sol' else g) for g in x['tags']]

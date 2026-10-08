@@ -53,6 +53,8 @@ function reparto(t, { template, ledger, pending, organigrama } = {}) {
     if (!ledger) return null;
     const blocks = section === 'tribes' ? ['tribes', 'subtribes'] : [section];
     for (const b of blocks) if (ledger[b] && ledger[b][id] && ledger[b][id].key) return ledger[b][id].key;
+    // Un evento con recurrencia se siembra como id#1..#7: el enlace de la guía es el primero.
+    for (const b of blocks) if (ledger[b] && ledger[b][`${id}#1`] && ledger[b][`${id}#1`].key) return ledger[b][`${id}#1`].key;
     return null;
   };
   const publicInC = (section, x) => section === 'events' ? x.clearnetPublic === true : (x.clearnetPublic === true && !x.tribe);

@@ -9,11 +9,11 @@
     "version_oasis": "1.2.3",
     "organigrama": "ARCHIVO/DISCO/scriptorium-exported/entrada/campamento_organigrama.json",
     "autoria": "<DECISIÓN del colectivo: qué identidad crea cada tribu; solo el autor la borra o reestructura>",
-    "derivada_de": "pub/templates/acampada26s.json",
     "reparto": {
       "mesa_tecnica": "<pendiente: quién es la mesa técnica (la secretaría del pub ejecuta; la mesa entrega)>",
       "entrega": "Cada órgano nombra a quién de los suyos le llega el acceso. Tribus abiertas: QR impreso o botón en la tarjeta. Tribus estrictas y listas cerradas: el autor invita en mano. Nunca por un canal que quede escrito."
-    }
+    },
+    "derivada_de": "pub/templates/acampada26s.json"
   },
   "tribes": [
     {
@@ -914,7 +914,7 @@
       "markers": [],
       "responsable": "asamblea_general",
       "image": "mapa-mapa_plaza.png",
-      "clearnetPublic": true,
+      "clearnetPublic": false,
       "nota": "<pendiente: coordenadas de la plaza; 0,0 es el valor sin decidir, no una ubicación>"
     },
     {

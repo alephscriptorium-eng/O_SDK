@@ -5,7 +5,7 @@
 // Recuento por llamada, medido en src/models (Oasis 1.2.3):
 //   createTribe 1 · generateOpenInvite 2 (tribe-invite-msg + tribe-open-invite)
 //   createRoom 1 (+1 tribe-keys si INVITE-ONLY sin tribu)
-//   createCalendar sin tribu: calendar + tribe-keys + (OPEN: calendar reemplazo + tombstone) + calendarDate = 5 ó 3; con tribu: 2
+//   createCalendar sin tribu: calendar + tribe-keys + (OPEN: calendar reemplazo + tombstone) + calendarDate = 5 ó 3; con tribu: 2 · +1 calendarNote si la primera fecha lleva nota
 //   addDate 1 · createEvent 1 (+1 tribe-keys si privado) · createList OPEN 1 / CLOSED ⌈miembros/6⌉ (solo el autor: 1)
 //   createPage 1 (idempotente por slug) · createMap 1 (+1 tribe-keys si SINGLE/CLOSED sin tribu; OPEN sin tribu: +0)
 //   addMarker 1 · clearnetItem 1 por objeto
@@ -59,7 +59,9 @@ function plan(t, opts = {}) {
     });
     const first = dates[0];
     const standalone = !x.tribe;
-    const msgs = standalone ? (x.status === 'OPEN' ? 5 : 3) : 2;
+    // +1 calendarNote si la primera fecha lleva nota (calendars_model.js:452-467): medido en el drill (WP-O131 G7).
+    const firstNote = ((x.dates[0] || {}).nota || '').trim();
+    const msgs = (standalone ? (x.status === 'OPEN' ? 5 : 3) : 2) + (firstNote ? 1 : 0);
     add('calendars', { id: x.id, fn: 'calendars.createCalendar', msgs, tribe: x.tribe || null,
       args: { title: x.title, status: x.status, tags: x.tags || [], firstDate: first.date, firstDateLabel: first.label, firstNote: (x.dates[0] || {}).nota || '',
         intervalWeekly: first.weekly, intervalMonthly: first.monthly, intervalYearly: first.yearly } });
@@ -89,10 +91,16 @@ function plan(t, opts = {}) {
     (x.markers || []).forEach((k, i) => add('maps', { id: `${x.id}#${i + 1}`, fn: 'maps.addMarker', msgs: 1, map: x.id, args: { lat: k.lat, lng: k.lng, label: k.label } }));
   });
 
-  ['rooms', 'calendars', 'maps', 'wiki', 'events'].forEach(section => {
+  ['rooms', 'calendars', 'maps', 'wiki'].forEach(section => {
     (t[section] || []).forEach(x => {
       if (x.clearnetPublic === true && !x.tribe) add('clearnet', { id: `${section}:${x.id}`, fn: 'clearnet.setItem', msgs: 1, kind: CLEARNET_KINDS[section], ref: x.id, section });
     });
+  });
+  // Eventos: el campo clearnetPublic del mensaje NO basta para /c (backend.js:1019 filtra por decisiones
+  // clearnetItem como el resto); un clearnetItem por evento sembrado (uno por repetición: ids #1..#7).
+  (blocks.events || []).forEach(c => {
+    const x = (t.events || []).find(e => c.id === e.id || c.id.startsWith(`${e.id}#`));
+    if (x && x.clearnetPublic === true) add('clearnet', { id: `events:${c.id}`, fn: 'clearnet.setItem', msgs: 1, kind: 'events', ref: c.id, section: 'events' });
   });
 
   const summary = {};
