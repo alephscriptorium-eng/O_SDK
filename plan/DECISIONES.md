@@ -386,6 +386,26 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   pub y descartado publicar como el pub. Método: `docs/PUB/TEMPLATE-PROTOCOL.md`.
   Aplicación: WP-O129 (guion), WP-O130 (fría), WP-O131 (caliente).
 
+- **D-O29 · 2026-10-08 · La secretaría es el bot nº 3 de la serie, `retro.escrivivir.co`,
+  en modo `server`; el kit visual, el bloque `clearnet` y la guía de reparto forman parte
+  de la plantilla; la vía caliente se adelanta a la fría.** Decidido con el custodio al
+  diseñar WP-O131 tras medir que (1) `src/client/gui.js:113-145` no cae al socket cuando
+  ya hay un sbot sobre el mismo `.ssb`: el seeder lleva su propio `cooler` sobre
+  `ssb-client`; (2) un backend paralelo tendría su propio keyring de tribus en memoria
+  (`crypto.js:549`) y pisaría el del seeder: el bot va en modo `server`, sin HTTP, y
+  nada publica solo; (3) salas, calendarios, mapas, wikis y eventos no salen en `/c`
+  por existir: hace falta un `clearnetItem` por objeto (`backend.js:655-751`), que es
+  una publicación con efecto público y por tanto un bloque con su propio permiso;
+  (4) `/c/blob` no sirve SVG: el kit es PNG, generado por script y determinista, con el
+  blob id previsto en un manifiesto; (5) el guion dice quién crea y el manual cómo se
+  entra, pero nadie decía a quién le toca repartir cada acceso: `responsable` es un hecho
+  del organigrama y la guía (`--reparto`) tiene una sola fuente y tres salidas (dosier,
+  wiki en Oasis, Sala 02 del sitio), nunca con códigos. La plantilla que ejercita todo
+  esto es **Campamento** (la estructura de Acampada26S con los nombres propios
+  neutralizados, derivada por script), como showcase para cualquier acampada. Orden:
+  materiales reproducibles → drill local → VPS con GO por paso. Supera: el nombre
+  «secretaria» de TEMPLATE §4.3 y el orden O130 → O131 del backlog. Aplicación: WP-O131.
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |

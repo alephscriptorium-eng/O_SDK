@@ -5,6 +5,20 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Vía caliente de plantillas: bot retro, kit visual y guía de reparto (WP-O131, 2026-10-08, en obras)
+
+Rama `dev/scriptorium-exported`. `pub/tools/template-seed.js --hot` siembra una plantilla desde el bot
+secretaría (`oasis-retro-bot`, bot nº 3 `retro.escrivivir.co`, modo `server`) por su socket, con dry-run,
+`--yes` por bloque, bloque nuevo `clearnet` (sin `clearnetItem` nada sale en `/c`), ledger y evidencia
+antes/después; `--reparto` genera la guía de reparto de accesos (una fuente, tres salidas: dosier, wiki en
+Oasis, Sala 02 del sitio; sin códigos); `pub/tools/template-kit.py` genera un PNG por objeto (determinista,
+blob id previsto en `manifest.json`); plantilla genérica `pub/templates/campamento.json` derivada por script
+de la de Acampada26S; `ssb-admin.js publish-about --image`. Campos nuevos en `SCHEMA.md`: `image`,
+`clearnetPublic`, `responsable`, `meta.reparto`. Devops: el cuarto nodo en `upgrade-gates`, `capacity`,
+`lib-node`, `deploy-status`. Docs: TEMPLATE-PROTOCOL §4.3-§4.6, HUB §11-§12, fichas, AGENTES §5,
+roles/pub, nav del sitio. Dosier: `ARCHIVO/DISCO/scriptorium-exported/`. **Pendiente**: drill local
+(Docker apagado al escribirlo) y alta en el VPS con GO. D-O29.
+
 ### Changed — Oasis 1.2.3 en local y en el host (WP-O128, 2026-10-07)
 
 Reporte `plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md`. **Desplegado el 2026-10-07**: pub, HUB y bot en
