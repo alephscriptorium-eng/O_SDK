@@ -17,7 +17,8 @@ se mantiene en el tiempo es la doc viva del repo; esto queda como rastro.
 | **Herramienta** (modo guion; `--cold`/`--hot` devuelven exit 2 hasta WP-O130/O131) | `pub/tools/template-seed.js` | funciona en cualquier Node |
 | **Presentación** doble carril (Acampada / Oasis) | `presentacion/index.html` + Artifact publicado (enlace en el reporte del WP) | — |
 | Decisión | `plan/DECISIONES.md` D-O28 | asentada |
-| Backlog | `plan/BACKLOG.md` WP-O129 (este) · WP-O130 (vía fría) · WP-O131 (vía caliente, bot secretaría) | 🔶 / ⬜ / ⬜ |
+| Backlog | `plan/BACKLOG.md` WP-O129 (este) · WP-O130 (vía fría) · WP-O131 (vía caliente, bot secretaría) | 🔶 / ⬜ / 🔶 |
+| **Continúa en** | `ARCHIVO/DISCO/scriptorium-exported/` (WP-O131): vía caliente con el bot retro, kit visual, guía de reparto y la plantilla genérica Campamento derivada de esta | 2026-10-08 |
 
 ## Comando que genera el guion
 

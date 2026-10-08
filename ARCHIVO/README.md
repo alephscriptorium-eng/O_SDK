@@ -6,7 +6,7 @@ documentos supersedidos, todo en git, no se toca). Esto son territorios en uso:
 
 | Territorio | En git | Qué es |
 | :-- | :-- | :-- |
-| [`DISCO/`](DISCO/) | ✅ | **Plan + evidencia** de un paquete de trabajo: lo que se pensó y se comprobó antes de construir. Lo que se mantiene en el tiempo es la doc viva (`docs/`); esto queda como rastro. Hoy: [`oasis-clearweb/`](DISCO/oasis-clearweb/) (el hub a la web abierta → [`docs/PUB/HUB-PROTOCOL.md`](../docs/PUB/HUB-PROTOCOL.md)) |
+| [`DISCO/`](DISCO/) | ✅ | **Plan + evidencia** de un paquete de trabajo: lo que se pensó y se comprobó antes de construir. Lo que se mantiene en el tiempo es la doc viva (`docs/`); esto queda como rastro. Hoy: [`oasis-clearweb/`](DISCO/oasis-clearweb/) (el hub a la web abierta → [`docs/PUB/HUB-PROTOCOL.md`](../docs/PUB/HUB-PROTOCOL.md)), [`retro-exporter/`](DISCO/retro-exporter/) (organigrama → plantilla, demo Acampada26S) y [`scriptorium-exported/`](DISCO/scriptorium-exported/) (vía caliente: bot retro, kit visual, guía de reparto, plantilla Campamento → [`docs/PUB/TEMPLATE-PROTOCOL.md`](../docs/PUB/TEMPLATE-PROTOCOL.md)) |
 | [`LORE/`](LORE/) | ❌ (solo `README.md` y `.gitignore`) | **Datos del usuario**: exports de cuentas, stores no regenerables y la capa curada de cada obra del Teatro. Contiene datos personales: deny-by-default, nunca `git add -f`. Ver [`LORE/README.md`](LORE/README.md) |
 
 Regla para añadir un territorio: si es **plan o evidencia** de algo que acabó en `docs/`, va a `DISCO/`;

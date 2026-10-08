@@ -5,6 +5,23 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Vía caliente de plantillas: bot retro, kit visual y guía de reparto (WP-O131, 2026-10-08)
+
+Rama `dev/scriptorium-exported`. `pub/tools/template-seed.js --hot` siembra una plantilla desde el bot
+secretaría (`oasis-retro-bot`, bot nº 3 `retro.escrivivir.co`, modo `server`) por su socket, con dry-run,
+`--yes` por bloque, bloque nuevo `clearnet` (sin `clearnetItem` nada sale en `/c`), ledger y evidencia
+antes/después; `--reparto` genera la guía de reparto de accesos (una fuente, tres salidas: dosier, wiki en
+Oasis, Sala 02 del sitio; sin códigos); `pub/tools/template-kit.py` genera un PNG por objeto (determinista,
+blob id previsto en `manifest.json`); plantilla genérica `pub/templates/campamento.json` derivada por script
+de la de Acampada26S; `ssb-admin.js publish-about --image`. Campos nuevos en `SCHEMA.md`: `image`,
+`clearnetPublic`, `responsable`, `meta.reparto`. Devops: el cuarto nodo en `upgrade-gates`, `capacity`,
+`lib-node`, `deploy-status`. Docs: TEMPLATE-PROTOCOL §4.3-§4.6, HUB §11-§12, fichas, AGENTES §5,
+roles/pub, nav del sitio. Dosier: `ARCHIVO/DISCO/scriptorium-exported/`. **Drill local ejecutado**
+(146 mensajes en 10 bloques, `/c` del HUB con lo marcado, 12 hallazgos y 7 correcciones:
+`plan/REPORTES/WP-O131-retro-bot-via-caliente.md`). **Desplegado el 2026-10-08**: bot nº 3
+`retro.escrivivir.co` dado de alta en `pub.escrivivir.co` y la plantilla Campamento sembrada (148 mensajes del
+bot, el pub solo su `contact`), guía de reparto con enlaces reales en la Sala 02. D-O29.
+
 ### Changed — Oasis 1.2.3 en local y en el host (WP-O128, 2026-10-07)
 
 Reporte `plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md`. **Desplegado el 2026-10-07**: pub, HUB y bot en

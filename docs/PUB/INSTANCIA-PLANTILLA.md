@@ -43,6 +43,7 @@ nombre puede cambiar.
 | # | Nombre | Tipo · piel | Qué sirve | Contenedor · estado | Feed id | Alta |
 |---|---|---|---|---|---|---|
 | 1 | «tipo.tu-dominio» | «tipo» · «piel» | «qué sirve» | «contenedor» · «carpeta de estado» | «se mide al darlo de alta» | «fecha» |
+| «n» | «retro.tu-dominio» | retro (secretaría de plantillas) · «piel» | «si activas una plantilla de organización (`TEMPLATE-PROTOCOL.md` §4.5): siembra tribus, salas, calendarios, listas, wikis y mapas con permiso por bloque; custodia las claves de las tribus que crea; modo `server`, sin ruta pública» | `oasis-pub-retro-bot` · `<datos>/oasis-retro-bot` | «se mide» | «fecha» |
 
 ## 4. `about` literal de cada bot
 
@@ -53,6 +54,7 @@ reporte del trabajo que lo publica diga lo contrario. En el feed la descripción
 name:        «tipo.tu-dominio»
 description: Bot de soporte nº «n» de «tu pub» · tipo «…» · piel «…». «Qué sirve.» «Qué firma.»
              «Qué no hace.» Responde por él «tu pub».
+image:       «ruta del PNG del avatar, si lo lleva: se sube en el mismo about (HUB §12)»
 ```
 
 ## 5. Qué hay activo y con qué protocolo

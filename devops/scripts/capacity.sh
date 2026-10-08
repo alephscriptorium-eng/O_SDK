@@ -44,7 +44,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot}"
+GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot retro:oasis-pub-retro-bot:oasis-retro-bot}"
 trap node_run_cleanup EXIT
 node_run_setup "$LOCAL" || exit 3
 if [ "$LOCAL" = 1 ]; then ROOT_MOUNT="$(cd "$DEVOPS_DIR/.." && pwd)"; DATA_MOUNT="$ROOT_MOUNT"; REPO_HOST="$ROOT_MOUNT"

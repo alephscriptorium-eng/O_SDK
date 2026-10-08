@@ -27,6 +27,9 @@
 //   phone.relay = false                 (desde 1.2.2) el sbot trae la centralita de Phone y Rooms. La
 //                                       del pub se acota en su ssb-config (HUB-PROTOCOL §14); un nodo de
 //                                       soporte no retransmite llamadas ni aloja salas.
+// Bot retro (WP-O131): NO tiene oasis-config.json. Corre en modo `server` (solo sbot) y ese fichero apenas se lee
+// ahí (ni recolector de blobs ni inboxMutedBots: ambos viven en el backend). Si algún día pasara a `backend`, se
+// añade aquí como tercer nodo con blobCache pequeño.
 // Solo HUB (D-O25: la presentación del visor es del pub; valores de instancia, se conservan):
 //   themes.current, language
 // Solo bot de cartera (plantilla .tpl; los marcadores los rellena render-wallet-bot-config.sh):

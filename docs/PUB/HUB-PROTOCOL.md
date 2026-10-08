@@ -429,6 +429,14 @@ declara en su `about` y **no se lista a sí mismo**. El pub no se toca para aña
   cuyo protocolo es `ECOIN-PROTOCOL.md` y reutiliza el bootstrap de §3 tal cual).
 - **Alta de uno nuevo**: fila en la ficha de instancia → contenedor propio + estado en el volumen →
   bootstrap de §3 → `about` con §12 → transcribir el literal en la ficha.
+- **Bot en modo `server`** (sin backend; p. ej. el bot secretaría de plantillas, TEMPLATE-PROTOCOL §4.5):
+  el bootstrap de §3 se hace por el socket, no por HTTP: `pub/tools/ssb-probe.js` con
+  `SSB_ACTION=invite-accept` y `SSB_INVITE='<host:port:@key~seed>'` (precedente UPGRADE U6) en lugar de
+  `POST /settings/invite/accept`; **reiniciar** antes de `hub-conn-fix.js` (un nodo `server` escribe
+  `conn.json` al parar: recién aceptado el invite está vacío) y reiniciar después; el `about`, con
+  `ssb-admin.js publish-about` (§12, variante sin formulario). No hay ventana `PUBLIC=false` que abrir ni
+  cerrar: nada escucha en HTTP. El feed queda con `contact` + `pub` (de `invite.accept`) + `oasisVersion`
+  (del reinicio): es lo esperado, no una desviación (medido, WP-O131).
 
 ## 12. Poner o cambiar el nombre de un bot (`about`)
 
@@ -468,8 +476,19 @@ sin ángulos ni etiquetas (el saneado los elimina; el formulario no comprueba el
    ```
 
    La descripción viaja en un fichero (`-F 'campo=</ruta'` lee su contenido): una línea, UTF-8, sin salto
-   final; se sube al host, se copia al contenedor con `docker cp` y se borra después. Así no hay comillas
-   ni acentos que escapar a través de ssh y `docker exec`.
+   final; entra al contenedor **por stdin** (`printf '%s' "$DESC" | docker exec -i <ctr> sh -c 'cat >
+   /tmp/desc.txt'`) y se borra después. Así no hay comillas ni acentos que escapar a través de ssh y
+   `docker exec`. **No con `docker cp` desde una ruta del host**: en Git Bash `/tmp/desc.txt` es `C:\tmp`, el
+   `cp` falla y el `$(cat …)` queda vacío: en el drill de WP-O131 un `about` salió sin descripción por eso.
+   Antes del paso 4, leer el mensaje publicado y comprobar que `description` no está vacía.
+
+   **Con imagen (avatar)**: el mismo formulario admite `-F 'image=@/tmp/avatar.png;type=image/png'`
+   (`backend.js:6299-6303` → `publishProfileEdit`, `main_models.js:1967-1988`: sube el blob y lo pone en el
+   mismo `about`). Copiar el PNG al contenedor con `docker cp` y borrarlo después. **Sin formulario** (bot en
+   modo `server`, HUB §11): `node /app/pub/tools/ssb-admin.js publish-about '<nombre>' '<descripción>' --image /tmp/avatar.png`
+   desde `cd /app/src/server` como `oasis`; publica un único `about` con `name`, `description` e `image`,
+   sin `deviceSource` ni `visibilityPrefs`. Solo png/jpg/webp (`/c/blob` no sirve SVG). El blob id es
+   `&<base64(sha256 del fichero)>.sha256`: se calcula antes y se compara después.
 
    **Bot de cartera** (tiene dirección ECOin publicada): añadir `-F 'vis_wallet=on'`. Sin ese campo, y
    mientras el bot no esté anunciado como pub de RBU, los clientes no pueden usar su dirección para

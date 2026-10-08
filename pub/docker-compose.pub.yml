@@ -222,6 +222,48 @@ services:
       start_period: 120s
     networks: [oasis_pub_net]
 
+  oasis-retro-bot:                # retro.escrivivir.co (bot nº 3): secretaría de plantillas (WP-O131, docs/PUB/TEMPLATE-PROTOCOL.md §4.3)
+    profiles: ["retro"]                      # pub:local:up / deploy.sh no lo arrastran
+    image: oasis-pub-scriptorium:latest      # misma imagen que el pub, sin build
+    container_name: oasis-pub-retro-bot
+    command: ["server"]                      # SOLO sbot (docker-entrypoint.sh:854-857): sin HTTP, sin avisos automáticos, sin snapshot.
+                                             # Publica únicamente lo que el seeder le pide por su socket (pub/tools/lib/seed-hot.js).
+                                             # No va en modo backend: un backend tendría su propio keyring de tribus en memoria y pisaría
+                                             # el que escribe el seeder (src/models/crypto.js:549).
+    restart: unless-stopped
+    depends_on: [oasis-pub]
+    environment:
+      NODE_ENV: production
+      OASIS_SKIP_AI_MODEL: "true"
+      OASIS_SERVER_CONFIG_OVERRIDE: /home/oasis/.ssb/config
+      OASIS_PUB_SNAPSHOT_HOURS: "0"          # D-O27: el snapshot lo construye el pub
+      HOME: /home/oasis
+      SSB_PATH: /home/oasis/.ssb
+      NODE_OPTIONS: ${OASIS_RETRO_BOT_NODE_OPTIONS:---max-old-space-size=512}
+    volumes:
+      - "${OASIS_RETRO_BOT_SSB_DATA_DIR:-../volumes-dev/oasis-retro-bot/ssb-data}:/home/oasis/.ssb"
+      - "${OASIS_RETRO_BOT_LOGS_DIR:-../volumes-dev/oasis-retro-bot/logs}:/app/logs"
+      - "${OASIS_RETRO_BOT_SSB_CONFIG_FILE:-./config/retro-bot/ssb-config}:/home/oasis/.ssb/config:ro"
+      # Seeder, sondas y plantillas vivas sin reconstruir la imagen. Las imágenes del kit no viajan en la
+      # imagen Docker (.dockerignore excluye *.png): entran por este bind.
+      - ./tools:/app/pub/tools:ro
+      - ./templates:/app/pub/templates:ro
+      # Hermano de templates, no anidado: un bind dentro de otro bind :ro no se puede crear si la imagen no trae
+      # /app/pub (medido en el VPS, WP-O131 fase 3: «read-only file system» al crear el punto de montaje).
+      - "${OASIS_RETRO_BOT_ASSETS_DIR:-./templates/assets/campamento}:/app/pub/assets/campamento:ro"
+    # sin ports y sin ruta en Caddy: 8008 solo en oasis_pub_net. Sin oasis-config.json: en modo server apenas se lee.
+    mem_limit: ${OASIS_RETRO_BOT_MEM_LIMIT:-512m}
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+    healthcheck:   # el del pub: el socket unix del sbot responde
+      test: ["CMD-SHELL", "node -e \"const net=require('net');const s=net.connect('/home/oasis/.ssb/socket',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),3000)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks: [oasis_pub_net]
+
   pub-frontend:
     profiles: ["frontend"]
     build:

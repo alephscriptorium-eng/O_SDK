@@ -1,0 +1,342 @@
+{
+  "template": "campamento",
+  "font_sha256": "e6476c1b80502924294eed40894c5b18e06c181444ca953e5334262df9c27724",
+  "items": [
+    {
+      "id": "asamblea_general",
+      "section": "tribes",
+      "file": "tribu-asamblea_general.png",
+      "bytes": 11863,
+      "sha256": "f4facb42504c948f57c5274781dabc8c46621305cd5f28b041665400eee4dc81",
+      "blobId": "&9PrLQlBMlI9XxSdHgdq8jEZiEwXNXyiwQWZUAO7k3IE=.sha256"
+    },
+    {
+      "id": "asamblea_internodos",
+      "section": "tribes",
+      "file": "tribu-asamblea_internodos.png",
+      "bytes": 14001,
+      "sha256": "e0004e36a6473ec0b64062d936041a2a4a36a6b25fdd623adfa25a70c2413582",
+      "blobId": "&4ABONqZHPsC2QGLZNgQaKko2prJf3WI636JacMJBNYI=.sha256"
+    },
+    {
+      "id": "nodo_norte",
+      "section": "tribes",
+      "file": "tribu-nodo_norte.png",
+      "bytes": 9618,
+      "sha256": "c7682cbb3fb41d381d34b0b6695608ce4a8ffce6f4229a1ff45807cb70a675e6",
+      "blobId": "&x2gsuz+0HTgdNLC2aVYIzkqP/Ob0Ipof9FgHy3CmdeY=.sha256"
+    },
+    {
+      "id": "nodo_oeste",
+      "section": "tribes",
+      "file": "tribu-nodo_oeste.png",
+      "bytes": 11029,
+      "sha256": "a715419bf1efd7cd57bdaf1cb4505a29d285a4f8307dcd2e22304351bdfcd2e1",
+      "blobId": "&pxVBm/Hv181Xva8ctFBaKdKFpPgwfc0uIjBDUb380uE=.sha256"
+    },
+    {
+      "id": "nodo_centro",
+      "section": "tribes",
+      "file": "tribu-nodo_centro.png",
+      "bytes": 10557,
+      "sha256": "b8dd055c22ec3cfe61700bbb14ee764d5428dbc39328794580f35333ed3e04bf",
+      "blobId": "&uN0FXCLsPP5hcAu7FO52TVQo28OTKHlFgPNTM+0+BL8=.sha256"
+    },
+    {
+      "id": "nodo_este",
+      "section": "tribes",
+      "file": "tribu-nodo_este.png",
+      "bytes": 10101,
+      "sha256": "4518ac58ad2417afc6f7cabbf285cb20a84509a2670d940fef200703e882c4ef",
+      "blobId": "&RRisWK0kF6/G98q78oXLIKhFCaJnDZQP7yAHA+iCxO8=.sha256"
+    },
+    {
+      "id": "nodo_sur",
+      "section": "tribes",
+      "file": "tribu-nodo_sur.png",
+      "bytes": 9835,
+      "sha256": "4b89d120c8d1778d5fefc762467eed4f9828bde6ec4abcfa292782325c7f7769",
+      "blobId": "&S4nRIMjRd41f78diRn7tT5govebsSrz6KSeCMlx/d2k=.sha256"
+    },
+    {
+      "id": "comision_comunicacion",
+      "section": "tribes",
+      "file": "tribu-comision_comunicacion.png",
+      "bytes": 14871,
+      "sha256": "469dadfad72eed4d559050301bc71829c900cb11c992d593367368da58773141",
+      "blobId": "&Rp2t+tcu7U1VkFAwG8cYKckAyxHJktWTNnNo2lh3MUE=.sha256"
+    },
+    {
+      "id": "comision_urbanismo",
+      "section": "tribes",
+      "file": "tribu-comision_urbanismo.png",
+      "bytes": 14926,
+      "sha256": "1ff32a6ef158c27a273ad0ac0a9b8ffb0482a9d9dd00094cee81a7a7215757ad",
+      "blobId": "&H/MqbvFYwnonOtCsCpuP+wSCqdndAAlM7oGnpyFXV60=.sha256"
+    },
+    {
+      "id": "comision_cuidados",
+      "section": "tribes",
+      "file": "tribu-comision_cuidados.png",
+      "bytes": 14672,
+      "sha256": "ae57449d62e06d324eea7d0bb6a55cbfe949a64dcb06ab1942994bbb860cb556",
+      "blobId": "&rldEnWLgbTJO6n0LtqVcv+lJpk3LBqsZQplLu4YMtVY=.sha256"
+    },
+    {
+      "id": "comision_dinamizacion",
+      "section": "tribes",
+      "file": "tribu-comision_dinamizacion.png",
+      "bytes": 14730,
+      "sha256": "d68ba4fff4df70c29774e782495bae49b2c5db06b7faea501b5f2a8e507a5932",
+      "blobId": "&1ouk//TfcMKXdOeCSVuuSbLF2wa3+upQG18qjlB6WTI=.sha256"
+    },
+    {
+      "id": "comision_mediacion",
+      "section": "tribes",
+      "file": "tribu-comision_mediacion.png",
+      "bytes": 15028,
+      "sha256": "c8f345de20aca6ec53590dd26435b96e5200cacd278f950fc362c3b24c7f7958",
+      "blobId": "&yPNF3iCspuxTWQ3SZDW5blIAys0nj5UPw2LDskx/eVg=.sha256"
+    },
+    {
+      "id": "comision_limpieza",
+      "section": "tribes",
+      "file": "tribu-comision_limpieza.png",
+      "bytes": 13742,
+      "sha256": "36a4857bd90647c07d3d9bc01cb24891185b7e2d5b6b30e5eafd606ee6a46c01",
+      "blobId": "&NqSFe9kGR8B9PZvAHLJIkRhbfi1bazDl6v1gbuakbAE=.sha256"
+    },
+    {
+      "id": "comision_abastecimiento",
+      "section": "tribes",
+      "file": "tribu-comision_abastecimiento.png",
+      "bytes": 16266,
+      "sha256": "96dc3c7c3d2634cea1bf94e744e5c10394f6731416e514d5f7d289ae65436ee3",
+      "blobId": "&ltw8fD0mNM6hv5TnROXBA5T2cxQW5RTV99KJrmVDbuM=.sha256"
+    },
+    {
+      "id": "com_general",
+      "section": "tribes",
+      "file": "tribu-com_general.png",
+      "bytes": 13520,
+      "sha256": "275a94fee65926d80219363d45655331f24fe32271e341a219e5c5b0ef43639b",
+      "blobId": "&J1qU/uZZJtgCGTY9RWVTMfJP4yJx40GiGeXFsO9DY5s=.sha256"
+    },
+    {
+      "id": "com_redes",
+      "section": "tribes",
+      "file": "tribu-com_redes.png",
+      "bytes": 18083,
+      "sha256": "45f75824353eda8591a4b98011bc3a07cc170bdbe02812b11537f44f253777f4",
+      "blobId": "&RfdYJDU+2oWRpLmAEbw6B8wXC9vgKBKxFTf0TyU3d/Q=.sha256"
+    },
+    {
+      "id": "com_interna",
+      "section": "tribes",
+      "file": "tribu-com_interna.png",
+      "bytes": 12926,
+      "sha256": "7622097504f60cdc67b2b5c20d266c74c763ab5320b263b64879ca45dc4d7090",
+      "blobId": "&diIJdQT2DNxnsrXCDSZsdMdjq1MgsmO2SHnKRdxNcJA=.sha256"
+    },
+    {
+      "id": "com_audiovisual",
+      "section": "tribes",
+      "file": "tribu-com_audiovisual.png",
+      "bytes": 14987,
+      "sha256": "b6cd5492faa7352195ed000c3f77e00ed8acc4309e489ab5a105d721c78349ee",
+      "blobId": "&ts1UkvqnNSGV7QAMP3fgDtisxDCeSJq1oQXXIceDSe4=.sha256"
+    },
+    {
+      "id": "com_diseno",
+      "section": "tribes",
+      "file": "tribu-com_diseno.png",
+      "bytes": 17243,
+      "sha256": "8ab094efd884e10102b93310d5b7e75daf7942be30731c314f5bbe42f16c2940",
+      "blobId": "&irCU79iE4QECuTMQ1bfnXa95Qr4wcxwxT1u+QvFsKUA=.sha256"
+    },
+    {
+      "id": "com_cultura",
+      "section": "tribes",
+      "file": "tribu-com_cultura.png",
+      "bytes": 16278,
+      "sha256": "05eaa50f1538751d21700b56005b0bbe2b80ffeddcc9f8cb017d6381b941c63c",
+      "blobId": "&BeqlDxU4dR0hcAtWAFsLviuA/+3cyfjLAX1jgblBxjw=.sha256"
+    },
+    {
+      "id": "com_piar",
+      "section": "tribes",
+      "file": "tribu-com_piar.png",
+      "bytes": 20697,
+      "sha256": "ce30fde296b2ac0d4b7e900a6ff3e24063fb7d8d36883f97de006a7242cfb266",
+      "blobId": "&zjD94payrA1LfpAKb/PiQGP7fY02iD+X3gBqckLPsmY=.sha256"
+    },
+    {
+      "id": "com_crisis",
+      "section": "tribes",
+      "file": "tribu-com_crisis.png",
+      "bytes": 21110,
+      "sha256": "131c0f6556a0c60bd1b18e6b93653bb101ab129f2e4851e93d4300a100547030",
+      "blobId": "&ExwPZVagxgvRsY5rk2U7sQGrEp8uSFHpPUMAoQBUcDA=.sha256"
+    },
+    {
+      "id": "com_correccion",
+      "section": "tribes",
+      "file": "tribu-com_correccion.png",
+      "bytes": 17433,
+      "sha256": "d95d66c1309bad3dec11c41422f5d75916fcf1d6d5a0940c0f7aaa20f3a91b30",
+      "blobId": "&2V1mwTCbrT3sEcQUIvXXWRb88dbVoJQMD3qqIPOpGzA=.sha256"
+    },
+    {
+      "id": "intercsos",
+      "section": "tribes",
+      "file": "tribu-intercsos.png",
+      "bytes": 11318,
+      "sha256": "ce468808991666cebea9dbdca1e9e73a76381c1d5a08daa193e8b586cf770705",
+      "blobId": "&zkaICJkWZs6+qdvcoennOnY4HB1aCNqhk+i1hs93BwU=.sha256"
+    },
+    {
+      "id": "asamblea_colectivos",
+      "section": "tribes",
+      "file": "tribu-asamblea_colectivos.png",
+      "bytes": 15093,
+      "sha256": "65567655a211bf1bf89c7eb1cb83c56b45953add7b17d4567cb5d4e438eb6a87",
+      "blobId": "&ZVZ2VaIRvxv4nH6xy4PFa0WVOt17F9RWfLXU5Djraoc=.sha256"
+    },
+    {
+      "id": "sala_asamblea_general",
+      "section": "rooms",
+      "file": "sala-sala_asamblea_general.png",
+      "bytes": 13662,
+      "sha256": "08f5981fd12375232acbd0c173eaf12936c28c70d2c7cb9191bfee97e543732b",
+      "blobId": "&CPWYH9EjdSMqy9DBc+rxKTbCjHDSx8uRkb/ul+VDcys=.sha256"
+    },
+    {
+      "id": "sala_internodos",
+      "section": "rooms",
+      "file": "sala-sala_internodos.png",
+      "bytes": 11449,
+      "sha256": "da1cd842246a04aa07e507e03a03d83b0f46e2f23629ef1ca8c7289613caaddb",
+      "blobId": "&2hzYQiRqBKoH5QfgOgPYOw9G4vI2Ke8cqMcolhPKrds=.sha256"
+    },
+    {
+      "id": "sala_nodo_norte",
+      "section": "rooms",
+      "file": "sala-sala_nodo_norte.png",
+      "bytes": 10714,
+      "sha256": "854fd17d1e3a4bfc0d740006737b9ea13f95fb5913490c2c54a0457e9aa6687d",
+      "blobId": "&hU/RfR46S/wNdAAGc3ueoT+V+1kTSQwsVKBFfpqmaH0=.sha256"
+    },
+    {
+      "id": "sala_nodo_oeste",
+      "section": "rooms",
+      "file": "sala-sala_nodo_oeste.png",
+      "bytes": 12110,
+      "sha256": "e7805ed111fc15a9a8d657866968f32e4b9fc377610f952b2973212a3ba83c91",
+      "blobId": "&54Be0RH8Famo1leGaWjzLkufw3dhD5UrKXMhKjuoPJE=.sha256"
+    },
+    {
+      "id": "sala_nodo_centro",
+      "section": "rooms",
+      "file": "sala-sala_nodo_centro.png",
+      "bytes": 11682,
+      "sha256": "2f520271713d3ce0eaa417645f87461d34d9851af2a49357dc4f009fb30998e2",
+      "blobId": "&L1ICcXE9PODqpBdkX4dGHTTZhRrypJNX3E8An7MJmOI=.sha256"
+    },
+    {
+      "id": "sala_nodo_este",
+      "section": "rooms",
+      "file": "sala-sala_nodo_este.png",
+      "bytes": 11237,
+      "sha256": "6cd51bf79aa8427764c72f90a1795807715dfde4032f18a553670d5ecbdffa11",
+      "blobId": "&bNUb95qoQndkxy+QoXlYB3Fd/eQDLxilU2cNXsvf+hE=.sha256"
+    },
+    {
+      "id": "sala_nodo_sur",
+      "section": "rooms",
+      "file": "sala-sala_nodo_sur.png",
+      "bytes": 10257,
+      "sha256": "865e2dde1180c084bbc7e7bcb2159744e7e4a54cbe530073d28166eb82b2fcf9",
+      "blobId": "&hl4t3hGAwIS7x+e8shWXROfkpUy+UwBz0oFm64Ky/Pk=.sha256"
+    },
+    {
+      "id": "mapa_plaza",
+      "section": "maps",
+      "file": "mapa-mapa_plaza.png",
+      "bytes": 8181,
+      "sha256": "21b40c6c868bc3ad69444414fd45e0116e87dc52ee9023571bfa9b0ec5d08c84",
+      "blobId": "&IbQMbIaLw61pREQU/UXgEW6H3FLukCNXG/qbDsXQjIQ=.sha256"
+    },
+    {
+      "id": "mapa_nodos",
+      "section": "maps",
+      "file": "mapa-mapa_nodos.png",
+      "bytes": 10866,
+      "sha256": "a87d5e705f74be378d19c937e74e4c2177adfdd75d563411963126d8102348da",
+      "blobId": "&qH1ecF90vjeNGck3505MIXet/dddVjQRljEm2BAjSNo=.sha256"
+    },
+    {
+      "id": "evento_asamblea_general",
+      "section": "events",
+      "file": "evento-evento_asamblea_general.png",
+      "bytes": 13598,
+      "sha256": "071ec816552a4ea0ac2ed17b869d0feb122602788eec644873de3c578bdf12a4",
+      "blobId": "&Bx7IFlUqTqCsLtF7hp0P6xImAniO7GRIc948V4vfEqQ=.sha256"
+    },
+    {
+      "id": "wiki_organigrama",
+      "section": "wiki",
+      "file": "wiki-wiki_organigrama.png",
+      "bytes": 14526,
+      "sha256": "65cfe564f54d775ace2221b0096954c0e19256880ec51ff1098da15429e733ed",
+      "blobId": "&Zc/lZPVNd1rOIiGwCWlUwOGSVogOxR/xCY2hVCnnM+0=.sha256"
+    },
+    {
+      "id": "wiki_semaforo",
+      "section": "wiki",
+      "file": "wiki-wiki_semaforo.png",
+      "bytes": 13077,
+      "sha256": "c3b0f2a4fd3548a70bfefd04c677a51d60917cae0619fcdfdc5d09cd6d1c750d",
+      "blobId": "&w7DypP01SKcL/v0ExnelHWCRfK4GGfzf3F0JzW0cdQ0=.sha256"
+    },
+    {
+      "id": "wiki_portavocias",
+      "section": "wiki",
+      "file": "wiki-wiki_portavocias.png",
+      "bytes": 13343,
+      "sha256": "018aed5778b994748bd26cf8687a4eb0d1b037457ba31acea1b1206affeebdcc",
+      "blobId": "&AYrtV3i5lHSL0mz4aHpOsNGwN0V7oxrOobEgav/uvcw=.sha256"
+    },
+    {
+      "id": "wiki_onboarding",
+      "section": "wiki",
+      "file": "wiki-wiki_onboarding.png",
+      "bytes": 18388,
+      "sha256": "f0367e0f92b7caff5d9e35c36c1087ccdc9ac5388dfcc789e24ca0b8b10d2e2f",
+      "blobId": "&8DZ+D5K3yv9dnjXDbBCHzNyaxTiN/MeJ4kyguLENLi8=.sha256"
+    },
+    {
+      "id": "wiki_reparto",
+      "section": "wiki",
+      "file": "wiki-wiki_reparto.png",
+      "bytes": 14325,
+      "sha256": "873d010eac3e0ce5664d5995cc3a4f9acc31ffca66308bc26800a0f1c739e8ab",
+      "blobId": "&hz0BDqw+DOVmTVmVzDpPmswx/8pmMIvCaACg8cc56Ks=.sha256"
+    },
+    {
+      "id": "wiki_onboarding",
+      "section": "wiki-file",
+      "file": "wiki/wiki_onboarding.md",
+      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md",
+      "bytes": 20170,
+      "sha256": "7c22efd0d5bc30b7fc69a9e9f14a0616276c932e875fd5bd2185f115d2dfd182"
+    },
+    {
+      "id": "wiki_reparto",
+      "section": "wiki-file",
+      "file": "wiki/wiki_reparto.md",
+      "from": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.md",
+      "bytes": 17060,
+      "sha256": "cf03a9bdf8b4470450f2556fe89fa1a863e1779d1f2a2c52c212ee3caa708a16"
+    }
+  ]
+}
