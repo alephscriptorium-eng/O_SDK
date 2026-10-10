@@ -329,7 +329,7 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 
 | Gate | Qué | Comando | Salida esperada |
 |---|---|---|---|
-| **U0** | Línea base **como el host**: stack local en la versión vieja, con cada pieza en el mismo modo que en §0.3 (motor encendido si allí lo está, época del mes abierta). Copia del estado | parar nodos · `$G backup pre` · arrancar · `$G snapshot pre` | tres nodos healthy en la versión vieja; `seq` = `registros` = `sbot` en los tres |
+| **U0** | Línea base **como el host**: stack local en la versión vieja, con cada pieza en el mismo modo que en §0.3 (motor encendido si allí lo está, época del mes abierta). Copia del estado. **Si el ciclo cambia el compose** (§3.2), U0 se levanta con el compose **desplegado** (`git show main:pub/docker-compose.pub.yml > pub/docker-compose.pub.<vieja>.yml`, sin trackear): en 1.2.5 el compose nuevo con la imagen vieja habría leído la config por defecto de la imagen | parar nodos · `$G backup pre` · arrancar · `$G snapshot pre` | todos los nodos healthy en la versión vieja; `seq` = `registros` = `sbot` en todos |
 | **U1** | Árbol | verificación de §2 · `annex` · `--check` del reporte | 7 ficheros · ningún `!` · 0 IDs sin disponer |
 | **U2** | Imagen nueva | etiquetar la vieja (`docker tag …:latest …:X.Y.Z-vieja`) · `npm run build` (o el build del compose del pub) | build limpio; `node --check` dentro de la imagen |
 | **U3** | Recrear en orden pub → HUB → bot y medir **qué publica cada uno** | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre --expect '…'` | `GATE OK` con el delta declarado (abajo) |

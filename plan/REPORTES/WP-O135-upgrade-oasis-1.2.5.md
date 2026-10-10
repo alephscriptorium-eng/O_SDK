@@ -5,10 +5,10 @@ Rama `upgrade/oasis-1.2.5` (desde `main` 5f4462b6) · 2026-10-10 · `OLD_REF=043
 preflight toma el último). La 1.2.4 (30e54200, 2026-10-08) queda dentro del salto: decisión del
 custodio, directo a 1.2.5, un `oasisVersion` por nodo. Sin cambio de motor (`annex` db2 íntegro).
 
-**Alcance de este reporte.** UPGRADE §2 y §3.1-§3.3 hechos. §3.4 (gates locales) **pendiente**:
-Docker Desktop estaba parado en la máquina operadora y el custodio pidió que al VPS no se tocara
-nada, ni en lectura. Las secciones 4-6 dicen qué falta y con qué delta declarado. Nada de lo que
-sigue autoriza el §4: el host pide `deploy-status.sh` primero y GO por nodo.
+**Alcance de este reporte.** UPGRADE §2, §3.1-§3.3 y **§3.4 (gates locales U0-U7 y US) hechos**; el
+custodio pidió que al VPS no se tocara nada, ni en lectura, durante la preparación. Las tres
+DECISIONES que la lectura dejó abiertas las tomó el custodio el mismo día (D-O31, D-O32; §3, H2-H3).
+Nada de lo que sigue autoriza el §4: el host pide `deploy-status.sh` primero y GO por nodo.
 
 ## 1. Estado de partida
 
@@ -30,7 +30,19 @@ Ciclo actual de red: 6 · caps.shs local coincide · nuestro pub en el directori
 WARN x2: árbol no limpio (png igual en ambas ramas + .claude/settings.json sin trackear) · upstream por delante
 ```
 
-Línea base local (U0, `snapshot pre125`): **pendiente** (§5).
+Línea base local (U0): nodos parados · `upgrade-gates.sh --local backup pre125` (4,2 M) · stack
+levantado con el **compose de `main`** (`git show main:pub/docker-compose.pub.yml`, bind viejo de
+`oasis-config.json`: con el compose nuevo la 1.2.3 habría leído la config por defecto de la imagen)
+e imagen `oasis-pub-scriptorium:latest` = 1.2.3 (`bb76fdbd0f14`), perfiles `wallet` y `retro`,
+`--wait` → los cuatro nodos `healthy` · `snapshot pre125`:
+
+```
+pub   v1.2.3 server  seq=13  registros=13 → cuadra · sbot=13   contact=7 oasisVersion=6
+hub   v1.2.3 backend seq=11  registros=11 → cuadra · sbot=11   (cifrado)=1 about=2 contact=1 oasisVersion=6 pub=1
+bot   v1.2.3 backend seq=26  registros=26 → cuadra · sbot=26   about=4 contact=1 karmaScore=3 oasisVersion=6 pub=1 pubAvailability=8 ubiAllocation=2 wallet=1
+                                                              dirección=EYMWF4ED… épocas=2026-09,2026-10 motor:pub=true
+retro v1.2.3 server  seq=151 registros=151 → cuadra · sbot=151 (cifrado)=2 about=2 … oasisVersion=1 tribe=24 … (Campamento)
+```
 
 ## 2. Qué se entregó
 
@@ -40,6 +52,8 @@ Línea base local (U0, `snapshot pre125`): **pendiente** (§5).
 | `b6ad82b3` | Los 6 guards repuestos. Upstream tocó 5 de los 6 ficheros. Cuatro entraron con `git apply --3way` limpio; `backend.js` dio un conflicto (upstream añade un middleware de rutas solo-loopback justo antes de la línea de idioma del guard): se conservan los dos. `ssb_config.js`: `blobs.max` vuelve a 50 MB (upstream 75) y se conservan `readServerConfig()` y el `bindHost` nuevos. `clearnet_view.js`: upstream solo cambió el paginador (`?perPage=`), disjunto del sexto guard |
 | `8d01eda2` | Adaptación: el bind `:ro` de `oasis-config.json` del HUB y del bot pasa de `/app/src/configs/` a `/home/oasis/.ssb/oasis/` (§3, H1). Los cinco `ssb-config` pierden el bloque `gossip` (el sbot ya no carga `ssb-gossip`) |
 | `12a86f5e` | Protocolos: HUB §2 y §5.2, fila de disco de `/c/blob`; ECOIN §5.2; UPGRADE §0.2 y §2; AGENTES §4 (tres trampas); CLIENT §4 (adaptación pendiente) |
+| `ead664cd`, `37b82da8` | Este reporte (primera versión, sin gates), CHANGELOG, UPGRADE §1 y §3.2, fila de backlog |
+| `232a40d6` | **Séptimo guard** (D-O31): `/c/blob` → `blob.getResolved` tras `clearnetBlobAllowed`, marcado `// guard o-sdk (WP-O135, D-O31)`; dos invariantes en `hub.tsv`; D-O32 (modelo de confianza de Banking aceptado; cliente en 1.2.2 hasta su WP); ECOIN §9, UPGRADE §2 («7 guards en 6 ficheros»), HUB fila de disco, AGENTES §4, AGENTS.md |
 
 Verificación de invariantes (UPGRADE §2), medida tras `b6ad82b3`:
 
@@ -193,10 +207,11 @@ D-O22 no toca: es el de SNH) o si el habitante **publicó un `pub` con su clave 
 si lo firma un pub de confianza **o** el pub al que iba dirigido el `ubiClaim`. Nuestro banco es el bot de cartera
 (D-O19, identidad propia, sin invites): un habitante que no haya redimido un invite **del bot** dejará de verlo en
 Banking → UBI y `discoverUbiPub` lo ignorará, aunque siga su feed. Quien ya reclamó (claim dirigido al bot) conserva su
-historial. Opciones, para decidir antes del §4 o declarar que se acepta: (a) aceptarlo y documentar que la RBU de la
-casa solo llega a quien redime un invite del bot (`pub: true` carga `ssb-invite`: el bot **puede** emitir invites,
-pero cada redención le publica un `contact`); (b) revisar D-O19 (motor en la identidad del pub); (c) nada hoy, medir en
-el host con un cliente real. Este reporte no decide. **Documentado** aquí; ECOIN §9 pide una nota cuando se decida.
+historial. Opciones que se pusieron al custodio: (a) aceptarlo y documentar que la RBU de la casa solo llega a quien
+redime un invite del bot (`pub: true` carga `ssb-invite`: el bot **puede** emitir invites, pero cada redención le
+publica un `contact`); (b) revisar D-O19 (motor en la identidad del pub); (c) nada hoy, medir en el host con un
+cliente real. **Decidido (D-O32, 2026-10-10): se acepta tal cual**, sin invites del bot ni cambio de D-O19; nota en
+ECOIN §9; se mide en el host con un cliente real tras el upgrade; cambiarlo será un WP con su D-O.
 Otros cambios del motor, sin decisión: `available` del anuncio sale de `computePoolVars().available ≥ floor` (antes
 saldo bruto) → un `pubAvailability=+0..1` al arrancar ya estaba declarado; `claimEpoch` solo mes actual o anterior;
 una dirección no cobra dos veces por época; `confirmIncomingTransfers` exige `gettransaction.details` con `receive`.
@@ -207,8 +222,11 @@ o en un avatar). Un blob que el HUB **no tiene** da 404 y nada lo pedirá: las i
 del upgrade no saldrán en `/c` hasta que alguien las replique al HUB. Las de la exposición Campamento ya están en el
 HUB (se pidieron en 1.2.3) y seguirán, salvo poda de `blobCache` (2048 MB, lejos). Opciones: (a) aceptar el modelo de
 upstream; (b) **séptimo guard de una línea** (`getResolved` tras `clearnetBlobAllowed`: la lista blanca ya acota lo que
-el visor puede pedir); (c) tarea externa que pida los blobs del índice clearnet por el socket del HUB. El gate U4 debe
-medir las dos caras (200 para un blob que el HUB tiene; 404 para uno que no) antes de decidir. **Documentado** HUB
+el visor puede pedir); (c) tarea externa que pida los blobs del índice clearnet por el socket del HUB. **Decidido
+(D-O31): (b)**, commit `232a40d6` → **adaptado**; medido en U4 (§5): con el fichero del blob borrado dentro del
+contenedor del HUB, `GET /c/blob` da 200 y el fichero **reaparece** (lo pidió al pub); un blob que ningún objeto
+clearnet referencia da 404 (la lista blanca de upstream sigue). La cara «sin guard» no es medible contra la 1.2.3 (ya
+pedía) y se sostiene en la lectura de `getLocal` (disco + `blobs.has`, sin `want`). **Documentado** UPGRADE §2, HUB
 fila de disco, AGENTES §4.
 
 **H4 · Token de admin por arranque.** Con `config.allowHost` (`OASIS_ALLOW_HOST`: HUB = dominio, bot = `localhost`)
@@ -253,26 +271,36 @@ Lista cerrada de este ciclo (lo que no está aquí **no se sube**):
 
 ## 5. Gates
 
-**Pendientes.** Docker Desktop estaba parado en la máquina operadora al preparar este ciclo; no se ha ejecutado ningún
-gate. Plan, con lo que este ciclo añade (todo `bash devops/scripts/upgrade-gates.sh --local`):
+Stack local (`pub/docker-compose.pub.yml` + `pub/.env.local`, `volumes-dev/`, identidades desechables), 2026-10-10,
+`G="bash devops/scripts/upgrade-gates.sh --local"`. Cuatro nodos (`GATE_NODES` por defecto incluye `retro`).
 
-| Gate | Este ciclo |
-|---|---|
-| U0 | `backup pre125` · stack en 1.2.3 (imagen actual) · `snapshot pre125`: tres nodos healthy, `seq = registros = sbot` |
-| U1 | invariantes de §2 ✓ (hecho) · `annex` ✓ · `--check` ✓ (§7) |
-| U2 | `docker tag …:latest …:1.2.3-vieja` · build · `node --check` dentro de la imagen · log de arranque: tres parches «ya parcheado», ninguno «no se encontró» |
-| U3 | `up pub` · `up hub` · `up bot` · `check pre125 --expect 'pub:oasisVersion=+1 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1,about=+0..1'` (retro, si `GATE_NODES` lo incluye: `oasisVersion=+1`). **Añadidos**: `docker exec … cat ~/.ssb/oasis/oasis-config.json` = la del repo (H1); `ls ~/.ssb/oasis/` sin `*.tmp-*`; `stat -c %a ~/.ssb` = 700 (H6); pares `connected` del pub y del HUB y `conn.json` sin duplicados (H5); el log del HUB y del bot trae «Admin access» (no copiar); RSS del HUB frente a 1.2.3 |
-| U4 | `hub --strict` (MISS→HIT, 0/18 cruces, `?theme=`, `?perPage=` nuevo del paginador) · **añadido** H3: `GET /c/blob/<id>` de un PNG del kit que el HUB tiene → 200; de uno que no tiene → 404 y sigue 404 a los 30 s (antes 200) |
-| U5 | `snapshot u5` · `worst` · `check u5 --expect 'bot:karmaScore=+0..1'`: `wallet` y `(cifrado)` a 0; `GET /banking` 200 (no 403: no es solo-loopback) |
-| U6 | **obligatorio** (cambian `ssb-*`): invite completo con nodo desechable (`invite.create` + `ssb-probe.js invite-accept`), `check u6 --expect 'pub:contact=+1 hub:=0 bot:about=+0..1'` |
-| U7 | `restore pre125 --yes` · re-render de la config del bot · repetir U3: mismo delta |
-| US | `pub-snapshot.sh --local build` · construir no publica |
+| Gate | Comando | Resultado |
+|---|---|---|
+| **U0** línea base | nodos parados · `$G backup pre125` · `up -d --no-build --wait` con el compose de `main` e imagen 1.2.3 · `$G snapshot pre125` | cuatro nodos `healthy`; `seq = registros = sbot` en los cuatro (§1) |
+| **U1** árbol | §2 · `annex` · `--check` | 7 ficheros · 53 invariantes `ok`, ningún `!` (los dos del séptimo guard incluidos) · audit `pendiente=0` · `--check` sale 0 con 184 IDs y las seis cabeceras |
+| **U2** imagen | `docker tag …:latest …:1.2.3-vieja` (`bb76fdbd0f14`) · `compose build oasis-pub` (`OASIS_AI=none`) · humo con `docker run --entrypoint sh` | build limpio → `5cfdf8ddca7f`, 1,55 GB. Dentro: versión 1.2.5; `node --check` de `backend.js`, `phone_module.js`, `clearnet_view.js`; `src/server/node_modules → ../base/node_modules`; `guard o-sdk (WP-O135, D-O31)` presente; `blobs.max = 50`; sin `.env*` en `/app/pub`, sin `/app/ARCHIVO`; `src/maps` 47 MB |
+| **U3** recrear y medir | `$G up pub` · `$G up hub` · `$G up bot` · retro con `compose up -d --no-deps --force-recreate --wait` · `$G check pre125 --expect 'pub:oasisVersion=+1 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1,about=+0..1 retro:oasisVersion=+1'` | `healthy` a los 5 s los tres. **Δseq = 1 en los cuatro: `oasisVersion+1` y nada más** → `GATE OK`. Log de arranque: `ssb-ref` y `multiserver` «patcheado», `ssb-blobs` «ya parcheado», ninguno «no se encontró»; 0 errores (`EROFS|EACCES|ReferenceError|TypeError|Cannot find module`); el sbot imprime `Blob size limit: 50 MB · Media cache limit: 2048 MB · hops 3` |
+| **U3+** H1 config | `docker exec … sha256sum ~/.ssb/oasis/oasis-config.json` en HUB y bot | = la del repo (`f16cc0ce…`) y = el render (`016b8c0b…`); la copia de `src/configs/` es otra (`9ef7b3a8…`, default de la imagen) y **no manda**; `~/.ssb/oasis/` sin `*.tmp-*`; sin `oasis-server-config.json` propio |
+| **U3+** H4 token | `docker logs … | grep -c 'Admin access'` | 1 en HUB y bot (con `OASIS_ALLOW_HOST`), 0 en pub y retro. El token no se copió |
+| **U3+** H6 permisos | `stat -c %a ~/.ssb` dentro | 700 en HUB y bot. En el host Windows el bind sigue en 755 (Docker Desktop no propaga); en el VPS (Linux) sí cambiará |
+| **U3+** H5 libreta | `conn.json`, `gossip.json`, `conn.peers()` | pub: `connected` con bot y retro. HUB: **sin pares** tras recrear: su `conn.json` apuntaba a `172.20.0.2/.3` y el pub quedó en `.4` (compose reasigna IPs al recrear; la copia `pre125` ya traía esas IPs: **artefacto del stack local, anterior al upgrade**, no de 1.2.5). Arreglado con `hub-conn-fix.js 'net:oasis-pub:8009~shs:<KEY>'` → `connected`. `gossip.json` del HUB intacto (incluida una entrada sin host, `@/snvahva`, anterior: `syncPeerBook` la ignora). Sin entradas duplicadas nuevas |
+| **U3+** memoria | `docker stats --no-stream` | HUB 98 MiB / 1,5 GiB; bot 75 MiB; pub 40 MiB; retro 43 MiB (sin señal de la lectura sin tope de `tombstone`, `typed_log.js`) |
+| **U4** visor | `$G hub --strict` | `GATE OK` (16 comprobaciones): 200, MISS→HIT, una CSP, idioma independiente del visitante, `?lang=`, 18 concurrentes sin cruce, selector y `?theme=` (variante cacheada aparte, 9 concurrentes sin cruce), 42 enlaces con `lang` y 51 con `theme`, `?type=files`, sitemap 16 URLs https, RSS |
+| **U4** séptimo guard | blob del avatar del bot retro (`&8DZ+…`, referenciado en `/c/`): `docker exec hub rm` del fichero en `blobs/sha256/` → `GET /c/blob` directo al HUB (sin caché, `Host: localhost`) · `ls` después · `blobs.has` | **200** (17 316 B, 0,26 s; sharp re-codifica) y **el fichero reaparece** en el contenedor (`want` al pub); `has=true`. Blob no referenciado por nada clearnet (`&AAAA…`) → **404** (lista blanca de upstream intacta). Antes del fix de H5 el HUB sin pares también dio 200 pero sin fichero: la medida válida es la posterior |
+| **U5** peor caso del bot | `$G snapshot u5` · `$G worst` · `$G check u5 --expect 'bot:karmaScore=+0..1,about=+0..1'` | `/banking` 200 (no 403: no es solo-loopback), `/transfers`, `/shops`, `/market`, `/school` 302. **Δseq = 0 en los cuatro**; `wallet`, `(cifrado)` y dirección sin moverse → `GATE OK` |
+| **U6** invite completo | `$G snapshot u6` · `invite.create({uses:1, external:'gate.example.org'})` por `ssb-client` en el pub · host → IP del pub en el bridge · desechable `docker run --name oasis-gate-u6-desechable --network oasis-pub-scriptorium_oasis_pub_net -e OASIS_SNAPSHOT=off … oasis-pub-scriptorium:latest backend` · `ssb-probe.js` `SSB_ACTION=invite-accept` · `$G check u6 --expect 'pub:contact=+1 hub:=0 bot:about=+0..1 retro:=0'` | desechable en 1.2.5 con los parches; **pub `contact+1`**, HUB, bot y retro 0 → `GATE OK`. El invite no se imprimió. El desechable quedó **parado sin retirar** (el filtro de seguridad de la sesión paró el `docker rm`): `docker rm oasis-gate-u6-desechable` |
+| **US** snapshot | `$G snapshot us` · `pub-snapshot.sh --local status` · `--local build` · `$G check us` | «cada 6 h, dentro del contenedor»; snapshot previo 66 647 B (208 mensajes, 6 feeds); build `{"ok":true,"messages":210,"feeds":6,"boxed":5,"bytes":66989,"ms":62}`; Δseq = 0 en los cuatro → `GATE OK` |
+| **U7** repetible | `compose stop` de los cuatro · `$G restore pre125 --yes` · `render-wallet-bot-config.sh pub/.env.local` · U3 otra vez (pub, HUB, bot con `$G up`; retro con compose) · `$G check pre125` con el mismo `--expect` | `restore` repone la copia (los cuatro nodos). El render falló por la ruta (`.env.local` desde la raíz: es `pub/.env.local`); el restaurado es idéntico (`--check` rc=0, mismo sha `016b8c0b…`). Recreados `healthy` a los 5 s. **Mismo delta que la primera vez: `oasisVersion+1` en los cuatro y nada más** → `GATE OK` |
+
+No aplican UM ni UR (no cambia el motor: `db2.tsv` en verde).
 
 ## 6. Delta de publicación
 
-**No medido** (gates pendientes). Declarado: `pub:oasisVersion=+1` · `hub:oasisVersion=+1` ·
-`bot:oasisVersion=+1,pubAvailability=+0..1,about=+0..1` · retro (`server`): `oasisVersion=+1`. Cualquier otra cosa es
-desviación: parada dura. Host: no aplica en este reporte.
+Local, por nodo, desde `pre125` (1.2.3) hasta el cierre de U6: **pub `oasisVersion+1` + `contact+1` (el invite de
+U6)** · **HUB `oasisVersion+1`** · **bot `oasisVersion+1`** (ni `pubAvailability` ni `about` salieron: el `+0..1`
+declarado cubre que no) · **retro `oasisVersion+1`**. Nada más en ningún nodo en ~25 min con U4, U5 y US en medio.
+Declarado para el host: `pub:oasisVersion=+1 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1,about=+0..1
+retro:oasisVersion=+1`; cualquier otra cosa es desviación. Host: no aplica en este reporte.
 
 ## 7. Correcciones al protocolo
 
@@ -280,6 +308,13 @@ desviación: parada dura. Host: no aplica en este reporte.
   fichero montado»): este ciclo lo cambió y la tabla no lo contemplaba.
 - UPGRADE §1: con varios commits «Oasis release X.Y.Z» (1.2.5 tuvo tres el mismo día), vale el último; el preflight ya
   lo hacía, el texto no lo decía.
+- UPGRADE §3.4 U0: si el ciclo cambia el compose, la línea base se levanta con el compose **desplegado** (copia de
+  `main`), no con el de la rama: con el bind nuevo y la imagen vieja, el HUB habría arrancado con la config por
+  defecto de la imagen (sin `inboxMutedBots`) y la línea base no habría sido «como el host».
+- Stack local: la IP del pub cambia al recrear y el HUB guarda IPs en `conn.json` (desde WP-O46). No es del
+  upgrade, pero cada ciclo tropieza: `hub-conn-fix.js` con `net:oasis-pub:8009~shs:<KEY>` (nombre de servicio, no
+  IP) lo deja estable en local. En el host la entrada del HUB lleva la IP del bridge del pub (HUB §3): comprobarla
+  en §4 tras recrear el pub (`conn.peers()` desde el HUB).
 - UPGRADE §0.2: dos piezas nuevas en el inventario (config del nodo; token de admin).
 - AGENTES §4: tres trampas (config regenerada que no surte efecto; 403 con `Host`/`Referer` correctos; 404 en `/c/blob`).
 - ECOIN §5.2, HUB §5.2 y fila de disco, CLIENT §4: lo de H1, H3, H4.
@@ -288,9 +323,13 @@ desviación: parada dura. Host: no aplica en este reporte.
 
 ## 8. No medido / pendiente
 
-1. Gates U0-U7, US (§5): arrancar Docker Desktop y ejecutarlos; corregir aquí lo que midan.
-2. `deploy-status.sh` del host antes del §4 (ley 1); confirmar H6 contra los scripts de backup.
-3. **DECISIONES**: H2 (confianza de pubs: ¿invites del bot, D-O19, o aceptar?), H3 (`/c/blob`: ¿séptimo guard?), H8
-   (`blobs.max` 50/75), cliente (H1/H7: adaptar entrypoint y drill antes de subirlo; hoy sigue en 1.2.2).
-4. §4 host: GO por nodo. Un `oasisVersion` por nodo; rollback = `src.old-1.2.3` + imagen `:1.2.3-vieja`, y también
+1. `deploy-status.sh` del host antes del §4 (ley 1); confirmar H6 contra los scripts de backup (`backup-oasis-pub.sh`,
+   `backup-ecoin.sh`: leen `ssb-data` como root o con `sudo`?).
+2. Decidido (D-O31, D-O32): nada abierto de H2/H3. Pendiente de **medir en el host** H2 con un cliente real (qué
+   bancos ve Banking → UBI tras el upgrade). H8 (`blobs.max` 50/75) queda como está. Cliente: WP propio (CLIENT §4).
+3. La cara «sin guard» de H3 no se midió (habría pedido una segunda imagen sin el guard): se sostiene en la lectura.
+4. Limpieza local: `docker rm oasis-gate-u6-desechable` (desechable de U6, parado); `pub/docker-compose.pub.1.2.3.yml`
+   (copia del compose de `main` para U0, sin trackear) se borra al cerrar; la copia `volumes-dev/.gates/pre125` se
+   conserva hasta cerrar el ciclo en el host.
+5. §4 host: GO por nodo. Un `oasisVersion` por nodo; rollback = `src.old-1.2.3` + imagen `:1.2.3-vieja`, y también
    publica (UPGRADE §0.4).
