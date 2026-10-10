@@ -331,7 +331,8 @@ decisión del custodio, 115 retiradas (§9).
 2. La cara «sin guard» de H3 no se midió (habría pedido una segunda imagen sin el guard): se sostiene en la lectura.
 3. H6 en el host: `ssb-data` de pub, HUB y bot a 700 (medido); confirmar que `backup-oasis-pub.sh` y
    `backup-ecoin.sh` leen con `sudo` (los de esta sesión funcionaron).
-4. **Cripta USB (último paso, aviso al custodio):** copiar y verificar con `sha256sum -c`:
+4. **Cripta USB — hecho el 2026-10-10 04:23Z:** `D:\ALEPH_NET\o-sdk-wp-o135-20261010T042328Z\` (46 ficheros, 696 MB,
+   `SHA256SUMS-cripta.txt`, 0 diferencias con el origen; la identidad del bot 3 está en dos sitios). Lo copiado:
    `devops/backups/oasis-retro-bot/20261010T031959Z/` (identidad íntegra del bot 3: tar de `ssb-data`,
    `assets-logs.tar.gz`, `SHA256SUMS.host.txt`, `log-bipf.pre-arranque.txt`, `LEEME-retro.txt`),
    `devops/backups/oasis-retro-bot/20261008T120750Z/` (claves del 8), `devops/backups/srv-oasis/20261010T033700Z/`
@@ -339,12 +340,12 @@ decisión del custodio, 115 retiradas (§9).
    `…/20261010T021539Z/`, y las fotos `devops/logs/upgrade/{pre125,pre-mudanza,pre-mudanza3,post125}.remote.snap`,
    `retro-real-125.local.snap`, `retro-post-tombstone.local.snap`. Hasta entonces la identidad del bot 3 tiene
    una sola copia fuera del nodo (portátil, sin cifrar).
-5. **PERMISO 5** (otro día, tras la cripta): borrar del host `/srv/oasis/oasis-retro-bot.bak-o135-2026-10-10.tgz` y
-   `/srv/oasis/oasis-retro-bot.mudado-20261010T033700Z.tgz`; retirar también `:pre-o132` (ya nadie la corre) y
-   `src.old-1.2.3` + `src-1.2.3.tgz` cuando el ciclo se dé por asentado (UPGRADE §4 paso 2 del ciclo siguiente).
-6. Limpieza local: `docker rm oasis-gate-u6-desechable` (parado); `volumes-dev/.gates/pre125` lleva una copia del
-   retro **desechable** (ya no se repone); `volumes-dev/oasis-retro-bot.desechable-Oz7l6q-20261010T030533Z` se
-   puede retirar cuando se quiera (identidad de drill).
+5. **PERMISO 5 — hecho el 2026-10-10** tras la cripta: retirados del host los dos tgz del retro (`.bak-o135`,
+   `.mudado-…`); en `/srv/oasis` no queda nada del retro. El rollback del ciclo (`:pre-o132` para pub/bot, `:1.2.3`
+   para el HUB, `src.old-1.2.3`, `src-1.2.3.tgz`) se retira en el ciclo siguiente (UPGRADE §4 paso 2).
+6. Limpieza local **hecha**: `oasis-gate-u6-desechable` retirado; la identidad desechable del retro
+   (`volumes-dev/oasis-retro-bot.desechable-Oz7l6q-…`) borrada por el custodio; `volumes-dev/.gates/pre125` lleva
+   aún una copia de esa identidad desechable (inerte).
 7. Sala 02 del sitio (`pub/site/parlament/campamento/`): enlaza objetos retirados → retirar del sitio del host (regla
    de la ficha §5: sha256 del vivo, línea a línea si difiere). Las rutas de detalle de `/c` siguen respondiendo
    200 por URL directa (upstream): se dice en TEMPLATE §9.
