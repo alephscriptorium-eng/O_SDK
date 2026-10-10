@@ -226,6 +226,9 @@ services:
     networks: [oasis_pub_net]
 
   oasis-retro-bot:                # retro.escrivivir.co (bot nº 3): secretaría de plantillas (WP-O131, docs/PUB/TEMPLATE-PROTOCOL.md §4.3)
+                                  # En la casa ya NO corre en el host: mudado a la máquina operadora el 2026-10-10 (D-O33, WP-O135),
+                                  # con .env.local → volumes-real/. El servicio queda como receta para otra instancia y para ese nodo real.
+                                  # Retirar un servicio de perfil: `rm -sf <svc>`; `--profile X down` tumba todo lo sin perfil (HUB §11).
     profiles: ["retro"]                      # pub:local:up / deploy.sh no lo arrastran
     image: oasis-pub-scriptorium:latest      # misma imagen que el pub, sin build
     container_name: oasis-pub-retro-bot
