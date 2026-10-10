@@ -299,8 +299,11 @@ No aplican UM ni UR (no cambia el motor: `db2.tsv` en verde).
 Local, por nodo, desde `pre125` (1.2.3) hasta el cierre de U6: **pub `oasisVersion+1` + `contact+1` (el invite de
 U6)** · **HUB `oasisVersion+1`** · **bot `oasisVersion+1`** (ni `pubAvailability` ni `about` salieron: el `+0..1`
 declarado cubre que no) · **retro `oasisVersion+1`**. Nada más en ningún nodo en ~25 min con U4, U5 y US en medio.
-Declarado para el host: `pub:oasisVersion=+1 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1,about=+0..1
-retro:oasisVersion=+1`; cualquier otra cosa es desviación. Host: no aplica en este reporte.
+Declarado para el host: `pub:oasisVersion=+1 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1,about=+0..1`
+(el retro **no** se subió en el host: §9). **Medido en el host** (`check pre125-3`, base `pre125` sin la fila del
+retro, 03:37Z): pub `oasisVersion+1`, HUB `oasisVersion+1`, bot `oasisVersion+1` y **nada más** → `GATE OK`. El
+retro publicó su `oasisVersion` 1.2.5 **en la máquina operadora** (seq 151, aceptado por el pub) y después, por
+decisión del custodio, 115 retiradas (§9).
 
 ## 7. Correcciones al protocolo
 
@@ -323,13 +326,82 @@ retro:oasisVersion=+1`; cualquier otra cosa es desviación. Host: no aplica en e
 
 ## 8. No medido / pendiente
 
-1. `deploy-status.sh` del host antes del §4 (ley 1); confirmar H6 contra los scripts de backup (`backup-oasis-pub.sh`,
-   `backup-ecoin.sh`: leen `ssb-data` como root o con `sudo`?).
-2. Decidido (D-O31, D-O32): nada abierto de H2/H3. Pendiente de **medir en el host** H2 con un cliente real (qué
-   bancos ve Banking → UBI tras el upgrade). H8 (`blobs.max` 50/75) queda como está. Cliente: WP propio (CLIENT §4).
-3. La cara «sin guard» de H3 no se midió (habría pedido una segunda imagen sin el guard): se sostiene en la lectura.
-4. Limpieza local: `docker rm oasis-gate-u6-desechable` (desechable de U6, parado); `pub/docker-compose.pub.1.2.3.yml`
-   (copia del compose de `main` para U0, sin trackear) se borra al cerrar; la copia `volumes-dev/.gates/pre125` se
-   conserva hasta cerrar el ciclo en el host.
-5. §4 host: GO por nodo. Un `oasisVersion` por nodo; rollback = `src.old-1.2.3` + imagen `:1.2.3-vieja`, y también
-   publica (UPGRADE §0.4).
+1. H2 (confianza de pubs en Banking, D-O32): **medir en el host con un cliente real** qué bancos ve Banking → UBI.
+   H8 (`blobs.max` 50/75) queda como está. Cliente dockerizado: sigue en 1.2.2; WP propio (CLIENT §4).
+2. La cara «sin guard» de H3 no se midió (habría pedido una segunda imagen sin el guard): se sostiene en la lectura.
+3. H6 en el host: `ssb-data` de pub, HUB y bot a 700 (medido); confirmar que `backup-oasis-pub.sh` y
+   `backup-ecoin.sh` leen con `sudo` (los de esta sesión funcionaron).
+4. **Cripta USB (último paso, aviso al custodio):** copiar y verificar con `sha256sum -c`:
+   `devops/backups/oasis-retro-bot/20261010T031959Z/` (identidad íntegra del bot 3: tar de `ssb-data`,
+   `assets-logs.tar.gz`, `SHA256SUMS.host.txt`, `log-bipf.pre-arranque.txt`, `LEEME-retro.txt`),
+   `devops/backups/oasis-retro-bot/20261008T120750Z/` (claves del 8), `devops/backups/srv-oasis/20261010T033700Z/`
+   (tgz del host), `devops/backups/oasis-pub/20261010T012703Z/`, `devops/backups/ecoin/20261010T012905Z/` y
+   `…/20261010T021539Z/`, y las fotos `devops/logs/upgrade/{pre125,pre-mudanza,pre-mudanza3,post125}.remote.snap`,
+   `retro-real-125.local.snap`, `retro-post-tombstone.local.snap`. Hasta entonces la identidad del bot 3 tiene
+   una sola copia fuera del nodo (portátil, sin cifrar).
+5. **PERMISO 5** (otro día, tras la cripta): borrar del host `/srv/oasis/oasis-retro-bot.bak-o135-2026-10-10.tgz` y
+   `/srv/oasis/oasis-retro-bot.mudado-20261010T033700Z.tgz`; retirar también `:pre-o132` (ya nadie la corre) y
+   `src.old-1.2.3` + `src-1.2.3.tgz` cuando el ciclo se dé por asentado (UPGRADE §4 paso 2 del ciclo siguiente).
+6. Limpieza local: `docker rm oasis-gate-u6-desechable` (parado); `volumes-dev/.gates/pre125` lleva una copia del
+   retro **desechable** (ya no se repone); `volumes-dev/oasis-retro-bot.desechable-Oz7l6q-20261010T030533Z` se
+   puede retirar cuando se quiera (identidad de drill).
+7. Sala 02 del sitio (`pub/site/parlament/campamento/`): enlaza objetos retirados → retirar del sitio del host (regla
+   de la ficha §5: sha256 del vivo, línea a línea si difiere). Las rutas de detalle de `/c` siguen respondiendo
+   200 por URL directa (upstream): se dice en TEMPLATE §9.
+8. Upstream (1.2.5), para abrir *issue* o guard si molesta: `TRIBE_LOG_TYPES` sin `tribe-open-invite`
+   (`tribes_model.js:8`); `deleteCalendarById` no desenvuelve sobres `tribe-msg`; `mailing_model` no indexa CLOSED
+   por el socket; rutas de detalle de `/c` sin filtro de tombstones.
+
+## 9. Aplicación en el host (2026-10-10, GO-1 … GO-4b) y mudanza del bot nº 3 (PERMISO 1-4, 6)
+
+Una orden por paso (UPGRADE §4). Estado de partida medido (`deploy-status.sh`, 01:1xZ): pub, HUB, bot y retro en
+1.2.3 `healthy`; `src/` del host 1.2.3; compose del host = `main` salvo CRLF; `.dockerignore` del host con los
+comodines exigidos; restos `pre-o132`; `/` 38 %, `/srv/oasis` 27 %. Foto `pre125` (remote, 01:16Z): pub 23 · HUB 16 ·
+bot 70 (motor `pub=true`, épocas `2026-09,2026-10`) · retro 150; los cuatro `seq = registros = sbot`.
+
+| # | Paso | Hecho | Puerta |
+|---|---|---|---|
+| 1 | Backups | pub → `devops/backups/oasis-pub/20261010T012703Z`; `wallet.dat` → `…/ecoin/20261010T012905Z` (81 920 B, `ad7cdb04…`) y tras encender `…/021539Z` (`06f47df8…`); en el host `oasis-hub.bak-o135-2026-10-10.tgz` (845 MB), `oasis-wallet-bot.bak-…` (81 MB), `oasis-retro-bot.bak-…` (3,7 MB); `.bak-o135-2026-10-10` de compose y 5 `ssb-config` | **GO-1** |
+| 2 | Disco | retirados `src.old-pre-o132` y `src-pre-o132.tgz`; la imagen `:pre-o132` **no** (Docker: la corrían pub, bot y retro = `84828fc054c6`; es su rollback real); prune 0 B; `/` 37 % | |
+| 3 | Rollback | `oasis-pub-scriptorium:1.2.3` = `2c25fb3c1c65` (la `latest` de entonces, que solo corría el HUB) · `/srv/oasis/src-1.2.3.tgz` (104 MB, 600) | |
+| 4 | `src/` | `git archive` LF de `upgrade/oasis-1.2.5` → `src.new` (24 138 ficheros, 287 MB). Antes del `mv`: 1.2.5, 0 CR en `backend.js` e `is-map`, enlace a `src/base` + `ssb-db2` vendorizado, `url` del 5.º guard, guard 6 (4+2), **guard 7 (1)**, `blobs.max 50`, solo 4 JSON en `configs/`. `mv src src.old-1.2.3` | |
+| 5 | Lo demás que viaja | compose (dos líneas del bind) y 5 `ssb-config` (sin `gossip`) con `cat >` in place; diff frente al `.bak` **exactamente** esas líneas (los `.bak` tenían CRLF; lo escrito, LF); inodos conservados; JSON válidos | |
+| 6 | Build y humo | `compose build oasis-pub` → `ca6c85a7bd14` (1,06 GB, `OASIS_AI=none`); `/` 41 %. Humo: 1.2.5, `node --check` de `backend.js` y `clearnet_view.js`, enlace, `guard o-sdk (WP-O135, D-O31)` presente, sin `.env.prod` ni `src.old` en la imagen; `server` y `backend` efímeros `running` con los tres parches, `Blob size limit: 50 MB`, `GET /c` 200 | |
+| 7 | Pub (01:50:03Z) | `up -d --no-deps --no-build oasis-pub` → `healthy` a los 35 s; `check pre125 --expect 'pub:oasisVersion=+1'` → **`GATE OK`** (HUB, bot, retro Δ0). HUB y bot reconectados por `net:oasis-pub:8008`; el pub ve 9 pares. `/public/status` → 1.2.5 con el invite público bien formado (canario del override). `ssb-data` del pub a **700** (H6) y `oasis/oasis-config.json` copiado del default (H1, inerte). Snapshot reconstruido solo a las 01:52Z (6416 mensajes, 100 feeds, 2,3 MB) | **GO-2** |
+| 8 | HUB (01:52:57Z) | `up -d --no-deps --no-build oasis-hub` → `healthy` a los 65 s. **Lee la config del bind nuevo** (`~/.ssb/oasis/oasis-config.json`, sha `f16cc0ce…` = repo), sin `*.tmp-*`, `Media cache limit: 2048 MB`, «Admin access» en el log (no copiado). `check`: **pub +1, HUB +1**, bot y retro Δ0 → `GATE OK`. `prune-cache` (398 MB → 0) · `hub --strict` contra `https://pub.escrivivir.co` → **`GATE OK`** (16 comprobaciones; sitemap 203 URLs https; RSS 34+3). Conectado al pub por nombre **y** por IP del bridge (`syncPeerBook` añadió la segunda entrada, misma clave) y a dos pubs de terceros; 185 MiB / 768. `ssb-data` a 700 | **GO-3** |
+| 9 | Bot (02:11:34Z / 02:13:45Z) | `hub-wallet.sh pause` → 1.2.5 con `pub=false`, `healthy`; **lee el render del bind nuevo** (sha `15eec31d…` = host), `wallet.url` y 16 avisos silenciados en su sitio, «Admin access» presente. `check`: `oasisVersion+1`, `about` +0, `wallet` = 1, dirección `EYdruX…`, `ubiAllocation` = 16, `(cifrado)` quieto → `GATE OK`. `hub-wallet.sh on --yes` → `pub=true`, «PUB engine on»; `check` con `pubAvailability=+0..1`: **no republicó** (anuncio vigente) → `GATE OK`. `backup-ecoin.sh` después | **GO-4a · GO-4b** |
+| 10 | **Retro: mudanza en vez de GO-5** | El custodio decide no subirlo en el host: **mudarlo** a la máquina operadora como nodo real (D-O33), 0 publicaciones salvo el `oasisVersion` 1.2.5 que habría publicado igual. Tabla completa, comando + salida: `ARCHIVO/DISCO/scriptorium-exported/runbook-mudanza.md`. Resumen: foto `pre-mudanza3` (base de tres) · **PERMISO 1** `stop` (03:19:34Z) · copia con sha256 por fichero (173/173) · log en frío **`S 150` `D 0`** · **PERMISO 2** arranque local (03:23:39Z): `Δseq=1 · oasisVersion+1 → GATE OK` (seq 151), `remember` del pub real, **`seq_pub=151`** (continuación legítima), reinicio sin publicar · **PERMISO 3** `rm -sf` (03:31:45Z) + `.env.prod` con las 6 claves comentadas; `check pre-mudanza3` → pub, HUB, bot **Δ0**; `deploy-status.sh` tres nodos 1.2.5 · **PERMISO 4** tgz `.mudado-20261010T033700Z` (sha `29cdda3c…` igual en host y local) y retirada de `/srv/oasis/oasis-retro-bot` | **PERMISO 1-4** |
+| 11 | **Deshacer de Campamento** | Decisión del custodio: tombstonear todo lo generado, desde el retro mudado. Herramienta nueva `pub/tools/seed-tombstone.js` (TEMPLATE §9). Dry-run 117 previstos; **115 publicados en 11 bloques, uno a uno** (15 `clearnetItem off`, 1 post, 2 mapas, 5 wikis, 2 listas OPEN, 7 eventos, 7 calendarios —6 envueltos para su tribu—, 7 salas, 22×2 invitaciones, 9 subtribus, 16 tribus); dos listas CLOSED privadas (un miembro: el bot) anotadas `--skip`. Feed del bot **150 → 266**; pub y HUB en 266; host **Δ0**. HUB: sitemap 188 URLs con 0 del bot, portada sin Campamento; rutas de detalle siguen 200 por URL directa (upstream). Tabla: `runbook-tombstone.md`; evidencia `vps/tombstone-o135.jsonl`, `vps/ledger-tombstones.json` | **PERMISO 6** (GO global, bloque a bloque) |
+| 12 | Cierre | journal `oasisVersion 1.2.5`, modo `server+hub+wallet-engine-on+pub-snapshot-6h+phone-relay` (sin `+retro`) · `snapshot post125`: pub 24 · HUB 17 · bot 71, cuadran · `check pre125-3` → **`oasisVersion+1` por nodo y nada más** · `capacity.sh`: 2 avisos falsos (leía `blobCache` de `src/configs/`, el sitio de antes de 1.2.4: corregido en `capacity.sh`) | |
+
+Pub sin sbot ≈ 35 s; HUB ≈ 65 s; bot ≈ 2 × 90 s. **Nada publicado con identidad real fuera de lo declarado**: un
+`oasisVersion` por nodo (el del retro, en la máquina operadora) y, por decisión expresa, las 115 retiradas del bot.
+
+### 9.1 Hallazgos del host y de la mudanza
+
+- **H9 · `TRIBE_LOG_TYPES` sin `tribe-open-invite`** (`tribes_model.js:8`, 1.2.5): `getOpenInvite`/`removeOpenInvite`
+  no ven las invitaciones abiertas. El deshacer las publica desde el feed propio. Afecta también a quien quiera
+  redimir o retirar una invitación abierta desde la GUI en 1.2.5.
+- **H10 · `deleteCalendarById` no desenvuelve sobres `tribe-msg`** («Not the author» en 6 de 7 calendarios): el
+  tombstone envuelto se publica con `createHelpers().encryptTombstone` (lo que ya hace `maps_model`).
+- **H11 · `mailing_model` no indexa listas CLOSED por el socket** (`createLogStream` llega cifrado); por HTTP (GUI)
+  sí. Dos listas privadas con un solo miembro quedan sin retirar: no hay nada público en ellas.
+- **H12 · Las rutas de detalle de `/c` no filtran `clearnetItem off` ni tombstones**: índice, portada y sitemap sí.
+- **H13 · `capacity.sh` leía `blobCache` de `src/configs/oasis-config.json`** (el sitio de antes de 1.2.4): dos
+  avisos falsos «SIN LÍMITE»; ahora lee `~/.ssb/oasis/oasis-config.json` primero.
+- **H14 · `backup-oasis-pub.sh` con `--remote-data-root` de otro nodo rellena `identity/` con los ficheros del pub**
+  si no se pasa también `--remote-ssb-dir`: el tar sí es el del nodo pedido. Documentado en el `LEEME` de la copia.
+- La imagen `:pre-o132` **era la que corrían pub, bot y retro** (no `:latest`): el rollback «vigente» de un nodo
+  es la imagen que corre, no el tag; `deploy-status.sh` ya lo decía («IMAGEN VIEJA»).
+
+## 10. Correcciones al protocolo (segunda tanda)
+
+- HUB §11: procedimiento genérico de **mudanza o baja de un bot** (no existía).
+- TEMPLATE §4.5 («dónde vive la secretaría», `--pub-id` del pub real) y **§9 «Deshacer una siembra»** (nuevo).
+- AGENTES §2.9 (excepción: un nodo real en local, en `volumes-real/`), §3 (filas «mudar un nodo» y «tombstone»),
+  §4 (cinco trampas: `check` con `GATE_NODES` ≠ base; `--profile X down`; `--pub-id`; detalle de `/c`; invitaciones
+  abiertas invisibles en 1.2.5), §5.
+- UPGRADE §3.4: la base del `check` debe tener los mismos nodos que la medida (no se puede retirar un nodo entre foto
+  y foto): WP-O135 lo tropezó y lo resolvió con `pre125-3`/`pre-mudanza3`.
+- `upgrade-gates.sh`, `capacity.sh`, `lib-node.sh`, `host.env`: el retro fuera de los defaults; `volumes-real/`.
+- `capacity.sh`: `blobCache` del sitio nuevo (H13).

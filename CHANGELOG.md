@@ -5,7 +5,26 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
-### Changed — Upgrade a Oasis 1.2.5, ensayado en local; séptimo guard (WP-O135, D-O31, D-O32, 2026-10-10)
+### Changed — Bot retro: mudado del VPS a la máquina operadora; Campamento deshecha; deshacer de siembras (WP-O135, D-O33, 2026-10-10)
+
+En lugar de subir el bot nº 3 a 1.2.5 en el host, el custodio decide **mudarlo**: su identidad íntegra (`secret`,
+keyring, log completo seq 150, blobs) sale del VPS parada, se verifica con sha256 por fichero y lectura del log en
+frío, arranca en el `oasis-pub-retro-bot` local sobre `volumes-real/` (fuera de los drills; `.gitignore`,
+`upgrade-gates.sh`, `lib-node.sh`, `capacity.sh` y `host.env` lo saben) y publica solo su `oasisVersion` 1.2.5, que el
+pub acepta como continuación (seq 151); contenedor, bloque de env y datos salen del host con pub, HUB y bot Δ0.
+Después, **deshacer de la siembra de Campamento**: nuevo `pub/tools/seed-tombstone.js` (+ `pub/scripts/retro-tombstone.sh`,
+`npm run pub:local:retro-bot:tombstone`): dry-run por defecto, `--yes` por bloque en orden hojas → raíces, gates
+(autora del ledger, no el pub, pub conectado), ledger propio reejecutable, `--skip` con motivo, evidencia por bloque;
+115 retiradas en 11 bloques, bloque a bloque con el custodio; dos listas CLOSED privadas (un miembro) quedan.
+Método nuevo: TEMPLATE §9 («Deshacer una siembra») y HUB §11 («Mudanza o baja de un bot»); evidencia en
+`ARCHIVO/DISCO/scriptorium-exported/` (`runbook-mudanza.md`, `runbook-tombstone.md`, `vps/tombstone-o135.jsonl`,
+`vps/ledger-tombstones.json`), que pasa a ser el sistema de deshacer de la siembra. Nada del repo se borra: el
+servicio del compose, sus variables y `retro-seed.sh` quedan como receta, marcados «mudado». Hallazgos de upstream
+1.2.5: `TRIBE_LOG_TYPES` sin `tribe-open-invite`; `deleteCalendarById` no desenvuelve sobres de tribu;
+`mailing_model` no indexa listas CLOSED por el socket; las rutas de detalle de `/c` no filtran tombstones.
+`capacity.sh` corregido (leía `blobCache` del sitio de antes de 1.2.4).
+
+### Changed — Upgrade a Oasis 1.2.5, aplicado en el host; séptimo guard (WP-O135, D-O31, D-O32, 2026-10-10)
 
 Rama `upgrade/oasis-1.2.5`: overlay de upstream 560580d7 (1.2.3 → 1.2.5, la 1.2.4 dentro del salto) con los
 guards repuestos (`blobs.max` sigue en 50 MB frente a los 75 de upstream). Lo que el diff de comportamiento obligó a
