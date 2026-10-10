@@ -79,6 +79,7 @@
     "pub:wallet-bot:render": "bash ./pub/scripts/render-wallet-bot-config.sh",
     "pub:local:retro-bot:up": "docker compose --env-file pub/.env.local -f pub/docker-compose.pub.yml --profile retro up -d --no-deps oasis-retro-bot",
     "pub:local:retro-bot:seed": "bash ./pub/scripts/retro-seed.sh",
+    "pub:local:retro-bot:tombstone": "bash ./pub/scripts/retro-tombstone.sh",
     "pub:template:guion": "node ./pub/tools/template-seed.js --template pub/templates/campamento.json --organigrama ARCHIVO/DISCO/scriptorium-exported/entrada/campamento_organigrama.json --guion --out ARCHIVO/DISCO/scriptorium-exported/guion-campamento.md",
     "pub:template:reparto": "node ./pub/tools/template-seed.js --template pub/templates/campamento.json --organigrama ARCHIVO/DISCO/scriptorium-exported/entrada/campamento_organigrama.json --reparto --out ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.md",
     "pub:template:reparto:html": "node ./pub/tools/template-seed.js --template pub/templates/campamento.json --organigrama ARCHIVO/DISCO/scriptorium-exported/entrada/campamento_organigrama.json --reparto --html pub/site-templates/poster/guia.html --out pub/site/parlament/campamento/index.html",
