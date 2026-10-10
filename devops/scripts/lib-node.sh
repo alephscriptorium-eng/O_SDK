@@ -47,6 +47,13 @@ node_run_setup() {
   local repo_root; repo_root="$(cd "$DEVOPS_DIR/.." && pwd)"
   if [ "$NODE_LOCAL" = 1 ]; then
     NODE_COMPOSE_DIR="$repo_root/pub"; NODE_ENV_FILE=".env.local"; NODE_DATA="$repo_root/volumes-dev"; NODE_SUDO=""
+    # El retro local puede ser un nodo REAL fuera de volumes-dev (D-O33): su .ssb es el que diga .env.local
+    # (OASIS_RETRO_BOT_SSB_DATA_DIR, relativo a pub/). Sin la variable, el layout de volumes-dev de siempre.
+    NODE_RETRO_DATA=""
+    local retro_dir; retro_dir="$(grep -m1 '^OASIS_RETRO_BOT_SSB_DATA_DIR=' "$repo_root/pub/.env.local" 2>/dev/null | cut -d= -f2-)"
+    if [ -n "$retro_dir" ]; then
+      case "$retro_dir" in /*) NODE_RETRO_DATA="$retro_dir" ;; *) NODE_RETRO_DATA="$(cd "$repo_root/pub" && cd "$retro_dir" 2>/dev/null && pwd)" ;; esac
+    fi
     run() { MSYS_NO_PATHCONV=1 bash -s; }
     run_cmd() { MSYS_NO_PATHCONV=1 bash -c "$1"; }
   else
@@ -68,7 +75,7 @@ node_run_setup() {
 node_run_cleanup() { [ -n "${NODE_TMP_KEY_DIR:-}" ] && rm -rf "$NODE_TMP_KEY_DIR"; return 0; }
 
 node_remote_preamble() {
-  printf 'SUDO=%q; NODE_LOCAL=%q; NODE_DATA=%q\n' "$NODE_SUDO" "$NODE_LOCAL" "$NODE_DATA"
+  printf 'SUDO=%q; NODE_LOCAL=%q; NODE_DATA=%q; NODE_RETRO_DATA=%q\n' "$NODE_SUDO" "$NODE_LOCAL" "$NODE_DATA" "${NODE_RETRO_DATA:-}"
 }
 
 node_probe_seq() { # node_probe_seq <contenedor> <feed>  → sequence según el sbot vivo, o vacío
@@ -84,7 +91,7 @@ node_ssb_dir() { # en local Docker Desktop devuelve rutas de Windows: allí mand
   if [ "${NODE_LOCAL:-0}" = 1 ]; then
     case "$1" in
       *wallet-bot*) echo "$NODE_DATA/oasis-wallet-bot/ssb-data" ;;
-      *retro-bot*)  echo "$NODE_DATA/oasis-retro-bot/ssb-data" ;;   # antes del comodín: si no, el bot retro se mediría contra el .ssb del pub
+      *retro-bot*)  echo "${NODE_RETRO_DATA:-$NODE_DATA/oasis-retro-bot/ssb-data}" ;;   # antes del comodín: si no, el bot retro se mediría contra el .ssb del pub. Real (D-O33): lo que diga .env.local
       *hub*)        echo "$NODE_DATA/oasis-hub/ssb-data" ;;
       *)            echo "$NODE_DATA/oasis-pub/ssb-data" ;;
     esac
