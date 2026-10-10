@@ -11,7 +11,7 @@ el estado medido de cada encargo: empieza por ahí.
 
 Un fork dockerizado de [Oasis](https://github.com/epsylon/oasis) (red social sobre SSB) con todo lo
 necesario para desplegar un **pub** en un VPS y una **app cliente** en local. `src/` es upstream más
-**6 guards** contados; todo lo demás (`pub/`, `ecoin/`, `client/`, `devops/`, `docs/`) es del fork.
+**7 guards** contados (en 6 ficheros); todo lo demás (`pub/`, `ecoin/`, `client/`, `devops/`, `docs/`) es del fork.
 
 El repo separa **método** e **instancia**. El método es genérico: sirve a cualquier pub, con su
 dominio, sus pieles y su lore. La instancia que lo ejercita es Scriptorium (`pub.escrivivir.co`), y

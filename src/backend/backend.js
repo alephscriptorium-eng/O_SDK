@@ -6631,7 +6631,9 @@ router
     const blobId = ctx.params.cnBlobId;
     if (!isBlob(blobId) || !(await clearnetBlobAllowed(blobId))) { ctx.status = 404; ctx.body = ''; return; }
     let buffer;
-    try { buffer = await blob.getLocal({ blobId }); } catch (_) {}
+    // guard o-sdk (WP-O135, D-O31): el visor pide a la red (blobs.want, hasta 30 s) los blobs que la lista blanca
+    // de upstream admite; con getLocal un blob que el HUB no tiene nunca saldría en /c.
+    try { buffer = await blob.getResolved({ blobId }); } catch (_) {}
     if (!buffer) {
       ctx.status = 404; ctx.body = ''; return;
     }

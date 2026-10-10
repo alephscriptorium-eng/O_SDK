@@ -152,7 +152,7 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | El build del portal rompe | tokens entre ángulos fuera de código (Vue los lee como etiquetas) o enlaces muertos (`ignoreDeadLinks: false`) | `docs/proyecto.md` |
 | Se regeneró la config de un nodo (HUB, bot) y tras recrearlo sigue la vieja | desde Oasis 1.2.4 la config vive en `~/.ssb/oasis/oasis-config.json`; la de `src/configs/` solo se copia una vez. El bind del compose debe ir al sitio nuevo | HUB §5.2 · ECOIN §5.2 |
 | Un `POST` solo-loopback (banca, settings) da 403 con `Host` y `Referer` correctos | desde 1.2.4, con `OASIS_ALLOW_HOST` definido hay un token de admin por arranque: `GET /admin-session/<token>` primero (el token está en el log «Admin access» y **no se copia a reportes**); cualquier cabecera de proxy también anula el loopback | ECOIN §5.2 |
-| Una imagen de `/c` da 404 aunque el blob existe en la red | desde 1.2.4 `/c/blob` solo sirve blobs que el HUB **ya tiene** (sin `want`) y referenciados por un objeto clearnet | HUB-PROTOCOL, fila de disco |
+| Una imagen de `/c` da 404 aunque el blob existe en la red | desde 1.2.4 upstream sirve en `/c/blob` solo blobs que el HUB **ya tiene** (sin `want`); el séptimo guard (D-O31) vuelve a pedirlos, pero solo los referenciados por un objeto clearnet o un avatar. Si el guard se cayó en un overlay, es esto | UPGRADE §2 · HUB-PROTOCOL, fila de disco |
 
 ## 5. Nombres de los bots de soporte
 

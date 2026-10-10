@@ -19,3 +19,5 @@
 1	src/backend/backend.js	"/c/files/:id"	ruta de Files del visor (1.2.1): cae en la location genérica de nginx, 60 s de caché
 1	src/views/clearnet_view.js	cnTheme	guard o-sdk (WP-O132, D-O30): tema e idioma del visor por petición, en el scope; selector de tema `?theme=`
 1	src/backend/backend.js	function clearnetTheme	guard o-sdk (WP-O132, D-O30): `?theme=` validado contra THEMES del visor y guardado en el scope
+1	src/backend/backend.js	guard o-sdk (WP-O135, D-O31)	séptimo guard: /c/blob pide a la red (getResolved) solo los blobs que la lista blanca clearnet admite
+1	src/backend/backend.js	clearnetBlobAllowed	lista blanca de upstream (1.2.4) de la que depende el séptimo guard: blobs referenciados por un objeto clearnet o un avatar
