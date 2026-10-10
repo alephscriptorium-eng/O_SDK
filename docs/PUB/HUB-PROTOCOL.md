@@ -444,6 +444,23 @@ declara en su `about` y **no se lista a sí mismo**. El pub no se toca para aña
   `ssb-admin.js publish-about` (§12, variante sin formulario). No hay ventana `PUBLIC=false` que abrir ni
   cerrar: nada escucha en HTTP. El feed queda con `contact` + `pub` (de `invite.accept`) + `oasisVersion`
   (del reinicio): es lo esperado, no una desviación (medido, WP-O131).
+- **Mudanza o baja de un bot** (ejercido: el bot nº 3 de la casa, VPS → máquina operadora, WP-O135, D-O33).
+  Un feed SSB no se retira; lo que se muda es la identidad y lo que se retira es su infraestructura. Orden
+  fijo, un comando por paso: (1) foto base de los nodos que **se quedan** (`GATE_NODES` sin el que se va:
+  `check` no sabe comparar una base con un nodo que ya no existe) y `pub-feed-seq.sh <feed>` (lo que el pub
+  tiene de él); (2) **parar** el origen (`compose --profile X stop <svc>`; desde aquí no vuelve a arrancar);
+  (3) copiar `ssb-data` entero (`secret`, `db2/`, `blobs/`, `blobs_push/`, `ebt/`, `conn.json` **y**
+  `gossip.json`, `oasis/**`) más lo que montara aparte (assets, logs), con sha256 de cada fichero en origen y
+  verificación en destino; (4) leer el log copiado **en frío** (`pub/tools/log-bipf.js` en un `docker run
+  --rm --entrypoint sh -v …:ro`): `S` = el seq del pub, `D 0`, tipos iguales a la foto; si no, no se arranca;
+  (5) arrancar el destino con la misma versión o superior (si cambia, publica un `oasisVersion`: PERMISO) y
+  comprobar que el pub acepta el seq nuevo como continuación (`pub-feed-seq.sh`); `conn.remember` del pub
+  por nombre (`hub-conn-fix.js`, 0 publicaciones); (6) retirar el origen: `compose --profile X rm -sf <svc>`
+  (**nunca** `--profile X down`: tumba todo lo sin perfil), comentar su bloque de env in place, tgz de sus
+  datos con sha256 → copia local → retirar del host; `check` de los que se quedan = Δ0; journal sin él.
+  **Baja definitiva** = los mismos pasos sin el (5): el archivo guarda `secret` + keyring + log completo y
+  la reactivación exige ese log entero (RECOVERY §4). Lo que no se hace: unfollow del pub (`contact`),
+  `about` de despedida, tombstones por «limpiar» (cada uno es un mensaje; si se decide, TEMPLATE §9).
 
 ## 12. Poner o cambiar el nombre de un bot (`about`)
 

@@ -455,6 +455,33 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   (`persist_client_state`, `wire_wallet_config`) hay que adaptarlo y pasar el drill antes de
   subirlo: WP propio, fuera de la rama del upgrade. Confirma D-O19 y D-O22; no supera nada.
 
+- **D-O33 · 2026-10-10 · El bot nº 3 (`retro.escrivivir.co`) se muda del VPS a la máquina operadora
+  como nodo real fuera de los drills; su siembra de Campamento se deshace con tombstones; nada del repo
+  se borra.** Decidido por el custodio en WP-O135, al llegar al GO-5 del ciclo 1.2.5 y en lugar de
+  subirlo en el host. Motivo, en sus palabras: el retro «es nuestro drill de pruebas»; retirar su
+  infraestructura del VPS sin perder la identidad («no la pierdas»), porque en Oasis 1.2.5 el
+  gobierno de una tribu es la identidad de su autor y **no existe traspaso** (`tribes_model.js:182,
+  187,229,592`): conservar al bot vivo es la única forma de conservar el control de lo que creó; y
+  retirar («tombstonear») todo lo que generó. Hechos: (1) la identidad (`secret`, keyring de tribus,
+  calendarios y mapas, log completo seq 150, blobs, `conn.json`) salió del VPS parada, copiada con
+  sha256 por fichero y leída en frío (`S 150`, `D 0`) antes de arrancar en local; publicó **un**
+  `oasisVersion` (seq 151) que el pub real aceptó como continuación; el contenedor, el bloque
+  `OASIS_RETRO_BOT_*` de `.env.prod` y `/srv/oasis/oasis-retro-bot` salieron del host (copia en
+  `devops/backups/srv-oasis/`), con pub, HUB y bot Δ0. (2) En local vive en `volumes-real/` (ignorado
+  por git), fuera de `volumes-dev/`: `upgrade-gates.sh` no lo copia, repone ni recrea; se mide solo con
+  `GATE_NODES='retro:…'` y `snapshot`/`check`; `lib-node.sh` sigue a `.env.local`. Excepción explícita a
+  AGENTES §2.9 («la identidad real de nadie se usa para ensayar»): un nodo real convive con el stack de
+  drills, separado físicamente. (3) El deshacer **revoca** la fila «sin tombstone» del dosier de WP-O134
+  (2026-10-09): 115 retiradas en 11 bloques (`seed-tombstone.js`, dry-run, PERMISO por bloque, hojas →
+  raíces, evidencia en el dosier de la instancia), dos listas CLOSED privadas no retirables desde el
+  seeder (un solo miembro: el bot). Lo publicado sigue en los logs: un tombstone solo esconde. (4) El
+  servicio `oasis-retro-bot` del compose, sus variables, `retro-seed.sh` y la vía caliente quedan como
+  método para otra instancia y para el nodo real local; en la casa se marcan «mudado». Supera a
+  **D-O29** en «dónde vive» (VPS con GO por paso → máquina operadora); conserva D-O28 (la vía caliente
+  como método) y D-O19/D-O20. Aplicación: WP-O135 §9, `TEMPLATE-PROTOCOL.md` §4.5 y §9, HUB §11,
+  `INSTANCIA-SCRIPTORIUM.md` §1-§5, `ARCHIVO/DISCO/scriptorium-exported/` (runbooks de mudanza y de
+  deshacer, evidencia `vps/tombstone-*.jsonl`, `vps/ledger-tombstones.json`).
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |
