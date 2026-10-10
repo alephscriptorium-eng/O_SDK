@@ -1,5 +1,6 @@
 const { div, h2, h3, p, section, button, form, a, input, span, pre, table, thead, tbody, tr, td, th, br, strong, label, ul, li } = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink, formatCarbon, renderStateChip, renderModuleStats, renderWalletChip } = require("../views/main_views");
+const RAW_HTML = Symbol.for('oasis.rawHtml');
+const { template, i18n, userLink, formatCarbon, renderStateChip, renderModuleStats, renderWalletChip, paged } = require("../views/main_views");
 const moment = require("../server/node_modules/moment");
 
 const FILTER_LABELS = {
@@ -167,11 +168,11 @@ const renderChartBlock = (id, title, svg) =>
   div({ class: "bank-eco-chart-block" },
     h2({ class: "bank-eco-chart-title" }, title),
     a({ href: `#${id}`, id: `${id}-src`, class: "bank-eco-chart-zoom-link", title: i18n.bankChartZoomHint },
-      div({ class: "bank-eco-chart-canvas", innerHTML: svg })
+      div({ class: "bank-eco-chart-canvas", [RAW_HTML]: svg })
     ),
     div({ id, class: "lightbox bank-eco-chart-lightbox" },
       a({ href: `#${id}-src`, class: "lightbox-close" }, "\u00d7"),
-      div({ class: "bank-eco-chart-canvas-zoom", innerHTML: svg })
+      div({ class: "bank-eco-chart-canvas-zoom", [RAW_HTML]: svg })
     )
   );
 
@@ -180,8 +181,8 @@ const renderRangedChart = (id, title, filterName, range, hasAnyData, svg) => {
   return div({ class: "bank-eco-chart-block", id: `${id}-block` },
     h2({ class: "bank-eco-chart-title" }, title),
     renderRangeTabs(filterName, range, `${id}-block`),
-    svg ? a({ href: `#${id}`, id: `${id}-src`, class: "bank-eco-chart-zoom-link", title: i18n.bankChartZoomHint }, div({ class: "bank-eco-chart-canvas", innerHTML: svg })) : p({ class: "bank-chart-empty-note" }, i18n.bankChartNoDataYet),
-    svg ? div({ id, class: "lightbox bank-eco-chart-lightbox" }, a({ href: `#${id}-src`, class: "lightbox-close" }, "\u00d7"), div({ class: "bank-eco-chart-canvas-zoom", innerHTML: svg })) : null
+    svg ? a({ href: `#${id}`, id: `${id}-src`, class: "bank-eco-chart-zoom-link", title: i18n.bankChartZoomHint }, div({ class: "bank-eco-chart-canvas", [RAW_HTML]: svg })) : p({ class: "bank-chart-empty-note" }, i18n.bankChartNoDataYet),
+    svg ? div({ id, class: "lightbox bank-eco-chart-lightbox" }, a({ href: `#${id}-src`, class: "lightbox-close" }, "\u00d7"), div({ class: "bank-eco-chart-canvas-zoom", [RAW_HTML]: svg })) : null
   );
 };
 
@@ -283,8 +284,8 @@ const renderWealthChart = (wealth, range) => {
   return div({ class: "bank-eco-chart-block", id: "wealth-chart-block" },
     h2({ class: "bank-eco-chart-title" }, i18n.bankChartWealthTitle),
     renderRangeTabs("exchange", range, "wealth-chart-block"),
-    enough ? a({ href: "#wealth-chart", id: "wealth-chart-src", class: "bank-eco-chart-zoom-link", title: i18n.bankChartZoomHint }, div({ class: "bank-eco-chart-canvas", innerHTML: svg })) : p({ class: "bank-chart-empty-note" }, i18n.bankChartNoDataRange),
-    enough ? div({ id: "wealth-chart", class: "lightbox bank-eco-chart-lightbox" }, a({ href: "#wealth-chart-src", class: "lightbox-close" }, "\u00d7"), div({ class: "bank-eco-chart-canvas-zoom", innerHTML: svg })) : null
+    enough ? a({ href: "#wealth-chart", id: "wealth-chart-src", class: "bank-eco-chart-zoom-link", title: i18n.bankChartZoomHint }, div({ class: "bank-eco-chart-canvas", [RAW_HTML]: svg })) : p({ class: "bank-chart-empty-note" }, i18n.bankChartNoDataRange),
+    enough ? div({ id: "wealth-chart", class: "lightbox bank-eco-chart-lightbox" }, a({ href: "#wealth-chart-src", class: "lightbox-close" }, "\u00d7"), div({ class: "bank-eco-chart-canvas-zoom", [RAW_HTML]: svg })) : null
   );
 };
 
@@ -624,8 +625,8 @@ const renderEpochList = (epochs = []) =>
         { class: "bank-epochs" },
         thead(tr(th(i18n.bankEpochId), th(i18n.bankPool), th(i18n.bankEpochAllocations), th(""))),
         tbody(
-          ...epochs
-            .sort((a, b) => String(b.id).localeCompare(String(a.id)))
+          ...paged(epochs
+            .sort((a, b) => String(b.id).localeCompare(String(a.id))))
             .map(e =>
               tr(
                 td(e.id),
@@ -772,7 +773,7 @@ const renderAddresses = (data, userId) => {
           table({ class: "bank-addresses" },
             thead(tr(th(i18n.bankAddAddressLabel.replace(/\s*\(.*\)\s*$/, "")), th(i18n.bankAddAddressUser), th(i18n.bankAddress), th(i18n.bankAddressSource), th(""))),
             tbody(
-              ...rows.map(r => tr(
+              ...paged(rows).map(r => tr(
                 td(r.label || (r.id ? "" : i18n.bankAddressUnnamed)),
                 td(r.id ? userLink(r.id) : ""),
                 td(strong({ class: "bank-address-code" }, r.address)),
@@ -833,7 +834,7 @@ const renderBankingView = (data, filter, userId, isPub) =>
         : filter === "addresses"
         ? renderAddresses(data, userId)
         : allocationsTable(
-            filterAllocations((data.allocations || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), filter, userId),
+            paged(filterAllocations((data.allocations || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), filter, userId)),
             userId
           )
     )
@@ -894,7 +895,7 @@ const renderEpochView = (epoch, allocations, userId = "", data = {}) => {
               )
             ),
             h2(i18n.bankEpochAllocations),
-            allocationsTable(rows, userId)
+            allocationsTable(paged(rows), userId)
           )
     )
   );

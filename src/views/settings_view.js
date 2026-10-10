@@ -18,7 +18,7 @@ const sizeLabel = (bytes) => {
 };
 const blobCacheOptionLabel = (mb) => mb === 0 ? i18n.settingsBlobCacheUnlimited : (mb >= 1024 ? `${mb / 1024} GB` : `${mb} MB`);
 
-const themeFilePath = path.join(__dirname, '../configs/oasis-config.json');
+const themeFilePath = require('../configs/config-manager').configFilePath;
 const getThemeConfig = () => {
   try {
     const configData = fs.readFileSync(themeFilePath);
@@ -34,7 +34,7 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
   const theme = currentThemeConfig.themes?.current || "Dark-SNH";
   const currentConfig = getConfig();
   let serverConfig = {};
-  try { serverConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '../configs/server-config.json'), 'utf8')); } catch (_) {}
+  try { serverConfig = require('../configs/config-manager.js').readServerConfig(); } catch (_) {}
   const currentHops = (serverConfig.friends && Number.isFinite(serverConfig.friends.hops)) ? serverConfig.friends.hops : 2;
   const walletUrl = currentConfig.wallet.url;
   const walletUser = currentConfig.wallet.user;
@@ -104,7 +104,9 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
             d.files ? row(i18n.updateFilesLabel, `${d.files} · +${d.insertions} −${d.deletions}`) : null,
             d.origin ? row(i18n.updateOriginLabel, span({ class: "bank-address-code" }, d.origin)) : null
           ),
-          p("Upstream Oasis updates are available. For this Dockerized deployment, update from the host repository and rebuild the container. In-app auto-update is disabled.")
+          form({ action: "/update", method: "post" },
+            button({ type: "submit", class: "filter-btn" }, `\u2B07 OASIS${updateInfo.version ? ` ${updateInfo.version}` : ''}`)
+          )
         )
       )
     );
@@ -260,7 +262,7 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
           ),
           br(),
           button({ type: "submit" }, i18n.saveSettings),
-          Number(aiExportCount) > 0 ? button({ type: "submit", formaction: "/ai/export", formmethod: "GET", class: "ai-export-btn" }, `${i18n.aiExportFineTuning} (${aiExportCount})`) : null
+          Number(aiExportCount) > 0 ? button({ type: "submit", formaction: "/ai/export", attrs: { formmethod: "GET" }, class: "ai-export-btn" }, `${i18n.aiExportFineTuning} (${aiExportCount})`) : null
         )
       )
     ) : null,
@@ -414,7 +416,7 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
           input({ type: "text", id: "wallet_fee", name: "wallet_fee", placeholder: "5", value: walletFee || "5" }), br(),
           button({ type: "submit" }, i18n.walletConfiguration),
           walletUser ? " " : null,
-          walletUser ? button({ type: "submit", class: "delete-btn", formaction: "/settings/wallet/disconnect", formmethod: "POST" }, i18n.walletDisconnectButton) : null
+          walletUser ? button({ type: "submit", class: "delete-btn", formaction: "/settings/wallet/disconnect", attrs: { formmethod: "POST" } }, i18n.walletDisconnectButton) : null
         )
       )
     ) : null,

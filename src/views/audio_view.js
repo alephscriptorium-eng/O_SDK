@@ -18,7 +18,7 @@ const {
 const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink } = require("./comments_view");
 
 const { renderLicenseChip, renderLicenseSelect, renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderTribeOriginChip } = require('./clearnet_view');
-const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty, contentDeleteAction } = require("./main_views");
+const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderStyledText } = require("../backend/renderStyledText")
@@ -104,24 +104,31 @@ const renderAudioList = exports.renderAudioList = (audios, filter, params = {}) 
         const title = safeText(audioObj.title);
 
         const isOwn = audioObj.author && String(audioObj.author) === String(userId);
+        const headerActions = typeof params.headerActions === "function"
+          ? params.headerActions(audioObj)
+          : audioObj.tribeOrigin
+            ? renderContentActions(null, audioObj.tribeOrigin.href)
+            : renderContentActions(audioObj.key, `/audios/${encodeURIComponent(audioObj.key)}`, { spread: (params.spreadMap && params.spreadMap.get(audioObj.key)) || params.spreads || null, author: audioObj.author, favKind: 'audios', torrentFrom: { blobId: audioObj.url, name: audioObj.title }, isFavorite: audioObj.isFavorite, reportTitle: audioObj.title, deleteAction: isOwn ? contentDeleteAction('audio', audioObj.key) : undefined, returnTo });
+        const engagement = typeof params.engagement === "function"
+          ? params.engagement(audioObj)
+          : audioObj.tribeOrigin ? null : renderEngagement(audioObj.key,
+            renderOpinionsVoting('/audios/opinions', audioObj.key, audioObj.opinions, returnTo, audioObj.opinions_inhabitants),
+            renderCommentsLink({ href: `/audios/${encodeURIComponent(audioObj.key)}`, count: commentCount })
+          );
         return div(
           { class: "trending-card audio-card" + (isOwn ? " own-content" : "") },
           div(
             { class: "card-header activity-card-header" },
             span(),
-            audioObj.tribeOrigin
-              ? renderContentActions(null, audioObj.tribeOrigin.href)
-              : renderContentActions(audioObj.key, `/audios/${encodeURIComponent(audioObj.key)}`, { spread: (params.spreadMap && params.spreadMap.get(audioObj.key)) || params.spreads || null, author: audioObj.author, favKind: 'audios', torrentFrom: { blobId: audioObj.url, name: audioObj.title }, isFavorite: audioObj.isFavorite, reportTitle: audioObj.title, deleteAction: isOwn ? contentDeleteAction('audio', audioObj.key) : undefined, returnTo })
+            headerActions
           ),
           div(
             { class: "card-section audio-card-body" },
-            div({ class: "shop-title-row" }, title ? h2(title) : null, audioObj.tribeOrigin ? renderTribeOriginChip(audioObj.tribeOrigin) : audioObj.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('audios', audioObj.title, audioObj.key)) : null, renderLicenseChip(audioObj.license)),
+            div({ class: "shop-title-row" }, title ? h2(title) : null, audioObj.tribeOrigin ? renderTribeOriginChip(audioObj.tribeOrigin) : audioObj.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('audios', audioObj.title, audioObj.key)) : null, renderLicenseChip(audioObj.license), ...(typeof params.titleChips === "function" ? params.titleChips(audioObj) : [])),
             audioObj.lifetime ? div({ class: "card-chips-row" }, renderLifespanChip(audioObj.lifetime, i18n)) : null,
             renderAudioPlayer(audioObj),
-            audioObj.tribeOrigin ? null : renderEngagement(audioObj.key,
-              renderOpinionsVoting('/audios/opinions', audioObj.key, audioObj.opinions, returnTo, audioObj.opinions_inhabitants),
-              renderCommentsLink({ href: `/audios/${encodeURIComponent(audioObj.key)}`, count: commentCount })
-            ),
+            ...(typeof params.bodyExtra === "function" ? params.bodyExtra(audioObj) : []),
+            engagement,
             renderMapLocationVisitLabel(audioObj.mapUrl),
             br(),
             (() => {
@@ -274,7 +281,7 @@ exports.audioView = async (audios, filter = "all", audioId = null, params = {}) 
                 )
               )
             ),
-            div({ class: "audios-list" }, renderAudioList(list, filter, { q, sort, spreadMap: params.spreadMap }))
+            div({ class: "audios-list" }, renderAudioList(paged(list), filter, { q, sort, spreadMap: params.spreadMap }))
           )
     )
   );

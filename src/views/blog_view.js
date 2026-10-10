@@ -1,7 +1,8 @@
 const { div, h2, p, section, button, form, a, input, label, span, textarea, br, table, tr, td } = require("../server/node_modules/hyperaxe");
+const RAW_HTML = Symbol.for('oasis.rawHtml');
 const { TEXT_CAP } = require('../backend/long_text');
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { clearnetItemHref, template, i18n, userLink, renderOpinionsVoting, renderEngagement, renderSpreadButton, renderContentActions, contentDeleteAction, renderSubscriptionBox, renderModuleStats, moduleIsEmpty } = require("./main_views");
+const { clearnetItemHref, template, i18n, userLink, renderOpinionsVoting, renderEngagement, renderSpreadButton, renderContentActions, contentDeleteAction, renderSubscriptionBox, renderModuleStats, moduleIsEmpty, paged } = require("./main_views");
 const { renderReachChip, renderClearnetSelector, renderClearnetSwitch } = require("./clearnet_view");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
@@ -75,7 +76,7 @@ const renderBlogCard = (blog, filter, spreadInfo) => {
           )
         : null,
       blog.clearnet === true ? div({ class: "card-chips-row" }, renderReachChip(true, i18n, clearnetItemHref("blog", blog.subject || blog.text, blog.id))) : null,
-      div({ class: "blog-card-text", innerHTML: sanitizeHtml(renderStyledHtml(excerpt(blog.text))) }),
+      div({ class: "blog-card-text", [RAW_HTML]: sanitizeHtml(renderStyledHtml(excerpt(blog.text))) }),
       p({ class: "card-footer" },
         span({ class: "date-link" }, `${moment(blog.createdAt).format("YYYY/MM/DD HH:mm")}`),
         userLink(blog.author)
@@ -94,7 +95,7 @@ const renderCreateForm = (draft = null) => {
           div({ class: "preview-content" },
             h2(i18n.messagePreview),
             subjectValue ? h2({ class: "tribe-card-title" }, subjectValue) : null,
-            div({ class: "blog-detail-text", innerHTML: sanitizeHtml(renderStyledHtml(textValue)) })
+            div({ class: "blog-detail-text", [RAW_HTML]: sanitizeHtml(renderStyledHtml(textValue)) })
           )
         )
       : null,
@@ -125,7 +126,7 @@ const renderCreateForm = (draft = null) => {
         ),
         renderClearnetSelector(!!(draft && draft.clearnet === true), i18n),
         br(),
-        button({ type: "submit", class: "filter-btn", formaction: "/blogs/preview", formmethod: "POST" }, i18n.preview),
+        button({ type: "submit", class: "filter-btn", formaction: "/blogs/preview", attrs: { formmethod: "POST" } }, i18n.preview),
         " ",
         button({ type: "submit", class: "create-button" }, i18n.blogPublish)
       )
@@ -159,7 +160,7 @@ exports.blogView = async (blogs = [], filter = "ALL", params = {}) => {
       ? renderCreateForm(params.draft || null)
       : section(
           blogs.length
-            ? div({ class: "blogs-grid" }, ...blogs.map(b => renderBlogCard(b, filter, spreadMap.get(b.id))))
+            ? div({ class: "blogs-grid" }, ...paged(blogs).map(b => renderBlogCard(b, filter, spreadMap.get(b.id))))
             : div({ class: "no-content-box" }, p({ class: "no-content" }, i18n.blogNoItems))
         )
   );
@@ -205,7 +206,7 @@ exports.singleBlogView = async (blog, comments = [], params = {}) => {
 
   const blogMain = div({ class: "tribe-main" },
     div({ class: "job-section" },
-      div({ class: "blog-detail-text", innerHTML: sanitizeHtml(renderStyledHtml(blog.text || "")) })
+      div({ class: "blog-detail-text", [RAW_HTML]: sanitizeHtml(renderStyledHtml(blog.text || "")) })
     ),
     renderEngagement(blog.id,
       renderOpinionsVoting('/blogs/opinions', blog.id, blog.opinions, href, blog.opinions_inhabitants),

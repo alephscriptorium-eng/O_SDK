@@ -1,6 +1,6 @@
 const { form, button, div, h2, p, section, input, label, br, a, span, table, thead, tbody, tr, th, td, textarea, select, option, ul, li, img } = require('../server/node_modules/hyperaxe');
 const moment = require('../server/node_modules/moment');
-const { template, i18n, userLink, renderStateChip, renderModuleStatsBy } = require('./main_views');
+const { template, i18n, userLink, renderStateChip, renderModuleStatsBy, paged } = require('./main_views');
 const { renderStyledText, safeExternalHref } = require('../backend/renderStyledText');
 
 const CourtsE2EChip = () => renderStateChip('encrypted', '🔒', i18n.encryptedChipLabel || 'E2E');
@@ -165,7 +165,7 @@ const EvidenceForm = (caseId) =>
       }),
       br(),
       br(),
-      label(i18n.uploadMedia || 'Upload media (max-size: 50MB)'),
+      label(i18n.uploadMedia || 'Upload media (max-size: 75MB)'),
       br(),
       input({ type: 'file', name: 'image' }),
       br(),
@@ -324,31 +324,6 @@ const AcceptSettlementForm = (caseId) =>
   form(
     { method: 'POST', action: `/courts/cases/${encodeURIComponent(caseId)}/settlements/accept` },
     button({ type: 'submit', class: 'create-button' }, i18n.courtsSettlementAcceptBtn)
-  );
-
-const VerdictVoteForm = (caseId) =>
-  div(
-    { class: 'div-center' },
-    h2(i18n.courtsVerdictVoteTitle),
-    form(
-      {
-        method: 'POST',
-        action: `/courts/cases/${encodeURIComponent(caseId)}/verdict/vote`
-      },
-      label(i18n.courtsVerdictVoteLabel),
-      br(),
-      select(
-        { name: 'decision' },
-        option({ value: 'ACCEPT' }, i18n.courtsVerdictVoteAccept),
-        option({ value: 'REJECT' }, i18n.courtsVerdictVoteReject)
-      ),
-      br(),
-      br(),
-      button(
-        { type: 'submit', class: 'create-button' },
-        i18n.courtsVerdictVoteSubmit
-      )
-    )
   );
 
 const shortId = (id) => {
@@ -1196,7 +1171,7 @@ const CaseDetailsBlock = (c) => {
                   {
                     class: 'evidence-link',
                     href: safeExternalHref(e.link),
-                    target: '_blank',
+                    target: '_blank', rel: 'noopener noreferrer',
                     rel: 'noopener noreferrer'
                   },
                   e.link
@@ -1322,19 +1297,19 @@ const courtsView = async (state) => {
       filter === 'cases' && ((Array.isArray(cases) && cases.length > 0) || String(search || '').trim()) ? CaseSearch(filter, search, cases) : null
     ),
     section(
-      filter === 'cases' ? CasesTable(cases) : null,
+      filter === 'cases' ? CasesTable(paged(cases)) : null,
       filter === 'mycases'
         ? myCases.length
-          ? CasesTable(myCases, { showRole: true })
+          ? CasesTable(paged(myCases), { showRole: true })
           : div({ class: 'empty' }, p(i18n.courtsNoMyCases))
         : null,
       filter === 'actions'
         ? myCases.length
-          ? MyCasesList(myCases)
+          ? MyCasesList(paged(myCases))
           : div({ class: 'empty' }, p(i18n.courtsNoMyCases))
         : null,
-      filter === 'judges' ? JudgesSection(nominations, userId) : null,
-      filter === 'history' ? HistoryList(history) : null,
+      filter === 'judges' ? JudgesSection(paged(nominations), userId) : null,
+      filter === 'history' ? HistoryList(paged(history)) : null,
       filter === 'rules' ? RulesContent() : null,
       filter === 'open' ? CaseForm(state.prefill || {}) : null
     )

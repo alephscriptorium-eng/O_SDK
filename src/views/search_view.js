@@ -1,5 +1,6 @@
 const { form, button, div, h2, p, section, input, label, select, option, img, audio: audioHyperaxe, video: videoHyperaxe, table, hr, hd, br, td, tr, th, a, span } = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink, renderContentActions, CONTENT_FAV_KIND, CONTENT_SPREADABLE, CONTENT_TORRENTABLE } = require('./main_views');
+const RAW_HTML = Symbol.for('oasis.rawHtml');
+const { template, i18n, userLink, renderContentActions, CONTENT_FAV_KIND, CONTENT_SPREADABLE, CONTENT_TORRENTABLE, paged, currentPerPage, LIST_PAGE_SIZES, pageSizeLabel } = require('./main_views');
 const moment = require("../server/node_modules/moment");
 const { renderStyledHtml, safeExternalHref } = require('../backend/renderStyledText');
 const { renderStyledText } = require('../backend/renderStyledText');
@@ -17,7 +18,7 @@ const industryStatusLabel = (status) => {
 };
 
 
-const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = [], hashtag = null, results = {}, resultCount = "10", spreadMap = null, favIndex = null }) => {
+const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = [], hashtag = null, results = {}, spreadMap = null, favIndex = null }) => {
   const searchInput = input({
     id: "search_query",
     name: "query",
@@ -48,16 +49,14 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
     )
   );
 
+  const resultCount = currentPerPage();
   const resultsPerPageSelect = select(
     {
       id: "results-per-page",
-      name: "resultsPerPage",
+      name: "perPage",
       class: "input-select search-select"
     },
-    option({ value: "100", selected: resultCount === "100" ? "selected" : undefined }, "100"),
-    option({ value: "50", selected: resultCount === "50" ? "selected" : undefined }, "50"),
-    option({ value: "10", selected: resultCount === "10" ? "selected" : undefined }, "10"),
-    option({ value: "all", selected: resultCount === "all" ? "selected" : undefined }, i18n.allTypesLabel)
+    LIST_PAGE_SIZES.map(s => option({ value: s, selected: resultCount === s ? "selected" : undefined }, pageSizeLabel(s)))
   );
 
   const getViewDetailsActionForSearch = (type, contentId, content) => {
@@ -126,7 +125,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
       case 'post':
         return div({ class: 'search-post' },
           content.contentWarning ? h2({ class: 'card-field' }, span({ class: 'card-value' }, content.contentWarning)) : null,
-          content.text ? div({ class: 'card-field' }, span({ class: 'card-value', innerHTML: sanitizeHtml(renderStyledHtml(content.text)) })) : null
+          content.text ? div({ class: 'card-field' }, span({ class: 'card-value', [RAW_HTML]: sanitizeHtml(renderStyledHtml(content.text)) })) : null
         );
       case 'about':
         return div({ class: 'search-about' },
@@ -139,7 +138,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         const htmlText = rawText ? renderStyledHtml(rawText) : '';
         const refeedsNum = Number(content.refeeds || 0) || 0;
         return div({ class: 'search-feed' },
-          rawText ? div({ class: 'card-field' }, span({ class: 'card-value', innerHTML: sanitizeHtml(htmlText) })) : null,
+          rawText ? div({ class: 'card-field' }, span({ class: 'card-value', [RAW_HTML]: sanitizeHtml(htmlText) })) : null,
           refeedsNum > 0
             ? h2({ class: 'card-field' },
                 span({ class: 'card-label' }, i18n.tribeFeedRefeeds + ':'),
@@ -160,7 +159,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           content.location ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventLocation + ':'), span({ class: 'card-value' }, content.location)) : null,
           content.isPublic ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventPrivacyLabel + ':'), span({ class: 'card-value' }, content.isPublic)) : null,
           content.status ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventStatus + ':'), span({ class: 'card-value' }, content.status)) : null,
-          content.eventUrl ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventUrlLabel + ':'), span({ class: 'card-value' }, a({ href: safeExternalHref(content.eventUrl), target: '_blank' }, content.eventUrl))) : null,
+          content.eventUrl ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventUrlLabel + ':'), span({ class: 'card-value' }, a({ href: safeExternalHref(content.eventUrl), target: '_blank', rel: 'noopener noreferrer' }, content.eventUrl))) : null,
           content.price ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.eventPrice + ':'), span({ class: 'card-value' }, content.price)) : null,
           content.tags && content.tags.length
             ? div({ class: 'card-tags' }, content.tags.map(tag =>
@@ -333,7 +332,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         );
       case 'bookmark':
         return div({ class: 'search-bookmark' },
-          content.url ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.bookmarkUrlLabel + ':'), span({ class: 'card-value' }, a({ href: safeExternalHref(content.url), target: '_blank' }, content.url))) : null,
+          content.url ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.bookmarkUrlLabel + ':'), span({ class: 'card-value' }, a({ href: safeExternalHref(content.url), target: '_blank', rel: 'noopener noreferrer' }, content.url))) : null,
           content.description ? div({ class: 'card-field' }, span({ class: 'card-value' }, content.description)) : null,
           content.lastVisit ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.bookmarkLastVisit + ':'), span({ class: 'card-value' }, moment(content.lastVisit).format("YYYY/MM/DD HH:mm"))) : null,
           content.tags && content.tags.length
@@ -585,12 +584,14 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
             : null
         );
       default:
-        return div({ class: 'styled-text', innerHTML: sanitizeHtml(renderStyledHtml(content.text || content.description || content.title || '[no content]')) });
+        return div({ class: 'styled-text', [RAW_HTML]: sanitizeHtml(renderStyledHtml(content.text || content.description || content.title || '[no content]')) });
     }
   };
 
+  const pageGroups = paged(Object.entries(results).flatMap(([key, msgs]) => msgs.map((msg) => [key, msg])))
+    .reduce((acc, [key, msg]) => { (acc[key] = acc[key] || []).push(msg); return acc; }, {});
   const resultSection = Object.entries(results).length > 0
-    ? Object.entries(results).map(([key, msgs]) =>
+    ? Object.entries(pageGroups).map(([key, msgs]) =>
       div(
         { class: "search-result-group" },
         ...msgs.map((msg) => {
@@ -674,7 +675,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         p(hashtag ? i18n.hashtagDescription : i18n.searchDescriptionLabel)
       ),
       form(
-        { action: "/search", method: "POST", class: "search-form" },
+        { action: "/search", method: "GET", class: "search-form" },
         div({ class: "search-filters-row" },
           table({ class: "search-filters-table" },
             tr(
