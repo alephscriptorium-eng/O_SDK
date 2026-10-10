@@ -1,6 +1,7 @@
 const { form, button, div, h2, p, section, input, label, br, a, span, table, thead, tbody, tr, th, td, textarea, select, option, ul, li, img } = require('../server/node_modules/hyperaxe');
+const RAW_HTML = Symbol.for('oasis.rawHtml');
 const moment = require("../server/node_modules/moment");
-const { template, i18n, userLink} = require('./main_views');
+const { template, i18n, userLink, paged } = require('./main_views');
 const { renderStyledText } = require('../backend/renderStyledText');
 
 const { seatPositions } = require('../models/parliament_model').hemicycle;
@@ -121,7 +122,7 @@ const renderHemicycle = (data, { mode = 'election', baseHref = '/parliament?filt
   const unit = Math.max(1, Number(data.seatUnit) || 1);
   return div({ class: 'hemicycle' },
     toggle,
-    div({ class: 'hemicycle-canvas', innerHTML: hemicycleSvg(data, seatsMode) }),
+    div({ class: 'hemicycle-canvas', [RAW_HTML]: hemicycleSvg(data, seatsMode) }),
     unit > 1 ? p({ class: 'hemi-note' }, `1 ${i18n.parliamentSeatsSeat} = ${unit}`) : null,
     seatsMode === 'houses' ? legendHouses(data, houseNames) : legendElection(data),
     data.leaderId ? p({ class: 'hemi-note' }, `${i18n.parliamentSeatsLeader}: `, a({ href: `/author/${encodeURIComponent(data.leaderId)}`, class: 'hemi-legend-link' }, (data.seats.find(s => s.id === data.leaderId) || {}).name || data.leaderId)) : null
@@ -1004,7 +1005,7 @@ const CandidaturesSection = (governmentCard, candidatures, leaderMeta, electionQ
     GovHeader(governmentCard || {}),
     CandidatureStats(candidatures || [], governmentCard || null, leaderMeta || null, electionQuorum),
     CandidatureForm(),
-    candidatures && candidatures.length ? CandidaturesTable(candidatures) : null
+    candidatures && candidatures.length ? CandidaturesTable(paged(candidatures)) : null
   );
 };
 
@@ -1013,7 +1014,7 @@ const ProposalsSection = (governmentCard, proposals, futureLaws, canPropose) => 
   const fl = FutureLawsList(futureLaws || []);
   if (!has && canPropose) return div(h2(i18n.parliamentGovernmentCard), GovHeader(governmentCard || {}), ProposalForm(), fl);
   if (!has && !canPropose) return div(h2(i18n.parliamentGovernmentCard), GovHeader(governmentCard || {}), NoProposals(), fl);
-  return div(h2(i18n.parliamentGovernmentCard), GovHeader(governmentCard || {}), ProposalForm(), ProposalsList(proposals), fl);
+  return div(h2(i18n.parliamentGovernmentCard), GovHeader(governmentCard || {}), ProposalForm(), ProposalsList(paged(proposals)), fl);
 };
 
 const RevocationsSection = (governmentCard, laws, revocations, futureRevocations) =>
@@ -1021,7 +1022,7 @@ const RevocationsSection = (governmentCard, laws, revocations, futureRevocations
     h2(i18n.parliamentGovernmentCard),
     GovHeader(governmentCard || {}),
     RevocationForm(laws || []),
-    RevocationsList(revocations || []) || '',
+    RevocationsList(paged(revocations || [])) || '',
     FutureRevocationsList(futureRevocations || []) || ''
   );
 
@@ -1083,7 +1084,7 @@ const parliamentView = async (state) => {
   const LawsSectionWrap = () =>
     div(
       LawsStats(laws || [], revocationsEnactedCount || 0),
-      LawsList(laws || [])
+      LawsList(paged(laws || []))
     );
 
   return template(
@@ -1102,8 +1103,8 @@ const parliamentView = async (state) => {
       filter === 'proposals' ? ProposalsSection(gov, proposals, futureLaws, canPropose) : null,
       filter === 'laws' ? LawsSectionWrap() : null,
       filter === 'revocations' ? RevocationsSection(gov, laws, revocations, futureRevocations) : null,
-      filter === 'historical' ? div(HistoricalGovsSummary(historical || []), HistoricalList(historical || [], historicalMetas)) : null,
-      filter === 'leaders' ? div(LeadersSummary(leaders || [], candidatures || [], leadersGovCards, leadersTotalCandidatures), LeadersList(leaders || [], leadersMetas, candidatures || [])) : null,
+      filter === 'historical' ? div(HistoricalGovsSummary(historical || []), HistoricalList(paged(historical || []), historicalMetas)) : null,
+      filter === 'leaders' ? div(LeadersSummary(leaders || [], candidatures || [], leadersGovCards, leadersTotalCandidatures), LeadersList(paged(leaders || []), leadersMetas, candidatures || [])) : null,
       filter === 'rules' ? RulesContent() : null
     )
   );

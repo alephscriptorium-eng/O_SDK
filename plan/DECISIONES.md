@@ -424,6 +424,64 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   UPGRADE §2. Aplicación: WP-O132 (`upgrade-gates.sh hub --strict` con 6 idiomas, tema y cruce
   de temas; invariantes en `hub.tsv`).
 
+- **D-O31 · 2026-10-10 · Séptimo guard del fork: `/c/blob` vuelve a pedir a la red los blobs
+  que la lista blanca de upstream admite.** Decidido por el custodio al preparar el ciclo
+  1.2.3 → 1.2.5 (WP-O135). Upstream 1.2.4 cambia `GET /c/blob/:id` de `blob.getResolved`
+  (`blobs.want` hasta 30 s) a `blob.getLocal` y añade `clearnetBlobAllowed` (solo blobs
+  referenciados por un objeto clearnet o un avatar). Con `getLocal`, un blob que el HUB no tiene
+  nunca saldría en `/c`: las imágenes de lo publicado después del upgrade quedarían en 404 hasta
+  que alguien las replicara al HUB, que no pide blobs por su cuenta. Se descartó una tarea externa
+  que pidiera los blobs del índice por el socket (más piezas que vigilar) y se descartó aceptar el
+  modelo (el visor de la casa existe para enseñar lo que los habitantes marcan). El guard es una
+  línea en `backend.js` (fichero que ya era de guard: el invariante sigue en 7 ficheros), marcada
+  `// guard o-sdk (WP-O135, D-O31)`, y **conserva** la lista blanca de upstream: el visor no pide
+  nada que no esté marcado clearnet. Invariantes en `hub.tsv`; gate U4 mide las dos caras (200
+  para un blob que el HUB tiene, 200 tras `want` para uno que no). Supera «6 guards» en
+  AGENTS.md, UPGRADE §2 y HUB-PROTOCOL.
+- **D-O32 · 2026-10-10 · El modelo de confianza de pubs de Banking de Oasis 1.2.4+ se acepta tal
+  cual; la casa no emite invites desde el bot de cartera ni mueve el motor al pub; el cliente
+  dockerizado se queda en 1.2.2 hasta su propio WP.** Decidido por el custodio en WP-O135. Desde
+  1.2.4 `banking_model.js` solo cuenta como banco a un pub **de confianza**: el pub por defecto
+  (el del invite de `snh-invite-code.json`, que D-O22 no toca) o uno del que el habitante redimió
+  un invite y sigue; `pubAvailability`, `listUbiPubs`, `discoverUbiPub` y el historial filtran por
+  esa lista, y un `ubiClaimResult` solo cuenta si lo firma un pub de confianza o el pub al que iba
+  dirigido el `ubiClaim`. El bot de cartera (D-O19, identidad propia, sin invites) deja de ser
+  descubrible para quien no redimió un invite **suyo**; quien ya reclamó conserva su historial. Se
+  acepta: (1) no se cambia D-O19 ni se emiten invites desde el bot en este ciclo (cada redención le
+  publicaría un `contact`); (2) se documenta en ECOIN §9 y se **mide en el host** con un cliente
+  real tras el upgrade; (3) si la casa quiere repartir RBU a habitantes nuevos, será un WP con su
+  decisión (invites del bot o motor en el pub). Cliente: 1.2.4 muda la config del nodo a
+  `~/.ssb/oasis/` y pone `phone.visibility` en `mutuals` por defecto; el entrypoint del cliente
+  (`persist_client_state`, `wire_wallet_config`) hay que adaptarlo y pasar el drill antes de
+  subirlo: WP propio, fuera de la rama del upgrade. Confirma D-O19 y D-O22; no supera nada.
+
+- **D-O33 · 2026-10-10 · El bot nº 3 (`retro.escrivivir.co`) se muda del VPS a la máquina operadora
+  como nodo real fuera de los drills; su siembra de Campamento se deshace con tombstones; nada del repo
+  se borra.** Decidido por el custodio en WP-O135, al llegar al GO-5 del ciclo 1.2.5 y en lugar de
+  subirlo en el host. Motivo, en sus palabras: el retro «es nuestro drill de pruebas»; retirar su
+  infraestructura del VPS sin perder la identidad («no la pierdas»), porque en Oasis 1.2.5 el
+  gobierno de una tribu es la identidad de su autor y **no existe traspaso** (`tribes_model.js:182,
+  187,229,592`): conservar al bot vivo es la única forma de conservar el control de lo que creó; y
+  retirar («tombstonear») todo lo que generó. Hechos: (1) la identidad (`secret`, keyring de tribus,
+  calendarios y mapas, log completo seq 150, blobs, `conn.json`) salió del VPS parada, copiada con
+  sha256 por fichero y leída en frío (`S 150`, `D 0`) antes de arrancar en local; publicó **un**
+  `oasisVersion` (seq 151) que el pub real aceptó como continuación; el contenedor, el bloque
+  `OASIS_RETRO_BOT_*` de `.env.prod` y `/srv/oasis/oasis-retro-bot` salieron del host (copia en
+  `devops/backups/srv-oasis/`), con pub, HUB y bot Δ0. (2) En local vive en `volumes-real/` (ignorado
+  por git), fuera de `volumes-dev/`: `upgrade-gates.sh` no lo copia, repone ni recrea; se mide solo con
+  `GATE_NODES='retro:…'` y `snapshot`/`check`; `lib-node.sh` sigue a `.env.local`. Excepción explícita a
+  AGENTES §2.9 («la identidad real de nadie se usa para ensayar»): un nodo real convive con el stack de
+  drills, separado físicamente. (3) El deshacer **revoca** la fila «sin tombstone» del dosier de WP-O134
+  (2026-10-09): 115 retiradas en 11 bloques (`seed-tombstone.js`, dry-run, PERMISO por bloque, hojas →
+  raíces, evidencia en el dosier de la instancia), dos listas CLOSED privadas no retirables desde el
+  seeder (un solo miembro: el bot). Lo publicado sigue en los logs: un tombstone solo esconde. (4) El
+  servicio `oasis-retro-bot` del compose, sus variables, `retro-seed.sh` y la vía caliente quedan como
+  método para otra instancia y para el nodo real local; en la casa se marcan «mudado». Supera a
+  **D-O29** en «dónde vive» (VPS con GO por paso → máquina operadora); conserva D-O28 (la vía caliente
+  como método) y D-O19/D-O20. Aplicación: WP-O135 §9, `TEMPLATE-PROTOCOL.md` §4.5 y §9, HUB §11,
+  `INSTANCIA-SCRIPTORIUM.md` §1-§5, `ARCHIVO/DISCO/scriptorium-exported/` (runbooks de mudanza y de
+  deshacer, evidencia `vps/tombstone-*.jsonl`, `vps/ledger-tombstones.json`).
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |

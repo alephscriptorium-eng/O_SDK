@@ -87,6 +87,12 @@ después cliente (WP-O103).
 - **Los bots Azofaifo son la representación oficial del pub**, y **la RBU la firma el bot**: los
   `ubiAllocation`, `ubiClaimResult`, `bankClaim` y `transfer` de la RBU salen del feed de bot-2, no
   del feed del pub. Desde 1.1.3 los clientes **descubren solos** el banco por los `pubAvailability` replicados.
+  **Desde 1.2.4 solo si el banco es un pub de confianza** (D-O32): el pub por defecto del invite de
+  `snh-invite-code.json` (el de SNH; D-O22 no lo toca) o uno del que el habitante **redimió un invite y
+  sigue**. El bot de cartera no emite invites, así que un habitante que no haya reclamado nunca a este
+  bot **no lo ve** en Banking → UBI ni lo elige `discoverUbiPub`, aunque siga su feed; quien ya
+  reclamó (su `ubiClaim` iba dirigido al bot) conserva historial y pagos. Aceptado tal cual; se mide en
+  el host con un cliente real. Cambiarlo (invites del bot, o el motor en el pub) es un WP con su D-O.
 - **El motor se enciende y se pausa, nunca por accidente.** El interruptor es el ssb-config montado
   (`pub: false` = `isPubNode()` falso = ni tick ni pagos ni `pubAvailability`). Se enciende solo con
   confirmación expresa del custodio y `hub-wallet.sh on --yes` (§9).
@@ -296,6 +302,16 @@ repite el gate G3 en local (bootstrap + motor apagado + ensayo del interruptor).
   dueño y permisos.
 - `pub/config/wallet-bot/ssb-config`: mismas reglas que el del HUB (arrays enteros; `caps.shs` en el
   lockstep de rotación, `HUB-PROTOCOL.md` §5.2).
+- **Dónde se monta el render (desde 1.2.4, WP-O135):** en `~/.ssb/oasis/oasis-config.json`, que es
+  donde `config-manager.js` lee la config del nodo; el de `src/configs/` solo se copia una vez si
+  aquel falta. Con el bind viejo, un re-render no surtiría efecto tras el primer arranque en 1.2.4+.
+- **Token de admin (desde 1.2.4):** con `OASIS_ALLOW_HOST` definido (el bot lo lleva a `localhost`)
+  el backend genera un token por arranque y **toda acción solo-loopback** (`POST /banking/addresses`,
+  `/settings/*`, `/backup/*`…) exige además la cookie `oasis_admin`, que se obtiene con
+  `GET /admin-session/<token>` desde el loopback del contenedor. El token sale en el log de arranque
+  («Admin access»): es un secreto de sesión, **no se copia a reportes**. Un `POST` sin la cookie da
+  403 con `Host` y `Referer` correctos. Las publicaciones automáticas (`ensureSelfAddressPublished`,
+  motor) no pasan por HTTP y no cambian.
 - Orden de deploy: pub → HUB → **bot al final** (`UPGRADE-PROTOCOL.md` §4, paso 9); `ecoin` no
   depende de la imagen de Oasis y **no se recrea** en un upgrade de Oasis.
   - **Motor apagado**: `$C up -d --no-deps oasis-wallet-bot`.

@@ -1,6 +1,6 @@
 const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, ul, li, img, video, audio, table, thead, tbody, tr, td, th } = require("../server/node_modules/hyperaxe")
 const { renderZoomableImage } = require("./gallery_view")
-const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderContentActions , renderSpreadEditWarning, renderSubscriptionBox, renderModuleStatsBy, renderCardMetaRow, moduleIsEmpty } = require("./main_views")
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderContentActions , renderSpreadEditWarning, renderSubscriptionBox, renderModuleStatsBy, renderCardMetaRow, moduleIsEmpty, paged } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderMapEmbedWithZoom } = require("./maps_view")
@@ -175,7 +175,7 @@ const renderFacilityForm = (facility, mode, spreadWarning = null) => {
       br(),
       textarea({ name: "description", rows: "5", maxlength: "2000", placeholder: i18n.industryDescriptionPlaceholder || "What does this facility produce?" }, fc.description || ""),
       br(),
-      label(i18n.uploadMedia || "Upload media (max-size: 50MB)"),
+      label(i18n.uploadMedia || "Upload media (max-size: 75MB)"),
       br(),
       input({ type: "file", name: "image" }),
       br(),
@@ -371,7 +371,7 @@ exports.industryView = async (facilitiesOrForm, filter, params = {}) => {
                 )
               )
             ),
-            div({ class: "industry-list" }, renderFacilityList(facilitiesOrForm, f, params.spreadMap))
+            div({ class: "industry-list" }, renderFacilityList(paged(facilitiesOrForm), f, params.spreadMap))
           )
     )
   )
@@ -563,7 +563,7 @@ const renderBlueprintForm = (fc, bp, mode, spreadWarning = null) => {
       br(), input({ type: "text", name: "name", required: true, maxlength: "80", value: bp.name || "" }), br(),
       label(i18n.industryDescriptionLabel || "Description"),
       br(), textarea({ name: "description", rows: "4", maxlength: "2000", placeholder: i18n.industryBlueprintDescPlaceholder || "Specs, dimensions, weight, docs…" }, bp.description || ""), br(),
-      label(i18n.uploadMedia || "Upload media (max-size: 50MB)"),
+      label(i18n.uploadMedia || "Upload media (max-size: 75MB)"),
       br(), input({ type: "file", name: "image" }),
       bp.image ? div({ class: "industry-form-media" }, renderMediaBlob(bp.image, { class: "post-image" })) : null,
       br(),

@@ -6,7 +6,10 @@
 #
 #   bash pub/scripts/retro-seed.sh [--env pub/.env.local] [--pub-id @…] [--template campamento] [--evidence <tag>] [--yes <bloque>]...
 #
-# --pub-id: feed id del pub (gate «nunca con la identidad del pub»). Si falta, se mide con whoami.sh.
+# --pub-id: feed id del pub (gate «nunca con la identidad del pub»). Si falta, se mide con whoami.sh, que da el
+#   pub de .env.local: con el bot REAL en la máquina operadora (D-O33) ese es el desechable y el gate pubConnected
+#   exige el pub real al que está conectado: pásalo SIEMPRE (--pub-id '@…pub real…').
+# Deshacer una siembra: pub/scripts/retro-tombstone.sh (TEMPLATE-PROTOCOL §9).
 # Evidencia: /app/logs/seed-<tag>.json dentro del bot = <OASIS_RETRO_BOT_LOGS_DIR>/seed-<tag>.json fuera.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

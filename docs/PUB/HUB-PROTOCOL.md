@@ -98,7 +98,7 @@ Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
 | Servicios `oasis-hub` + `hub-cache` | `pub/docker-compose.pub.yml` | misma imagen, `command: ["backend"]`, env `OASIS_*`, `mem_limit`, healthcheck a `/c/inhabitant/@AAAA…=.ed25519` (**no** a `/c`, que es O(N·k)), sin `ports`, sin `profiles` | ⏳ WP-O46 |
 | Identidad y replicación | `pub/config/hub/ssb-config` (bind `:ro` a `~/.ssb/config`) | `caps.shs` del ciclo, `pub:false`, `friends.hops:3` (D-O15: con 2 el HUB solo alcanzaba los 3 seguidos directos del pub y `/c` quedaba vacío; los habitantes con Clearnet están a 3 saltos, seguidos por La Plaza), **sin `seeds`** (un seed al pub mete su clave en `gossip.json` antes del invite y el backend responde `alreadyFederated` sin redimirlo; la conexión persistente la deja `hub-conn-fix.js` en `conn.json`), `connections` **completo** (`mergeDeep` reemplaza arrays enteros) con `incoming.net.host: 0.0.0.0` **obligatorio** (el entrypoint pasa `--host 0.0.0.0`; otro valor = crash loop «conflicting connection settings») | ✅ G2 |
 | Normalizar `conn.json` tras el invite | `pub/tools/hub-conn-fix.js` (se copia al HUB con `docker cp`; `pub/tools` no está montado allí) | tras `invite.accept`, ssb-invite deja la dirección del pub **con el seed y sin `key`**: el HUB reconecta con la identidad desechable y el pub no replica; sin `key` nunca reconecta tras un reinicio. El script hace forget `addr:SEED` · remember `{key,type:pub,autoconnect}` · connect | ✅ G3 |
-| Visor | `pub/config/hub/oasis-config.json` (bind `:ro`) | copia del de `src/configs/` con 7 claves fijadas: `aiMod/aiNavMod:off`, `ssbLogStream.limit:20000`, `lanBroadcasting:false`, `inboxMutedBots` (todos los avisos automáticos silenciados: sin esto el HUB se envía cifrados a sí mismo, §1) y, por D-O25, `themes.current` y `language` (tema e idioma por defecto del visor; valores de instancia: en la casa `Dark-SNH`, igual al original, y `es` → **6 diferencias efectivas** en 1.1.10). `walletPub` salió en 1.1.10. Se regenera con `node pub/scripts/regen-node-configs.js`, no se parchea (§5.2) | ✅ regenerado en 1.1.10 |
+| Visor | `pub/config/hub/oasis-config.json` (bind `:ro` a `~/.ssb/oasis/oasis-config.json`; hasta 1.2.3 a `src/configs/oasis-config.json`, que desde 1.2.4 `config-manager.js` solo copia **una vez** si el del estado falta) | copia del de `src/configs/` con 7 claves fijadas: `aiMod/aiNavMod:off`, `ssbLogStream.limit:20000`, `lanBroadcasting:false`, `inboxMutedBots` (todos los avisos automáticos silenciados: sin esto el HUB se envía cifrados a sí mismo, §1) y, por D-O25, `themes.current` y `language` (tema e idioma por defecto del visor; valores de instancia: en la casa `Dark-SNH`, igual al original, y `es` → **6 diferencias efectivas** en 1.1.10). `walletPub` salió en 1.1.10. Se regenera con `node pub/scripts/regen-node-configs.js`, no se parchea (§5.2) | ✅ regenerado en 1.1.10 |
 | Caché HTTP | `pub/config/hub/nginx.conf.template` | `proxy_cache_path … max_size=${HUB_CACHE_MAX_SIZE} inactive=7d`, caché negativa (404 30 s, 5xx 5 s, WP-O53), `proxy_hide_header` de las cabeceras del backend, `limit_req` por XFF, `location / { return 404; }`; en `/assets/*` y en `/c/assets/*` (visor 1.1.2) `proxy_ignore_headers Cache-Control` (koa-static manda `max-age=0`). **D-O25 (1.1.10)**: `Accept-Language`, `Cookie` y `Accept-Encoding` no se reenvían al HUB; `location` propia para `/c/sitemap.xml` y `/c/rss/*` que corrige las URLs a `https` con `sub_filter`. En **local Windows** el cache dir es el volumen nombrado `hub_http_cache` (los bind mounts rompen `proxy_cache`); en el VPS es la ruta bind | ✅ G4 · U4 |
 | Edge | `pub/caddy/Caddyfile` (bloque `@hub` del vhost del pub) | `reverse_proxy hub-cache:80`; `transport http {…}` en multilínea; `/qr/*` **fuera**; `/assets/*` entero **no** (`fanzine.css` es de la landing); desde 1.1.2 el visor usa `/c/assets/*`, ya cubierto por `/c/*`; `header {}` global intacto | ✅ G1/G4 |
 | Variables | `pub/.env.vps.example`, `.env.local.example`, `.env.example`; `.env.prod` del VPS | `OASIS_HUB_{SSB_DATA,LOGS,HTTP_CACHE}_DIR`, `OASIS_HUB_{SSB_CONFIG,OASIS_CONFIG}_FILE`, `OASIS_HUB_ALLOW_HOST`, `HUB_CACHE_MAX_SIZE`, `OASIS_HUB_MEM_LIMIT`, `OASIS_HUB_NODE_OPTIONS`, `OASIS_HUB_PUBLIC` (comentada) | ⏳ |
@@ -228,7 +228,12 @@ tema, dispositivo).
   qué claves difieren del original: deben ser **solo** las fijadas. `--check` sale 1 si no está al
   día. Una clave que upstream retira desaparece sola de la copia: se regenera, no se parchea. La
   lista de `inboxMutedBots` sale de `INBOX_BOTS` en `src/models/pm_model.js`: si upstream añade un
-  aviso nuevo, entra al regenerar.
+  aviso nuevo, entra al regenerar. **Dónde se monta (desde 1.2.4, WP-O135):** `config-manager.js` lee
+  la config del nodo en `~/.ssb/oasis/oasis-config.json` y la de `src/configs/` solo la copia una vez
+  si aquella falta; el bind del compose va al sitio nuevo. Con el bind viejo, la regeneración
+  dejaría de surtir efecto tras el primer arranque en 1.2.4+. Lo que el backend escriba por su
+  cuenta (`saveConfig`) falla contra el bind `:ro`, como antes; si deja un `oasis-config.json.tmp-*`
+  en `~/.ssb/oasis/`, se retira.
 - `pub/config/hub/ssb-config` reemplaza **arrays enteros** de `src/configs/server-config.json`
   (`mergeDeep`): si upstream cambia `connections.incoming/outgoing`, **decidir** si se replica.
   Orden de fusión en `ssb_config.js` (guard): `~/.ssb/config` ← `server-config.json` ← el fichero
@@ -303,7 +308,7 @@ Lo que sí cambió y cómo se adaptó:
 | el log: `ssb-data/db2/log.bipf` (Oasis ≥ 1.2; antes `ssb-data/flume/log.offset`, que tras migrar es una guarda de texto) | replicación (hops 2, incluye `.box` privados ilegibles) | **no** | `friends.hops` en `ssb-config` |
 | índices: `ssb-data/db2/indexes`, `db2/jit` (antes `ssb-data/flume/*`), `ssb-data/ebt/` | el log | sí (rebuild automático) | — |
 | `ssb-data/blobs/` por encima del techo | replicación y visor | sí (se vuelven a pedir) | `blobCache.pubMaxMB` en la config del nodo (desde 1.2.1; `CAPACIDAD.md` §3) |
-| `ssb-data/blobs/` | cada `GET /c/blob/<id>` ausente (`blobs.want`, hasta 30 s) + blobs replicados | **sí**: content-addressed, `want` repone al siguiente GET | `hub-disk.sh prune-blobs`, `blobs.max` 50 MB (guard del fork) |
+| `ssb-data/blobs/` | cada `GET /c/blob/<id>` ausente (`blobs.want`, hasta 30 s) + blobs replicados. Desde 1.2.4 upstream lo limita a lo que el nodo ya tiene (`getLocal`); el **séptimo guard** (D-O31) repone el `want`, acotado a la lista blanca de upstream (`clearnetBlobAllowed`: blobs referenciados por un objeto clearnet o un avatar) | **sí**: content-addressed, `want` repone al siguiente GET | `hub-disk.sh prune-blobs`, `blobs.max` 50 MB (guard del fork) |
 | `http-cache/` | tráfico web | sí | nginx `max_size` + `inactive=7d`; `prune-cache` |
 | stdout de los contenedores (`/var/lib/docker`, **disco de sistema**) | tráfico y replicación | sí | `logging.max-size/max-file` del compose |
 
@@ -439,6 +444,23 @@ declara en su `about` y **no se lista a sí mismo**. El pub no se toca para aña
   `ssb-admin.js publish-about` (§12, variante sin formulario). No hay ventana `PUBLIC=false` que abrir ni
   cerrar: nada escucha en HTTP. El feed queda con `contact` + `pub` (de `invite.accept`) + `oasisVersion`
   (del reinicio): es lo esperado, no una desviación (medido, WP-O131).
+- **Mudanza o baja de un bot** (ejercido: el bot nº 3 de la casa, VPS → máquina operadora, WP-O135, D-O33).
+  Un feed SSB no se retira; lo que se muda es la identidad y lo que se retira es su infraestructura. Orden
+  fijo, un comando por paso: (1) foto base de los nodos que **se quedan** (`GATE_NODES` sin el que se va:
+  `check` no sabe comparar una base con un nodo que ya no existe) y `pub-feed-seq.sh <feed>` (lo que el pub
+  tiene de él); (2) **parar** el origen (`compose --profile X stop <svc>`; desde aquí no vuelve a arrancar);
+  (3) copiar `ssb-data` entero (`secret`, `db2/`, `blobs/`, `blobs_push/`, `ebt/`, `conn.json` **y**
+  `gossip.json`, `oasis/**`) más lo que montara aparte (assets, logs), con sha256 de cada fichero en origen y
+  verificación en destino; (4) leer el log copiado **en frío** (`pub/tools/log-bipf.js` en un `docker run
+  --rm --entrypoint sh -v …:ro`): `S` = el seq del pub, `D 0`, tipos iguales a la foto; si no, no se arranca;
+  (5) arrancar el destino con la misma versión o superior (si cambia, publica un `oasisVersion`: PERMISO) y
+  comprobar que el pub acepta el seq nuevo como continuación (`pub-feed-seq.sh`); `conn.remember` del pub
+  por nombre (`hub-conn-fix.js`, 0 publicaciones); (6) retirar el origen: `compose --profile X rm -sf <svc>`
+  (**nunca** `--profile X down`: tumba todo lo sin perfil), comentar su bloque de env in place, tgz de sus
+  datos con sha256 → copia local → retirar del host; `check` de los que se quedan = Δ0; journal sin él.
+  **Baja definitiva** = los mismos pasos sin el (5): el archivo guarda `secret` + keyring + log completo y
+  la reactivación exige ese log entero (RECOVERY §4). Lo que no se hace: unfollow del pub (`contact`),
+  `about` de despedida, tombstones por «limpiar» (cada uno es un mensaje; si se decide, TEMPLATE §9).
 
 ## 12. Poner o cambiar el nombre de un bot (`about`)
 

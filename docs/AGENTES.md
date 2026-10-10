@@ -78,7 +78,10 @@ son como son: `plan/DECISIONES.md`.
    copian a reportes, no se pasan por línea de comandos (quedan en `ps` y en el historial).
 8. **Evidencia.** Reporte en `plan/REPORTES/` con comando + salida. Lo que no mediste, no lo afirmes.
 9. **Gates locales antes del VPS.** Todo cambio se ensaya en Docker local; la identidad de prueba es
-   desechable. La identidad real de nadie se usa para ensayar.
+   desechable. La identidad real de nadie se usa para ensayar. **Excepción (D-O33):** el bot retro de la
+   casa es un nodo **real** alojado en la máquina operadora, en `volumes-real/` (no en `volumes-dev/`):
+   ningún gate lo copia, repone ni recrea (`upgrade-gates.sh` lo excluye de `backup`/`restore`/`up` y del
+   `GATE_NODES` por defecto); se mide aparte con `GATE_NODES='retro:…'` y solo `snapshot`/`check`.
 
 ## 3. Acciones irreversibles y su puerta
 
@@ -98,6 +101,8 @@ expreso del custodio en el momento**, aunque el plan general ya esté aprobado.
 | Borrar o pisar `wallet.dat` o `secret` | son las claves: sin copia, el dinero o la identidad se pierden | **nunca**; se aparta con sufijo, no se borra |
 | Arrancar un nodo con el `secret` y un log más corto que el de la red | bifurca el feed | RECOVERY §4 |
 | `docker compose down -v`, borrar volúmenes | se lleva estado no derivable | `client/scripts/guard-destroy.sh`; backup < 24 h |
+| **Mudar un nodo de máquina** (su `secret` y su log a otro host) | dos instancias vivas, o arrancar el destino con un log más corto, bifurcan el feed; el destino publica un `oasisVersion` si cambia de versión | HUB §11 «mudanza o baja»: parar el origen → copiar con sha256 → leer el log en frío (`S` = seq del pub) → arrancar el destino → el origen no vuelve a arrancar (`rm -sf`) |
+| **Tombstone** (borrado lógico de un objeto propio) | es otro mensaje, append-only; solo esconde, lo original sigue en todos los logs | TEMPLATE §9: dry-run, lista cerrada, PERMISO por bloque, conteo antes/después |
 | Reload del edge | tumba todos los vhosts si la config es inválida | `validate` antes |
 
 **Subagentes.** El clasificador de permisos de una sesión puede denegar a un subagente una
@@ -150,6 +155,14 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | El nombre nuevo de un feed no aparece | `nameCache` es memoria del proceso: reiniciar el nodo que lo muestra | HUB §12 |
 | Una página del sitio del pub en el host **no coincide** con la del repo | el repo guarda la plantilla; el host, la página con sus **valores vivos fusionados a mano** al desplegar. `deploy-site.sh` sincroniza con `--delete` y los borraría. Antes de subir un fichero del sitio: sha256 del vivo contra el del repo; si coinciden, se sustituye in place; si no, se cambian **solo las líneas** que tocan, sobre el fichero vivo, y se comprueba que el `diff` con la copia previa son exactamente esas | ficha de instancia, §5 |
 | El build del portal rompe | tokens entre ángulos fuera de código (Vue los lee como etiquetas) o enlaces muertos (`ignoreDeadLinks: false`) | `docs/proyecto.md` |
+| Se regeneró la config de un nodo (HUB, bot) y tras recrearlo sigue la vieja | desde Oasis 1.2.4 la config vive en `~/.ssb/oasis/oasis-config.json`; la de `src/configs/` solo se copia una vez. El bind del compose debe ir al sitio nuevo | HUB §5.2 · ECOIN §5.2 |
+| Un `POST` solo-loopback (banca, settings) da 403 con `Host` y `Referer` correctos | desde 1.2.4, con `OASIS_ALLOW_HOST` definido hay un token de admin por arranque: `GET /admin-session/<token>` primero (el token está en el log «Admin access» y **no se copia a reportes**); cualquier cabecera de proxy también anula el loopback | ECOIN §5.2 |
+| Una imagen de `/c` da 404 aunque el blob existe en la red | desde 1.2.4 upstream sirve en `/c/blob` solo blobs que el HUB **ya tiene** (sin `want`); el séptimo guard (D-O31) vuelve a pedirlos, pero solo los referenciados por un objeto clearnet o un avatar. Si el guard se cayó en un overlay, es esto | UPGRADE §2 · HUB-PROTOCOL, fila de disco |
+| `upgrade-gates.sh check` dice «NO MEDIBLE: sin feed» o «el feed ha cambiado» para un nodo que acabas de retirar | el `check` mezcla los nodos de la foto base con los actuales: si la base tenía ese nodo, la comparación no vale. Toma una foto base **sin** ese nodo (`GATE_NODES` sin él) antes de retirarlo | UPGRADE §3.4 · WP-O135 §9 |
+| `docker compose --profile X down` para quitar un servicio de perfil | `down` para y borra **todos** los servicios sin perfil (pub, HUB, caché, web, panel) y la red; el de perfil inactivo ni lo toca. Un servicio se retira con `rm -sf <servicio>` | ECOIN §9 · HUB §11 |
+| `retro-seed.sh` / `retro-tombstone.sh` miden el pub equivocado desde la máquina operadora | sin `--pub-id` toman el pub de `.env.local` (el desechable); el nodo real está conectado al pub real: siempre `--pub-id` del real | TEMPLATE §4.5 y §9 |
+| Un objeto borrado por su autor sigue en `/c` por URL directa | las rutas de detalle del visor leen el objeto por id y no miran tombstones ni `clearnetItem off`; del índice, la portada y el sitemap sí desaparece (y los blobs dejan de autorizarse). Es del visor de upstream | TEMPLATE §9 |
+| `getOpenInvite` / `removeOpenInvite` no ven una invitación abierta que existe | en Oasis 1.2.5 `TRIBE_LOG_TYPES` (`tribes_model.js:8`) no incluye `tribe-open-invite`: el modelo no lee los marcadores. Para retirarlas se publican los dos tombstones desde el feed propio (`seed-tombstone.js`) | TEMPLATE §9 |
 
 ## 5. Nombres de los bots de soporte
 
@@ -180,5 +193,5 @@ pub de Banking**, junto a los de otros pubs. La regla:
    El feed id no cambia nunca; lo que identifica al bot es el id, el nombre es cortesía.
 
 Ejemplo (instancia Scriptorium): `clearnet.escrivivir.co`, `ecoin.escrivivir.co` y `retro.escrivivir.co`
-(secretaría de plantillas, modo `server`: TEMPLATE-PROTOCOL §4.5). Sus descripciones literales, en la ficha
-de instancia. Un `about` puede llevar avatar (`image`): se publica en el mismo mensaje, una sola vez (HUB §12).
+(secretaría de plantillas, modo `server`: TEMPLATE-PROTOCOL §4.5; desde el 2026-10-10 vive en la máquina
+operadora, no en el VPS: D-O33). Sus descripciones literales, en la ficha de instancia. Un `about` puede llevar avatar (`image`): se publica en el mismo mensaje, una sola vez (HUB §12).

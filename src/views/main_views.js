@@ -1,14 +1,15 @@
 "use strict";
 
 const path = require("path");
+const RAW_HTML = Symbol.for('oasis.rawHtml');
 const fs = require("fs");
 
 const envPaths = require("../server/node_modules/env-paths");
 const debug = require("../server/node_modules/debug")("oasis");
-const highlightJs = require("../server/node_modules/highlight.js");
+const highlightJs = require("../server/node_modules/highlight.js/lib/core");
+highlightJs.registerLanguage("json", require("../server/node_modules/highlight.js/lib/languages/json"));
 const prettyMs = require("../server/node_modules/pretty-ms");
 const moment = require('../server/node_modules/moment');
-const QRCode = require('../server/node_modules/qrcode');
 const { renderStyledText, renderStyledHtml, plainText, safeExternalHref } = require('../backend/renderStyledText');
 const ssbClientGUI = require("../client/gui");
 const config = require("../server/ssb_config");
@@ -488,6 +489,62 @@ const renderMobileCounters = () => {
   );
 };
 
+const LIST_PAGE_SIZE = 50;
+const LIST_PAGE_SIZES = ['10', '50', '100', 'all'];
+const listScope = () => { try { return require('../models/typed_log').requestScope.getStore() || null; } catch (_) { return null; } };
+const listPerPage = (query) => {
+  const v = String(new URLSearchParams(String(query || '')).get('perPage') || '').toLowerCase();
+  return LIST_PAGE_SIZES.includes(v) ? v : String(LIST_PAGE_SIZE);
+};
+const slicePage = (list, page, per) => {
+  const all = Array.isArray(list) ? list : [];
+  const size = per === 'all' ? Math.max(1, all.length) : Number(per) || LIST_PAGE_SIZE;
+  const pages = Math.max(1, Math.ceil(all.length / size));
+  const current = Math.min(pages, Math.max(1, parseInt(page, 10) || 1));
+  return { items: all.slice((current - 1) * size, current * size), page: current, pages, total: all.length, per: String(per) };
+};
+const showPageSizes = (total, query) => total > Number(LIST_PAGE_SIZES[0]) && (total > LIST_PAGE_SIZE || new URLSearchParams(String(query || '')).has('perPage'));
+const pageSizeLabel = (s) => s === 'all' ? String(i18n.all || 'All').toUpperCase() : s;
+exports.LIST_PAGE_SIZE = LIST_PAGE_SIZE;
+exports.LIST_PAGE_SIZES = LIST_PAGE_SIZES;
+exports.listPerPage = listPerPage;
+exports.slicePage = slicePage;
+exports.showPageSizes = showPageSizes;
+exports.pageSizeLabel = pageSizeLabel;
+const paged = (list) => {
+  const store = listScope();
+  const query = store ? store.query : '';
+  const { items, ...pager } = slicePage(list, new URLSearchParams(String(query || '')).get('page'), listPerPage(query));
+  if (store) store.pager = pager;
+  return items;
+};
+exports.paged = paged;
+exports.currentPerPage = () => { const store = listScope(); return listPerPage(store ? store.query : ''); };
+const renderListPager = () => {
+  const store = listScope();
+  const pg = store && store.pager;
+  if (!pg) return null;
+  const sizes = showPageSizes(pg.total, store.query);
+  if (!(pg.pages > 1) && !sizes) return null;
+  const href = (n, per) => {
+    const q = new URLSearchParams(String(store.query || ''));
+    for (const k of ['page', 'error', 'errsig']) q.delete(k);
+    if (per) q.set('perPage', per);
+    if (n > 1) q.set('page', String(n));
+    const s = q.toString();
+    return s ? `${store.path}?${s}` : store.path;
+  };
+  return nav({ class: 'oasis-pager' },
+    sizes ? span({ class: 'oasis-pager-sizes' },
+      span({ class: 'oasis-pager-info' }, i18n.searchPerPageLabel || 'Results per page'),
+      ...LIST_PAGE_SIZES.map(s => a({ href: href(1, s), class: s === pg.per ? 'oasis-pager-btn active' : 'oasis-pager-btn' }, pageSizeLabel(s)))
+    ) : null,
+    pg.pages > 1 ? span({ class: 'oasis-pager-info' }, String(i18n.cnPageOf || 'Page {page} of {pages}').replace('{page}', String(pg.page)).replace('{pages}', String(pg.pages))) : null,
+    pg.page > 1 ? a({ href: href(pg.page - 1), class: 'oasis-pager-btn' }, i18n.cnPrevPage || '← Previous') : null,
+    pg.page < pg.pages ? a({ href: href(pg.page + 1), class: 'oasis-pager-btn' }, i18n.cnNextPage || 'Next →') : null
+  );
+};
+
 const renderLogWindowNote = () => {
   let store = null;
   try { store = require('../models/typed_log').requestScope.getStore(); } catch (_) { store = null; }
@@ -544,6 +601,23 @@ const keepTextView = ({ title, action, fields = [], hidden = [], enctype = null,
   );
 };
 exports.keepTextView = keepTextView;
+
+const confirmView = ({ title, message, action, hidden = [], backHref = null }) => exports.template(
+  title || i18n.confirmActionTitle,
+  section(
+    div({ class: 'tags-header' },
+      h2(title || i18n.confirmActionTitle),
+      message ? p({ class: 'error-page-message' }, String(message)) : null,
+      form({ method: 'POST', action },
+        ...hidden.map(h => input({ type: 'hidden', name: h.name, value: String(h.value == null ? '' : h.value) })),
+        button({ type: 'submit', class: 'create-button' }, i18n.confirmActionButton),
+        ' ',
+        a({ href: backHref || '/', class: 'filter-btn' }, i18n.goBack || 'Go back')
+      )
+    )
+  )
+);
+exports.confirmView = confirmView;
 
 exports.renderInlineError = (message, dismissHref) => section({ class: 'inline-error' },
   div({ class: 'tags-header inline-error-box' },
@@ -685,18 +759,19 @@ const renderCardMetaRow = (...nodes) => {
 };
 exports.renderCardMetaRow = renderCardMetaRow;
 
-const renderOpinionsVoting = (basePath, id, opinions, returnTo, voters) => {
+const renderOpinionsVoting = (basePath, id, opinions, returnTo, voters, pathFor = null) => {
   const ops = opinions || {};
   const total = Object.values(ops).reduce((s, n) => s + (Number(n) || 0), 0);
   const myId = (config.keys && config.keys.id) ? config.keys.id : '';
   const alreadyVoted = Array.isArray(voters) && myId ? voters.includes(myId) : false;
+  const actionFor = (category) => typeof pathFor === 'function' ? pathFor(id, category) : `${basePath}/${encodeURIComponent(id)}/${category}`;
   const votingDetails = details({ class: 'opinions-voting-collapse' },
     summary({ class: total > 0 ? 'opinions-summary engage-on' : 'opinions-summary' },
       span({ class: 'opinions-summary-icon' }, 'ꔍ'),
       span({ class: 'opinions-summary-count' }, `(${total})`)),
     div({ class: 'voting-buttons' },
       opinionCategoriesList.map((category) =>
-        form({ method: 'POST', action: `${basePath}/${encodeURIComponent(id)}/${category}` },
+        form({ method: 'POST', action: actionFor(category) },
           returnTo ? input({ type: 'hidden', name: 'returnTo', value: returnTo }) : null,
           button({ class: alreadyVoted ? 'vote-btn disabled' : 'vote-btn', type: 'submit', ...(alreadyVoted ? { disabled: true } : {}) },
             `${String(i18n['vote' + category.charAt(0).toUpperCase() + category.slice(1)] || category).toUpperCase()} [${ops[category] || 0}]`)
@@ -856,20 +931,6 @@ const navLink = ({ href, emoji, text, current, class: extraClass }) =>
       span({ class: "nav-text" }, text)
     )
   );
-
-const customCSS = (filename) => {
-  const customStyleFile = path.join(
-    envPaths("oasis", { suffix: "" }).config,
-    filename
-  );
-  try {
-    if (fs.existsSync(customStyleFile)) {
-      return link({ rel: "stylesheet", href: filename });
-    }
-  } catch (error) {
-    return "";
-  }
-};
 
 const currentNavPath = () => {
   let store = null;
@@ -1709,6 +1770,7 @@ const template = (titlePrefix, ...elements) => {
     const suggestion = (own && own.href !== here) ? own : (sharedState.getBestMatch ? sharedState.getBestMatch() : null);
     if (!suggestion || !suggestion.href) return null;
     if (sharedState.isSuggestionDismissed && sharedState.isSuggestionDismissed(suggestion.href)) return null;
+    if (sharedState.areSuggestionsQuiet && sharedState.areSuggestionsQuiet()) return null;
     const cap = compact ? 52 : 96;
     const t = String(suggestion.title || '').trim();
     const label = t.length > cap ? t.slice(0, cap) + '…' : t;
@@ -1741,24 +1803,13 @@ const template = (titlePrefix, ...elements) => {
         a({ href, class: "update-banner-link" }, room.title),
         bannerChip("👥", `${room.count}/${room.max}`),
         room.joinedAt ? bannerChip("◷", liveClock(room.joinedAt)) : null,
+        room.hand ? bannerChip("✋", String((Array.isArray(room.peers) ? room.peers : []).filter(p => p && p.hand && (Number(p.handSince) || 0) < (Number(room.handSince) || 0)).length + 1)) : null,
         bannerAct("/rooms/mute", room.muted ? i18n.phoneUnmute : i18n.phoneMute, "tribe-action-btn", { mute: room.muted ? 0 : 1 }),
+        bannerAct("/rooms/hand", `✋ ${room.hand ? i18n.roomLowerHand : i18n.roomRaiseHand}`, room.hand ? "tribe-action-btn room-hand-btn-on" : "tribe-action-btn", { hand: room.hand ? 0 : 1 }),
         bannerAct("/rooms/leave", i18n.roomLeave, "tribe-action-btn danger-btn")
       );
     }
-    const liveRoom = (sharedState.getLiveRooms() || [])[0];
-    if (!liveRoom) return null;
-    const href = `/rooms/${encodeURIComponent(liveRoom.ref)}`;
-    if (here === href) return null;
-    return div({ class: bannerCls() },
-      span({ class: "phone-banner-dot" }),
-      a({ href, class: "update-banner-link" }, liveRoom.title),
-      bannerChip("👥", `${liveRoom.count}/${liveRoom.max}`),
-      bannerAct(`/rooms/join/${encodeURIComponent(liveRoom.ref)}`, i18n.roomJoin, "tribe-action-btn"),
-      form({ method: "POST", action: "/rooms/live/dismiss", class: "welcome-banner-close" },
-        input({ type: "hidden", name: "ref", value: liveRoom.ref }),
-        button({ type: "submit", class: "welcome-banner-close-btn" }, "✕")
-      )
-    );
+    return null;
   };
   const buildPhoneBanner = () => {
     let here = '';
@@ -1950,6 +2001,9 @@ const template = (titlePrefix, ...elements) => {
         try {
           const onboarding = require('../models/onboarding_model');
           if (!onboarding.bannerVisible(config && config.path)) return null;
+          let here = '';
+          try { here = (require('../models/typed_log').requestScope.getStore() || {}).path || ''; } catch (_) {}
+          if (here === '/welcome' || here.startsWith('/welcome/')) return null;
           return div(
             { class: "update-banner welcome-banner" },
             span({ class: "update-banner-icon" }, "🌴"),
@@ -2141,7 +2195,7 @@ const template = (titlePrefix, ...elements) => {
             )
           )
         ),
-        main({ id: "content", class: "main-column" }, elements, renderLogWindowNote(), renderMobileCounters())
+        main({ id: "content", class: "main-column" }, elements, renderListPager(), renderLogWindowNote(), renderMobileCounters())
       ),
     renderFooter()
     )
@@ -2655,7 +2709,7 @@ const post = ({ msg, aside = false, preview = false, spreadInfo = null }) => {
             details(
                 summary(i18n.viewJson || 'View JSON'),
                 pre({
-                    innerHTML: highlightJs.highlight(
+                    [RAW_HTML]: highlightJs.highlight(
                         JSON.stringify(msg, null, 2),
                         { language: "json", ignoreIllegals: true }
                     ).value,
@@ -2670,7 +2724,7 @@ const post = ({ msg, aside = false, preview = false, spreadInfo = null }) => {
                 (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`
             );
         }
-        articleElement = article({ class: "content", innerHTML: sanitizeHtml(html) });
+        articleElement = article({ class: "content", [RAW_HTML]: sanitizeHtml(html) });
     } else {
         articleElement = article(
             { class: "content" },
@@ -3125,7 +3179,7 @@ const buildClearnetHub = ({ items = {}, filterBase, filterType = '', query = '',
     }).join('')}
   </div>`;
   const paged = paginateClearnet(visibleItems, page);
-  const pager = renderClearnetPager({ base: filterBase, params: { type: activeFilter, q: query }, page: paged.page, pages: paged.pages });
+  const pager = renderClearnetPager({ base: filterBase, params: { type: activeFilter, q: query }, page: paged.page, pages: paged.pages, per: paged.per, total: paged.total });
   const sections = visibleItems.length
     ? `${filterButtons}<h2 class="cn-section">${esc(i18n.cnPublicContent)} (${visibleItems.length})</h2><div class="cn-hub-grid">${paged.items.map(it => renderHubItem(it.modulePath, it)).join('')}</div>${pager}`
     : (allItems.length ? `${filterButtons}<div class="cn-empty-content">${esc(i18n.cnCategoryEmpty)}</div>` : '');
@@ -3220,7 +3274,7 @@ exports.clearnetInhabitantView = async ({ feedId, name, description, image, pref
     }).join('')}
   </div>`;
   const paged = paginateClearnet(visibleItems, page);
-  const pager = renderClearnetPager({ base: filterBase, params: { type: activeFilter }, page: paged.page, pages: paged.pages });
+  const pager = renderClearnetPager({ base: filterBase, params: { type: activeFilter }, page: paged.page, pages: paged.pages, per: paged.per, total: paged.total });
   const sections = totalCount
     ? `${filterButtons}<h2 class="cn-section">${esc(i18n.cnPublicContent)} (${totalCount})</h2><div class="cn-hub-grid">${paged.items.map(it => renderHubItem(it.modulePath, it)).join('')}</div>${pager}`
     : (allItems.length ? `${filterButtons}<div class="cn-empty-content">${esc(i18n.cnCategoryEmpty)}</div>` : '');
@@ -3448,7 +3502,7 @@ exports.authorView = async ({
     ) : null,
     feedId ? renderInviteQrCard({ qrDataUrl: `/qr/${encodeURIComponent(feedId)}` }) : null,
     description !== ""
-      ? div({ class: "profile-side-description", innerHTML: sanitizeHtml(renderStyledHtml(description)) })
+      ? div({ class: "profile-side-description", [RAW_HTML]: sanitizeHtml(renderStyledHtml(description)) })
       : null,
     ...userSensors,
     div({ class: "profile-side-actions" },
@@ -3531,11 +3585,10 @@ exports.authorView = async ({
           ? authorActions.filter(a => keyToTypes[activeFilter].has(a.type))
           : authorActions;
         visible.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-        const limited = visible.slice(0, 50);
         const { renderActionCards } = require('./activity_view');
         mainColumnContent.push(filterRow);
         mainColumnContent.push(div({ class: 'feed-container profile-module-section' },
-          renderActionCards(limited, (config.keys && config.keys.id) ? config.keys.id : '', allActions || limited, spreadMap instanceof Map ? spreadMap : new Map())
+          renderActionCards(visible, (config.keys && config.keys.id) ? config.keys.id : '', allActions || visible, spreadMap instanceof Map ? spreadMap : new Map(), { paged: true })
         ));
       }
     }
@@ -3684,7 +3737,7 @@ exports.commentView = async (
       br(),
       label(
         { for: "blob" },
-        i18n.blogImage || "Upload media (max-size: 50MB)"
+        i18n.blogImage || "Upload media (max-size: 75MB)"
       ),
       input({ type: "file", id: "blob", name: "blob" }),
       br(),
@@ -4125,7 +4178,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card political-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `🏛️ ${i18n.pmBotPolitical} · `, href ? a({ href, class: 'pm-title-link' }, title) : title),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4144,7 +4197,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card industry-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `🏭 ${i18n.pmBotIndustry || 'IndustryBot'} · ${title}`),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4162,7 +4215,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card banking-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `💰 ${i18n.pmBotBanking || 'BankingBot'} · `, href ? a({ href, class: 'pm-title-link' }, title) : title),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4181,7 +4234,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card school-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `🎓 ${i18n.pmBotSchool || 'EducaBot'} · ${title}`),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4196,7 +4249,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card emergency-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `🚨 ${i18n.pmBotEmergencies || 'EmergencyBot'} · ${title}`),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4221,7 +4274,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card mailing-pm' },
       headerLine({ sentAt, from, toLinks, subject, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, '✉ ', a({ href: listHref, class: 'mailing-inbox-list' }, listName)),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: userId, subjectRaw: subject, text, extra: replyForm })
     )
   }
@@ -4237,7 +4290,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card campaign-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `✍ ${i18n.pmBotCampaigns || 'CampaignBot'} · ${title}`),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4257,7 +4310,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card logistics-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `${i18n.pmBotLogistics || 'LogisticsBot'} · ${title}`),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4268,7 +4321,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card blog-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `📝 ${i18n.pmBotBlogs} · `, titleLink(firstHref(text), title)),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4279,7 +4332,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card podcast-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `${i18n.pmBotPodcasts || 'PodcastBot'} · ${title}`),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4294,7 +4347,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card wiki-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `📖 ${i18n.pmBotWiki || 'WikiBot'} · ${title}`),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4305,7 +4358,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card jobs-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `💼 ${i18n.pmBotJobs} · ${title}`),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4329,7 +4382,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
       { class: 'pm-card housing-bot-notification thread-level-0' },
       headerLine({ sentAt, from, toLinks, subject: title, msgKey: key, msgSize }),
       h2({ class: 'pm-title' }, `🏠 ${i18n.pmBotHousing || 'HousingBot'} · ${title}`),
-      div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text || '')) }),
+      div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text || '')) }),
       actions({ key, replyId: from, subjectRaw: title, text })
     )
   }
@@ -4389,7 +4442,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
             value: 'create',
             class: 'create-button',
             formaction: '/pm',
-            formmethod: 'GET'
+            attrs: { formmethod: 'GET' }
           }, i18n.pmCreateButton)
         ])
       ),
@@ -4439,7 +4492,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
             const subjectU = subjectRaw.toUpperCase()
             const text = content.text || ''
             const sentAt = new Date(content.sentAt || msg.timestamp)
-            const fromResolved = content.from || author
+            const fromResolved = author
             const toLinks = Array.isArray(content.to) ? content.to.map(addr => linkAuthor(addr)) : []
             const level = threadLevel(subjectRaw)
             const msgSize = msgSizeBytes(msg)
@@ -4535,7 +4588,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
                 { class: 'pm-card normal-pm pm-crypter-card' },
                 headerLine({ sentAt, from: fromResolved, toLinks, subject: subjectRaw, msgKey: msg.key, msgSize, crypter: true }),
                 dec && typeof dec.text === 'string'
-                  ? div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(dec.text)) })
+                  ? div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(dec.text)) })
                   : null,
                 dec && typeof dec.text === 'string'
                   ? null
@@ -4552,7 +4605,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
             return div(
               { class: 'pm-card normal-pm' },
               headerLine({ sentAt, from: fromResolved, toLinks, subject: subjectRaw, msgKey: msg.key, msgSize }),
-              div({ class: 'message-text', innerHTML: sanitizeHtml(clickableLinks(text)) }),
+              div({ class: 'message-text', [RAW_HTML]: sanitizeHtml(clickableLinks(text)) }),
               actions({ key: msg.key, replyId: fromResolved, subjectRaw, text })
             )
           }
@@ -4560,7 +4613,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
           const msgTs = (m) => new Date(m?.value?.content?.sentAt || m.timestamp || 0).getTime()
           if (sortMode === 'recent') {
             if (!sorted.length) return p({ class: 'empty' }, i18n.noPrivateMessages)
-            return [...sorted].sort((a, b) => msgTs(b) - msgTs(a)).map(renderMsg)
+            return paged([...sorted].sort((a, b) => msgTs(b) - msgTs(a))).map(renderMsg)
           }
 
           const threadGroups = {}
@@ -4582,7 +4635,7 @@ exports.privateView = async (messagesInput, filter, decrypted = null, notice = '
           }, 0)
           threadOrder.sort((a, b) => threadTs(b) - threadTs(a))
 
-          return threadOrder.map(tid => {
+          return paged(threadOrder).map(tid => {
             const msgs = threadGroups[tid]
             const latest = msgs[msgs.length - 1]
             const earlier = msgs.slice(0, -1)
@@ -4801,7 +4854,7 @@ const generatePreview = ({ previewData, contentWarning, action }) => {
         { class: "preview-content" },
         h2(i18n.messagePreview),
         contentWarning ? div({ class: "content-warning-preview" }, escapeHtml(contentWarning)) : null,
-        div({ class: "preview-rendered", innerHTML: previewHtml })
+        div({ class: "preview-rendered", [RAW_HTML]: previewHtml })
       )
     ),
     section(
@@ -4820,47 +4873,6 @@ const generatePreview = ({ previewData, contentWarning, action }) => {
     )
   )
 }
-
-
-const messageListView = ({
-  messages,
-  viewTitle = null,
-  viewDescription = null,
-  viewElements = null,
-  aside = null,
-  spreadMap = null,
-}) => {
-  const hasHeader = !!viewElements;
-  const titleBlock = hasHeader
-    ? viewElements
-    : div({ class: "tags-header module-header-line" },
-        h2(viewTitle),
-        p(viewDescription)
-      );
-  const getSpread = (key) => (spreadMap instanceof Map ? spreadMap.get(key) : null) || null;
-  return template(
-    viewTitle,
-    section(titleBlock),
-    messages.map((msg) => post({ msg, aside, spreadInfo: getSpread(msg.key) }))
-  );
-};
-
-
-
-
-
-
-exports.spreadedView = ({ messages }) => {
-  const header = div({ class: "tags-header module-header-line" },
-    h2(i18n.spreaded),
-    p(i18n.spreadedDescription)
-  );
-  return spreadedListView({
-    messages,
-    viewTitle: i18n.spreaded,
-    viewElements: header
-  });
-};
 
 
 exports.previewSubtopicView = async ({
@@ -4947,7 +4959,7 @@ exports.subtopicView = async (
       br(),
       label(
         { for: "blob" },
-        i18n.blogImage || "Upload media (max-size: 50MB)"
+        i18n.blogImage || "Upload media (max-size: 75MB)"
       ),
       input({ type: "file", id: "blob", name: "blob" }),
       br(),

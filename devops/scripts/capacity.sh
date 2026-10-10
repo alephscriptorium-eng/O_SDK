@@ -44,7 +44,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot retro:oasis-pub-retro-bot:oasis-retro-bot}"
+GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot}"   # el retro de la casa vive en la máquina operadora (D-O33): GATE_NODES explícito si se quiere medir
 trap node_run_cleanup EXIT
 node_run_setup "$LOCAL" || exit 3
 if [ "$LOCAL" = 1 ]; then ROOT_MOUNT="$(cd "$DEVOPS_DIR/.." && pwd)"; DATA_MOUNT="$ROOT_MOUNT"; REPO_HOST="$ROOT_MOUNT"
@@ -76,7 +76,8 @@ for n in $GATE_NODES; do
   if [ "$fmt" = db2 ]; then row "$a" "índices (db2/indexes, db2/jit)" "$(mb "$d/db2/indexes" "$d/db2/jit")" MB "$CAP_INDEX_MB" "derivables"
   else row "$a" "índices (flume/*)" "$(( $(mb "$d/flume") - $(mb "$lg") ))" MB "$CAP_INDEX_MB" "derivables"; fi
   case "$a" in pub) cap="$CAP_BLOBS_PUB_MB" ;; hub) cap="$CAP_BLOBS_HUB_MB" ;; *) cap="$CAP_BLOBS_BOT_MB" ;; esac
-  lim="$(docker exec "$c" sh -c 'grep -A3 "\"blobCache\"" /app/src/configs/oasis-config.json 2>/dev/null | grep -o "\"pubMaxMB\": *[0-9]*" | grep -o "[0-9]*$"' 2>/dev/null)"
+  # Desde Oasis 1.2.4 la config del nodo vive en ~/.ssb/oasis/oasis-config.json (UPGRADE §0.2); antes, en src/configs.
+  lim="$(docker exec "$c" sh -c 'for f in /home/oasis/.ssb/oasis/oasis-config.json /app/src/configs/oasis-config.json; do [ -s "$f" ] && { grep -A3 "\"blobCache\"" "$f" 2>/dev/null | grep -o "\"pubMaxMB\": *[0-9]*" | grep -o "[0-9]*$"; break; }; done' 2>/dev/null)"
   mode="$(docker inspect -f '{{join .Config.Cmd " "}}' "$c" 2>/dev/null)"
   case "$mode" in server) blim="sin recolector (solo sbot): hub-disk.sh prune-blobs --node pub" ;; *) if [ "${lim:-0}" -gt 0 ] 2>/dev/null; then blim="blobCache.pubMaxMB=${lim} MB"; else blim="SIN LÍMITE (pubMaxMB=0)"; fi ;; esac
   st=""; case "$blim" in SIN*) st=AVISO ;; esac

@@ -1,9 +1,10 @@
 const { form, button, div, h2, h3, p, section, input, label, br, hr, a, span, textarea, select, option, img, strong, table, tr, td } =
   require("../server/node_modules/hyperaxe");
+const RAW_HTML = Symbol.for('oasis.rawHtml');
 const { renderStyledText, renderStyledHtml, escapeHtml } = require("../backend/renderStyledText");
 
 const moment = require("../server/node_modules/moment");
-const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderDocumentActions, renderInviteQrCard, renderModuleStats, moduleIsEmpty, contentDeleteAction } = require("./main_views");
+const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderDocumentActions, renderInviteQrCard, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged } = require("./main_views");
 const { renderEncryptedChip, renderReachChip, renderClearnetSelector, renderClearnetSwitch } = require("./clearnet_view");
 const { config } = require("../server/SSB_server.js");
 const { renderMapHtml, resolveView, makeView, fitView, parseView, viewParam, parsePick, MIN_ZOOM, MAX_ZOOM } = require("../maps/map_renderer");
@@ -11,6 +12,7 @@ const { searchPlaces, nearestPlace } = require("../maps/map_data");
 
 const userId = config.keys.id;
 const safeArr = (v) => (Array.isArray(v) ? v : []);
+const localHref = (u) => (typeof u === 'string' && /^\/(?![\/\\])\S*$/.test(u) ? u : null);
 const safeText = (v) => String(v || "").trim();
 const MAP_REACH = ["SINGLE", "OPEN", "CLOSED"];
 const mapReachLabel = (t) => t === "OPEN" ? i18n.mapTypeOpen : t === "CLOSED" ? i18n.mapTypeClosed : i18n.mapTypeSingle;
@@ -116,7 +118,7 @@ const renderMap = (markers, clickUrl, mainIdx, opts = {}) => {
     clusterTitle: i18n.mapClusterTitle,
     text: navText()
   });
-  return div({ class: opts.thumb ? "map-viewer map-viewer-thumb" : "map-viewer", innerHTML: html });
+  return div({ class: opts.thumb ? "map-viewer map-viewer-thumb" : "map-viewer", [RAW_HTML]: html });
 };
 
 const renderPlaceResults = (hits, toEl) => {
@@ -395,7 +397,7 @@ const renderMarkersList = (markers, mapObj, ctx = {}) => {
     })));
 };
 
-const renderMapCard = (mapObj, filter, params = {}) => {
+const renderMapCard = exports.renderMapCard = (mapObj, filter, params = {}) => {
   const returnTo = buildReturnTo(filter, params);
   const markerCount = safeArr(mapObj.markers).length + 1;
 
@@ -481,7 +483,7 @@ exports.mapsView = async (maps, filter = "all", mapId = null, params = {}) => {
                 input({ type: "hidden", name: "filter", value: filter }),
                 input({ type: "text", name: "q", value: q, placeholder: i18n.mapSearchPlaceholder, class: "filter-box__input" }),
                 div({ class: "filter-box__controls" }, button({ type: "submit", class: "filter-box__button" }, i18n.mapSearchButton)))),
-            div({ class: "jobs-grid" }, renderMapList(list, filter, { q, spreadMap: params.spreadMap })))));
+            div({ class: "jobs-grid" }, renderMapList(paged(list), filter, { q, spreadMap: params.spreadMap })))));
 };
 
 exports.singleMapView = async (mapObj, filter = "all", params = {}) => {
@@ -750,14 +752,16 @@ exports.clearnetMapView = async (mapObj, params = {}) => {
   });
 };
 
-exports.renderMapLocationUrl = (mapUrl) => {
+exports.renderMapLocationUrl = (rawMapUrl) => {
+  const mapUrl = localHref(rawMapUrl);
   if (!mapUrl) return null;
   return span({ class: "map-location-inline" },
     span({ class: "map-location-icon" }, "ꔌ"),
     a({ href: mapUrl, class: "map-location-link" }, mapUrl));
 };
 
-exports.renderMapLocationVisitLabel = (mapUrl) => {
+exports.renderMapLocationVisitLabel = (rawMapUrl) => {
+  const mapUrl = localHref(rawMapUrl);
   if (!mapUrl) return null;
   return div({ class: "card-field" },
     span({ class: "card-label" }, (i18n.mapLocationTitle || "Map Location") + ":"),
@@ -765,7 +769,8 @@ exports.renderMapLocationVisitLabel = (mapUrl) => {
       a({ href: mapUrl, class: "map-location-link" }, i18n.mapVisitLabel || "Visit map")));
 };
 
-exports.renderMapEmbed = (mapData, mapUrl) => {
+exports.renderMapEmbed = (mapData, rawMapUrl) => {
+  const mapUrl = localHref(rawMapUrl);
   if (!mapData || (parseFloat(mapData.lat) === 0 && parseFloat(mapData.lng) === 0))
     return exports.renderMapLocationVisitLabel(mapUrl);
   return div({ class: "map-embed-section" },
@@ -776,7 +781,8 @@ exports.renderMapEmbed = (mapData, mapUrl) => {
       a({ href: mapUrl, class: "map-location-link" }, mapUrl)) : null);
 };
 
-exports.renderMapEmbedWithZoom = (mapData, mapUrl, detailUrl, zoom) => {
+exports.renderMapEmbedWithZoom = (mapData, rawMapUrl, detailUrl, zoom) => {
+  const mapUrl = localHref(rawMapUrl);
   if (!mapData || (parseFloat(mapData.lat) === 0 && parseFloat(mapData.lng) === 0))
     return exports.renderMapLocationVisitLabel(mapUrl);
   const zoomVal = parseInt(zoom) || 2;

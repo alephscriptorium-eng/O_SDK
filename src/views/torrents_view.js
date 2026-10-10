@@ -2,7 +2,7 @@ const { form, button, div, h2, h3, p, section, input, br, a, span, textarea, sel
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
 const { renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderTribeOriginChip } = require('./clearnet_view');
 
-const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip , renderSpreadEditWarning, renderContentActions, renderModuleStats, moduleIsEmpty, renderTorrentDownload, torrentDownloadHref, renderTorrentSourceDownload, contentDeleteAction } = require("./main_views");
+const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip , renderSpreadEditWarning, renderContentActions, renderModuleStats, moduleIsEmpty, renderTorrentDownload, torrentDownloadHref, renderTorrentSourceDownload, contentDeleteAction, paged } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderStyledText } = require("../backend/renderStyledText");
@@ -100,16 +100,19 @@ const renderTorrentTable = exports.renderTorrentTable = (torrents, filter, param
       th(""),
       th("")
     ),
-    torrents.map((t) =>
-      tr(
+    torrents.map((t) => {
+      const row = typeof params.rowFor === "function" ? params.rowFor(t) : null;
+      return tr(
         td(moment(t.createdAt).format("YYYY/MM/DD HH:mm")),
         td(userLink(t.author)),
-        td(t.title || "", t.tribeOrigin ? renderTribeOriginChip(t.tribeOrigin) : t.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('torrents', t.title, t.key)) : null),
+        td(t.title || "", t.tribeOrigin ? renderTribeOriginChip(t.tribeOrigin) : t.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('torrents', t.title, t.key)) : null, ...(row && Array.isArray(row.titleChips) ? row.titleChips.filter(Boolean) : [])),
         td(formatSize(t.size)),
-        td({ class: "torrent-spread-cell" }, t.tribeOrigin ? "" : renderTorrentSeeds(t, params.spreadMap)),
-        td({ class: "torrent-spread-cell" }, t.tribeOrigin ? "" : renderTorrentSpread(t, params.spreadMap)),
+        td({ class: "torrent-spread-cell" }, t.tribeOrigin || row ? "" : renderTorrentSeeds(t, params.spreadMap)),
+        td({ class: "torrent-spread-cell" }, t.tribeOrigin || row ? "" : renderTorrentSpread(t, params.spreadMap)),
         td(
-          t.tribeOrigin
+          row
+            ? (row.details || "")
+            : t.tribeOrigin
             ? a({ href: t.tribeOrigin.href, class: "filter-btn" }, i18n.torrentDetailsButton)
             : form(
                 { method: "GET", action: `/torrents/${encodeURIComponent(t.key)}` },
@@ -121,12 +124,16 @@ const renderTorrentTable = exports.renderTorrentTable = (torrents, filter, param
               )
         ),
         td(
-          t.url && t.url.startsWith("&")
+          row
+            ? (row.download || "")
+            : t.url && t.url.startsWith("&")
             ? div({ class: "torrent-card-actions" }, renderTorrentSourceDownload(t.key, t.source), renderTorrentDownload(torrentDownloadHref(t.url, t.title)))
             : ""
         ),
         td(
-          t.tribeOrigin ? "" : renderContentActions(t.key, `/torrents/${encodeURIComponent(t.key)}`, {
+          row
+            ? (row.actions || "")
+            : t.tribeOrigin ? "" : renderContentActions(t.key, `/torrents/${encodeURIComponent(t.key)}`, {
             author: t.author,
             favKind: 'torrents',
             isFavorite: t.isFavorite,
@@ -135,8 +142,8 @@ const renderTorrentTable = exports.renderTorrentTable = (torrents, filter, param
             deleteAction: String(t.author) === String(userId) ? contentDeleteAction('torrent', t.key) : undefined
           })
         )
-      )
-    )
+      );
+    })
   );
 };
 
@@ -349,7 +356,7 @@ exports.torrentsView = async (torrents, filter = "all", torrentId = null, params
                 )
               )
             ),
-            div({ class: "audios-list" }, renderTorrentTable(list, filter, { q, sort, spreadMap: params.spreadMap }))
+            div({ class: "audios-list" }, renderTorrentTable(paged(list), filter, { q, sort, spreadMap: params.spreadMap }))
           )
     )
   );

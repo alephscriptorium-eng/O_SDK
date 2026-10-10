@@ -7,6 +7,9 @@
 > `plan/REPORTES/WP-O131-retro-bot-via-caliente.md`). La vía **fría** (WP-O130) tiene contrato y no código: el
 > custodio adelantó la caliente. Demos: Acampada26S (`ARCHIVO/DISCO/retro-exporter/`, vía guion) y la plantilla
 > genérica **Campamento** con kit visual y bot secretaría (dosier enlazado desde la ficha de instancia).
+> **2026-10-10 (WP-O135, D-O33):** la siembra de Campamento se **deshizo** con la vía de retirada de §9 (115
+> mensajes en 11 bloques, desde el bot autor) y la secretaría de la casa **se mudó del VPS a la máquina
+> operadora** (HUB §11, mudanza). La vía caliente sigue siendo método; en la casa no tiene siembra viva.
 
 Método para convertir lo que un colectivo ya tiene en papel (asambleas, nodos, comisiones, canales,
 métodos de decisión) en objetos de Oasis 1.2.3 (tribus, salas, calendarios, listas, wikis, mapas,
@@ -78,6 +81,9 @@ termina con exit 0 y todos los `origen` resueltos; cada firma citada en SCHEMA e
 | **Fría** (`--cold`) | siembra con el sbot embebido (`src/client/gui.js`, como `test/seed.js:17-22` de upstream) en un `ssb_path` aislado con la red pausada | contenedor (`src/server/node_modules` es un enlace que solo existe en la imagen) | sí: se borra el directorio | contrato aquí; código en WP-O130 |
 | **Caliente** (`--hot`) | siembra desde una identidad **«secretaría»**: sbot propio (patrón bots de soporte, `HUB-PROTOCOL.md` §3 y §11) que redime un invite del pub y publica como ella; el seeder corre dentro, por su socket unix | contenedor del bot en modo `server` (`oasis-retro-bot`, §4.5) o segundo sbot a mano en una instalación upstream (`ssb_path=<dir> node src/server/SSB_server.js start`) | el feed de la secretaría se puede dejar de seguir o bloquear; lo publicado no desaparece | **ensayada en local** (WP-O131: 146 mensajes, 10 bloques, una parada por delta y reejecución sin duplicados); VPS pendiente de GO |
 | **Reparto** (`--reparto`) | emite la **guía de reparto de accesos**: por órgano responsable, qué objetos le tocan, qué tipo de acceso y dónde se obtiene; con ledger, los enlaces `/c/…` | cualquier Node, sin SSB | no publica nada | **disponible** (WP-O131, §4.6) |
+
+Toda vía que publica tiene su **deshacer** en §9: la vía caliente, ejercida en la casa el 2026-10-08, se deshizo el
+2026-10-10 (D-O33) con la misma identidad, bloque a bloque.
 
 **Descartado y por qué**: publicar desde una «identidad proxy» por el socket del pub. Los modelos
 publican siempre como la identidad del sbot (`tribes_model.js:318`, `rooms_model.js:418`), el token de
@@ -192,7 +198,15 @@ Un bot más de la serie del pub (HUB §11): cuenta SSB propia, contenedor propio
   un bind dentro de otro `:ro` no se puede crear si la imagen no trae `/app/pub`; medido en el VPS). Sin `ports`, sin ruta en Caddy.
   Variables `OASIS_RETRO_BOT_*` en `pub/.env.*.example`; perfil compose `retro` (`npm run pub:local:retro-bot:up`).
 - Los scripts que enumeran nodos lo conocen: `upgrade-gates.sh`, `capacity.sh`, `lib-node.sh`
-  (`*retro-bot*` antes del comodín, o se mediría contra el `.ssb` del pub), `deploy-status.sh`.
+  (`*retro-bot*` antes del comodín, o se mediría contra el `.ssb` del pub), `deploy-status.sh`. Desde D-O33 el
+  retro **no** va en el `GATE_NODES` por defecto: se mide con `GATE_NODES='retro:oasis-pub-retro-bot:oasis-retro-bot'`.
+- **Dónde vive la secretaría.** En el host junto al pub (como nació en la demo, 2026-10-08) o en la **máquina
+  operadora** (la casa desde el 2026-10-10, D-O33): mismo servicio del compose, `.env.local` con
+  `OASIS_RETRO_BOT_*` apuntando a `volumes-real/oasis-retro-bot/` (fuera de `volumes-dev/`: ningún drill lo copia
+  ni repone), conectado al pub real por `conn.remember` (`hub-conn-fix.js 'net:<pub>:8008~shs:<clave>'`). Desde
+  la máquina operadora **todo** `retro-seed.sh` / `retro-tombstone.sh` lleva `--pub-id` del pub real: sin él
+  tomarían el pub desechable de `.env.local` y el gate `pubConnected` no casaría. La mudanza, paso a paso:
+  HUB §11 («mudanza o baja de un bot»); la de la demo, en el runbook de mudanza de su dosier (enlazado desde la ficha de instancia).
 
 ### 4.6 Guía de reparto de accesos (el libro del operador)
 
@@ -247,3 +261,55 @@ activa, los señala.
 | 2026-10-08 | Vía caliente escrita (`--hot`, bot retro en modo `server`, bloque `clearnet`), kit visual, guía de reparto (`--reparto`, tres salidas), plantilla genérica Campamento | WP-O131, dosier del WP en `ARCHIVO/DISCO/` (enlazado desde la ficha de instancia) |
 | 2026-10-08 | **Drill local ejecutado**: bootstrap por socket, `about` con avatar, 146 mensajes en 10 bloques, una parada por delta (`calendarNote`), reejecución sin duplicados, `/c` del HUB con lo marcado y solo eso, 36 enlaces de la guía en 200. 12 hallazgos, 7 correcciones aplicadas | `plan/REPORTES/WP-O131-retro-bot-via-caliente.md` · runbook del drill en el dosier del WP |
 | 2026-10-08 | **Host de la demo**: bot nº 3 dado de alta en su pub (PERMISOS: invite, `about`, 9 bloques, `clearnet`), Campamento sembrada con delta exacto en los 10 bloques (145 + 3 del bootstrap = 148), el pub solo publicó su `contact`; HUB con el feed sin reiniciar; sitemap público con 191 URL; guía con enlaces reales en la Sala 02. Dos hallazgos nuevos: el bind de assets no puede anidarse en otro `:ro` si la imagen no trae `/app/pub`; reiniciar justo tras el `accept` pierde el `contact`/`pub` del bot (esperar `seq ≥ 2`) | runbook del host en el dosier del WP |
+| 2026-10-10 | **Mudanza** del bot nº 3 del VPS a la máquina operadora (identidad parada, copiada con sha256 por fichero, log leído en frío `S 150`, arranque local → `oasisVersion` seq 151 aceptado por el pub, `rm -sf` en el host) y **deshacer** de Campamento: 11 bloques, 115 retiradas (15 `clearnetItem off`, 1 post, 2 mapas, 5 wikis, 2 listas OPEN, 7 eventos, 7 calendarios, 7 salas, 22×2 invitaciones, 9 subtribus, 16 tribus); dos listas CLOSED privadas no retirables desde el seeder; feed del bot en 266 | WP-O135 §9, D-O33, dosier de la instancia (runbooks de mudanza y de deshacer, evidencia `vps/tombstone-*.jsonl` y `vps/ledger-tombstones.json`; enlazado desde su ficha) |
+
+## 9. Deshacer una siembra (retirada)
+
+Imagen especular de §4.3-§4.5: lo que la vía caliente publicó, la misma identidad lo **retira** con un borrado
+lógico por objeto. En SSB nada se borra: un `tombstone` es otro mensaje, append-only, que los clientes que lo
+respetan dejan de mostrar; lo original sigue en el log del autor, del pub, del HUB y de quien replicara. Por eso
+cada bloque es una acción irreversible (`AGENTES.md` §3) con PERMISO del custodio, dry-run antes y conteo después.
+Ejercido en la casa el 2026-10-10 (WP-O135, D-O33; revoca la fila «sin tombstone» del dosier de WP-O134).
+
+**Herramienta**: `pub/tools/seed-tombstone.js` (gemelo de `seed-hot.js`: misma conexión por socket, mismos
+gates, mismo lock, misma evidencia), envoltorio `pub/scripts/retro-tombstone.sh` (`npm run
+pub:local:retro-bot:tombstone`). Entrada: el **ledger de la siembra** (`oasis/keys/plantilla-<id>.json`) como
+índice por bloque, y el **feed propio** del bot como fuente de verdad (lo que el ledger no tiene —el post de
+entrada, los `clearnetItem`, los marcadores de invitación— se lee de ahí). Salida: un ledger propio
+(`plantilla-<id>-tombstones.json`, reejecutable sin duplicar; `--skip <bloque>:<id>` anota lo que el custodio da
+por no retirable, con motivo) y evidencia `.jsonl` por bloque con `before/after`, `delta` y `expectedMin`.
+
+**Gates** (sin ellos no publica): `whoami` ≠ pub y `pub: false` en su config (D-O28); `whoami` = autora del
+ledger (solo el autor puede tombstonear: `tombstone_validator.js`); un pub conectado (los tombstones deben
+replicar); lock del ledger.
+
+**Orden, hojas → raíces** (el inverso de la siembra), un bloque por `--yes`:
+
+| # | Bloque | Qué publica | Cómo | Por qué en este orden |
+|---|---|---|---|---|
+| 1 | `clearnet` | `clearnetItem … on:false` por objeto encendido | directo; `kind` del original | saca los objetos del índice, la portada y el sitemap de `/c` sin tocarlos |
+| 2 | `entrada` | `tombstone` del post de entrada | directo (`blog_model.js:144`) | el post solo sale de `/c` con su `clearnetItem off` (bloque 1): el colector de posts no mira tombstones |
+| 3-4 | `maps`, `wiki` | `tombstone` (envuelto si es de tribu) | `deleteMapById`, `deletePage` | contenido suelto, sin dependientes |
+| 5 | `mailing` | OPEN: `tombstone`; CLOSED: `mailingList status:DELETED` privado | `deleteList` por `listId` (el ledger guarda la clave del primer privado; `mailing_model.js:134`) | las CLOSED el modelo **no las ve por el socket** (`createLogStream` llega cifrado): se anotan con `--skip` si no hay nadie más que el autor |
+| 6 | `events` | `tombstone` | `deleteEventById` | — |
+| 7 | `calendars` | `tombstone` sobre la **punta** (envuelto para la tribu si el calendario es de tribu) | `deleteCalendarById`; si la punta es un sobre `tribe-msg`, `createHelpers().encryptTombstone` (lo que hace `maps_model` con `tombFor`; `deleteCalendarById` no desenvuelve y dice «Not the author») | fechas y notas cuelgan del calendario |
+| 8 | `rooms` | `tombstone` | `deleteRoomById` | las salas son de tribu: antes de matar la tribu |
+| 9 | `invites` | `tribe-open-invite-tombstone` + `tribe-invite-tombstone` por tribu | **directo desde el feed propio**: en 1.2.5 `TRIBE_LOG_TYPES` (`tribes_model.js:8`) no incluye `tribe-open-invite` y `removeOpenInvite` no las ve | exige la tribu viva |
+| 10-11 | `subtribes`, `tribes` | `tombstone` de la raíz (envuelto si la tribu es privada) | `deleteTribeById` (mata actualizaciones y subtribus en cascada) | las últimas: borrar contenido de tribu exige su clave |
+
+**Cuenta** (Campamento): 115 = 15 + 1 + 2 + 5 + 2 + 7 + 7 + 7 + 44 + 9 + 16; la mínima con el mismo efecto
+visible sería ≈50 (raíces de tribu en cascada, sin invitaciones ni `clearnetItem off`).
+
+**Medir**: `pub-feed-seq.sh <feed>` sube con cada bloque (el pub replica); `ssb-probe.js` en el HUB ve el mismo
+seq; `hub-disk.sh prune-cache` (el sitemap y las páginas viven hasta 7 d en nginx); `/c/sitemap.xml` y la portada
+sin los objetos; `$R check` de los nodos del host = Δ0. **Lo que queda y se dice**: las rutas de detalle del
+visor (`/c/events/:id`, `/c/maps/:id`, `/c/calendars/:id`) siguen respondiendo por URL directa (leen el objeto por
+id sin mirar tombstones: comportamiento de upstream); los blobs siguen en los almacenes (dejan de estar
+autorizados en `/c`; caché 30 d → `prune-cache`); el `about`, el `contact` del pub, las claves repartidas y los
+códigos en claro de `tribe-open-invite` no se retiran; lo que publicaron otros (altas, `roomMember`) tampoco. La
+Sala 02 del sitio (`pub/site/parlament/campamento/`) es estática y se retira por despliegue del sitio.
+
+**Dónde queda la evidencia** (instancia): junto a la de la siembra, en el dosier de la instancia (enlazado
+desde su ficha): `vps/tombstone-<tag>.jsonl`, `vps/ledger-tombstones.json`, un `runbook-tombstone.md` y una fila
+de decisión en su `README.md`. El dosier narra la vida completa de la
+siembra: plan → siembra → mudanza → retirada; nada previo se reescribe.

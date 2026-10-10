@@ -59,6 +59,8 @@ fila**: una pieza sin fila es una pieza que nadie mira al subir.
 | maint-ui | backend sobre el `.ssb` **del pub** | — | **prohibida durante el ciclo**: todo lo que un backend publica solo lo publicaría con la identidad del pub | — | lo que publique un backend |
 | ecoind | imagen propia | RPC | no se recrea en un upgrade de Oasis | `ECOIN-PROTOCOL.md` | — |
 | cliente | `full` + entrypoint (`persist_client_state`, `wire_wallet_config`, `setup_oasis_config`) | forma de `oasis-config.json`, loopback, contrato de IA | drill del cliente | `../CLIENT-PROTOCOL.md` §4-§5 | `oasisVersion` +1; `wallet` si hay cartera cableada sin publicar |
+| config de cada nodo (`oasis-config.json`) | bind `:ro` del compose (HUB, bot) · symlink del entrypoint (cliente) | **dónde la lee** `config-manager.js`: hasta 1.2.3 `src/configs/`; desde 1.2.4 `~/.ssb/oasis/oasis-config.json` (la vieja se copia una vez). También `lanRouter.js`, `network_pause.js` | `annex` (hub) · tras U3, `docker exec … cat ~/.ssb/oasis/oasis-config.json` = la del repo | `HUB-PROTOCOL.md` §5.2 · `ECOIN-PROTOCOL.md` §5.2 | — |
+| token de admin (desde 1.2.4) | `backend.js` con `OASIS_ALLOW_HOST` | `isLoopbackRequest` exige cookie `oasis_admin` además del socket local; rechaza cabeceras de proxy | el log de arranque dice «Admin access» (el token **no** se copia); un `POST` solo-loopback sin cookie da 403 | `ECOIN-PROTOCOL.md` §5.2 | — |
 | dependencias vendorizadas | `src/base/node_modules` (desde 1.2; entra con el overlay) + enlace `src/server/node_modules` que crea el `Dockerfile` | qué paquetes trae upstream, sus binarios precompilados, la versión de Node que declara | el build prueba que el núcleo carga; invariante `src/base` idéntico a upstream | §2, §3.3 | — |
 | parches de `node_modules` | `apply_node_patches` del entrypoint, sobre `src/base` | versiones de `ssb-ref`, `ssb-blobs`, `multiserver`; qué trae ya parcheado upstream en lo vendorizado y qué parchea su `scripts/patch-node-modules.js` (que el fork no ejecuta sobre el repo) | `upgrade-patches-audit.js $NEW_REF` (sección `patches` del diff): ningún `pendiente` · log de arranque: cada parche del entrypoint dice «patcheado» o «ya parcheado», ninguno «no se encontró» | §2, §3.3 | — |
 | snapshot del pub | `pub/tools/snapshot-build.js`, que lanza el entrypoint del pub cada `OASIS_PUB_SNAPSHOT_HOURS` horas (`pub-snapshot.sh` para mirar o forzar) | formato `OASISSN1`, ruta de `snapshot_plugin.js`, RPC `createLogStream` | gate US (§3.4) · `pub-snapshot.sh status` | `HUB-PROTOCOL.md` §13 | — (construir no publica) |
@@ -132,7 +134,8 @@ bash devops/scripts/upgrade-preflight.sh [--from X.Y.Z] [--to X.Y.Z]   # drift d
 - Compara `src/server/package.json` local con `oasis-upstream/main`.
 - Imprime `OLD_REF` y `NEW_REF`: el commit de upstream de la versión **desplegada** y el de la
   nueva. Upstream no etiqueta las versiones de Oasis (solo las de Android): el commit de una
-  versión es el titulado `Oasis release X.Y.Z`, y **los dos** se resuelven así. La versión de
+  versión es el titulado `Oasis release X.Y.Z`, y **los dos** se resuelven así. Si hay varios con el
+  mismo título (1.2.5 tuvo tres el mismo día), vale el **último**: es el que resuelve el preflight. La versión de
   partida sale del journal de deploys (último registro del **pub**); si §0.3 midió otra,
   `--from X.Y.Z`. La de llegada es la de upstream, o `--to X.Y.Z` para subir a una intermedia.
   `NEW_REF` **no es la punta de la rama**: si upstream empujó algo después de la release, el
@@ -186,15 +189,15 @@ otro para los guards repuestos. Así el diff de los guards se lee solo.
 
 | Fichero | Qué reponer sobre el fichero nuevo |
 |---|---|
-| `src/backend/backend.js` | **Tres edits.** (1) En `.post("/update")`: conservar `isLoopbackRequest` y `safeRefererRedirect`; sustituir las dos `exec` (`git reset --hard && git pull`, `sh install.sh`) por el `console.warn` del fork. (2) Interruptor de snapshots (D-O27): `const snapshotsOff = process.env.OASIS_SNAPSHOT === 'off';` antes de `runSnapshotBuild`, y `|| snapshotsOff` en la primera condición de `runSnapshotBuild` y de `bootstrapFromPub` |
-| `src/server/ssb_config.js` | `mergeDeep` en vez del spread (`config = mergeDeep(config, configData)`); bloque `OASIS_SERVER_CONFIG_OVERRIDE` antes de `const megabyte`; `blobs.max` = 50 MB. Conservar `config.statePath` y `config.db2` de upstream |
+| `src/backend/backend.js` | **Cuatro edits.** (0) **Séptimo guard (WP-O135, D-O31)**, marcado `// guard o-sdk (WP-O135, D-O31)`: en `.get("/c/blob/:cnBlobId")`, `blob.getLocal` → `blob.getResolved` (pide a la red hasta 30 s **solo** los blobs que la lista blanca `clearnetBlobAllowed` de upstream admite; con `getLocal` un blob que el HUB no tiene nunca saldría en `/c`). (1) En `.post("/update")`: conservar `isLoopbackRequest` y `safeRefererRedirect`; sustituir las dos `exec` (`git reset --hard && git pull`, `sh install.sh`) por el `console.warn` del fork. (2) Interruptor de snapshots (D-O27): `const snapshotsOff = process.env.OASIS_SNAPSHOT === 'off';` antes de `runSnapshotBuild`, y `|| snapshotsOff` en la primera condición de `runSnapshotBuild` y de `bootstrapFromPub` |
+| `src/server/ssb_config.js` | `mergeDeep` en vez del spread (`config = mergeDeep(config, configData)`); bloque `OASIS_SERVER_CONFIG_OVERRIDE` antes de `const megabyte`; `blobs.max` = 50 MB (upstream lo sube a 75 desde 1.2.4; el fork lo mantiene: fila de disco de `HUB-PROTOCOL.md`, `CAPACIDAD.md`). Conservar `config.statePath`, `config.db2` y, desde 1.2.4, `readServerConfig()` y el bloque `bindHost` de upstream |
 | `src/backend/updater.js` | Los dos `console.log("...new code updates are available!...")` pasan a ser el mensaje del fork. Conservar el fix de ruta con `__dirname` |
 | `src/views/settings_view.js` | El `form({ action: "/update" })` pasa a ser el `p(...)` informativo |
 | `src/configs/snh-invite-code.json` | **Solo `url`** = dominio del pub de la instancia (D-O22): base de los enlaces de «compartir en clearnet». El invite de upstream se conserva |
 | `src/views/clearnet_view.js` | **Sexto guard (WP-O132, D-O30), tres piezas marcadas `// guard o-sdk (WP-O132, D-O30)`:** (a) `cnWithQuery`/`propagateQuery` (los antiguos `cnWithLang`/`propagateLang` pasan a envolverlos): `lang` y `theme` del visitante viajan a todo `href="/c…"` y formulario; (b) `THEMES` + `renderThemeSelector` + `getCurrentTheme` (prioridad `cnScope().cnTheme` → `config.themes.current` → `Dark-SNH`) y el selector pintado junto al de idioma en `renderClearnetPage`; (c) en `renderClearnetPage`, **re-afirmar `cnScope().lang`** con `mv().setLanguage` antes del render (el idioma es global del proceso y la ruta esperó). Y en `backend.js`, edit (3): `clearnetLanguage` guarda siempre `store.lang`, y `clearnetTheme(ctx)` valida `?theme=` contra `THEMES` y guarda `store.cnTheme`; el middleware lo llama tras `setLanguage` en rutas `/c`. Invariantes en `upgrade-invariants.d/hub.tsv`; gate `upgrade-gates.sh hub --strict` (cruce 0 en 18 peticiones de 6 idiomas, `?theme=`, enlaces con los dos parámetros) |
 | `src/configs/blockchain-cycle.json` | fork-only (marcador de ciclo; se preserva) |
 
-Eso es **todo** lo que puede divergir de upstream dentro de `src/`: 6 guards (en 6 ficheros) y un fichero propio.
+Eso es **todo** lo que puede divergir de upstream dentro de `src/`: 7 guards (en 6 ficheros) y un fichero propio.
 Fuera de `src/` el fork se mantiene entero (nunca overlay): `Dockerfile`, `docker-compose*.yml`,
 `docker-entrypoint.sh`, `pub/**`, `devops/**`, `client/**`. `install.sh`/`oasis.sh` son
 bare-metal: sincronizarlos con upstream es opcional.
@@ -291,6 +294,7 @@ reporte de ciclo.
 | `pub/caddy/Caddyfile` | una ruta nueva del visor fuera de los prefijos que ya enruta | in place + `validate` + `reload` (`../AGENTES.md` §2.6) |
 | `pub/site/hub/` (Sala 04) | tipos o rutas nuevas del visor | `deploy-site.sh` |
 | `client/scripts/*`, `docker-entrypoint.sh` | cambia el contrato de IA, la forma de `oasis-config.json` o los módulos parcheados | rebuild del cliente; el entrypoint del **host** es el suyo (§0.3, deriva) |
+| `pub/docker-compose.pub.yml` | upstream cambia **dónde lee** un fichero que montamos por bind (1.2.4: `oasis-config.json` pasa a `~/.ssb/oasis/`), o una variable que el compose fija | sustituir in place tras `sha256` del vivo contra el del repo + recrear los nodos afectados (ya se recrean en el ciclo) |
 
 El reporte del WP lleva la lista **«qué viaja al host»** de este ciclo: `src/` y cada fichero de
 esta tabla que haya cambiado. §4 la ejecuta; lo que no esté en la lista no se sube.
@@ -325,7 +329,7 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 
 | Gate | Qué | Comando | Salida esperada |
 |---|---|---|---|
-| **U0** | Línea base **como el host**: stack local en la versión vieja, con cada pieza en el mismo modo que en §0.3 (motor encendido si allí lo está, época del mes abierta). Copia del estado | parar nodos · `$G backup pre` · arrancar · `$G snapshot pre` | tres nodos healthy en la versión vieja; `seq` = `registros` = `sbot` en los tres |
+| **U0** | Línea base **como el host**: stack local en la versión vieja, con cada pieza en el mismo modo que en §0.3 (motor encendido si allí lo está, época del mes abierta). Copia del estado. **Si el ciclo cambia el compose** (§3.2), U0 se levanta con el compose **desplegado** (`git show main:pub/docker-compose.pub.yml > pub/docker-compose.pub.<vieja>.yml`, sin trackear): en 1.2.5 el compose nuevo con la imagen vieja habría leído la config por defecto de la imagen | parar nodos · `$G backup pre` · arrancar · `$G snapshot pre` | todos los nodos healthy en la versión vieja; `seq` = `registros` = `sbot` en todos |
 | **U1** | Árbol | verificación de §2 · `annex` · `--check` del reporte | 7 ficheros · ningún `!` · 0 IDs sin disponer |
 | **U2** | Imagen nueva | etiquetar la vieja (`docker tag …:latest …:X.Y.Z-vieja`) · `npm run build` (o el build del compose del pub) | build limpio; `node --check` dentro de la imagen |
 | **U3** | Recrear en orden pub → HUB → bot y medir **qué publica cada uno** | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre --expect '…'` | `GATE OK` con el delta declarado (abajo) |

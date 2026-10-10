@@ -28,6 +28,14 @@ ejecutó al vuelo), **(2) drill local** con identidad desechable, **(3) VPS** co
 | Dry-run y evidencia del seeder (fase 2) | `dry-run/hot-*.jsonl` · `ledger-drill.json` · `guia-reparto-drill.md` | del drill (identidad desechable; el ledger no lleva códigos) |
 | **Mapa de entrada**: un solo mensaje de Blog del bot 3 que enlaza lo que ya existe (código, protocolo, portada con el invite abierto, manual, Sala 02, tribus, calendario, evento, wikis, mapa); sin wiki nueva (DRY) | `mensaje-entrada.mjs` → `mensaje-entrada.md` / `.json` | **publicado 2026-10-08**: `%PbJ+F75RZoHpKWBIrmLtWVT+VV5mlRu+gY50J7tj1zk=.sha256` + `clearnetItem` (seq 149-150) |
 | Decisión · Backlog | `plan/DECISIONES.md` D-O29 · `plan/BACKLOG.md` WP-O131 (adelantado a O130) | asentados |
+| **Mudanza del bot nº 3** (VPS → máquina operadora, identidad íntegra, `oasisVersion` 1.2.5 aceptado por el pub, infra retirada del host) | `runbook-mudanza.md` · copia `devops/backups/oasis-retro-bot/20261010T031959Z/` (fuera de git) · método HUB §11 | **ejecutado 2026-10-10** (WP-O135, D-O33) |
+| **Deshacer de Campamento** (115 retiradas en 11 bloques desde el bot autor; dos listas CLOSED privadas quedan) | `runbook-tombstone.md` · `vps/tombstone-o135.jsonl` · `vps/ledger-tombstones.json` · herramienta `pub/tools/seed-tombstone.js` + `pub/scripts/retro-tombstone.sh` · método `docs/PUB/TEMPLATE-PROTOCOL.md` §9 | **ejecutado 2026-10-10**; revoca «sin tombstone» (dosier WP-O134, 2026-10-09) por decisión del custodio |
+
+**Decisiones del custodio (2026-10-10, WP-O135, D-O33):** el bot retro no sube a 1.2.5 en el VPS: se **muda** a
+la máquina operadora como nodo real (el gobierno de las tribus es su identidad; Oasis no traspasa autoría) y se
+retira su infraestructura del host; la siembra **se deshace** (tombstones de todo lo generado); nada del repo se
+borra, lo que deja de usarse se documenta. Este dosier es el **sistema de deshacer** de la siembra: el ledger de
+`vps/` es la entrada y la evidencia de la retirada se deposita al lado. Nada previo se reescribe.
 
 ## Comandos que regeneran todo (en este orden)
 

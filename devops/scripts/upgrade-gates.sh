@@ -43,6 +43,9 @@
 #
 # Códigos de salida: 0 ok · 1 desviación · 3 no medible o precondición · 64 uso.
 # Nodos: GATE_NODES="alias:contenedor:servicio …" (por defecto pub, hub y bot de esta casa).
+#   El bot retro de la casa es desde WP-O135 (D-O33) un nodo REAL en la máquina operadora (volumes-real/):
+#   se mide aparte con GATE_NODES='retro:oasis-pub-retro-bot:oasis-retro-bot' y SOLO con snapshot/check;
+#   backup/restore/up no lo tocan (repondrían o recrearían una identidad real sobre un drill).
 # =============================================================================
 set -uo pipefail
 
@@ -76,12 +79,12 @@ case "$CMD" in
   *) usage; exit 64 ;;
 esac
 
-GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot retro:oasis-pub-retro-bot:oasis-retro-bot}"
+GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot}"
 LOG_ERR_RE='EROFS|EACCES|ReferenceError|TypeError|Cannot find module|Another Oasis|no inicializada|UnhandledPromiseRejection'
 
 trap node_run_cleanup EXIT
 if [ "$MODE" = local ]; then node_run_setup 1 || exit 3; else node_run_setup 0 || exit 3; fi
-compose_local() { (cd "$REPO_ROOT/pub" && MSYS_NO_PATHCONV=1 docker compose -f docker-compose.pub.yml --env-file .env.local --profile wallet --profile retro "$@"); }
+compose_local() { (cd "$REPO_ROOT/pub" && MSYS_NO_PATHCONV=1 docker compose -f docker-compose.pub.yml --env-file .env.local --profile wallet "$@"); }   # sin --profile retro: el retro local es real (D-O33)
 container_of() { for n in $GATE_NODES; do [ "${n%%:*}" = "$1" ] && { n="${n#*:}"; echo "${n%%:*}"; return 0; }; done; return 1; }
 service_of()   { for n in $GATE_NODES; do [ "${n%%:*}" = "$1" ] && { echo "${n##*:}"; return 0; }; done; return 1; }
 
@@ -325,7 +328,7 @@ case "$CMD" in
 
   backup|restore)
     tag="${ARGS[0]:-}"; [ -n "$tag" ] || { echo "uso: $CMD <tag>" >&2; exit 64; }
-    store="$REPO_ROOT/volumes-dev/.gates/$tag"; dirs="oasis-pub oasis-hub oasis-wallet-bot oasis-retro-bot"
+    store="$REPO_ROOT/volumes-dev/.gates/$tag"; dirs="oasis-pub oasis-hub oasis-wallet-bot"   # nunca el retro: identidad real en volumes-real/ (D-O33)
     for n in $GATE_NODES; do c="${n#*:}"; c="${c%%:*}"
       [ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" = true ] && { echo "ERROR: $c está corriendo: para los nodos antes (un log copiado en caliente puede quedar a medias)." >&2; exit 3; }
     done

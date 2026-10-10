@@ -4,7 +4,7 @@ const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink }
 
 const moment = require("../server/node_modules/moment");
 const { renderLicenseChip, renderLicenseSelect, renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderTribeOriginChip } = require('./clearnet_view');
-const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderStateChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty, contentDeleteAction } = require("./main_views");
+const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderStateChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
 const { renderStyledText } = require("../backend/renderStyledText")
 const { renderMapLocationVisitLabel, renderMapEmbed } = require("./maps_view");
@@ -70,26 +70,33 @@ const renderImageList = exports.renderImageList = (images, filter, params = {}) 
         const title = safeText(imgObj.title);
 
         const isOwn = imgObj.author && String(imgObj.author) === String(userId);
+        const headerActions = typeof params.headerActions === "function"
+          ? params.headerActions(imgObj)
+          : imgObj.tribeOrigin
+            ? renderContentActions(null, imgObj.tribeOrigin.href)
+            : renderContentActions(imgObj.key, `/images/${encodeURIComponent(imgObj.key)}`, { spread: (params.spreadMap && params.spreadMap.get(imgObj.key)) || params.spreads || null, author: imgObj.author, favKind: 'images', torrentFrom: { blobId: imgObj.url, name: imgObj.title }, isFavorite: imgObj.isFavorite, reportTitle: imgObj.title, returnTo, deleteAction: isOwn ? contentDeleteAction("image", imgObj.key) : null });
+        const engagement = typeof params.engagement === "function"
+          ? params.engagement(imgObj)
+          : imgObj.tribeOrigin ? null : renderEngagement(imgObj.key,
+            renderOpinionsVoting('/images/opinions', imgObj.key, imgObj.opinions, returnTo, imgObj.opinions_inhabitants),
+            renderCommentsLink({ href: `/images/${encodeURIComponent(imgObj.key)}`, count: commentCount })
+          );
         return div(
           { class: "trending-card image-card" + (isOwn ? " own-content" : "") },
           div(
             { class: "card-header activity-card-header" },
             span(),
-            imgObj.tribeOrigin
-              ? renderContentActions(null, imgObj.tribeOrigin.href)
-              : renderContentActions(imgObj.key, `/images/${encodeURIComponent(imgObj.key)}`, { spread: (params.spreadMap && params.spreadMap.get(imgObj.key)) || params.spreads || null, author: imgObj.author, favKind: 'images', torrentFrom: { blobId: imgObj.url, name: imgObj.title }, isFavorite: imgObj.isFavorite, reportTitle: imgObj.title, returnTo, deleteAction: isOwn ? contentDeleteAction("image", imgObj.key) : null })
+            headerActions
           ),
           div(
             { class: "card-section image-card-body" },
-            div({ class: "shop-title-row" }, title ? h2(title) : null, imgObj.tribeOrigin ? renderTribeOriginChip(imgObj.tribeOrigin) : imgObj.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('images', imgObj.title, imgObj.key)) : null, renderLicenseChip(imgObj.license)),
+            div({ class: "shop-title-row" }, title ? h2(title) : null, imgObj.tribeOrigin ? renderTribeOriginChip(imgObj.tribeOrigin) : imgObj.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('images', imgObj.title, imgObj.key)) : null, renderLicenseChip(imgObj.license), ...(typeof params.titleChips === "function" ? params.titleChips(imgObj) : [])),
             imgObj.lifetime ? div({ class: "card-chips-row" },
               imgObj.lifetime ? renderLifespanChip(imgObj.lifetime, i18n) : null
             ) : null,
             renderImageMedia(imgObj, filter, params),
-            imgObj.tribeOrigin ? null : renderEngagement(imgObj.key,
-              renderOpinionsVoting('/images/opinions', imgObj.key, imgObj.opinions, returnTo, imgObj.opinions_inhabitants),
-              renderCommentsLink({ href: `/images/${encodeURIComponent(imgObj.key)}`, count: commentCount })
-            ),
+            ...(typeof params.bodyExtra === "function" ? params.bodyExtra(imgObj) : []),
+            engagement,
             renderMapLocationVisitLabel(imgObj.mapUrl),
             br(),
             (() => {
@@ -281,10 +288,10 @@ exports.imageView = async (images, filter = "all", imageId = null, params = {}) 
                 )
               )
             ),
-            filter === "gallery" ? renderGallery(list) : div({ class: "images-list" }, renderImageList(list, filter, { q, sort, spreadMap: params.spreadMap }))
+            filter === "gallery" ? renderGallery(paged(list)) : div({ class: "images-list" }, renderImageList(paged(list), filter, { q, sort, spreadMap: params.spreadMap }))
           )
     ),
-    ...(filter === "gallery" ? renderLightbox(list) : [])
+    ...(filter === "gallery" ? renderLightbox(paged(list)) : [])
   );
 };
 

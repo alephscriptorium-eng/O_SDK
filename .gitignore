@@ -10,6 +10,8 @@ node_modules/
 # Volúmenes Docker - NO versionar datos persistentes
 volumes/
 volumes-dev/
+# Nodo REAL alojado en la máquina operadora (bot retro, D-O33): fuera de los drills, jamás en git.
+volumes-real/
 backups/
 pub/data/
 

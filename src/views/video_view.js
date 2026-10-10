@@ -19,7 +19,7 @@ const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink }
 
 const moment = require("../server/node_modules/moment");
 const { renderLicenseChip, renderLicenseSelect, renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderTribeOriginChip } = require('./clearnet_view');
-const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty, contentDeleteAction } = require("./main_views");
+const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions , renderSpreadEditWarning, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
 const { renderStyledText } = require("../backend/renderStyledText")
 const { renderMapLocationVisitLabel, renderMapEmbed } = require("./maps_view");
@@ -99,24 +99,31 @@ const renderVideoList = exports.renderVideoList = (videos, filter, params = {}) 
         const title = safeText(videoObj.title);
 
         const isOwn = videoObj.author && String(videoObj.author) === String(userId);
+        const headerActions = typeof params.headerActions === "function"
+          ? params.headerActions(videoObj)
+          : videoObj.tribeOrigin
+            ? renderContentActions(null, videoObj.tribeOrigin.href)
+            : renderContentActions(videoObj.key, `/videos/${encodeURIComponent(videoObj.key)}`, { spread: (params.spreadMap && params.spreadMap.get(videoObj.key)) || params.spreads || null, author: videoObj.author, favKind: 'videos', torrentFrom: { blobId: videoObj.url, name: videoObj.title }, isFavorite: videoObj.isFavorite, reportTitle: videoObj.title, returnTo, deleteAction: isOwn ? contentDeleteAction('video', videoObj.key) : undefined });
+        const engagement = typeof params.engagement === "function"
+          ? params.engagement(videoObj)
+          : videoObj.tribeOrigin ? null : renderEngagement(videoObj.key,
+            renderOpinionsVoting('/videos/opinions', videoObj.key, videoObj.opinions, returnTo, videoObj.opinions_inhabitants),
+            renderCommentsLink({ href: `/videos/${encodeURIComponent(videoObj.key)}`, count: commentCount })
+          );
         return div(
           { class: "trending-card video-card" + (isOwn ? " own-content" : "") },
           div(
             { class: "card-header activity-card-header" },
             span(),
-            videoObj.tribeOrigin
-              ? renderContentActions(null, videoObj.tribeOrigin.href)
-              : renderContentActions(videoObj.key, `/videos/${encodeURIComponent(videoObj.key)}`, { spread: (params.spreadMap && params.spreadMap.get(videoObj.key)) || params.spreads || null, author: videoObj.author, favKind: 'videos', torrentFrom: { blobId: videoObj.url, name: videoObj.title }, isFavorite: videoObj.isFavorite, reportTitle: videoObj.title, returnTo, deleteAction: isOwn ? contentDeleteAction('video', videoObj.key) : undefined })
+            headerActions
           ),
           div(
             { class: "card-section video-card-body" },
-            div({ class: "shop-title-row" }, title ? h2(title) : null, videoObj.tribeOrigin ? renderTribeOriginChip(videoObj.tribeOrigin) : videoObj.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('videos', videoObj.title, videoObj.key)) : null, renderLicenseChip(videoObj.license)),
+            div({ class: "shop-title-row" }, title ? h2(title) : null, videoObj.tribeOrigin ? renderTribeOriginChip(videoObj.tribeOrigin) : videoObj.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('videos', videoObj.title, videoObj.key)) : null, renderLicenseChip(videoObj.license), ...(typeof params.titleChips === "function" ? params.titleChips(videoObj) : [])),
             videoObj.lifetime ? div({ class: "card-chips-row" }, renderLifespanChip(videoObj.lifetime, i18n)) : null,
             renderVideoPlayer(videoObj),
-            videoObj.tribeOrigin ? null : renderEngagement(videoObj.key,
-              renderOpinionsVoting('/videos/opinions', videoObj.key, videoObj.opinions, returnTo, videoObj.opinions_inhabitants),
-              renderCommentsLink({ href: `/videos/${encodeURIComponent(videoObj.key)}`, count: commentCount })
-            ),
+            ...(typeof params.bodyExtra === "function" ? params.bodyExtra(videoObj) : []),
+            engagement,
             renderMapLocationVisitLabel(videoObj.mapUrl),
             br(),
             (() => {
@@ -270,7 +277,7 @@ exports.videoView = async (videos, filter = "all", videoId = null, params = {}) 
                 )
               )
             ),
-            div({ class: "videos-list" }, renderVideoList(list, filter, { q, sort, spreadMap: params.spreadMap }))
+            div({ class: "videos-list" }, renderVideoList(paged(list), filter, { q, sort, spreadMap: params.spreadMap }))
           )
     )
   );
