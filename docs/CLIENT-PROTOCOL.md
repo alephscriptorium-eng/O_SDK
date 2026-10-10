@@ -138,6 +138,16 @@ escritura en curso es inocuo.
 
 ## 4. Upgrade del cliente
 
+> **Pendiente antes de subir el cliente a ≥ 1.2.4 (WP-O135).** `config-manager.js` deja de leer
+> `src/configs/oasis-config.json` y pasa a `~/.ssb/oasis/oasis-config.json` (copia la vieja una sola
+> vez). Hoy el entrypoint fusiona el default con lo persistido en `$OASIS_CLIENT_STATE_DIR` y enlaza
+> `src/configs/oasis-config.json` a ese resultado (§8): en 1.2.4+ ese enlace se leería **una vez** y
+> después mandaría la copia del volumen de `.ssb`, con lo que `wire_wallet_config` («el entorno
+> manda») y los cambios de la GUI dejarían de coincidir. Hay que adaptar `persist_client_state` /
+> `wire_wallet_config` / `setup_oasis_config` al sitio nuevo y repetir el drill (§5) antes de
+> ningún upgrade del cliente. Además, el default de `phone.visibility` pasa a `mutuals`: un cliente
+> con `phoneMod` activo publicará un `about` nuevo al subir (`about=+1` en su delta).
+
 Misma imagen y mismo ciclo que el pub: `UPGRADE-PROTOCOL.md` §1-§3 (rama `upgrade/oasis-X.Y.Z`,
 overlay, guards). Para el cliente:
 
