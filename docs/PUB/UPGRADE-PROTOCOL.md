@@ -134,7 +134,8 @@ bash devops/scripts/upgrade-preflight.sh [--from X.Y.Z] [--to X.Y.Z]   # drift d
 - Compara `src/server/package.json` local con `oasis-upstream/main`.
 - Imprime `OLD_REF` y `NEW_REF`: el commit de upstream de la versión **desplegada** y el de la
   nueva. Upstream no etiqueta las versiones de Oasis (solo las de Android): el commit de una
-  versión es el titulado `Oasis release X.Y.Z`, y **los dos** se resuelven así. La versión de
+  versión es el titulado `Oasis release X.Y.Z`, y **los dos** se resuelven así. Si hay varios con el
+  mismo título (1.2.5 tuvo tres el mismo día), vale el **último**: es el que resuelve el preflight. La versión de
   partida sale del journal de deploys (último registro del **pub**); si §0.3 midió otra,
   `--from X.Y.Z`. La de llegada es la de upstream, o `--to X.Y.Z` para subir a una intermedia.
   `NEW_REF` **no es la punta de la rama**: si upstream empujó algo después de la release, el
@@ -293,6 +294,7 @@ reporte de ciclo.
 | `pub/caddy/Caddyfile` | una ruta nueva del visor fuera de los prefijos que ya enruta | in place + `validate` + `reload` (`../AGENTES.md` §2.6) |
 | `pub/site/hub/` (Sala 04) | tipos o rutas nuevas del visor | `deploy-site.sh` |
 | `client/scripts/*`, `docker-entrypoint.sh` | cambia el contrato de IA, la forma de `oasis-config.json` o los módulos parcheados | rebuild del cliente; el entrypoint del **host** es el suyo (§0.3, deriva) |
+| `pub/docker-compose.pub.yml` | upstream cambia **dónde lee** un fichero que montamos por bind (1.2.4: `oasis-config.json` pasa a `~/.ssb/oasis/`), o una variable que el compose fija | sustituir in place tras `sha256` del vivo contra el del repo + recrear los nodos afectados (ya se recrean en el ciclo) |
 
 El reporte del WP lleva la lista **«qué viaja al host»** de este ciclo: `src/` y cada fichero de
 esta tabla que haya cambiado. §4 la ejecuta; lo que no esté en la lista no se sube.

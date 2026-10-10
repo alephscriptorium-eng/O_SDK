@@ -5,6 +5,19 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Upgrade a Oasis 1.2.5, preparado en local sin tocar el host (WP-O135, 2026-10-10)
+
+Rama `upgrade/oasis-1.2.5`: overlay de upstream 560580d7 (1.2.3 → 1.2.5, la 1.2.4 dentro del salto) con los 6
+guards repuestos (invariante de 7 ficheros; `blobs.max` sigue en 50 MB frente a los 75 de upstream). Lo que el
+diff de comportamiento obligó a adaptar: desde 1.2.4 `config-manager.js` lee `~/.ssb/oasis/oasis-config.json`
+(el de `src/configs/` solo se copia una vez), así que el bind `:ro` del HUB y del bot de cartera va al sitio nuevo;
+el sbot deja de cargar `ssb-gossip`/`ssb-friend-pub`/`ssb-plugins`/`ssb-partial-replication` y los cinco
+`ssb-config` pierden el bloque `gossip`. Documentado: token de admin por arranque con `OASIS_ALLOW_HOST`
+(las acciones solo-loopback piden la cookie `oasis_admin`), `/c/blob` sin `want` (solo blobs que el HUB ya tiene),
+`chmod 700` del `.ssb`, `syncPeerBook`. 184 disposiciones en `plan/REPORTES/WP-O135-upgrade-oasis-1.2.5.md`
+(`--check` en verde). **Sin gates ni host**: Docker local parado; tres DECISIONES abiertas (`/c/blob`, confianza de
+pubs en Banking frente al bot de cartera, adaptación del cliente).
+
 ### Fixed/Added — Visor `/c`: idioma por petición y selector de tema, sexto guard (WP-O132, 2026-10-08)
 
 El idioma del visor era una variable global del proceso y el selector podía salir en el idioma de
