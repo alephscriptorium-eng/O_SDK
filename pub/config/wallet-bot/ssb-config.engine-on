@@ -4,7 +4,6 @@
   "pub": true,
   "local": false,
   "friends": { "dunbar": 150, "hops": 3 },
-  "gossip": { "connections": 5, "local": false, "friends": true, "seed": false, "global": false },
   "replicationScheduler": { "autostart": true, "partialReplication": null },
   "autofollow": { "enabled": false, "feeds": [] },
   "connections": {

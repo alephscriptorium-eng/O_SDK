@@ -114,7 +114,9 @@ services:
       - "${OASIS_HUB_SSB_DATA_DIR:-../volumes-dev/oasis-hub/ssb-data}:/home/oasis/.ssb"
       - "${OASIS_HUB_LOGS_DIR:-../volumes-dev/oasis-hub/logs}:/app/logs"
       - "${OASIS_HUB_SSB_CONFIG_FILE:-./config/hub/ssb-config}:/home/oasis/.ssb/config:ro"
-      - "${OASIS_HUB_OASIS_CONFIG_FILE:-./config/hub/oasis-config.json}:/app/src/configs/oasis-config.json:ro"
+      # Desde Oasis 1.2.4 config-manager.js lee ~/.ssb/oasis/oasis-config.json (el de src/configs solo se copia
+      # una vez si aquel falta): el bind va al sitio nuevo o la regeneración de HUB-PROTOCOL §5.2 deja de surtir efecto.
+      - "${OASIS_HUB_OASIS_CONFIG_FILE:-./config/hub/oasis-config.json}:/home/oasis/.ssb/oasis/oasis-config.json:ro"
     # sin ports: 3000 y 8008 solo en oasis_pub_net
     mem_limit: ${OASIS_HUB_MEM_LIMIT:-1536m}      # generoso el día 1; 1.5×pico tras 24 h (dosier 07 §G6)
     logging:
@@ -205,7 +207,8 @@ services:
       - "${OASIS_WALLET_BOT_SSB_DATA_DIR:-../volumes-dev/oasis-wallet-bot/ssb-data}:/home/oasis/.ssb"
       - "${OASIS_WALLET_BOT_LOGS_DIR:-../volumes-dev/oasis-wallet-bot/logs}:/app/logs"
       - "${OASIS_WALLET_BOT_SSB_CONFIG_FILE:-./config/wallet-bot/ssb-config}:/home/oasis/.ssb/config:ro"
-      - "${OASIS_WALLET_BOT_OASIS_CONFIG_FILE:-../volumes-dev/oasis-wallet-bot/config/oasis-config.json}:/app/src/configs/oasis-config.json:ro"
+      # Desde Oasis 1.2.4 la config del nodo se lee en ~/.ssb/oasis/oasis-config.json (ver oasis-hub).
+      - "${OASIS_WALLET_BOT_OASIS_CONFIG_FILE:-../volumes-dev/oasis-wallet-bot/config/oasis-config.json}:/home/oasis/.ssb/oasis/oasis-config.json:ro"
     # sin ports y sin ruta en Caddy: 3000 y 8008 solo en oasis_pub_net. Motor de RBU (Oasis 1.1.4):
     # corre solo si el ssb-config montado dice pub:true. Interruptor = OASIS_WALLET_BOT_SSB_CONFIG_FILE
     # (ssb-config | ssb-config.engine-on); gestión: devops/scripts/hub-wallet.sh (ECOIN-PROTOCOL §9).

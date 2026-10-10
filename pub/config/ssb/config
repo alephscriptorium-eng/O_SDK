@@ -11,13 +11,6 @@
     "dunbar": 300,
     "hops": 3
   },
-  "gossip": {
-    "connections": 50,
-    "local": false,
-    "friends": true,
-    "seed": true,
-    "global": true
-  },
   "replicationScheduler": {
     "autostart": true,
     "partialReplication": null
