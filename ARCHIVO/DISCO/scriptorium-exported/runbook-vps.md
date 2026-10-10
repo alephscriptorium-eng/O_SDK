@@ -1,5 +1,10 @@
 # Runbook · fase 3 · alta del bot retro y siembra en `pub.escrivivir.co` (WP-O131)
 
+> **Historia, para no repetirla (2026-10-10, WP-O135, D-O33).** Lo que este runbook dio de alta en el VPS el
+> 2026-10-08 se **mudó** a la máquina operadora (`runbook-mudanza.md`) y lo que sembró se **deshizo**
+> (`runbook-tombstone.md`). Los pasos siguen valiendo como receta de alta y siembra para otra instancia; la
+> evidencia de `vps/` es la entrada del deshacer. Nada de lo de abajo se reescribe.
+
 **Sin GO no se ejecuta nada de esto.** Precondición: fase 2 cerrada con reporte (todos los gates en verde o
 con sus desviaciones corregidas en el protocolo). Patrón: ECOIN-PROTOCOL §3 con `oasis-retro-bot` en modo
 `server`; reglas fijas de HUB §3 (siempre `up -d --no-deps <svc>` con `--env-file .env.prod`, nunca
