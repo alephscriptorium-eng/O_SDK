@@ -1941,8 +1941,9 @@ const buildSnapshotFile = async (name, opts) => {
     return res;
   } catch (e) { try { fs.unlinkSync(tmp); } catch (_) {} debug(`[snapshot] ${name} failed: ${e && e.message ? e.message : e}`); return null; }
 };
+const snapshotsOff = process.env.OASIS_SNAPSHOT === 'off';
 const runSnapshotBuild = async () => {
-  if (!config.public) return null;
+  if (!config.public || snapshotsOff) return null;
   const recent = await buildSnapshotFile('snapshot-recent.oasissn', { sinceMs: SNAPSHOT_RECENT_MS });
   const full = await buildSnapshotFile('snapshot.oasissn', {});
   return { recent, full };
@@ -1966,7 +1967,7 @@ const rememberJoinedPub = (invite) => {
   if (unf.some(x => x && canonicalKey(x.key) === key)) writeJSON(unfollowedPath, unf.filter(x => !(x && canonicalKey(x.key) === key)));
 };
 const bootstrapFromPub = (invite) => {
-  if (config.public) return null;
+  if (config.public || snapshotsOff) return null;
   const address = pubAddressFor(invite);
   if (!address) return null;
   const current = backupModel.restoreStatus();
@@ -13859,12 +13860,7 @@ router
   })
   .post("/update", koaBody(), async (ctx) => {
     if (!isLoopbackRequest(ctx)) { ctx.status = 403; ctx.body = ''; return; }
-    const exec = require("node:util").promisify(require("node:child_process").exec);
-    const repoRoot = path.resolve(__dirname, '..', '..');
-    const { stdout, stderr } = await exec("git reset --hard && git pull", { cwd: repoRoot });
-    console.log("oasis@version: updating Oasis...", stdout, stderr);
-    const { stdout: shOut, stderr: shErr } = await exec("sh install.sh", { cwd: repoRoot });
-    console.log("oasis@version: running install.sh...", shOut, shErr);
+    console.warn("oasis@version: in-app auto-update is disabled for this Dockerized deployment. Update from the host repository and rebuild the container.");
     safeRefererRedirect(ctx, '/settings');
   })
   .post("/settings/workflow", koaBody(), async (ctx) => {
@@ -14538,7 +14534,7 @@ const middleware = [
     if (isLoopbackOnlyPath(ctx.path) && !isLoopbackRequest(ctx)) { sendErrorPage(ctx, 'Forbidden', { status: 403 }); return; }
     await next();
   },
-  async (ctx, next) => { applyFirstRunLanguage(ctx); setLanguage(isClearnetPath(ctx.request) ? clearnetLanguage(ctx) : (ctx.cookies.get("language") || getConfig().language || "en")); await next(); },
+  async (ctx, next) => { applyFirstRunLanguage(ctx); setLanguage(isClearnetPath(ctx.request) ? clearnetLanguage(ctx) : (ctx.cookies.get("language") || getConfig().language || "en")); if (isClearnetPath(ctx.request)) clearnetTheme(ctx); await next(); },
   async (ctx, next) => {
     try { require('../views/comments_view').setCommentsOpen(ctx.method === 'GET' && String(ctx.query.comments || '') === 'open'); } catch (_) {}
     await next();
@@ -14880,13 +14876,30 @@ const supportedLanguages = () => Object.keys(require('../client/assets/translati
 function clearnetLanguage(ctx) {
   const supported = supportedLanguages();
   const wanted = String(ctx.query.lang || '').trim().toLowerCase();
+  // guard o-sdk (WP-O132, D-O30): el idioma resuelto se guarda SIEMPRE en el scope de la petición
+  // (`store.lang`); el visor lo re-afirma antes de renderizar porque el global del proceso puede haber cambiado
+  // mientras la ruta esperaba. `cnLang` sigue significando «lo pidió el visitante en la URL».
+  const store = require('../models/typed_log').requestScope.getStore();
   if (supported.includes(wanted)) {
-    const store = require('../models/typed_log').requestScope.getStore();
-    if (store) store.cnLang = wanted;
+    if (store) { store.cnLang = wanted; store.lang = wanted; }
     return wanted;
   }
   const detected = require('../models/onboarding_model').browserLanguage(ctx.get('accept-language'), supported);
-  return detected || getConfig().language || 'en';
+  const resolved = detected || getConfig().language || 'en';
+  if (store) store.lang = resolved;
+  return resolved;
+}
+// guard o-sdk (WP-O132, D-O30): tema del visor elegido por el visitante (`?theme=`), validado contra la lista
+// del visor y guardado en el scope de su petición. Sin parámetro válido manda la config del HUB.
+function clearnetTheme(ctx) {
+  const wanted = String(ctx.query.theme || '').trim();
+  if (!wanted) return null;
+  let themes = [];
+  try { themes = require('../views/clearnet_view').THEMES || []; } catch (_) {}
+  if (!themes.includes(wanted)) return null;
+  const store = require('../models/typed_log').requestScope.getStore();
+  if (store) store.cnTheme = wanted;
+  return wanted;
 }
 function applyFirstRunLanguage(ctx) {
   if (firstRunLanguageSettled || isClearnetPath(ctx.request)) return;
