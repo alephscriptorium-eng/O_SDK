@@ -106,3 +106,9 @@ ARCHIVO/DISCO/26sm-exported/canva/*/*.pdf
 ARCHIVO/DISCO/26sm-exported/canva/*/*.png
 ARCHIVO/DISCO/26sm-exported/canva/*/*.jpg
 ARCHIVO/DISCO/26sm-exported/canva/*/*.svg
+
+# (ampliado 2026-10-11) también lo extraído del PDF en canva/kit-visual/extraido/
+ARCHIVO/DISCO/26sm-exported/canva/**/*.pdf
+ARCHIVO/DISCO/26sm-exported/canva/**/*.png
+ARCHIVO/DISCO/26sm-exported/canva/**/*.jpg
+ARCHIVO/DISCO/26sm-exported/canva/**/*.jpeg

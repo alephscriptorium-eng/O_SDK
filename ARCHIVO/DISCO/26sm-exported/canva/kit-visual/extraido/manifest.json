@@ -1,0 +1,367 @@
+{
+  "pdf": "ACAMPADA BRAND KIT .pdf",
+  "pdf_sha256": "309c882d86df7e6601fd76ce0c284c04a1a06d01c93d808a4704293e55dc110f",
+  "items": [
+    {
+      "obj": 36,
+      "file": "lona-036.jpg",
+      "px": "2117x2823",
+      "bytes": 3588900,
+      "sha256": "8c8dbfcb5017212dc6bfcfa854a8f9c17fa5aacda576241cfbc4beebdecb5314",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 50,
+      "file": "logo-050.png",
+      "px": "409x454",
+      "bytes": 126493,
+      "sha256": "f6722f8181064d637e63303e2f98fc8f14f9ae54891a8c358fc40225dc4ad6ab",
+      "uso": "logo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 51,
+      "file": "logo-051.png",
+      "px": "409x454",
+      "bytes": 184406,
+      "sha256": "e8be66009daa28fa2bdc51d9ee07c559d2a3449c052127358d275b9db7cff701",
+      "uso": "logo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 52,
+      "file": "logo-052.png",
+      "px": "409x454",
+      "bytes": 118341,
+      "sha256": "9508e5dbc74468d6d84bf1cb0fd7d4c80e3811627de4076bbe89064e7ea6af3e",
+      "uso": "logo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 54,
+      "file": "ejemplo-placa-054.png",
+      "px": "1376x1053",
+      "bytes": 486572,
+      "sha256": "8303afba83a0df577df0861fac4c309005db4897f4cd45e3f639675417828998",
+      "uso": "ejemplo-placa",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 55,
+      "file": "logo-055.png",
+      "px": "409x454",
+      "bytes": 110565,
+      "sha256": "778684c4e80f793c960cbae6066ec74215339993ad92ad683d8c7e1c3e3231c8",
+      "uso": "logo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 63,
+      "file": "lona-063.jpg",
+      "px": "908x1210",
+      "bytes": 841402,
+      "sha256": "c5010e7855cb498eecc2c7ec50b1b763408a7fbf0a437137ce43506ac63858a1",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 64,
+      "file": "logo-064.png",
+      "px": "409x454",
+      "bytes": 126493,
+      "sha256": "f6722f8181064d637e63303e2f98fc8f14f9ae54891a8c358fc40225dc4ad6ab",
+      "uso": "logo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 65,
+      "file": "logo-065.png",
+      "px": "409x454",
+      "bytes": 111125,
+      "sha256": "0b2ab5cc185816f564685a9d211bf35e438313b69293c167221ec12c4aed91da",
+      "uso": "logo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 66,
+      "file": "lona-066.jpg",
+      "px": "1210x908",
+      "bytes": 840790,
+      "sha256": "38a7c8216b6b4a1f23638cc60e37c12454e0ef05d99b7a6c2d7fd822974ab579",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 70,
+      "file": "lona-070.jpg",
+      "px": "1210x908",
+      "bytes": 466253,
+      "sha256": "15f5742958039557a9852decd4aea7ecd987bee9030d02a3d69875d644756455",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 71,
+      "file": "lona-071.jpg",
+      "px": "908x1210",
+      "bytes": 841402,
+      "sha256": "c5010e7855cb498eecc2c7ec50b1b763408a7fbf0a437137ce43506ac63858a1",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 72,
+      "file": "logo-072.png",
+      "px": "409x454",
+      "bytes": 156589,
+      "sha256": "a565b8a3e5ced09018a840b8ebae45e0c8e9c515473be6dfe1d8b57ac6d5ee73",
+      "uso": "logo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 73,
+      "file": "logo-073.png",
+      "px": "409x454",
+      "bytes": 126493,
+      "sha256": "f6722f8181064d637e63303e2f98fc8f14f9ae54891a8c358fc40225dc4ad6ab",
+      "uso": "logo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 74,
+      "file": "logo-medio-074.png",
+      "px": "200x454",
+      "bytes": 77522,
+      "sha256": "f565d15403247788c719c05aff3519e3ef3fa4cdc150da4348e6ac6e7f4d2eec",
+      "uso": "logo-medio",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 75,
+      "file": "logo-075.png",
+      "px": "409x454",
+      "bytes": 136885,
+      "sha256": "90e6866fb32cdb767d7a8f206958c405b2e91a21cb76414ba344dc22265398eb",
+      "uso": "logo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 104,
+      "file": "ejemplo-placa-104.jpg",
+      "px": "791x444",
+      "bytes": 83138,
+      "sha256": "2e61e71d5767929f99fbfe1173f40f876abc21f43785e6aa0fe9208f8a700264",
+      "uso": "ejemplo-placa",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 105,
+      "file": "ejemplo-placa-105.jpg",
+      "px": "640x558",
+      "bytes": 66724,
+      "sha256": "05f503aac4f3cd53bb381dfd2f6b4793f7a7939b4561601a671101d1ba3f4ca3",
+      "uso": "ejemplo-placa",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 110,
+      "file": "ejemplo-post-110.jpg",
+      "px": "540x675",
+      "bytes": 283364,
+      "sha256": "3ee575d99aee06b1dae342160a8dc788f1a56b3e47016fefebea886151f63ead",
+      "uso": "ejemplo-post",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 115,
+      "file": "lona-115.jpg",
+      "px": "1210x908",
+      "bytes": 1009373,
+      "sha256": "c378cf94ebabd9bbcce6e916c9a3fdae2b4d0a6c4a2246470ba0fb4ddf152bb0",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 116,
+      "file": "lona-116.jpg",
+      "px": "1210x908",
+      "bytes": 840790,
+      "sha256": "38a7c8216b6b4a1f23638cc60e37c12454e0ef05d99b7a6c2d7fd822974ab579",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 117,
+      "file": "lona-117.jpg",
+      "px": "1210x908",
+      "bytes": 459528,
+      "sha256": "001eddc01701bfeab8dcd49d44b58c297fbe9ef14d275016fc71a6d4c0cdf5b5",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 118,
+      "file": "lona-118.jpg",
+      "px": "1210x908",
+      "bytes": 790945,
+      "sha256": "c8eb4f5c96156d4898ff734c164739f430a9bc043c39e9507d1d850ef7651d87",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 119,
+      "file": "lona-119.jpg",
+      "px": "1210x908",
+      "bytes": 301975,
+      "sha256": "50d1e4fbfde263139b8510b1229280ed0cb1dfcec4661194d08be06b4b63529a",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 120,
+      "file": "lona-120.jpg",
+      "px": "908x1210",
+      "bytes": 872806,
+      "sha256": "a5f736bf22a23add343254c3c7d6216a05eaebe8bbae8e4b279a3a11d93657ef",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 121,
+      "file": "lona-121.jpg",
+      "px": "807x605",
+      "bytes": 223113,
+      "sha256": "54cc7d9d4084fac5c7fa4febcd322297add8a062a79886e1b5975e2d414019cd",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 122,
+      "file": "lona-122.jpg",
+      "px": "605x807",
+      "bytes": 380341,
+      "sha256": "8963f739be2f25aa3c5ea6369cebf652ed33ef727060ab005d0c5a8fba65e121",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 123,
+      "file": "lona-123.jpg",
+      "px": "605x807",
+      "bytes": 388530,
+      "sha256": "4a896b7560ff78096597cea7a9486b75f444f8e17d5ae09b23582d41096e0b74",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 124,
+      "file": "lona-124.jpg",
+      "px": "807x605",
+      "bytes": 294086,
+      "sha256": "b40177e5064089723f34cc8deb4df47b58b94fcf7f49c721b2cb755863038e93",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 128,
+      "file": "lona-128.jpg",
+      "px": "605x807",
+      "bytes": 388530,
+      "sha256": "4a896b7560ff78096597cea7a9486b75f444f8e17d5ae09b23582d41096e0b74",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 129,
+      "file": "ejemplo-129.png",
+      "px": "917x702",
+      "bytes": 290575,
+      "sha256": "eeb9a506b1cb66f1aa68dffb376fd582725259067539347e66f4ace4dfa1f53a",
+      "uso": "ejemplo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 142,
+      "file": "avatar-ejemplo-142.png",
+      "px": "325x325",
+      "bytes": 10989,
+      "sha256": "09cd77f0cfb92f02b51e324a85d951494971502a51a8a8eae4d8a8c2cbf35b3b",
+      "uso": "avatar-ejemplo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 149,
+      "file": "ejemplo-post-149.jpg",
+      "px": "540x675",
+      "bytes": 251271,
+      "sha256": "bfb397008324d3d6e3dde8dea165ce4987965bde7b9ccb0786d13522e33d63b9",
+      "uso": "ejemplo-post",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 150,
+      "file": "ejemplo-150.png",
+      "px": "476x597",
+      "bytes": 502435,
+      "sha256": "e07e8b534cb897b403305f2438b3f8c94d074d122ae9e5bcabecf1e42abdc16e",
+      "uso": "ejemplo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 165,
+      "file": "ejemplo-post-165.png",
+      "px": "864x1080",
+      "bytes": 1871128,
+      "sha256": "21e801185d907636ea8fbf2e6cda5a4aad8c7e7f8204c390e967ca06008fbd82",
+      "uso": "ejemplo-post",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 166,
+      "file": "ejemplo-post-166.png",
+      "px": "864x1080",
+      "bytes": 1668261,
+      "sha256": "f1de04576542ace7b77ace75053c29933eb061d55ccf80a4d900438b24a39b70",
+      "uso": "ejemplo-post",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 173,
+      "file": "avatar-ejemplo-173.png",
+      "px": "900x900",
+      "bytes": 1392726,
+      "sha256": "56c390d6de66f55f03ddbee0ae1a753ad10b136abee77a076b48b60e684d77eb",
+      "uso": "avatar-ejemplo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 177,
+      "file": "lona-177.jpg",
+      "px": "1210x1613",
+      "bytes": 1440718,
+      "sha256": "edd059625d0fc551cd8db691bcdb5af3e9b1e8f7f4fed7f2d4b5bf9b64a6e0d8",
+      "uso": "lona",
+      "filtro": "DCTDecode"
+    },
+    {
+      "obj": 178,
+      "file": "avatar-ejemplo-178.png",
+      "px": "502x502",
+      "bytes": 254214,
+      "sha256": "3f314b8065ca56fd496bc3176588e7cb73b324dfa5bb9950749729dec1fa5968",
+      "uso": "avatar-ejemplo",
+      "filtro": "FlateDecode"
+    },
+    {
+      "obj": 481,
+      "file": "banner-481.png",
+      "px": "3420x1019",
+      "bytes": 1157334,
+      "sha256": "48889bf890739daa9dce0022f64b11bec2a86b1861af5508625e490455ec4037",
+      "uso": "banner",
+      "filtro": "FlateDecode"
+    }
+  ],
+  "no_extraidos": []
+}

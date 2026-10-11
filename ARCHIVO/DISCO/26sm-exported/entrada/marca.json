@@ -1,0 +1,83 @@
+{
+  "id": "acampada26s",
+  "fuente": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/BRANDKIT.md",
+  "paleta": {
+    "azul_lona": "#0452C5",
+    "naranja_inquilina": "#FF981F",
+    "blanco": "#FFFFFF",
+    "negro": "#000000"
+  },
+  "fuentes": {
+    "titular": "ARCHIVO/DISCO/26sm-exported/assets/fonts/CabinCondensed-Bold.ttf",
+    "cuerpo": "ARCHIVO/DISCO/26sm-exported/assets/fonts/CabinCondensed-Regular.ttf",
+    "nombre_oficial": {
+      "titular": "Gill Sans Condensed",
+      "cuerpo": "Gill Sans"
+    },
+    "sustituto": "Cabin Condensed"
+  },
+  "interlineado": 0.98,
+  "mayusculas": true,
+  "fondos": [
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-036.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-063.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-066.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-070.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-071.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-115.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-116.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-117.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-118.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-119.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-120.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-121.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-122.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-123.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-124.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-128.jpg",
+    "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-177.jpg"
+  ],
+  "fondos_sha256": {
+    "lona-036.jpg": "8c8dbfcb5017212dc6bfcfa854a8f9c17fa5aacda576241cfbc4beebdecb5314",
+    "lona-063.jpg": "c5010e7855cb498eecc2c7ec50b1b763408a7fbf0a437137ce43506ac63858a1",
+    "lona-066.jpg": "38a7c8216b6b4a1f23638cc60e37c12454e0ef05d99b7a6c2d7fd822974ab579",
+    "lona-070.jpg": "15f5742958039557a9852decd4aea7ecd987bee9030d02a3d69875d644756455",
+    "lona-071.jpg": "c5010e7855cb498eecc2c7ec50b1b763408a7fbf0a437137ce43506ac63858a1",
+    "lona-115.jpg": "c378cf94ebabd9bbcce6e916c9a3fdae2b4d0a6c4a2246470ba0fb4ddf152bb0",
+    "lona-116.jpg": "38a7c8216b6b4a1f23638cc60e37c12454e0ef05d99b7a6c2d7fd822974ab579",
+    "lona-117.jpg": "001eddc01701bfeab8dcd49d44b58c297fbe9ef14d275016fc71a6d4c0cdf5b5",
+    "lona-118.jpg": "c8eb4f5c96156d4898ff734c164739f430a9bc043c39e9507d1d850ef7651d87",
+    "lona-119.jpg": "50d1e4fbfde263139b8510b1229280ed0cb1dfcec4661194d08be06b4b63529a",
+    "lona-120.jpg": "a5f736bf22a23add343254c3c7d6216a05eaebe8bbae8e4b279a3a11d93657ef",
+    "lona-121.jpg": "54cc7d9d4084fac5c7fa4febcd322297add8a062a79886e1b5975e2d414019cd",
+    "lona-122.jpg": "8963f739be2f25aa3c5ea6369cebf652ed33ef727060ab005d0c5a8fba65e121",
+    "lona-123.jpg": "4a896b7560ff78096597cea7a9486b75f444f8e17d5ae09b23582d41096e0b74",
+    "lona-124.jpg": "b40177e5064089723f34cc8deb4df47b58b94fcf7f49c721b2cb755863038e93",
+    "lona-128.jpg": "4a896b7560ff78096597cea7a9486b75f444f8e17d5ae09b23582d41096e0b74",
+    "lona-177.jpg": "edd059625d0fc551cd8db691bcdb5af3e9b1e8f7f4fed7f2d4b5bf9b64a6e0d8"
+  },
+  "logo": {
+    "blanco": "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BLANCO.png",
+    "naranja": "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S.png",
+    "azul": "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-AZUL.png"
+  },
+  "etiquetas": {
+    "tribu": "GRUPO",
+    "subtribu": "SUBGRUPO",
+    "sala": "SALA",
+    "mapa": "MAPA",
+    "evento": "EVENTO",
+    "wiki": "PÁGINA",
+    "privado": "CERRADO"
+  },
+  "avatar": {
+    "patron": "logo blanco sobre foto de lona azul, cuadrado, con «26S» en naranja",
+    "texto": "26S"
+  },
+  "composicion": [
+    "Titular",
+    "Fecha, hora o lugar",
+    "Llamada a la acción",
+    "Logo"
+  ]
+}

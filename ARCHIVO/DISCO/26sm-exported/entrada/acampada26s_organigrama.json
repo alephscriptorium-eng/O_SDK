@@ -31,34 +31,258 @@
     },
     "invite_asamblea": "./oasis.sh invite 500",
     "marca": {
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/BRANDKIT.md",
+      "pdf": {
+        "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/ACAMPADA BRAND KIT .pdf",
+        "sha256": "309c882d86df7e6601fd76ce0c284c04a1a06d01c93d808a4704293e55dc110f",
+        "paginas": 19
+      },
+      "paleta": {
+        "azul_lona": {
+          "hex": "#0452C5",
+          "uso": "Color principal. Fondos, grandes superficies y piezas de identidad.",
+          "pagina": 7
+        },
+        "naranja_inquilina": {
+          "hex": "#FF981F",
+          "uso": "Color secundario. Sirve para destacar información, marcos, flechas y avisos.",
+          "pagina": 7
+        },
+        "blanco": {
+          "hex": "#FFFFFF",
+          "uso": "Color de lectura. Lo usamos para texto sobre azul o lona.",
+          "pagina": 7
+        },
+        "negro": {
+          "hex": "#000000",
+          "uso": "Color funcional. Lo usamos cuando haga falta imprimir o trabajar en blanco y negro.",
+          "pagina": 7
+        }
+      },
+      "tipografia": {
+        "titulares": "Gill Sans Condensed",
+        "cuerpos": "Gill Sans",
+        "licencia": "propietaria (Monotype): no se vendoriza en el repo",
+        "tamanos_px_1080": {
+          "titular_portada": "140-170",
+          "subtitulo": "90-120",
+          "dato_destacado": "60-70",
+          "cuerpo": "30-40"
+        },
+        "interlineado": 0.98,
+        "mayusculas_en_titulares": true,
+        "sustituto_libre": {
+          "nombre": "Cabin Condensed",
+          "licencia": "OFL 1.1",
+          "por_que": "libre e inspirada en Gill Sans; se usa mientras branding no entregue la suya"
+        },
+        "sustituto_ok": "<pendiente: visto bueno de branding al sustituto, o entrega de Gill Sans Condensed/Gill Sans>",
+        "pagina": "8-9"
+      },
       "logo_oficial": "<pendiente: elegir uno de los seis logos de assets/ para el avatar y las portadas>",
       "logos": [
-        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S.png",
-        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-AZUL.png",
-        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BLANCO.png",
-        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BYN.png",
-        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-NARANJA-AZUL.png",
-        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-AZUL-A26S-NARANJAA.png"
+        {
+          "fichero": "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S.png",
+          "version": "naranja"
+        },
+        {
+          "fichero": "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-AZUL.png",
+          "version": "azul"
+        },
+        {
+          "fichero": "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BLANCO.png",
+          "version": "blanco"
+        },
+        {
+          "fichero": "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BYN.png",
+          "version": "negro"
+        },
+        {
+          "fichero": "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-NARANJA-AZUL.png",
+          "version": "bicolor relleno naranja, trazo azul"
+        },
+        {
+          "fichero": "ARCHIVO/DISCO/26sm-exported/assets/LOGO-AZUL-A26S-NARANJAA.png",
+          "version": "bicolor relleno azul, trazo naranja"
+        }
       ],
+      "reglas_logo": [
+        "Dejamos aire alrededor.",
+        "Lo colocamos donde se lea bien.",
+        "Usamos versiones de la paleta.",
+        "Mantenemos sus proporciones.",
+        "No lo deformamos.",
+        "No lo giramos.",
+        "No le añadimos sombras o efectos.",
+        "No lo ponemos sobre fondos donde no se lea.",
+        "No cambiamos sus colores fuera de la paleta."
+      ],
+      "fondo": {
+        "regla": "Usamos fotos de las lonas de la acampada como fondo. Cualquier persona puede hacer una foto a una lona y usarla.",
+        "usamos": [
+          "primeros planos",
+          "pliegues y textura",
+          "azules distintos",
+          "fotos hechas con móvil",
+          "zonas donde el texto se pueda leer",
+          "fondos blancos o naranjas puntuales"
+        ],
+        "evitamos": [
+          "fondos demasiado oscuros",
+          "zonas con demasiado ruido",
+          "fotos donde el texto se pierda",
+          "filtros que cambien mucho el azul",
+          "fondo blanco o naranja en más de una diapositiva"
+        ],
+        "lonas": [
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-036.jpg",
+            "px": "2117x2823",
+            "sha256": "8c8dbfcb5017212dc6bfcfa854a8f9c17fa5aacda576241cfbc4beebdecb5314"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-063.jpg",
+            "px": "908x1210",
+            "sha256": "c5010e7855cb498eecc2c7ec50b1b763408a7fbf0a437137ce43506ac63858a1"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-066.jpg",
+            "px": "1210x908",
+            "sha256": "38a7c8216b6b4a1f23638cc60e37c12454e0ef05d99b7a6c2d7fd822974ab579"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-070.jpg",
+            "px": "1210x908",
+            "sha256": "15f5742958039557a9852decd4aea7ecd987bee9030d02a3d69875d644756455"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-071.jpg",
+            "px": "908x1210",
+            "sha256": "c5010e7855cb498eecc2c7ec50b1b763408a7fbf0a437137ce43506ac63858a1"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-115.jpg",
+            "px": "1210x908",
+            "sha256": "c378cf94ebabd9bbcce6e916c9a3fdae2b4d0a6c4a2246470ba0fb4ddf152bb0"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-116.jpg",
+            "px": "1210x908",
+            "sha256": "38a7c8216b6b4a1f23638cc60e37c12454e0ef05d99b7a6c2d7fd822974ab579"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-117.jpg",
+            "px": "1210x908",
+            "sha256": "001eddc01701bfeab8dcd49d44b58c297fbe9ef14d275016fc71a6d4c0cdf5b5"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-118.jpg",
+            "px": "1210x908",
+            "sha256": "c8eb4f5c96156d4898ff734c164739f430a9bc043c39e9507d1d850ef7651d87"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-119.jpg",
+            "px": "1210x908",
+            "sha256": "50d1e4fbfde263139b8510b1229280ed0cb1dfcec4661194d08be06b4b63529a"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-120.jpg",
+            "px": "908x1210",
+            "sha256": "a5f736bf22a23add343254c3c7d6216a05eaebe8bbae8e4b279a3a11d93657ef"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-121.jpg",
+            "px": "807x605",
+            "sha256": "54cc7d9d4084fac5c7fa4febcd322297add8a062a79886e1b5975e2d414019cd"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-122.jpg",
+            "px": "605x807",
+            "sha256": "8963f739be2f25aa3c5ea6369cebf652ed33ef727060ab005d0c5a8fba65e121"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-123.jpg",
+            "px": "605x807",
+            "sha256": "4a896b7560ff78096597cea7a9486b75f444f8e17d5ae09b23582d41096e0b74"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-124.jpg",
+            "px": "807x605",
+            "sha256": "b40177e5064089723f34cc8deb4df47b58b94fcf7f49c721b2cb755863038e93"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-128.jpg",
+            "px": "605x807",
+            "sha256": "4a896b7560ff78096597cea7a9486b75f444f8e17d5ae09b23582d41096e0b74"
+          },
+          {
+            "fichero": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/lona-177.jpg",
+            "px": "1210x1613",
+            "sha256": "edd059625d0fc551cd8db691bcdb5af3e9b1e8f7f4fed7f2d4b5bf9b64a6e0d8"
+          }
+        ],
+        "origen_lonas": "embebidas en el PDF del kit (extraer-brandkit.py); originales: <pendiente: pedir a branding>",
+        "pagina": "10-11"
+      },
+      "composicion": {
+        "orden": [
+          "Titular",
+          "Fecha, hora o lugar",
+          "Llamada a la acción",
+          "Logo"
+        ],
+        "reglas": [
+          "Una idea principal por pieza.",
+          "El texto importante tiene que leerse rápido.",
+          "El naranja solo para señalar.",
+          "Evitamos el horror vacui.",
+          "Evitamos sombrear los elementos.",
+          "Se mantiene un nivel de contraste."
+        ],
+        "caja": "caja azul sólida con texto blanco sobre la lona; etiquetas naranjas con texto blanco",
+        "pagina": "11-13"
+      },
+      "avatar": {
+        "patron": "logo blanco sobre foto de lona azul, cuadrado, con «26S» en naranja",
+        "ejemplo": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/avatar-ejemplo-173.png",
+        "pagina": 18,
+        "decision": "<pendiente: confirmar que la cuenta de secretaría usa este patrón (o el archivador del bot, pág. 19)>"
+      },
+      "bot": {
+        "patron": "archivador naranja con fichas sobre lona azul",
+        "ejemplo": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/extraido/avatar-ejemplo-178.png",
+        "pagina": 19
+      },
+      "organigrama_maquetado": {
+        "pagina": 17,
+        "nota": "versión del organigrama con la marca; referencia para la portada de la página «Organigrama y funcionamiento»"
+      },
       "canva": [
         {
           "pieza": "KIT VISUAL",
           "enlace": "https://canva.link/82o6d2lwolcctsw",
           "carpeta": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/",
-          "estado": "pendiente de descarga"
+          "estado": "recibido 2026-10-11: ARCHIVO/DISCO/26sm-exported/canva/kit-visual/ACAMPADA BRAND KIT .pdf (19 págs)"
         },
         {
           "pieza": "POST",
           "enlace": "https://canva.link/4qk1xlcplw2fa65",
           "carpeta": "ARCHIVO/DISCO/26sm-exported/canva/post/",
-          "estado": "pendiente de descarga"
+          "estado": "recibido 2026-10-11: 32 PNG 1080×1350 en ARCHIVO/DISCO/26sm-exported/canva/post/ (faltan 2 páginas)"
         },
         {
           "pieza": "RECURSOS GRÁFICOS",
           "enlace": "https://canva.link/tatovgme5p4ty6v",
           "carpeta": "ARCHIVO/DISCO/26sm-exported/canva/recursos-graficos/",
-          "estado": "pendiente de descarga"
+          "estado": "pendiente de descarga (la vista pública sale en blanco)"
         }
+      ],
+      "faltan": [
+        "doc maestro «identidad visual y discursiva» (pág. 14)",
+        "logo descargable (SVG)",
+        "recursos gráficos (tercer enlace de Canva)",
+        "2 páginas del POST (34 en el diseño, 32 exportadas)",
+        "Gill Sans Condensed / Gill Sans o visto bueno al sustituto"
       ]
     }
   },
@@ -69,7 +293,92 @@
       "ciudad": "Madrid",
       "lat": 40.4169,
       "lng": -3.7035,
-      "precision": "<pendiente: confirmar coordenadas (aproximadas, puestas en la plantilla WP-O129 el 2026-10-07)>"
+      "precision": "<pendiente: confirmar coordenadas (aproximadas, puestas en la plantilla WP-O129 el 2026-10-07)>",
+      "nota": "junto a Goiko Grill",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea General.png"
+    },
+    {
+      "id": "calle_carretas",
+      "nombre": "Calle de Carretas",
+      "ciudad": "Madrid",
+      "lat": null,
+      "lng": null,
+      "precision": "<pendiente: coordenadas>",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea Nodos (4).png"
+    },
+    {
+      "id": "plaza_del_carmen",
+      "nombre": "Plaza del Carmen",
+      "ciudad": "Madrid",
+      "lat": null,
+      "lng": null,
+      "precision": "<pendiente: coordenadas>",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea Nodos (4).png"
+    },
+    {
+      "id": "ministriles_14",
+      "nombre": "Ministriles 14",
+      "ciudad": "Madrid",
+      "lat": null,
+      "lng": null,
+      "precision": "<pendiente: coordenadas>",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Horario Asamblea Nodos.png"
+    },
+    {
+      "id": "lavapies_34",
+      "nombre": "Calle de Lavapiés, 34",
+      "ciudad": "Madrid",
+      "nota": "al lado de Caravan Café",
+      "lat": null,
+      "lng": null,
+      "precision": "<pendiente: coordenadas>",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Horario Asamblea Nodos (2).png"
+    },
+    {
+      "id": "cso_la_rosa",
+      "nombre": "CSO La Rosa",
+      "ciudad": "Madrid",
+      "lat": null,
+      "lng": null,
+      "precision": "<pendiente: coordenadas>",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea Nodos (5).png"
+    },
+    {
+      "id": "espacio_coworking",
+      "nombre": "Espacio Coworking",
+      "ciudad": "Madrid",
+      "nota": "rotulado «ESPACIO COWORKIG» en los posts de ponencias",
+      "lat": null,
+      "lng": null,
+      "precision": "<pendiente: coordenadas>",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/24.png"
+    },
+    {
+      "id": "rua_piollo",
+      "nombre": "Rúa Piollo",
+      "ciudad": "Madrid",
+      "lat": null,
+      "lng": null,
+      "precision": "<pendiente: coordenadas>",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Horario Actividades y Talleres.png"
+    },
+    {
+      "id": "oso_y_el_madrono",
+      "nombre": "Oso y el Madroño",
+      "ciudad": "Madrid",
+      "lat": null,
+      "lng": null,
+      "precision": "<pendiente: coordenadas>",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Horario Actividades y Talleres.png"
+    },
+    {
+      "id": "frente_a_orange",
+      "nombre": "Frente a Orange",
+      "ciudad": "Madrid",
+      "lat": null,
+      "lng": null,
+      "precision": "<pendiente: coordenadas>",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Horario Actividades y Talleres.png"
     }
   ],
   "organos": [
@@ -141,9 +450,12 @@
           "apertura": "abierto",
           "reunion": {
             "periodicidad": "variable",
-            "hora": "<pendiente: hora de la asamblea del nodo>"
+            "hora": "<pendiente: hora de la asamblea del nodo>",
+            "nota": "hora y lugar cambian cada día y se anuncian en un post (ver reuniones_observadas)"
           },
-          "responsable_reparto": "nodo_norte"
+          "responsable_reparto": "nodo_norte",
+          "barrios": "Chamartín: Prosperidad, El Viso, Ciudad Jardín, Hispanoamérica, Nueva España, Castilla. Tetuán: Cuatro Caminos, Bellas Vistas, Castillejos, Berruguete, Almenara, Valdeacederas, Fuencarral, El Pilar, La Paz, Mirasierra, Montecarmelo, Tres Olivos, Las Tablas, Sanchinarro Hortaleza, Pinar del Rey, Canillas, Valdebebas, El Pardo, Municipios, Alcobendas, San Sebastián de los Reyes, Tres Cantos, Colmenar Viejo, San Agustín del Guadalix, Algete, Soto del Real, Manzanares el Real.",
+          "barrios_fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/12.png"
         },
         {
           "id": "nodo_oeste",
@@ -151,9 +463,12 @@
           "apertura": "abierto",
           "reunion": {
             "periodicidad": "variable",
-            "hora": "<pendiente: hora de la asamblea del nodo>"
+            "hora": "<pendiente: hora de la asamblea del nodo>",
+            "nota": "hora y lugar cambian cada día y se anuncian en un post (ver reuniones_observadas)"
           },
-          "responsable_reparto": "nodo_oeste"
+          "responsable_reparto": "nodo_oeste",
+          "barrios": "Latina, Aluche, Lucero, Campamento, Puerta del Ángel, Casa de Campo, Carabanchel occidental, Moncloa, Aravaca, Valdemarín, El Plantío, Móstoles, Alcorcón, Pozuelo de Alarcón, Majadahonda, Las Rozas, Boadilla del Monte, Villaviciosa de Odón, Villanueva de la Cañada, Brunete, Navalcarnero.",
+          "barrios_fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/14.png"
         },
         {
           "id": "nodo_centro",
@@ -161,9 +476,12 @@
           "apertura": "abierto",
           "reunion": {
             "periodicidad": "variable",
-            "hora": "<pendiente: hora de la asamblea del nodo>"
+            "hora": "<pendiente: hora de la asamblea del nodo>",
+            "nota": "hora y lugar cambian cada día y se anuncian en un post (ver reuniones_observadas)"
           },
-          "responsable_reparto": "nodo_centro"
+          "responsable_reparto": "nodo_centro",
+          "barrios": "Centro: Sol, Palacio, Embajadores, Cortes, Justicia, Universidad Malasaña, Chueca, Lavapiés, La Latina, Austrias, Barrio de las Letras, Huertas, Gran Vía. Chamberí: Trafalgar, Malasaña/Universidad, Almagro, Ríos Rosas, Gaztambide, Arapiles, Argüelles, Moncloa, Retiro / Jerónimos, Salamanca: Goya, Lista, Recoletos.",
+          "barrios_fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/12.png"
         },
         {
           "id": "nodo_este",
@@ -171,9 +489,12 @@
           "apertura": "abierto",
           "reunion": {
             "periodicidad": "variable",
-            "hora": "<pendiente: hora de la asamblea del nodo>"
+            "hora": "<pendiente: hora de la asamblea del nodo>",
+            "nota": "hora y lugar cambian cada día y se anuncian en un post (ver reuniones_observadas)"
           },
-          "responsable_reparto": "nodo_este"
+          "responsable_reparto": "nodo_este",
+          "barrios": "Ciudad Lineal: Ventas, Pueblo Nuevo, Quintana, Concepción, San Pascual... Moratalaz, Vicálvaro, San Blas, Canillejas, Simancas, Las Rosas, Rejas, Barajas, Alameda de Osuna. Campo de las Naciones, Alcalá de Henares, Torrejón de Ardoz, Coslada, San Fernando de Henares, Rivas-Vaciamadrid, Mejorada del Campo, Velilla de San Antonio, Arganda del Rey, Paracuellos de Jarama, Meco, Daganzo.",
+          "barrios_fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/12.png"
         },
         {
           "id": "nodo_sur",
@@ -181,13 +502,17 @@
           "apertura": "abierto",
           "reunion": {
             "periodicidad": "variable",
-            "hora": "<pendiente: hora de la asamblea del nodo>"
+            "hora": "<pendiente: hora de la asamblea del nodo>",
+            "nota": "hora y lugar cambian cada día y se anuncian en un post (ver reuniones_observadas)"
           },
-          "responsable_reparto": "nodo_sur"
+          "responsable_reparto": "nodo_sur",
+          "barrios": "Arganzuela, Delicias, Legazpi, Usera, Orcasitas, Orcasur, San Fermín, Moscardó, Almendrales, Carabanchel, Opañel, San Isidro, Vista Alegre, Puerta Bonita, Abrantes, Buenavista, Vallecas, Puente de Vallecas, Villa de Vallecas, Ensanche de Vallecas, Villaverde. Getafe, Leganés, Fuenlabrada, Parla, Pinto, Valdemoro, Humanes de Madrid, Ciempozuelos, San Martín de la Vega.",
+          "barrios_fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/14.png"
         }
       ],
       "apertura": "abierto",
-      "responsable_reparto": "nodos_territoriales"
+      "responsable_reparto": "nodos_territoriales",
+      "nota_posts": "Los nodos territoriales se agrupan por distritos y barrios. Los puntos de asamblea según nodo territorial se publican a diario."
     },
     {
       "id": "personas",
@@ -489,8 +814,298 @@
       "wiki": true
     }
   ],
+  "reuniones_observadas": [
+    {
+      "fecha": "2026-10-05",
+      "tipo": "actividades",
+      "organo": "com_cultura",
+      "items": [
+        {
+          "hora": "16:00",
+          "que": "Taller de performance",
+          "lugar_id": "rua_piollo"
+        },
+        {
+          "hora": "18:00",
+          "que": "Micro abierto La Rosa",
+          "lugar_id": "oso_y_el_madrono"
+        },
+        {
+          "hora": "18:30",
+          "que": "Concierto Oro y Niebla",
+          "lugar_id": "frente_a_orange"
+        }
+      ],
+      "fuente": [
+        "ARCHIVO/DISCO/26sm-exported/canva/post/Actividades y Talleres.png",
+        "ARCHIVO/DISCO/26sm-exported/canva/post/Horario Actividades y Talleres.png"
+      ],
+      "nota": "la portada dice «Lunes 5»; el horario va en el mismo carrusel (supuesto)"
+    },
+    {
+      "fecha": "2026-10-06",
+      "tipo": "asamblea",
+      "organo": "asamblea_general",
+      "hora": "20:00",
+      "lugar_id": "sol_14",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea General.png"
+    },
+    {
+      "fecha": "2026-10-06",
+      "tipo": "asamblea",
+      "organo": "nodos_territoriales",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea Nodos (3).png",
+      "nota": "solo portada «Asamblea de nodos · Martes 6»"
+    },
+    {
+      "fecha": "2026-10-06",
+      "tipo": "ponencias",
+      "serie": "La Uni en Sol",
+      "organo": "com_cultura",
+      "lugar_id": "espacio_coworking",
+      "items": [
+        {
+          "hora": "16:00-17:00",
+          "que": "«Democracia radical versus populismos. Una teoría política para y desde la acampada»",
+          "quien": "F. CC. Políticas y Sociología"
+        },
+        {
+          "hora": "18:00-20:00",
+          "que": "«Islas térmicas. Por qué Sol es un infierno sin árboles»",
+          "quien": "Facultad de CC. Físicas"
+        }
+      ],
+      "fuente": [
+        "ARCHIVO/DISCO/26sm-exported/canva/post/3.png",
+        "ARCHIVO/DISCO/26sm-exported/canva/post/24.png"
+      ]
+    },
+    {
+      "fecha": "2026-10-07",
+      "tipo": "ponencias",
+      "serie": "La Uni en Sol",
+      "organo": "com_cultura",
+      "lugar_id": "espacio_coworking",
+      "items": [
+        {
+          "hora": "12:00-14:00",
+          "que": "«El fenómeno comunicativo Maricarmen y cómo despertar conciencia»",
+          "quien": "F. CC. de la Información"
+        },
+        {
+          "hora": "18:00-19:00",
+          "que": "«Luchas sociales y patrimonio. Una incuestionable y valiosa relación»",
+          "quien": "F. de Geografía e Historia, UCM"
+        }
+      ],
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/25.png"
+    },
+    {
+      "fecha": "2026-10-08",
+      "tipo": "asamblea",
+      "organo": "nodos_territoriales",
+      "items": [
+        {
+          "nodos": [
+            "nodo_sur"
+          ],
+          "hora": "18:00",
+          "lugar_id": "calle_carretas"
+        },
+        {
+          "nodos": [
+            "nodo_norte"
+          ],
+          "hora": "13:00",
+          "lugar_id": "plaza_del_carmen"
+        },
+        {
+          "nodos": [
+            "nodo_este"
+          ],
+          "hora": "18:00",
+          "lugar_id": "calle_carretas"
+        },
+        {
+          "nodos": [
+            "nodo_centro",
+            "nodo_oeste"
+          ],
+          "hora": "18:30",
+          "lugar_id": "ministriles_14"
+        }
+      ],
+      "fuente": [
+        "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea Nodos.png",
+        "ARCHIVO/DISCO/26sm-exported/canva/post/Horario Asamblea Nodos.png"
+      ],
+      "nota": "la portada dice «Jueves 8»; el horario no lleva fecha y va en el mismo carrusel (supuesto). «Cualquier actualización se modificará en la descripción»."
+    },
+    {
+      "fecha": "2026-10-10",
+      "tipo": "asamblea",
+      "organo": "nodos_territoriales",
+      "items": [
+        {
+          "nodos": [
+            "nodo_centro",
+            "nodo_oeste"
+          ],
+          "hora": "18:00",
+          "lugar_id": "lavapies_34"
+        },
+        {
+          "nodos": [
+            "nodo_norte"
+          ],
+          "hora": "17:00",
+          "lugar_id": "plaza_del_carmen"
+        },
+        {
+          "nodos": [
+            "nodo_sur",
+            "nodo_este"
+          ],
+          "hora": "18:00",
+          "lugar_id": "calle_carretas"
+        }
+      ],
+      "fuente": [
+        "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea Nodos (2).png",
+        "ARCHIVO/DISCO/26sm-exported/canva/post/Horario Asamblea Nodos (2).png",
+        "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea Nodos (4).png"
+      ]
+    },
+    {
+      "fecha": "2026-10-11",
+      "tipo": "asamblea",
+      "organo": "nodos_territoriales",
+      "items": [
+        {
+          "nodos": [
+            "nodo_centro",
+            "nodo_oeste"
+          ],
+          "hora": "12:00",
+          "lugar_id": "cso_la_rosa"
+        },
+        {
+          "nodos": [
+            "nodo_norte"
+          ],
+          "hora": "17:00",
+          "lugar_id": "plaza_del_carmen"
+        },
+        {
+          "nodos": [
+            "nodo_sur",
+            "nodo_este"
+          ],
+          "hora": "18:00",
+          "lugar_id": "calle_carretas"
+        }
+      ],
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea Nodos (5).png"
+    },
+    {
+      "fecha": "2026-10-12",
+      "tipo": "convocatoria",
+      "organo": "<pendiente: qué comisión convoca>",
+      "items": [
+        {
+          "hora": "13:00",
+          "que": "«Nos comemos a los nazis»: contra el fascismo, ven a comer con tus vecinas (trae tu propia comida)",
+          "lugar_id": "sol_14"
+        },
+        {
+          "que": "«12 OCT · Descolonicémonos»"
+        }
+      ],
+      "fuente": [
+        "ARCHIVO/DISCO/26sm-exported/canva/post/32.png",
+        "ARCHIVO/DISCO/26sm-exported/canva/post/27.png"
+      ]
+    }
+  ],
+  "agrupacion_observada": {
+    "grupos": [
+      [
+        "nodo_sur",
+        "nodo_este"
+      ],
+      [
+        "nodo_norte"
+      ],
+      [
+        "nodo_centro",
+        "nodo_oeste"
+      ]
+    ],
+    "desde": "2026-10-10",
+    "fuente": [
+      "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea Nodos (4).png",
+      "ARCHIVO/DISCO/26sm-exported/canva/post/Asamblea Nodos (5).png"
+    ],
+    "decision": "<DECISIÓN del colectivo: ¿calendarios y salas por nodo (5, como el organigrama) o por agrupación de reunión (3)? Las tribus siguen siendo 5>"
+  },
+  "canales": [
+    {
+      "tipo": "telegram",
+      "nombre": "@ACAMPADA26S",
+      "uso": "canal público con QR en los posts («Organízate, recupera tu barrio»)",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/10.png"
+    }
+  ],
+  "candidatos": [
+    {
+      "id": "cal_programa",
+      "tipo": "calendario",
+      "nombre": "Programa de la acampada",
+      "origen": "com_cultura",
+      "por_que": "Los posts anuncian cada día ponencias («La Uni en Sol»), talleres, micro abierto, conciertos y comidas populares: un calendario público (visible en la web) donde cada acto es una fecha.",
+      "fuente": [
+        "ARCHIVO/DISCO/26sm-exported/canva/post/Actividades y Talleres.png",
+        "ARCHIVO/DISCO/26sm-exported/canva/post/24.png",
+        "ARCHIVO/DISCO/26sm-exported/canva/post/25.png"
+      ],
+      "responsable_reparto": "comision_de_comunicacion"
+    },
+    {
+      "id": "uni_en_sol",
+      "tipo": "grupo o lista",
+      "nombre": "La Uni en Sol",
+      "origen": "com_cultura",
+      "por_que": "Serie de ponencias con facultades de la UCM: un grupo (si hay equipo que la organiza) o una lista de correo (si solo se anuncia).",
+      "fuente": [
+        "ARCHIVO/DISCO/26sm-exported/canva/post/3.png",
+        "ARCHIVO/DISCO/26sm-exported/canva/post/24.png"
+      ],
+      "responsable_reparto": "comision_de_comunicacion"
+    },
+    {
+      "id": "desmontando_bulos",
+      "tipo": "serie de publicaciones",
+      "nombre": "Desmontando bulos",
+      "origen": "com_redes",
+      "por_que": "Sello propio en los posts: una serie del blog (etiqueta «bulos») que la Comisión de Comunicación publica.",
+      "fuente": [
+        "ARCHIVO/DISCO/26sm-exported/canva/post/30.png",
+        "ARCHIVO/DISCO/26sm-exported/canva/post/33.png"
+      ],
+      "responsable_reparto": "comision_de_comunicacion"
+    },
+    {
+      "id": "lista_avisos",
+      "tipo": "lista de correo",
+      "nombre": "Avisos",
+      "origen": "com_interna",
+      "por_que": "Hoy el canal de avisos es Telegram (@ACAMPADA26S). Una lista abierta («cualquiera se suscribe») es su equivalente dentro.",
+      "fuente": "ARCHIVO/DISCO/26sm-exported/canva/post/10.png",
+      "responsable_reparto": "comision_de_comunicacion"
+    }
+  ],
   "metadatos": {
-    "version": 2,
+    "version": 2.1,
     "notas_de_transcripcion": [
       "En la imagen original aparece 'Espocición de nodos y comisiones'; se ha normalizado a 'Exposición'.",
       "Las flechas sin texto en la imagen tienen 'etiqueta': null."
@@ -502,6 +1117,12 @@
       "Lo marcado <pendiente> o <DECISIÓN> lo contesta el colectivo (formulario del dosier); nada se inventa."
     ],
     "derivado_a": "pub/templates/acampada26s.json",
-    "como": "ARCHIVO/DISCO/26sm-exported/entrada/derivar-acampada26s.py"
+    "como": "ARCHIVO/DISCO/26sm-exported/entrada/derivar-acampada26s.py",
+    "v2_1": [
+      "v2.1 (2026-10-11), aditiva: instancia.marca completa desde el kit visual (BRANDKIT.md, por página); lugares de los posts; barrios por nodo (literal);",
+      "reuniones_observadas (hechos con fecha y fuente, no estructura); agrupacion_observada como DECISIÓN; canales; candidatos (no se siembran hasta GO).",
+      "Ningún id de órgano cambia. Los ids de lugares no son ids de órgano: la herramienta no los cuenta."
+    ],
+    "fuentes_posts": "ARCHIVO/DISCO/26sm-exported/canva/post/MANIFEST.md"
   }
 }

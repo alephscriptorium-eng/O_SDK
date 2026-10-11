@@ -81,19 +81,19 @@
     "description": "derivador"
   },
   "nodo_centro": {
-    "description": "derivador"
+    "description": "mixto"
   },
   "nodo_este": {
-    "description": "derivador"
+    "description": "mixto"
   },
   "nodo_norte": {
-    "description": "derivador"
+    "description": "mixto"
   },
   "nodo_oeste": {
-    "description": "derivador"
+    "description": "mixto"
   },
   "nodo_sur": {
-    "description": "derivador"
+    "description": "mixto"
   },
   "sala_asamblea_general": {
     "description": "derivador"

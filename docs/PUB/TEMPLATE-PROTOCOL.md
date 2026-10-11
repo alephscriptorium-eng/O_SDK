@@ -59,6 +59,12 @@ v2 añade hechos de instancia sin tocar ningún `id` de la v1:
   texto a `{ id, nombre, … }`: cada canal tiene `id` y la sub-tribu que lo sustituye lo cita en `origen`.
 - `metodos_y_conceptos[].wiki: true` cuando el método se publica como página.
 - `metadatos.version: 2`, `derivado_a`, `como`.
+- **v2.1** (mismo día, aditiva): `instancia.marca` completa (paleta con hex y uso, tipografía con licencia y sustituto libre,
+  logos por versión, fondos con sha256, reglas de logo y composición, patrón de avatar; todo citado por página del kit del
+  colectivo), hechos de los posts (`lugares[]` ampliados, `miembros[].barrios`, `reuniones_observadas[]` con fecha y
+  fuente, `agrupacion_observada` como DECISIÓN, `canales[]`) y `candidatos[]`: objetos que los posts sugieren y el
+  organigrama no tiene; **no se siembran** hasta que el colectivo diga «crear» (el derivador los ignora; el formulario los
+  pregunta). El derivador escribe además `marca.json`, la entrada del generador de tarjetas (§4.4).
 
 La regla pública/privada **no** va en el organigrama: la aplica el derivador (R1-R5) a partir de `apertura`. Lo que el
 derivador redacta por su cuenta (descripciones que no están literales en la entrada) lo apunta en un

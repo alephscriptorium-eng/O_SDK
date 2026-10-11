@@ -38,5 +38,7 @@ el sha256 del fichero no cambie.
 - Dos piezas las exportó el equipo desde su sesión y las dejó en la carpeta del dosier; se movieron aquí sin renombrar
   (el PDF conserva el espacio antes de `.pdf` tal como salió de Canva). Faltan 2 páginas del POST y toda la pieza de
   recursos gráficos.
+- Del PDF del kit se extraen las imágenes embebidas con `entrada/extraer-brandkit.py` → `kit-visual/extraido/` (binarios
+  fuera de git; `manifest.json` dentro) y el texto se resume citado por página en `kit-visual/BRANDKIT.md`.
 - Peso: 96 MB de binarios. Si se decide no versionarlos, van a `.gitignore` y queda solo el `MANIFEST.md` (sha256) como
   prueba de qué había.

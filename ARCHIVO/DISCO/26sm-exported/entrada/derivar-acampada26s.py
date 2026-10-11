@@ -120,7 +120,11 @@ tribes.append(tribu('asamblea_internodos', 'asamblea_internodos', inter['nombre'
 for m in nodos['miembros']:
     punto = m['id'].split('_', 1)[1]
     d = f'Asamblea abierta de barrios y territorios del {PUNTO[punto]}. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.'
-    marca(m['id'], 'description', 'derivador')
+    if m.get('barrios'):   # literal de los posts del colectivo (v2.1)
+        d += f' Barrios: {m["barrios"]}'
+        marca(m['id'], 'description', 'mixto')   # frase inicial del derivador + barrios literales
+    else:
+        marca(m['id'], 'description', 'derivador')
     tribes.append(tribu(m['id'], m['id'], m['nombre'], d, m['apertura'], ['nodo', punto], CONTENT['nodo'], m['responsable_reparto']))
 for m in ORG['comisiones_de_trabajo']['miembros']:
     tema = m['id'].split('_', 1)[1]
@@ -205,7 +209,8 @@ for m in ORG['otros_espacios_de_articulacion']['miembros']:
 
 # ---------- Mapas ----------
 maps = [
-    dict(id='mapa_sol', origen='asamblea_general', title=lugar_ag['nombre'], description=f'Lugar de la Asamblea General, cada día a las {ag["reunion"]["hora"]}.',
+    dict(id='mapa_sol', origen='asamblea_general', title=lugar_ag['nombre'],
+         description=f'Lugar de la Asamblea General, cada día a las {ag["reunion"]["hora"]}' + (f' ({lugar_ag["nota"]})' if lugar_ag.get('nota') else '') + '.',
          lat=lugar_ag['lat'], lng=lugar_ag['lng'], mapType='SINGLE', tags=['asamblea', 'sol'], markers=[],
          nota=lugar_ag['precision'], responsable=ag['responsable_reparto'], image=img('mapa', 'mapa_sol'), clearnetPublic=False),
     dict(id='mapa_nodos', origen='nodos_territoriales', title=nodos['nombre'], description='Mapa colaborativo: cada nodo marca dónde se reúne.',
@@ -317,8 +322,33 @@ for sec in ('tribes', 'rooms', 'calendars', 'events', 'mailing', 'wiki', 'maps',
 if rotos:
     print('ORIGEN/RESPONSABLE fuera del organigrama:', *rotos, sep='\n  '); sys.exit(2)
 
+# ---------- marca.json: lo que el generador de tarjetas necesita (el JSON manda también sobre la marca) ----------
+MARCA = ROOT / DOSIER / 'entrada/marca.json'
+mk = inst.get('marca', {})
+if mk.get('paleta'):
+    logos = {l['version']: l['fichero'] for l in mk['logos']}
+    marca_json = {
+        'id': 'acampada26s', 'fuente': mk.get('fuente'),
+        'paleta': {k: v['hex'] for k, v in mk['paleta'].items()},
+        'fuentes': {   # rutas relativas al repo; libres (OFL) vendorizadas en el dosier. Gill Sans no se vendoriza.
+            'titular': f'{DOSIER}/assets/fonts/CabinCondensed-Bold.ttf',
+            'cuerpo': f'{DOSIER}/assets/fonts/CabinCondensed-Regular.ttf',
+            'nombre_oficial': {'titular': mk['tipografia']['titulares'], 'cuerpo': mk['tipografia']['cuerpos']},
+            'sustituto': mk['tipografia']['sustituto_libre']['nombre'],
+        },
+        'interlineado': mk['tipografia']['interlineado'], 'mayusculas': mk['tipografia']['mayusculas_en_titulares'],
+        'fondos': [l['fichero'] for l in mk['fondo']['lonas']],
+        'fondos_sha256': {l['fichero'].rsplit('/', 1)[1]: l['sha256'] for l in mk['fondo']['lonas']},
+        'logo': {'blanco': logos.get('blanco'), 'naranja': logos.get('naranja'), 'azul': logos.get('azul')},
+        'etiquetas': {'tribu': 'GRUPO', 'subtribu': 'SUBGRUPO', 'sala': 'SALA', 'mapa': 'MAPA', 'evento': 'EVENTO', 'wiki': 'PÁGINA', 'privado': 'CERRADO'},
+        'avatar': {'patron': mk['avatar']['patron'], 'texto': '26S'},
+        'composicion': mk['composicion']['orden'],
+    }
+    MARCA.write_text(json.dumps(marca_json, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
 DST.write_text(json.dumps(t, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 PROC.write_text(json.dumps(proc, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 n = {k: len(v) for k, v in t.items() if isinstance(v, list)}
-print(f'plantilla → {DST.relative_to(ROOT).as_posix()}  {json.dumps(n)}  ids del organigrama: {len(IDS)}')
-print(f'procedencia → {PROC.relative_to(ROOT).as_posix()}  ({sum(1 for v in proc.values() if "derivador" in v.values())} textos del derivador)')
+print(f'plantilla → {DST.relative_to(ROOT).as_posix()}  {json.dumps(n)}  ids del organigrama: {len(IDS)}  candidatos (no sembrados): {len(o.get("candidatos", []))}')
+print(f'procedencia → {PROC.relative_to(ROOT).as_posix()}  ({sum(1 for v in proc.values() if "derivador" in v.values())} textos del derivador, {sum(1 for v in proc.values() if "mixto" in v.values())} mixtos)')
+if mk.get('paleta'): print(f'marca → {MARCA.relative_to(ROOT).as_posix()}  ({len(marca_json["fondos"])} lonas, paleta {marca_json["paleta"]})')

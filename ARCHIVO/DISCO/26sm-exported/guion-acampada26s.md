@@ -32,7 +32,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Nota: La membresía son las portavocías vigentes: rotar = salir + invitar (la clave de la tribu rota en cada salida).
 
 ### 1.3 Nodo Norte  `origen: nodo_norte`
-- Description: Asamblea abierta de barrios y territorios del norte. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
+- Description: Asamblea abierta de barrios y territorios del norte. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Chamartín: Prosperidad, El Viso, Ciudad Jardín, Hispanoamérica, Nueva España, Castilla. Tetuán: Cuatro Caminos, Bellas Vistas, Castillejos, Berruguete, Almenara, Valdeacederas, Fuencarral, El Pilar, La Paz, Mirasierra, Montecarmelo, Tres Olivos, Las Tablas, Sanchinarro Hortaleza, Pinar del Rey, Canillas, Valdebebas, El Pardo, Municipios, Alcobendas, San Sebastián de los Reyes, Tres Cantos, Colmenar Viejo, San Agustín del Guadalix, Algete, Soto del Real, Manzanares el Real.
 - Tags: nodo, norte
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
@@ -41,7 +41,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Responsable del reparto: `nodo_norte`
 
 ### 1.4 Nodo Oeste  `origen: nodo_oeste`
-- Description: Asamblea abierta de barrios y territorios del oeste. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
+- Description: Asamblea abierta de barrios y territorios del oeste. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Latina, Aluche, Lucero, Campamento, Puerta del Ángel, Casa de Campo, Carabanchel occidental, Moncloa, Aravaca, Valdemarín, El Plantío, Móstoles, Alcorcón, Pozuelo de Alarcón, Majadahonda, Las Rozas, Boadilla del Monte, Villaviciosa de Odón, Villanueva de la Cañada, Brunete, Navalcarnero.
 - Tags: nodo, oeste
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
@@ -50,7 +50,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Responsable del reparto: `nodo_oeste`
 
 ### 1.5 Nodo Centro  `origen: nodo_centro`
-- Description: Asamblea abierta de barrios y territorios del centro. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
+- Description: Asamblea abierta de barrios y territorios del centro. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Centro: Sol, Palacio, Embajadores, Cortes, Justicia, Universidad Malasaña, Chueca, Lavapiés, La Latina, Austrias, Barrio de las Letras, Huertas, Gran Vía. Chamberí: Trafalgar, Malasaña/Universidad, Almagro, Ríos Rosas, Gaztambide, Arapiles, Argüelles, Moncloa, Retiro / Jerónimos, Salamanca: Goya, Lista, Recoletos.
 - Tags: nodo, centro
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
@@ -59,7 +59,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Responsable del reparto: `nodo_centro`
 
 ### 1.6 Nodo Este  `origen: nodo_este`
-- Description: Asamblea abierta de barrios y territorios del este. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
+- Description: Asamblea abierta de barrios y territorios del este. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Ciudad Lineal: Ventas, Pueblo Nuevo, Quintana, Concepción, San Pascual... Moratalaz, Vicálvaro, San Blas, Canillejas, Simancas, Las Rosas, Rejas, Barajas, Alameda de Osuna. Campo de las Naciones, Alcalá de Henares, Torrejón de Ardoz, Coslada, San Fernando de Henares, Rivas-Vaciamadrid, Mejorada del Campo, Velilla de San Antonio, Arganda del Rey, Paracuellos de Jarama, Meco, Daganzo.
 - Tags: nodo, este
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
@@ -68,7 +68,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Responsable del reparto: `nodo_este`
 
 ### 1.7 Nodo Sur  `origen: nodo_sur`
-- Description: Asamblea abierta de barrios y territorios del sur. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
+- Description: Asamblea abierta de barrios y territorios del sur. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Arganzuela, Delicias, Legazpi, Usera, Orcasitas, Orcasur, San Fermín, Moscardó, Almendrales, Carabanchel, Opañel, San Isidro, Vista Alegre, Puerta Bonita, Abrantes, Buenavista, Vallecas, Puente de Vallecas, Villa de Vallecas, Ensanche de Vallecas, Villaverde. Getafe, Leganés, Fuenlabrada, Parla, Pinto, Valdemoro, Humanes de Madrid, Ciempozuelos, San Martín de la Vega.
 - Tags: nodo, sur
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
@@ -405,7 +405,7 @@ Método de consenso para valorar las propuestas en la Asamblea General.
 ## 8. Mapas (2) — `Menú → Maps → Create`
 
 ### 8.1 Puerta del Sol nº 14  `origen: asamblea_general`
-- Type: **SINGLE** · centro 40.4169, -3.7035 · Lugar de la Asamblea General, cada día a las 20:00.
+- Type: **SINGLE** · centro 40.4169, -3.7035 · Lugar de la Asamblea General, cada día a las 20:00 (junto a Goiko Grill).
 - Nota: <pendiente: confirmar coordenadas (aproximadas, puestas en la plantilla WP-O129 el 2026-10-07)>
 
 ### 8.2 Nodos territoriales  `origen: nodos_territoriales`

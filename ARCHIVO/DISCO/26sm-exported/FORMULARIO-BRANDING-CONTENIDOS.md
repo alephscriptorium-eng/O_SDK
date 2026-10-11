@@ -4,12 +4,16 @@
 
 **De dónde sale esto:** de los materiales que ya tenemos guardados en la rama `dev/26sm-exported` del repositorio, carpeta `ARCHIVO/DISCO/26sm-exported/`. Cada fila cita el fichero real. Este formulario lo genera un script a partir de esos ficheros; cuando nos devolváis respuestas, las incorporamos y lo regeneramos: no hace falta que cuidéis el formato.
 
+**Lo que ya nos habéis dado (gracias):** la guía visual («ACAMPADA BRAND KIT», 19 páginas) y 32 plantillas de post. Con eso hemos cerrado colores, logos, tipografía, fondos y composición: ya no os lo preguntamos, os lo enseñamos (bloque A3).
+
+**Lo que falta:** doc maestro «identidad visual y discursiva» (pág. 14) · logo descargable (SVG) · recursos gráficos (tercer enlace de Canva) · 2 páginas del POST (34 en el diseño, 32 exportadas) · Gill Sans Condensed / Gill Sans o visto bueno al sustituto.
+
 **Cómo responder:** marcad `[x]` donde pone `[ ]`, escribid en las columnas «Respuesta» o «Cambios», o contestad en un correo citando el número de fila (A1, B3, C-G12…). Si una fila no os dice nada, dejadla: lo que no se conteste va **por defecto**.
 
 **Leyenda de la columna «Estado»:**
 
-- **USAMOS** · el texto sale tal cual de vuestro organigrama publicado. Solo hay que dar el visto bueno.
-- **DUDA** · lo hemos redactado nosotros a partir del organigrama. Confirmadlo o cambiadlo.
+- **USAMOS** · el texto sale tal cual de vuestro organigrama, vuestra guía visual o vuestros posts. Solo hay que dar el visto bueno.
+- **DUDA** · lo hemos redactado nosotros a partir de vuestros materiales. Confirmadlo o cambiadlo.
 - **POR DEFECTO** · lo hemos decidido nosotros por una regla general (quién puede entrar, qué se ve desde fuera). Cambiadlo si no encaja.
 
 **Qué es cada cosa (en la aplicación tienen otros nombres, entre paréntesis):**
@@ -22,41 +26,58 @@
 - **Página** («wiki»): texto fijo que se puede editar. **Mapa**: un punto, o un mapa colaborativo donde cada nodo marca el suyo.
 - **Visible en la web**: lo que puede ver cualquiera desde el navegador, sin cuenta, en `https://acampada26s.net/c`.
 
-**Recuento de lo que se creará:** 25 grupos (incluidos 9 subgrupos), 7 salas, 7 calendarios, 1 evento, 4 listas de correo, 5 páginas, 2 mapas; 40 imágenes de tarjeta.
+**Recuento de lo que se creará:** 25 grupos (incluidos 9 subgrupos), 7 salas, 7 calendarios, 1 evento, 4 listas de correo, 5 páginas, 2 mapas; 40 imágenes de tarjeta. Más 4 candidatos que solo se crean si decís «crear» (bloque C-X).
 
 ## A · Marca (branding)
 
-### A1 · Logo oficial
+### A1 · Logo oficial y avatar
 
-Tenemos seis variantes en `ARCHIVO/DISCO/26sm-exported/assets/`. **Elegid una**: será el avatar de la cuenta que crea todo (la «secretaría») y la base de las imágenes de tarjeta de cada grupo, sala, página y mapa. Si queréis otra distinta a estas seis, decidlo en la última fila.
+Tenemos las seis versiones de vuestra guía (pág. 3) en `ARCHIVO/DISCO/26sm-exported/assets/`. **Elegid la del avatar** de la cuenta que crea todo (la «secretaría»). Vuestra guía ya trae un patrón de avatar (pág. 18): logo blanco sobre foto de lona azul, cuadrado, con «26S» en naranja; y una identidad para un bot (pág. 19): archivador naranja con fichas sobre lona azul. Marcad una opción en la última fila.
 
-| # | Fichero | Tamaño | Peso | Oficial |
-|---|---|---|---|---|
-| A1.1 | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S.png` | 1021×1134 | 85 KB | [ ] |
-| A1.2 | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-AZUL.png` | 1021×1134 | 86 KB | [ ] |
-| A1.3 | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BLANCO.png` | 1021×1134 | 76 KB | [ ] |
-| A1.4 | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BYN.png` | 1021×1134 | 141 KB | [ ] |
-| A1.5 | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-NARANJA-AZUL.png` | 1021×1134 | 91 KB | [ ] |
-| A1.6 | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-AZUL-A26S-NARANJAA.png` | 1021×1134 | 88 KB | [ ] |
-| A1.7 | Otro (decidnos cuál y dónde está) |  |  | [ ] |
+| # | Versión (guía pág. 3) | Fichero | Tamaño | Peso | Para el avatar |
+|---|---|---|---|---|---|
+| A1.1 | naranja | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S.png` | 1021×1134 | 85 KB | [ ] |
+| A1.2 | azul | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-AZUL.png` | 1021×1134 | 86 KB | [ ] |
+| A1.3 | blanco | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BLANCO.png` | 1021×1134 | 76 KB | [ ] |
+| A1.4 | negro | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BYN.png` | 1021×1134 | 141 KB | [ ] |
+| A1.5 | bicolor relleno naranja, trazo azul | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-NARANJA-AZUL.png` | 1021×1134 | 91 KB | [ ] |
+| A1.6 | bicolor relleno azul, trazo naranja | `ARCHIVO/DISCO/26sm-exported/assets/LOGO-AZUL-A26S-NARANJAA.png` | 1021×1134 | 88 KB | [ ] |
+
+- A1.7 Avatar de la secretaría: [ ] patrón de la guía (logo blanco sobre lona + «26S» naranja) · [ ] el archivador del bot (pág. 19) · [ ] otro: ______
 
 ### A2 · Piezas de Canva
 
-Nos pasasteis tres enlaces. Son enlaces de edición y no se pueden descargar sin vuestra sesión, así que **o nos los exportáis** (Compartir → Descargar, en PNG o PDF) **o nos dais acceso** para bajarlos nosotros. Marcad una opción por pieza.
+Dos ya las tenemos exportadas. Falta la tercera (la vista pública sale en blanco: hay que exportarla con sesión) y dos páginas del post.
 
-| # | Pieza | Enlace | Dónde lo guardaremos | Estado hoy | Opción |
+| # | Pieza | Enlace | Dónde está / estará | Estado hoy | Opción |
 |---|---|---|---|---|---|
-| A2.1 | KIT VISUAL | https://canva.link/82o6d2lwolcctsw | `ARCHIVO/DISCO/26sm-exported/canva/kit-visual/` | pendiente de descarga | [ ] lo exportáis vosotros y nos lo pasáis · [ ] nos dais acceso y lo bajamos nosotros |
-| A2.2 | POST | https://canva.link/4qk1xlcplw2fa65 | `ARCHIVO/DISCO/26sm-exported/canva/post/` | pendiente de descarga | [ ] lo exportáis vosotros y nos lo pasáis · [ ] nos dais acceso y lo bajamos nosotros |
-| A2.3 | RECURSOS GRÁFICOS | https://canva.link/tatovgme5p4ty6v | `ARCHIVO/DISCO/26sm-exported/canva/recursos-graficos/` | pendiente de descarga | [ ] lo exportáis vosotros y nos lo pasáis · [ ] nos dais acceso y lo bajamos nosotros |
+| A2.1 | KIT VISUAL | https://canva.link/82o6d2lwolcctsw | `ARCHIVO/DISCO/26sm-exported/canva/kit-visual/` | recibido 2026-10-11: ARCHIVO/DISCO/26sm-exported/canva/kit-visual/ACAMPADA BRAND KIT .pdf (19 págs) |  |
+| A2.2 | POST | https://canva.link/4qk1xlcplw2fa65 | `ARCHIVO/DISCO/26sm-exported/canva/post/` | recibido 2026-10-11: 32 PNG 1080×1350 en ARCHIVO/DISCO/26sm-exported/canva/post/ (faltan 2 páginas) |  |
+| A2.3 | RECURSOS GRÁFICOS | https://canva.link/tatovgme5p4ty6v | `ARCHIVO/DISCO/26sm-exported/canva/recursos-graficos/` | pendiente de descarga (la vista pública sale en blanco) | [ ] lo exportáis vosotros y nos lo pasáis · [ ] nos dais acceso y lo bajamos nosotros |
 
-### A3 · Imágenes de tarjeta y colores
+- A2.4 También nos vendría bien: [ ] el doc maestro «identidad visual y discursiva» · [ ] el logo descargable en vectorial (SVG) · [ ] las 2 páginas que faltan del POST (hay 32 de 34)
 
-Generaremos **40 imágenes** (una por grupo, sala, mapa, evento y página; cuadradas, 512 píxeles) con un mismo estilo: el logo oficial, el nombre del espacio y un icono por tipo. Hoy el generador usa una paleta nuestra. Decidnos:
+### A3 · Así aplicaremos vuestro kit (USAMOS: sale de vuestra guía visual)
 
-- A3.1 [ ] Usad los colores del logo oficial · [ ] Usad estos colores (escribid códigos o describidlos): ____________
-- A3.2 [ ] Tipografía: la del kit visual de Canva (cuando lo tengamos) · [ ] Nos da igual, usad una libre
-- A3.3 [ ] Queremos ver una prueba de 3-4 tarjetas antes de generar las 40
+Generaremos **40 imágenes** (una por grupo, sala, mapa, evento y página; cuadradas, 512 píxeles) con vuestras reglas. Lo que sigue no es una pregunta: es cómo lo vamos a hacer. Decidnos solo si algo no encaja.
+
+| # | Regla | Cómo la aplicamos | Fuente |
+|---|---|---|---|
+| A3.1 | Colores | azul lona `#0452C5` para cajas y fondos de identidad · naranja inquilina `#FF981F` solo para etiquetas y señalar · blanco `#FFFFFF` para el texto · negro `#000000` no se usa en pantalla | guía págs. 6-7 |
+| A3.2 | Fondo | siempre una foto de lona azul (las que vienen en el PDF de la guía), sin filtros que cambien el azul; una lona distinta por tarjeta, elegida de forma fija (misma tarjeta → misma lona) | guía págs. 10-11 |
+| A3.3 | Composición | caja azul sólida con el nombre en blanco y mayúsculas; etiqueta naranja con el tipo (GRUPO, SALA, MAPA, EVENTO, PÁGINA); logo blanco pequeño abajo con aire; nada de sombras ni iconos | guía págs. 4, 12-13 |
+| A3.4 | Tipografía | vuestra guía pide Gill Sans Condensed (titulares) y Gill Sans (cuerpos); son de pago y no podemos incluirlas en el proyecto. Mientras tanto usamos **Cabin Condensed** (OFL 1.1), libre e inspirada en Gill Sans; se usa mientras branding no entregue la suya | guía págs. 8-9 |
+| A3.5 | Nombres | el nombre de cada espacio va en mayúsculas y se ajusta solo (hasta 3 líneas); los nombres muy largos («Comunicación · Coordinación y gabinete de crisis») se verán más pequeños | guía pág. 9 |
+
+Decisiones que sí os pedimos:
+
+- A3.6 Tipografía: [ ] vale Cabin Condensed · [ ] os pasamos los ficheros de Gill Sans Condensed y Gill Sans (los usaremos sin subirlos al proyecto)
+- A3.7 Fondos de lona: [ ] usad las fotos que trae el PDF de la guía · [ ] os pasamos las originales a más resolución
+- A3.8 [ ] Queremos ver la prueba (A4) antes de dar el visto bueno a las 40
+
+### A4 · Prueba visual
+
+Las tarjetas de muestra se generan en `ARCHIVO/DISCO/26sm-exported/pruebas/` en la siguiente ronda; esta fila se rellenará sola.
 
 ## B · Datos que solo vosotros sabéis (contenidos)
 
@@ -67,14 +88,13 @@ Sin estas respuestas lo creamos igual, pero con huecos. Cada fila dice dónde se
 | B1 | ¿Es correcto el objetivo del movimiento tal como lo leímos? | Cabecera de la página «Organigrama y funcionamiento» | «Paralizar el país mediante una huelga general para lograr un cambio de modelo que resuelva el problema de la vivienda y el resto de problemas para la calidad de vida de las personas.» → [ ] correcto · cambios: ______ |
 | B2 | ¿Quién crea los espacios? Una sola cuenta de «secretaría» para todo, o cada órgano la suya. Importante: solo quien crea un grupo puede borrarlo o reorganizarlo. | Autoría de todos los grupos (no se puede cambiar después) | [ ] una cuenta de secretaría · [ ] cada órgano la suya · otra: ______ |
 | B3 | ¿Quién es la mesa técnica? (las personas que recibirán los códigos de acceso y los repartirán a cada órgano) | Guía de reparto de accesos | Nombres o cargos: ______ |
-| B4 | Hora y periodicidad de la asamblea del Nodo Norte | Calendario «Nodo Norte» | Día(s) y hora: ______ |
-| B5 | Hora y periodicidad de la asamblea del Nodo Oeste | Calendario «Nodo Oeste» | Día(s) y hora: ______ |
-| B6 | Hora y periodicidad de la asamblea del Nodo Centro | Calendario «Nodo Centro» | Día(s) y hora: ______ |
-| B7 | Hora y periodicidad de la asamblea del Nodo Este | Calendario «Nodo Este» | Día(s) y hora: ______ |
-| B8 | Hora y periodicidad de la asamblea del Nodo Sur | Calendario «Nodo Sur» | Día(s) y hora: ______ |
-| B9 | ¿Son correctas las coordenadas de Puerta del Sol nº 14? Hoy: 40.4169, -3.7035 (aproximadas) | Mapa de la Asamblea General | [ ] correctas · otras: ______ |
-| B10 | ¿InterCSOs tiene (o tendrá) un espacio Oasis propio con el que conectar? Si sí, su dirección. | Conexión entre espacios y lista cerrada | [ ] no · [ ] sí: ______ |
-| B11 | ¿Asamblea de Colectivos tiene (o tendrá) un espacio Oasis propio con el que conectar? Si sí, su dirección. | Conexión entre espacios y lista cerrada | [ ] no · [ ] sí: ______ |
+| B4 | En vuestros posts los nodos se reúnen agrupados (Nodo Sur + Nodo Este · Nodo Norte · Nodo Centro + Nodo Oeste). ¿Creamos los calendarios y las salas por nodo (5, como el organigrama) o por agrupación (3)? Los grupos de cada nodo (con sus barrios) seguirán siendo 5. | Calendarios y salas de los nodos | [ ] 5, por nodo · [ ] 3, por agrupación · otra: ______ |
+| B5 | Las horas y lugares de los nodos cambian cada día («se publican a diario»). Lo que hemos leído en los posts: 08/10: Nodo Sur 18:00 Calle de Carretas, Nodo Norte 13:00 Plaza del Carmen, Nodo Este 18:00 Calle de Carretas, Nodo Centro + Nodo Oeste 18:30 Ministriles 14 / 10/10: Nodo Centro + Nodo Oeste 18:00 Calle de Lavapiés, 34, Nodo Norte 17:00 Plaza del Carmen, Nodo Sur + Nodo Este 18:00 Calle de Carretas / 11/10: Nodo Centro + Nodo Oeste 12:00 CSO La Rosa, Nodo Norte 17:00 Plaza del Carmen, Nodo Sur + Nodo Este 18:00 Calle de Carretas. ¿Es correcto como muestra? ¿Seguiréis anunciándolo a diario? Entonces el calendario de cada nodo se rellena fecha a fecha, sin hora fija. | Calendarios de los nodos | [ ] correcto como muestra · [ ] seguimos anunciando a diario · cambios: ______ |
+| B6 | ¿Son correctas las coordenadas de Puerta del Sol nº 14 (junto a Goiko Grill)? Hoy: 40.4169, -3.7035 (aproximadas) | Mapa de la Asamblea General | [ ] correctas · otras: ______ |
+| B7 | Lugares que salen en vuestros posts y de los que no tenemos coordenadas: Calle de Carretas, Plaza del Carmen, Ministriles 14, Calle de Lavapiés, 34, CSO La Rosa, Espacio Coworking, Rúa Piollo, Oso y el Madroño, Frente a Orange. ¿Nos dais dirección exacta o coordenadas de los que vayan a repetirse? | Mapa colaborativo de los nodos y calendario Programa | Direcciones: ______ |
+| B8 | ¿InterCSOs tiene (o tendrá) un espacio Oasis propio con el que conectar? Si sí, su dirección. | Conexión entre espacios y lista cerrada | [ ] no · [ ] sí: ______ |
+| B9 | ¿Asamblea de Colectivos tiene (o tendrá) un espacio Oasis propio con el que conectar? Si sí, su dirección. | Conexión entre espacios y lista cerrada | [ ] no · [ ] sí: ______ |
+| B10 | Vuestra guía enlaza un «doc maestro: identidad visual y discursiva». ¿Nos lo pasáis? De ahí saldrían el tono y los lemas de las páginas. | Páginas y textos de bienvenida | [ ] os lo pasamos · [ ] no existe aún |
 
 ## C · Textos y ajustes de cada espacio (contenidos)
 
@@ -86,11 +106,11 @@ Una tabla por tipo. La columna **Estado** va sobre el texto; las columnas **Cóm
 |---|---|---|---|---|---|---|---|---|
 | C-G1 | Asamblea General | Órgano mayor de representación. Ratifica consensos (semáforo), espacio informativo, exposición de nodos y comisiones, lectura de comunicados. | DUDA | cualquiera, con código o QR de la tarjeta | sí | Asamblea General | [ ] |  |
 | C-G2 | Asamblea Internodos | Portavocías rotativas de los nodos territoriales. Pone en común las propuestas de los nodos y aglutina consensos para la Asamblea General. Sin poder de decisión. | DUDA | cerrado y cifrado; invita el responsable | no | Asamblea Internodos | [ ] |  |
-| C-G3 | Nodo Norte | Asamblea abierta de barrios y territorios del norte. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. | DUDA | cualquiera, con código o QR de la tarjeta | sí | Nodo Norte | [ ] |  |
-| C-G4 | Nodo Oeste | Asamblea abierta de barrios y territorios del oeste. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. | DUDA | cualquiera, con código o QR de la tarjeta | sí | Nodo Oeste | [ ] |  |
-| C-G5 | Nodo Centro | Asamblea abierta de barrios y territorios del centro. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. | DUDA | cualquiera, con código o QR de la tarjeta | sí | Nodo Centro | [ ] |  |
-| C-G6 | Nodo Este | Asamblea abierta de barrios y territorios del este. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. | DUDA | cualquiera, con código o QR de la tarjeta | sí | Nodo Este | [ ] |  |
-| C-G7 | Nodo Sur | Asamblea abierta de barrios y territorios del sur. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. | DUDA | cualquiera, con código o QR de la tarjeta | sí | Nodo Sur | [ ] |  |
+| C-G3 | Nodo Norte | Asamblea abierta de barrios y territorios del norte. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Chamartín: Prosperidad, El Viso, Ciudad Jardín, Hispanoamérica, Nueva España, Castilla. Tetuán: Cuatro Caminos, Bellas Vistas, Castillejos, Berruguete, Almenara, Valdeacederas, Fuencarral, El Pilar, La Paz, Mirasierra, Montecarmelo, Tres Olivos, Las Tablas, Sanchinarro Hortaleza, Pinar del Rey, Canillas, Valdebebas, El Pardo, Municipios, Alcobendas, San Sebastián de los Reyes, Tres Cantos, Colmenar Viejo, San Agustín del Guadalix, Algete, Soto del Real, Manzanares el Real. | DUDA la primera frase · USAMOS los barrios | cualquiera, con código o QR de la tarjeta | sí | Nodo Norte | [ ] |  |
+| C-G4 | Nodo Oeste | Asamblea abierta de barrios y territorios del oeste. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Latina, Aluche, Lucero, Campamento, Puerta del Ángel, Casa de Campo, Carabanchel occidental, Moncloa, Aravaca, Valdemarín, El Plantío, Móstoles, Alcorcón, Pozuelo de Alarcón, Majadahonda, Las Rozas, Boadilla del Monte, Villaviciosa de Odón, Villanueva de la Cañada, Brunete, Navalcarnero. | DUDA la primera frase · USAMOS los barrios | cualquiera, con código o QR de la tarjeta | sí | Nodo Oeste | [ ] |  |
+| C-G5 | Nodo Centro | Asamblea abierta de barrios y territorios del centro. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Centro: Sol, Palacio, Embajadores, Cortes, Justicia, Universidad Malasaña, Chueca, Lavapiés, La Latina, Austrias, Barrio de las Letras, Huertas, Gran Vía. Chamberí: Trafalgar, Malasaña/Universidad, Almagro, Ríos Rosas, Gaztambide, Arapiles, Argüelles, Moncloa, Retiro / Jerónimos, Salamanca: Goya, Lista, Recoletos. | DUDA la primera frase · USAMOS los barrios | cualquiera, con código o QR de la tarjeta | sí | Nodo Centro | [ ] |  |
+| C-G6 | Nodo Este | Asamblea abierta de barrios y territorios del este. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Ciudad Lineal: Ventas, Pueblo Nuevo, Quintana, Concepción, San Pascual... Moratalaz, Vicálvaro, San Blas, Canillejas, Simancas, Las Rosas, Rejas, Barajas, Alameda de Osuna. Campo de las Naciones, Alcalá de Henares, Torrejón de Ardoz, Coslada, San Fernando de Henares, Rivas-Vaciamadrid, Mejorada del Campo, Velilla de San Antonio, Arganda del Rey, Paracuellos de Jarama, Meco, Daganzo. | DUDA la primera frase · USAMOS los barrios | cualquiera, con código o QR de la tarjeta | sí | Nodo Este | [ ] |  |
+| C-G7 | Nodo Sur | Asamblea abierta de barrios y territorios del sur. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Arganzuela, Delicias, Legazpi, Usera, Orcasitas, Orcasur, San Fermín, Moscardó, Almendrales, Carabanchel, Opañel, San Isidro, Vista Alegre, Puerta Bonita, Abrantes, Buenavista, Vallecas, Puente de Vallecas, Villa de Vallecas, Ensanche de Vallecas, Villaverde. Getafe, Leganés, Fuenlabrada, Parla, Pinto, Valdemoro, Humanes de Madrid, Ciempozuelos, San Martín de la Vega. | DUDA la primera frase · USAMOS los barrios | cualquiera, con código o QR de la tarjeta | sí | Nodo Sur | [ ] |  |
 | C-G8 | Comisión de Comunicación | Comunicación interna y externa, redes, medios, diseño. Coordina con nodos, comisiones y Asamblea General. | DUDA | cualquiera, con código o QR de la tarjeta | sí | Comisión de Comunicación | [ ] |  |
 | C-G9 | Comisión de Urbanismo | Vivienda, ciudad, planificación. | USAMOS | cualquiera, con código o QR de la tarjeta | sí | Comisión de Urbanismo | [ ] |  |
 | C-G10 | Comisión de Cuidados | Bienestar, salud, primeros auxilios. | USAMOS | cualquiera, con código o QR de la tarjeta | sí | Comisión de Cuidados | [ ] |  |
@@ -128,11 +148,11 @@ Una tabla por tipo. La columna **Estado** va sobre el texto; las columnas **Cóm
 |---|---|---|---|---|---|---|---|---|
 | C-C1 | Asamblea General | diaria a las 20:00 | Puerta del Sol nº 14. Ratifica consensos con la técnica del semáforo. | USAMOS | sí | Asamblea General | [ ] |  |
 | C-C2 | Asamblea Internodos | diaria a las 19:00 | Previa a la Asamblea General. | USAMOS | no (va dentro de un grupo) | Asamblea Internodos | [ ] |  |
-| C-C3 | Nodo Norte | variable (hora pendiente, ver bloque B) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Norte | [ ] |  |
-| C-C4 | Nodo Oeste | variable (hora pendiente, ver bloque B) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Oeste | [ ] |  |
-| C-C5 | Nodo Centro | variable (hora pendiente, ver bloque B) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Centro | [ ] |  |
-| C-C6 | Nodo Este | variable (hora pendiente, ver bloque B) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Este | [ ] |  |
-| C-C7 | Nodo Sur | variable (hora pendiente, ver bloque B) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Sur | [ ] |  |
+| C-C3 | Nodo Norte | variable (se rellena fecha a fecha, ver B5) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Norte | [ ] |  |
+| C-C4 | Nodo Oeste | variable (se rellena fecha a fecha, ver B5) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Oeste | [ ] |  |
+| C-C5 | Nodo Centro | variable (se rellena fecha a fecha, ver B5) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Centro | [ ] |  |
+| C-C6 | Nodo Este | variable (se rellena fecha a fecha, ver B5) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Este | [ ] |  |
+| C-C7 | Nodo Sur | variable (se rellena fecha a fecha, ver B5) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Sur | [ ] |  |
 
 ### C-E · Evento
 
@@ -165,12 +185,23 @@ El texto completo de cada página está en el bloque D; aquí solo el título y 
 
 | # | Mapa | Descripción que usaremos | Estado | Tipo | Visible en la web | Responsable del reparto | GO | Cambios |
 |---|---|---|---|---|---|---|---|---|
-| C-M1 | Puerta del Sol nº 14 | Lugar de la Asamblea General, cada día a las 20:00. | DUDA | un solo punto | no (solo dentro) | Asamblea General | [ ] |  |
+| C-M1 | Puerta del Sol nº 14 | Lugar de la Asamblea General, cada día a las 20:00 (junto a Goiko Grill). | DUDA | un solo punto | no (solo dentro) | Asamblea General | [ ] |  |
 | C-M2 | Nodos territoriales | Mapa colaborativo: cada nodo marca dónde se reúne. | DUDA | colaborativo: cada nodo añade su punto | sí | Nodos territoriales | [ ] |  |
+
+### C-X · Candidatos: lo que vuestros posts sugieren y el organigrama no tiene
+
+No los creamos salvo que marquéis «crear». Si los marcáis, decidnos quién los lleva.
+
+| # | Qué | Tipo | Por qué lo proponemos | Órgano | Visto en | Decisión | Quién lo lleva |
+|---|---|---|---|---|---|---|---|
+| C-X1 | Programa de la acampada | calendario | Los posts anuncian cada día ponencias («La Uni en Sol»), talleres, micro abierto, conciertos y comidas populares: un calendario público (visible en la web) donde cada acto es una fecha. | Cultura y eventos | `Actividades y Talleres.png`, `24.png`, `25.png` | [ ] crear · [ ] no |  |
+| C-X2 | La Uni en Sol | grupo o lista | Serie de ponencias con facultades de la UCM: un grupo (si hay equipo que la organiza) o una lista de correo (si solo se anuncia). | Cultura y eventos | `3.png`, `24.png` | [ ] crear · [ ] no |  |
+| C-X3 | Desmontando bulos | serie de publicaciones | Sello propio en los posts: una serie del blog (etiqueta «bulos») que la Comisión de Comunicación publica. | Redes / contenido digital | `30.png`, `33.png` | [ ] crear · [ ] no |  |
+| C-X4 | Avisos | lista de correo | Hoy el canal de avisos es Telegram (@ACAMPADA26S). Una lista abierta («cualquiera se suscribe») es su equivalente dentro. | Comunicación interna | `10.png` | [ ] crear · [ ] no |  |
 
 ## D · Páginas completas para revisar (contenidos)
 
-Leedlas enteras. Marcad «revisada» y anotad cambios con el número de página. Las dos primeras las generamos nosotros a partir del organigrama; el manual de bienvenida ya existía; la guía de reparto se genera sola y no lleva códigos.
+Leedlas enteras. Marcad «revisada» y anotad cambios con el número de página. Las dos primeras las generamos nosotros a partir del organigrama (la portada de la primera seguirá vuestra guía, pág. 17); el manual de bienvenida ya existía; la guía de reparto se genera sola y no lleva códigos.
 
 ### D1 · Organigrama y funcionamiento
 
