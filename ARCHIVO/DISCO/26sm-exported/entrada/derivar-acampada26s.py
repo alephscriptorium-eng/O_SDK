@@ -15,7 +15,11 @@ SRC = ROOT / DOSIER / 'entrada/acampada26s_organigrama.json'
 DST = ROOT / 'pub/templates/acampada26s.json'
 PROC = ROOT / DOSIER / 'entrada/procedencia.json'
 GUIA = f'{DOSIER}/guia-reparto-acampada26s.md'
+# Lo que se SIEMBRA como wiki no lleva tablas (D-O34: el renderer de Oasis no las tiene): variantes .wiki.md generadas
+# por template-seed.js --reparto --wiki y por pub/tools/md-sin-tablas.py (el manual, partido en dos por el límite de 20000).
+GUIA_WIKI = f'{DOSIER}/guia-reparto-acampada26s.wiki.md'
 ONBOARDING = 'ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md'
+ONBOARDING_WIKI = ['ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md', 'ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md']
 
 o = json.loads(SRC.read_text(encoding='utf-8'))
 inst, doc = o['instancia'], o['documento']
@@ -273,11 +277,14 @@ wiki = [
          body='2-3 portavoces por nodo, rotativas, sin poder de decisión: transmiten las propuestas de su nodo a la Asamblea Internodos. '
               'En Oasis: ser portavoz = ser miembro de la tribu Asamblea Internodos durante el turno; al terminar, se sale de la tribu y entra la siguiente portavocía.',
          editPolicy='author', tags=['metodo'], image=img('wiki', 'wiki_portavocias'), clearnetPublic=True, responsable='asamblea_internodos'),
-    dict(id='wiki_onboarding', origen='personas', title='Oasis para el nodo · manual de bienvenida', file=ONBOARDING, editPolicy='open', tags=['manual'],
-         image=img('wiki', 'wiki_onboarding'), clearnetPublic=True, responsable='personas'),
-    dict(id='wiki_reparto', origen='documento', title='Guía de reparto de accesos', file=GUIA, editPolicy='author', tags=['manual', 'reparto'],
+    dict(id='wiki_onboarding', origen='personas', title='Oasis para el nodo · manual de bienvenida · 1 de 2', file=ONBOARDING_WIKI[0], editPolicy='open', tags=['manual'],
+         image=img('wiki', 'wiki_onboarding'), clearnetPublic=True, responsable='personas',
+         nota=f'Variante sin tablas de {ONBOARDING} (pub/tools/md-sin-tablas.py), partida en dos por el límite de 20000 del formulario de wiki.'),
+    dict(id='wiki_onboarding_2', origen='personas', title='Oasis para el nodo · manual de bienvenida · 2 de 2', file=ONBOARDING_WIKI[1], editPolicy='open', tags=['manual'],
+         image=img('wiki', 'wiki_onboarding_2'), clearnetPublic=True, responsable='personas'),
+    dict(id='wiki_reparto', origen='documento', title='Guía de reparto de accesos', file=GUIA_WIKI, editPolicy='author', tags=['manual', 'reparto'],
          image=img('wiki', 'wiki_reparto'), clearnetPublic=True, responsable='documento',
-         nota='La genera template-seed.js --reparto: libro del operador, sin códigos.'),
+         nota=f'La genera template-seed.js --reparto --wiki (sin tablas): libro del operador, sin códigos. El md con tablas del dosier es {GUIA}.'),
 ]
 for w in wiki: marca(w['id'], 'body', 'organigrama' if w['id'] == 'wiki_organigrama' else 'derivador')
 

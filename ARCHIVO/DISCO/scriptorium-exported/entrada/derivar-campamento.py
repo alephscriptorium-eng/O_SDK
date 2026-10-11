@@ -13,6 +13,7 @@ SRC_O = ROOT / 'ARCHIVO/DISCO/retro-exporter/entrada/acampada26s_organigrama.jso
 DST_T = ROOT / 'pub/templates/campamento.json'
 DST_O = ROOT / 'ARCHIVO/DISCO/scriptorium-exported/entrada/campamento_organigrama.json'
 GUIA = 'ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.md'
+GUIA_WIKI = 'ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.wiki.md'   # lo sembrado no lleva tablas (D-O34)
 
 PLAZA = '<pendiente: plaza o lugar de la Asamblea General>'
 SUBS = [
@@ -71,7 +72,16 @@ def responsable(x):
 
 def img(kind, x): return f'{kind}-{x["id"]}.png'
 
+# El organigrama de Campamento es la v1 (sin ids de subgrupo): las sub-tribus de Comunicación citan a la comisión.
+IDS = {'documento'}
+def _ids(n):
+    if isinstance(n, list): [_ids(v) for v in n]
+    elif isinstance(n, dict):
+        if isinstance(n.get('id'), str): IDS.add(n['id'])
+        [_ids(v) for v in n.values()]
+_ids(o['organos']); _ids(o['metodos_y_conceptos'])
 for x in t['tribes']:
+    if x.get('parent') and x['origen'] not in IDS: x['origen'] = 'comision_de_comunicacion'
     x['responsable'] = responsable(x)
     x['image'] = img('tribu', x)
     x['tags'] = [('campamento' if g == 'campamento' else g) for g in x['tags']]
@@ -98,15 +108,16 @@ for x in t['maps']:
     x['tags'] = [('plaza' if g == 'sol' else g) for g in x['tags']]
     if x['id'] == 'mapa_sol':
         x['id'] = 'mapa_plaza'; x['title'] = 'La plaza'; x['image'] = img('mapa', x)
+t['wiki'] = [w for w in t['wiki'] if w['id'] != 'wiki_reparto']   # la de Acampada apunta a su dosier; Campamento trae la suya
 for x in t['wiki']:
     x['image'] = img('wiki', x)
     x['clearnetPublic'] = True
     x['responsable'] = x['origen']
 t['wiki'].append({
     'id': 'wiki_reparto', 'origen': 'documento', 'title': 'Guía de reparto de accesos',
-    'file': GUIA, 'editPolicy': 'author', 'tags': ['manual', 'reparto'],
+    'file': GUIA_WIKI, 'editPolicy': 'author', 'tags': ['manual', 'reparto'],
     'image': 'wiki-wiki_reparto.png', 'clearnetPublic': True, 'responsable': 'documento',
-    'nota': 'La genera template-seed.js --reparto: libro del operador, sin códigos. Misma fuente que la página de la Sala 02 del sitio.'
+    'nota': 'La genera template-seed.js --reparto --wiki (sin tablas, D-O34): libro del operador, sin códigos. El md con tablas (dosier y Sala 02) es ' + GUIA + '.'
 })
 
 DST_T.write_text(json.dumps(t, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

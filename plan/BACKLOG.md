@@ -872,6 +872,12 @@ Dep: WP-O132.
 
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
+| **WP-O136** | **P1** | Wikis sin tablas: lo que se siembra en Oasis se reexpresa para su renderer (guía de reparto y manual) y el drill 26S se relanza limpio con la vista previa |
+
+**BRIEF** · Un revisor midió que la wiki «Guía de reparto de accesos» sembrada en el drill 26S sale rota: `src/backend/renderStyledText.js` (renderer propio de upstream, regex) no tiene sintaxis de tabla ni `<br>`, y `renderWikiBody` (`wiki_view.js:22`) mete cada bloque en un `<p>`; las filas salen con las barras literales. Decisión (D-O34): no se toca `src/` ni se añade un guard (la wiki la leen clientes upstream); **ningún cuerpo que acabe en una wiki lleva tablas**. También el manual de bienvenida (`onboarding-nodo.md`, 45 líneas de tabla, 20,5 KB > `maxlength` 20000 del formulario). Encargo: elegir la forma, regenerar desde la plantilla (no a mano), verificar con el renderer real, relanzar el drill y regenerar la vista previa del formulario.
+
+**Estado** · ✅ 2026-10-11, rama `dev/26sm-exported` (runbook `ARCHIVO/DISCO/26sm-exported/runbook-drill-26s.md`, segunda ejecución). Hecho: `reparto.js` emite dos formas (`md` con tablas para dosier y sitio; `wiki` sin tablas: por responsable, una lista con un ítem por objeto, sin números en cabeceras), `template-seed.js --reparto --wiki <md>`; `pub/tools/md-sin-tablas.py` (tabla → lista, cabeceras sin número, `####` → `###`, partición equilibrada por `##` con enlaces entre partes si > 20000) → manual en dos wikis; `pub/tools/wiki-render-check.js` (renderer real dentro del contenedor: 0 líneas con `|`, sin `<table`, ≤ 20000); plantillas de la 26S y Campamento apuntan a las variantes `.wiki.md` (6 wikis). Drill vaciado y relanzado con la receta en `drill-26s.sh` (`join`, `about`, `seed`, `snapshot|check`, `client-join`): 147 mensajes con delta = previsto, HUB con 6 wikis, cliente replicando a los 10 s, guía de reparto en `/c` como listas sin barras (comprobado en captura a tamaño real), pub Δ1/HUB Δ0, bot real intacto; drill **levantado** para que el custodio navegue. Vista previa regenerada (17 públicas + 4 guías enteras + 12 internas, 6,6 MB; zip 6 MB). Anotado: la wiki de reparto con enlaces `/c` pasa de 20000 (se siembra sin ellos). **Añadido por el custodio (2026-10-11)**: la vista previa incluye **enteras** las páginas de guía (organigrama y funcionamiento, manual de bienvenida en dos partes, guía de reparto) en una sección «Guías para validar», para que branding y contenidos comprueben que el procedimiento se entiende; se capturan a altura completa en `/c`. Dep: WP-O131.
+
 **Estado** · ✅ 2026-09-19 en `main`. Asientos D-O20, D-O23.
 `AGENTS.md` raíz → `docs/AGENTES.md` (árbol intención → protocolo, reglas
 universales, tabla de irreversibles, trampas agregadas, convención de
@@ -1401,9 +1407,9 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 | prioridad | WPs |
 | --------- | --- |
 | **P0** | **16** |
-| **P1** | **39** |
+| **P1** | **40** |
 | **P2** | **22** |
-| **total** | **77** |
+| **total** | **78** |
 
 (2026-09-13: +WP-O46 P1, +WP-O47 P2 en L4, asiento D-O13.)
 (2026-09-17: +WP-O97 P1 en L4 — upgrade 1.1.2 con HUB.)
@@ -1413,6 +1419,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-18: +WP-O101 P2 en L4 — Roadmap: dosieres de trabajo en docs/ROADMAP, asiento D-O18.)
 (2026-09-19: +WP-O110 P2 en L4 — Teatro P2P con cartelera, planificado; dosier en docs/ROADMAP/p2p, asiento D-O24.)
 (2026-10-01: +WP-O112 P1, +WP-O113 P1, +WP-O114 P1 en L4 — protocolo de upgrade y ciclo 1.1.4 → 1.1.10, asiento D-O25.)
+(2026-10-11: +WP-O136 P1 en L4 — wikis sin tablas (renderer de Oasis) y drill 26S relanzado, asiento D-O34. El conteo no se había actualizado desde O114: solo se suma este.)
 (2026-09-18: +WP-O102 P1 en L5 — hub-wallet del pub (ecoind + wallet-bot-2), +WP-O103 P1 en L4 — ECOin en el cliente, asiento D-O19.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08

@@ -32,7 +32,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Nota: La membresía son las portavocías vigentes: rotar = salir + invitar (la clave de la tribu rota en cada salida).
 
 ### 1.3 Nodo Norte  `origen: nodo_norte`
-- Description: Asamblea abierta de barrios y territorios del norte. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
+- Description: Asamblea abierta de barrios y territorios del norte. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Chamartín: Prosperidad, El Viso, Ciudad Jardín, Hispanoamérica, Nueva España, Castilla. Tetuán: Cuatro Caminos, Bellas Vistas, Castillejos, Berruguete, Almenara, Valdeacederas, Fuencarral, El Pilar, La Paz, Mirasierra, Montecarmelo, Tres Olivos, Las Tablas, Sanchinarro Hortaleza, Pinar del Rey, Canillas, Valdebebas, El Pardo, Municipios, Alcobendas, San Sebastián de los Reyes, Tres Cantos, Colmenar Viejo, San Agustín del Guadalix, Algete, Soto del Real, Manzanares el Real.
 - Tags: nodo, norte
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
@@ -41,7 +41,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Responsable del reparto: `nodo_norte`
 
 ### 1.4 Nodo Oeste  `origen: nodo_oeste`
-- Description: Asamblea abierta de barrios y territorios del oeste. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
+- Description: Asamblea abierta de barrios y territorios del oeste. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Latina, Aluche, Lucero, Campamento, Puerta del Ángel, Casa de Campo, Carabanchel occidental, Moncloa, Aravaca, Valdemarín, El Plantío, Móstoles, Alcorcón, Pozuelo de Alarcón, Majadahonda, Las Rozas, Boadilla del Monte, Villaviciosa de Odón, Villanueva de la Cañada, Brunete, Navalcarnero.
 - Tags: nodo, oeste
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
@@ -50,7 +50,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Responsable del reparto: `nodo_oeste`
 
 ### 1.5 Nodo Centro  `origen: nodo_centro`
-- Description: Asamblea abierta de barrios y territorios del centro. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
+- Description: Asamblea abierta de barrios y territorios del centro. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Centro: Sol, Palacio, Embajadores, Cortes, Justicia, Universidad Malasaña, Chueca, Lavapiés, La Latina, Austrias, Barrio de las Letras, Huertas, Gran Vía. Chamberí: Trafalgar, Malasaña/Universidad, Almagro, Ríos Rosas, Gaztambide, Arapiles, Argüelles, Moncloa, Retiro / Jerónimos, Salamanca: Goya, Lista, Recoletos.
 - Tags: nodo, centro
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
@@ -59,7 +59,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Responsable del reparto: `nodo_centro`
 
 ### 1.6 Nodo Este  `origen: nodo_este`
-- Description: Asamblea abierta de barrios y territorios del este. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
+- Description: Asamblea abierta de barrios y territorios del este. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Ciudad Lineal: Ventas, Pueblo Nuevo, Quintana, Concepción, San Pascual... Moratalaz, Vicálvaro, San Blas, Canillejas, Simancas, Las Rosas, Rejas, Barajas, Alameda de Osuna. Campo de las Naciones, Alcalá de Henares, Torrejón de Ardoz, Coslada, San Fernando de Henares, Rivas-Vaciamadrid, Mejorada del Campo, Velilla de San Antonio, Arganda del Rey, Paracuellos de Jarama, Meco, Daganzo.
 - Tags: nodo, este
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
@@ -68,7 +68,7 @@ Quién crea cada objeto es decisión del colectivo: **<DECISIÓN del colectivo: 
 - Responsable del reparto: `nodo_este`
 
 ### 1.7 Nodo Sur  `origen: nodo_sur`
-- Description: Asamblea abierta de barrios y territorios del sur. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos.
+- Description: Asamblea abierta de barrios y territorios del sur. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Arganzuela, Delicias, Legazpi, Usera, Orcasitas, Orcasur, San Fermín, Moscardó, Almendrales, Carabanchel, Opañel, San Isidro, Vista Alegre, Puerta Bonita, Abrantes, Buenavista, Vallecas, Puente de Vallecas, Villa de Vallecas, Ensanche de Vallecas, Villaverde. Getafe, Leganés, Fuenlabrada, Parla, Pinto, Valdemoro, Humanes de Madrid, Ciempozuelos, San Martín de la Vega.
 - Tags: nodo, sur
 - Status: **Pública** · Mode: **Abierta (cualquier miembro invita)**
 - Tras crearla: **Open invitation → Create** (botón «Unirse a la tribu» + QR en la tarjeta). Imprimir el QR si es una tribu de calle.
@@ -247,23 +247,23 @@ Las crea la identidad que las vaya a presidir: el token de la sala se firma con 
 
 ### 4.3 Nodo Norte  `origen: nodo_norte`
 - Status: OPEN · Tribe: «Nodo Norte»
-- Fecha: día +2 a las <pendiente> · label «Asamblea del nodo» · sin intervalo (**variable**): cada reunión se añade a mano con «Add date» · nota: Periodicidad según cada nodo.
+- Fecha: día +2 a las <pendiente: hora de la asamblea del nodo> · label «Asamblea del nodo» · sin intervalo (**variable**): cada reunión se añade a mano con «Add date» · nota: Periodicidad según cada nodo.
 
 ### 4.4 Nodo Oeste  `origen: nodo_oeste`
 - Status: OPEN · Tribe: «Nodo Oeste»
-- Fecha: día +2 a las <pendiente> · label «Asamblea del nodo» · sin intervalo (**variable**): cada reunión se añade a mano con «Add date» · nota: Periodicidad según cada nodo.
+- Fecha: día +2 a las <pendiente: hora de la asamblea del nodo> · label «Asamblea del nodo» · sin intervalo (**variable**): cada reunión se añade a mano con «Add date» · nota: Periodicidad según cada nodo.
 
 ### 4.5 Nodo Centro  `origen: nodo_centro`
 - Status: OPEN · Tribe: «Nodo Centro»
-- Fecha: día +2 a las <pendiente> · label «Asamblea del nodo» · sin intervalo (**variable**): cada reunión se añade a mano con «Add date» · nota: Periodicidad según cada nodo.
+- Fecha: día +2 a las <pendiente: hora de la asamblea del nodo> · label «Asamblea del nodo» · sin intervalo (**variable**): cada reunión se añade a mano con «Add date» · nota: Periodicidad según cada nodo.
 
 ### 4.6 Nodo Este  `origen: nodo_este`
 - Status: OPEN · Tribe: «Nodo Este»
-- Fecha: día +2 a las <pendiente> · label «Asamblea del nodo» · sin intervalo (**variable**): cada reunión se añade a mano con «Add date» · nota: Periodicidad según cada nodo.
+- Fecha: día +2 a las <pendiente: hora de la asamblea del nodo> · label «Asamblea del nodo» · sin intervalo (**variable**): cada reunión se añade a mano con «Add date» · nota: Periodicidad según cada nodo.
 
 ### 4.7 Nodo Sur  `origen: nodo_sur`
 - Status: OPEN · Tribe: «Nodo Sur»
-- Fecha: día +2 a las <pendiente> · label «Asamblea del nodo» · sin intervalo (**variable**): cada reunión se añade a mano con «Add date» · nota: Periodicidad según cada nodo.
+- Fecha: día +2 a las <pendiente: hora de la asamblea del nodo> · label «Asamblea del nodo» · sin intervalo (**variable**): cada reunión se añade a mano con «Add date» · nota: Periodicidad según cada nodo.
 
 ## 5. Eventos (1) — `Menú → Events → Create`
 
@@ -290,11 +290,101 @@ Las crea la identidad que las vaya a presidir: el token de la sala se firma con 
 - Description: Relación con entidades de la sociedad civil. Cifrada: solo miembros.
 - Type: **CLOSED** (cifrada: añadir miembros al crearla)
 
-## 7. Wikis (5) — `Menú → Wiki → Create page`
+## 7. Wikis (6) — `Menú → Wiki → Create page`
 
 ### 7.1 Organigrama y funcionamiento  `origen: documento`
 - Edit policy: **open** · Tags: organigrama
-- Cuerpo: <pendiente: texto del organigrama redactado por el colectivo a partir del JSON de entrada>
+- Cuerpo: # Campamento · Organigrama y funcionamiento
+
+> Página generada desde el organigrama publicado por el colectivo el 2026-10-06 (https://<pendiente: pub del colectivo>/c/blog/organigrama-y-funcionamiento-acampada-26s-madrid-sbcuz1g9). El colectivo la revisa y la corrige; la fuente es la imagen, no esta página.
+
+**Estructura asamblearia, horizontal y en red.** Objetivo del movimiento: Paralizar el país mediante una huelga general para lograr un cambio de modelo que resuelva el problema de la vivienda y el resto de problemas para la calidad de vida de las personas.
+
+## Asamblea General
+Órgano mayor de representación.
+Se reúne: diaria a las 20:00, en <pendiente: plaza o lugar de la Asamblea General>.
+- Ratifica consensos (técnica del semáforo)
+- Espacio informativo y de consenso
+- Exposición de nodos y comisiones
+- Lectura de comunicados y eventos
+- Revisión de acuerdos y temas para los nodos
+
+## Asamblea Internodos
+Reunión de portavocías de los nodos territoriales.
+Se reúne: diaria a las 19:00 (previa a la Asamblea General).
+- Pone en común las propuestas de los nodos
+- Aglutina consensos para la Asamblea General
+- Portavocías rotativas, sin poder de decisión
+
+## Nodos territoriales
+- Asambleas abiertas por barrios/territorios
+- Debaten los temas de la Asamblea General
+- Elaboran propuestas y buscan consensos
+- Eligen 2-3 portavoces (rotativos) para la Asamblea Internodos
+- Periodicidad variable (según cada nodo)
+
+- **Nodo Norte**
+- **Nodo Oeste**
+- **Nodo Centro**
+- **Nodo Este**
+- **Nodo Sur**
+
+## Personas
+Participación individual.
+- Acudiendo a su nodo territorial
+- Uniéndose a una comisión de trabajo
+- Siguiendo los canales de comunicación
+- Participando en las actividades y eventos
+
+## Comisiones de trabajo
+Funcionamiento, convivencia y desarrollo de el campamento.
+Abiertas a toda la población.
+
+- **Comunicación**: Comunicación interna y externa, redes, medios, diseño, etc.
+- **Urbanismo**: Vivienda, ciudad, planificación.
+- **Cuidados**: Bienestar, salud, primeros auxilios.
+- **Dinamización**: Facilita las asambleas y procesos de decisión.
+- **Mediación**: Resolución de conflictos y convivencia.
+- **Limpieza**: Gestión de residuos y mantenimiento.
+- **Abastecimiento**: Alimentación, materiales y suministros.
+
+## Comisión de Comunicación
+Facilita la comunicación dentro y fuera de el campamento. Coordina con nodos, comisiones y Asamblea General.
+
+Subgrupos (hoy en Telegram):
+- General
+- Redes / contenido digital
+- Comunicación interna
+- Audiovisual (foto/vídeo)
+- Diseño y branding
+- Cultura y eventos
+- Relaciones públicas (PIAR)
+- Coordinación / gabinete de crisis
+- Corrección de textos
+
+## Otros espacios de articulación
+
+- **InterCSOs**: Relación con entidades y actores de la sociedad civil (ámbito estatal e internacional).
+- **Asamblea de Colectivos**: Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas.
+
+## Flujo de decisión
+
+- Ascendente: Personas → Nodos territoriales → Asamblea Internodos → Asamblea General
+- Descendente: Asamblea General → Asamblea Internodos → Nodos territoriales → Personas
+- Cada día: 19:00 Asamblea Internodos · 20:00 Asamblea General
+
+## Técnica del semáforo
+Método de consenso para valorar las propuestas en la Asamblea General.
+- Verde: Acuerdo / A favor
+- Amarillo: Dudas / A revisar
+- Rojo: En contra
+
+## Portavocías rotativas
+- 2-3 portavoces por nodo
+- Rotativas
+- Sin poder de decisión
+- Transmiten las propuestas de su nodo
+
 
 ### 7.2 Técnica del semáforo  `origen: tecnica_semaforo`
 - Edit policy: **author** · Tags: metodo
@@ -304,19 +394,23 @@ Las crea la identidad que las vaya a presidir: el token de la sala se firma con 
 - Edit policy: **author** · Tags: metodo
 - Cuerpo: 2-3 portavoces por nodo, rotativas, sin poder de decisión: transmiten las propuestas de su nodo a la Asamblea Internodos. En Oasis: ser portavoz = ser miembro de la tribu Asamblea Internodos durante el turno; al terminar, se sale de la tribu y entra la siguiente portavocía.
 
-### 7.4 Oasis para el nodo · manual de bienvenida  `origen: personas`
+### 7.4 Oasis para el nodo · manual de bienvenida · 1 de 2  `origen: personas`
 - Edit policy: **open** · Tags: manual
-- Cuerpo: pegar `ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md`
+- Cuerpo: pegar `ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md`
 
-### 7.5 Guía de reparto de accesos  `origen: documento`
+### 7.5 Oasis para el nodo · manual de bienvenida · 2 de 2  `origen: personas`
+- Edit policy: **open** · Tags: manual
+- Cuerpo: pegar `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md`
+
+### 7.6 Guía de reparto de accesos  `origen: documento`
 - Edit policy: **author** · Tags: manual, reparto
-- Cuerpo: pegar `ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.md`
+- Cuerpo: pegar `ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.wiki.md`
 
 ## 8. Mapas (2) — `Menú → Maps → Create`
 
 ### 8.1 La plaza  `origen: asamblea_general`
-- Type: **SINGLE** · centro 0, 0 · Lugar de la Asamblea General, cada día a las 20:00.
-- Nota: <pendiente: coordenadas de la plaza; 0,0 es el valor sin decidir, no una ubicación>
+- Type: **SINGLE** · centro 0, 0 · Lugar de la Asamblea General, cada día a las 20:00 (junto a Goiko Grill).
+- Nota: <pendiente: confirmar coordenadas (aproximadas, puestas en la plantilla WP-O129 el 2026-10-07)> <pendiente: coordenadas de la plaza; 0,0 es el valor sin decidir, no una ubicación>
 
 ### 8.2 Nodos territoriales  `origen: nodos_territoriales`
 - Type: **OPEN** · centro 0, 0 · Mapa colaborativo: cada nodo marca dónde se reúne.
@@ -357,16 +451,15 @@ Un `follow` entre pubs es un `contact` irreversible: PERMISO expreso cada vez.
 - **school** `origen: portavocias_rotativas`: Ya dentro de activists: cursos y lecciones para formar portavocías y mesa técnica.
 - **banking** `origen: documento`: ECOin: un pub con cartera paga renta básica a los habitantes activos. Economía interna opcional; protocolo ECOIN-PROTOCOL.md.
 
-## 14. Pendiente de decidir por el colectivo (11)
+## 14. Pendiente de decidir por el colectivo (10)
 
 - meta.pub: <pendiente: pub del colectivo>
 - meta.autoria: <DECISIÓN del colectivo: qué identidad crea cada tribu; solo el autor la borra o reestructura>
-- calendars[2] cal_nodo_norte.dates[0].hora: <pendiente>
-- calendars[3] cal_nodo_oeste.dates[0].hora: <pendiente>
-- calendars[4] cal_nodo_centro.dates[0].hora: <pendiente>
-- calendars[5] cal_nodo_este.dates[0].hora: <pendiente>
-- calendars[6] cal_nodo_sur.dates[0].hora: <pendiente>
-- wiki[0] wiki_organigrama: <pendiente: texto del organigrama redactado por el colectivo a partir del JSON de entrada>
-- maps[0] mapa_plaza.nota: <pendiente: coordenadas de la plaza; 0,0 es el valor sin decidir, no una ubicación>
+- calendars[2] cal_nodo_norte.dates[0].hora: <pendiente: hora de la asamblea del nodo>
+- calendars[3] cal_nodo_oeste.dates[0].hora: <pendiente: hora de la asamblea del nodo>
+- calendars[4] cal_nodo_centro.dates[0].hora: <pendiente: hora de la asamblea del nodo>
+- calendars[5] cal_nodo_este.dates[0].hora: <pendiente: hora de la asamblea del nodo>
+- calendars[6] cal_nodo_sur.dates[0].hora: <pendiente: hora de la asamblea del nodo>
+- maps[0] mapa_plaza.nota: <pendiente: confirmar coordenadas (aproximadas, puestas en la plantilla WP-O129 el 2026-10-07)> <pendiente: coordenadas de la plaza; 0,0 es el valor sin decidir, no una ubicación>
 - federation[0].pub: <pendiente: pub de la entidad, si lo tiene>
 - federation[1].pub: <pendiente: pubs de los colectivos aliados>

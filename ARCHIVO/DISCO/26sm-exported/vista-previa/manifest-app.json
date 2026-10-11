@@ -1,12 +1,12 @@
 {
   "base": "http://localhost:3100",
-  "at": "2026-10-11T18:22:57Z",
+  "at": "2026-10-11T18:56:05Z",
   "items": [
     {
       "url": "/",
       "file": "img/app-portada.jpg",
-      "bytes": 168097,
-      "sha256": "414860682ced6f983607e4c9953cd5f48b8d7c1e92bcc18d226df40552882a77",
+      "bytes": 169160,
+      "sha256": "fdba9e4921d7758c38beeba24fcc9c80c8bd5f93117f1b213ce99b09cbf3c4f8",
       "section": null,
       "id": null,
       "title": null
@@ -14,17 +14,17 @@
     {
       "url": "/tribes",
       "file": "img/app-tribes.jpg",
-      "bytes": 211069,
-      "sha256": "71433d8f286fc2c534b111f26178a67713708e71b23af55266c297b5b5e82a15",
+      "bytes": 213317,
+      "sha256": "bfcce52e4dd473ba096aac13aa0a699bfab8f840898ceb2f178f898711718d67",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/tribe/%25jpa%2FUCqYnk4ON%2BxEfpT4sGRZu8c8ts5wklznYeWjqoo%3D.sha256",
-      "file": "img/app-tribe-jpa-ucqy.jpg",
-      "bytes": 144156,
-      "sha256": "80b03d984cb00d2778f5eb780f7517e41df2a2e02a1c10c34baa2e412abbb7b2",
+      "url": "/tribe/%25ySg%2F510cdCyzXpSeg5UsVnCjOx7VyDWSN4c%2FE8wCAY8%3D.sha256",
+      "file": "img/app-tribe-ysg-510c.jpg",
+      "bytes": 143291,
+      "sha256": "ce8694034c6506cd31206f753316fd860a21b17a6d0c0dcbd330874214bf0da7",
       "section": "tribes",
       "id": "asamblea_colectivos",
       "title": "Asamblea de Colectivos"
@@ -32,8 +32,8 @@
     {
       "url": "/wiki",
       "file": "img/app-wiki.jpg",
-      "bytes": 154376,
-      "sha256": "6416c45cf1881461894601b704bc68a10093680f9181f4ef4c6b4fda6ff12954",
+      "bytes": 193004,
+      "sha256": "7136e28946efcac561950591839a857890f889dd963f5f8b20ba34a42f617532",
       "section": null,
       "id": null,
       "title": null
@@ -41,8 +41,8 @@
     {
       "url": "/wiki/guia-de-reparto-de-accesos",
       "file": "img/app-wiki-guia-de-reparto-de-accesos.png",
-      "bytes": 189999,
-      "sha256": "f4d3c1202544df696d950290d027b9ad04aeb46e006663737a723cba0a6d73e1",
+      "bytes": 189740,
+      "sha256": "6ef7dc0122c365cc2cd8fbefd4896f167b6689fcda1de2b8ea1e1817df98d291",
       "section": null,
       "id": null,
       "title": null
@@ -50,17 +50,17 @@
     {
       "url": "/calendars",
       "file": "img/app-calendars.png",
-      "bytes": 167918,
-      "sha256": "ef31fbe86be2969aebe37ecc04387e97dd4386e6b88036b824e41753e22736d3",
+      "bytes": 176667,
+      "sha256": "b32554d08e50ca8687c008734c2dd803cc5f78893604aeded50ca92dedaebcc3",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/calendars/%25oxMNuMY9OutRhnPiEVtqDzwShZY2cnUDCNFjT5suriQ%3D.sha256",
-      "file": "img/app-calendars-oxmnumy9.png",
-      "bytes": 247471,
-      "sha256": "cdf56df5a46a1343be38a4160636793470b568a5763fd1307f2eefc7698afde5",
+      "url": "/calendars/%25wl3ZGfzk9eGUgNltMPFJVKbMJPIuE%2FagBWmoNzIk9xk%3D.sha256",
+      "file": "img/app-calendars-wl3zgfzk.png",
+      "bytes": 246715,
+      "sha256": "3a7e2113e8d4b9a2ab81964b23626359e9e3132479d52081a97e2a1085a156fb",
       "section": "calendars",
       "id": "cal_asamblea_general",
       "title": "Asamblea General"
@@ -68,17 +68,17 @@
     {
       "url": "/rooms",
       "file": "img/app-rooms.png",
-      "bytes": 131760,
-      "sha256": "97aca75be8e85a397725d93626ddd136d0b4cc0657a80a92dcfd42c83dd7f175",
+      "bytes": 132996,
+      "sha256": "2fdee1826199dfc887999cc33feae6431ed0ec4ad9dcb6780ea90a3bba4180bc",
       "section": null,
       "id": null,
       "title": null
     },
     {
       "url": "/maps",
-      "file": "img/app-maps.png",
-      "bytes": 228176,
-      "sha256": "19503aff8b8098478ea454339a5175d1557ae4fc77ba6253819cc7536f831ad3",
+      "file": "img/app-maps.jpg",
+      "bytes": 124073,
+      "sha256": "0d6f19346cee40e0c511520cc04f3a8a41783e9f5694f3540f71d4396768ec72",
       "section": null,
       "id": null,
       "title": null
@@ -86,8 +86,8 @@
     {
       "url": "/events",
       "file": "img/app-events.jpg",
-      "bytes": 177787,
-      "sha256": "18f35a8f1f68e643e7718614ddf996d64f879ec40d371a96220822a136700145",
+      "bytes": 192753,
+      "sha256": "47ce23b718d6e7f62c6b8ea43a89a64cc32864499b1ffd38220457edd33a548e",
       "section": null,
       "id": null,
       "title": null
@@ -95,17 +95,17 @@
     {
       "url": "/mailing",
       "file": "img/app-mailing.png",
-      "bytes": 183241,
-      "sha256": "98bf1cc16c2a3b89eece1c68d1470886a710849be42ed891f5429110867cbf96",
+      "bytes": 223001,
+      "sha256": "0b4c08fc78c93015e223a89defd266771469972ad4783bb5c9541cee8e524e42",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/author/%40U9DgIVuWoZ7OTPnE%2BNWtVN6EP06P%2BNSdnl97PcuC1PE%3D.ed25519",
-      "file": "img/app-author-u9dgivuw.png",
-      "bytes": 242161,
-      "sha256": "f742da3322a398bc3d85bda9888fdb329d69618233d82abb78b7e4d75688c9da",
+      "url": "/author/%40al0mhjPJ4RCxQIc1lbhofdDSP0sa%2F30Px9918YGxI4o%3D.ed25519",
+      "file": "img/app-author-al0mhjpj.png",
+      "bytes": 246417,
+      "sha256": "ca22dce56ab4970fbf6fc57e800cf9dfaecc4cfe12890295650827be9e550969",
       "section": null,
       "id": null,
       "title": null

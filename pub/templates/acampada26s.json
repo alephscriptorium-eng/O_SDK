@@ -873,13 +873,27 @@
     {
       "id": "wiki_onboarding",
       "origen": "personas",
-      "title": "Oasis para el nodo · manual de bienvenida",
-      "file": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md",
+      "title": "Oasis para el nodo · manual de bienvenida · 1 de 2",
+      "file": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md",
       "editPolicy": "open",
       "tags": [
         "manual"
       ],
       "image": "wiki-wiki_onboarding.png",
+      "clearnetPublic": true,
+      "responsable": "personas",
+      "nota": "Variante sin tablas de ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md (pub/tools/md-sin-tablas.py), partida en dos por el límite de 20000 del formulario de wiki."
+    },
+    {
+      "id": "wiki_onboarding_2",
+      "origen": "personas",
+      "title": "Oasis para el nodo · manual de bienvenida · 2 de 2",
+      "file": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md",
+      "editPolicy": "open",
+      "tags": [
+        "manual"
+      ],
+      "image": "wiki-wiki_onboarding_2.png",
       "clearnetPublic": true,
       "responsable": "personas"
     },
@@ -887,7 +901,7 @@
       "id": "wiki_reparto",
       "origen": "documento",
       "title": "Guía de reparto de accesos",
-      "file": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.md",
+      "file": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md",
       "editPolicy": "author",
       "tags": [
         "manual",
@@ -896,7 +910,7 @@
       "image": "wiki-wiki_reparto.png",
       "clearnetPublic": true,
       "responsable": "documento",
-      "nota": "La genera template-seed.js --reparto: libro del operador, sin códigos."
+      "nota": "La genera template-seed.js --reparto --wiki (sin tablas): libro del operador, sin códigos. El md con tablas del dosier es ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.md."
     }
   ],
   "maps": [

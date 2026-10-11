@@ -349,9 +349,18 @@
       "section": "wiki",
       "file": "wiki-wiki_onboarding.png",
       "lona": "lona-036.jpg",
-      "bytes": 336291,
-      "sha256": "0b4e075326dc5f2c97c7edcf448f676d88f892d766252ddf0a41e29962db9acf",
-      "blobId": "&C04HUybcXyyXx+3PRI9nbYj4ktdmJS3fCkHimWLbms8=.sha256"
+      "bytes": 336894,
+      "sha256": "7b18304b42343b3e2caecc2f65201d1b76224251b00d37355063c193bd168b4b",
+      "blobId": "&exgwS0I0Oz4srswvZSAdG3YiQlGwDTc1UGPBk70Wi0s=.sha256"
+    },
+    {
+      "id": "wiki_onboarding_2",
+      "section": "wiki",
+      "file": "wiki-wiki_onboarding_2.png",
+      "lona": "lona-071.jpg",
+      "bytes": 357541,
+      "sha256": "506b1528ab8101de80aaa4d5a5babbc980f056db76785694941ba96141d328b6",
+      "blobId": "&UGsVKKuBAd6AqqTVpbq7yYDwVtt2eFaUlBupYUHTKLY=.sha256"
     },
     {
       "id": "wiki_reparto",
@@ -366,17 +375,25 @@
       "id": "wiki_onboarding",
       "section": "wiki-file",
       "file": "wiki/wiki_onboarding.md",
-      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md",
-      "bytes": 20555,
-      "sha256": "081193f11b13b20fc9727a53a14df0d731ae1a66e07128f9b3f0e5b596232f91"
+      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md",
+      "bytes": 10635,
+      "sha256": "434ba9e4cdc575e656c799f6dfc4b8e3a26f722860929f337365de295d16e668"
+    },
+    {
+      "id": "wiki_onboarding_2",
+      "section": "wiki-file",
+      "file": "wiki/wiki_onboarding_2.md",
+      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md",
+      "bytes": 10058,
+      "sha256": "c1aa0370e7294da1f3642c29472b887405a7adf0e0ac782fab26998a4dacbe6b"
     },
     {
       "id": "wiki_reparto",
       "section": "wiki-file",
       "file": "wiki/wiki_reparto.md",
-      "from": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.md",
-      "bytes": 16696,
-      "sha256": "73dfb461dfbe41664f9d9d2dde1ec435a3a3ebae5839d52a15d8d1364fff773a"
+      "from": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md",
+      "bytes": 18337,
+      "sha256": "83cf55b739e651f2bcbb8cea2b1fba72cb7ed8c85b334ee5a46a0544146ee976"
     }
   ],
   "brand": {

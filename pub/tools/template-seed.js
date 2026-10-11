@@ -11,7 +11,8 @@
 // Uso:
 //   node pub/tools/template-seed.js --template pub/templates/campamento.json \
 //        [--organigrama <json>] [--assets <dir>] [--out <fichero.md>] --guion
-//   node pub/tools/template-seed.js --template <json> --reparto [--ledger <json>] [--html <plantilla>] [--out <md|html>]
+//   node pub/tools/template-seed.js --template <json> --reparto [--ledger <json>] [--html <plantilla>] [--out <md|html>] [--wiki <md>]
+//        (--wiki escribe además la variante SIN tablas que se siembra como wiki en Oasis: D-O34)
 //   node pub/tools/template-seed.js --template <json> --assets <dir> --hot [--yes <bloque>]... [--pub-id <feed>]
 //        [--ledger <json>] [--evidence <json>] [--reconcile]          (dentro del contenedor del bot)
 
@@ -35,7 +36,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--guion' || a === '--reparto' || a === '--cold' || a === '--hot' || a === '--verify') args.mode = a.slice(2);
-    else if (['--template', '--organigrama', '--out', '--ledger', '--assets', '--pub-id', '--evidence', '--html'].includes(a)) args[a.slice(2).replace('-id', 'Id')] = argv[++i];
+    else if (['--template', '--organigrama', '--out', '--ledger', '--assets', '--pub-id', '--evidence', '--html', '--wiki'].includes(a)) args[a.slice(2).replace('-id', 'Id')] = argv[++i];
     else if (a === '--yes') args.yes.push(argv[++i]);
     else if (a === '--reconcile') args.reconcile = true;
     else if (a === '--dry-run') args.dryRun = true;
@@ -451,6 +452,12 @@ function guion(t, args) {
     const rp = require('./lib/reparto');
     text = rp.reparto(t, { template: args.template, ledger, pending, organigrama: args.organigrama ? readJson(args.organigrama) : null });
     if (args.html) text = rp.toHtml(text, t, fs.readFileSync(args.html, 'utf8'));
+    if (args.wiki) {
+      const w = rp.reparto(t, { template: args.template, ledger, pending, organigrama: args.organigrama ? readJson(args.organigrama) : null, forma: 'wiki' });
+      fs.writeFileSync(args.wiki, w);
+      const bad = w.split('\n').filter(l => /^\s*\|/.test(l)).length;
+      console.error(`wiki (sin tablas) escrita en ${args.wiki} (${Buffer.byteLength(w)} B, ${bad} líneas con |)`);
+    }
   } else {
     text = guion(t, args);
     if (pending.length) {

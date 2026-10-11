@@ -39,7 +39,11 @@ function orgName(org, id) {
   return found || id;
 }
 
-function reparto(t, { template, ledger, pending, organigrama } = {}) {
+// forma: 'md' (dosier y sitio: con tablas) | 'wiki' (lo que se siembra en Oasis: SIN tablas, sin números en las
+// cabeceras; el renderer de upstream (src/backend/renderStyledText.js) no tiene sintaxis de tabla ni <br>, y una
+// cabecera «## 2. X» se vuelve además ítem numerado). D-O34.
+function reparto(t, { template, ledger, pending, organigrama, forma = 'md' } = {}) {
+  const wiki = forma === 'wiki';
   const m = t.meta;
   const rep = m.reparto || {};
   const sections = ['tribes', 'rooms', 'calendars', 'mailing', 'maps', 'events', 'wiki'];
@@ -67,7 +71,7 @@ function reparto(t, { template, ledger, pending, organigrama } = {}) {
   out();
   out('> **Aquí no hay ningún código.** Los códigos de invitación viven en la tarjeta de cada objeto, dentro del Oasis de quien lo reparte, y se entregan en mano o por QR impreso. Esta guía dice *quién* y *dónde*, nunca *cuál*.');
   out();
-  out('## 0. Cómo se entrega');
+  out(wiki ? '## Cómo se entrega' : '## 0. Cómo se entrega');
   out();
   out(`- Mesa técnica: ${rep.mesa_tecnica || '<pendiente>'}`);
   out(`- Modo de entrega: ${rep.entrega || '<pendiente>'}`);
@@ -77,10 +81,11 @@ function reparto(t, { template, ledger, pending, organigrama } = {}) {
 
   let n = 1;
   for (const [resp, items] of byResp) {
-    out(`## ${n++}. ${orgName(organigrama, resp)}  \`responsable: ${resp}\``);
+    out(wiki ? `## ${orgName(organigrama, resp)}` : `## ${n++}. ${orgName(organigrama, resp)}  \`responsable: ${resp}\``);
     out();
-    out('| Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |');
-    out('|---|---|---|---|---|');
+    if (wiki) out(`Responsable del reparto: \`${resp}\`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (\`/c\`).`);
+    if (wiki) out();
+    else { out('| Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |'); out('|---|---|---|---|---|'); }
     for (const { section, x } of items) {
       const a = accessOf(section, x);
       const key = keyOf(section, x.id);
@@ -88,7 +93,9 @@ function reparto(t, { template, ledger, pending, organigrama } = {}) {
       if (section === 'tribes') pub = x.private ? 'no (privada)' : (key ? `[/c/tribe/…](${CLEARNET_PATH.tribes}${encodeURIComponent(key)}) (sale cuando exponga contenido)` : 'cuando tenga contenido expuesto');
       else if (publicInC(section, x)) pub = key ? `[${CLEARNET_PATH[section]}…](${CLEARNET_PATH[section]}${encodeURIComponent(key)})` : 'sí (tras la activación)';
       else pub = 'no';
-      out(`| **${x.title}** (${section === 'tribes' && x.parent ? 'sub-tribu' : section}) | ${a.tipo} | ${a.quien} | ${a.como} | ${pub} |`);
+      const kind = section === 'tribes' && x.parent ? 'sub-tribu' : section;
+      if (wiki) out(`- **${x.title}** (${kind}) · ${a.tipo} · reparte: ${a.quien} · dónde: ${a.como} · web: ${pub}`);
+      else out(`| **${x.title}** (${kind}) | ${a.tipo} | ${a.quien} | ${a.como} | ${pub} |`);
     }
     out();
   }

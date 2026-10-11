@@ -160,7 +160,8 @@ Libro del **operador** (la mesa técnica): a qué órgano le toca cada tribu, sa
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Oasis para el nodo · manual de bienvenida** (wiki) | wiki (open) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
+| **Oasis para el nodo · manual de bienvenida · 1 de 2** (wiki) | wiki (open) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
+| **Oasis para el nodo · manual de bienvenida · 2 de 2** (wiki) | wiki (open) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
 
 ## Reglas que no cambian
 

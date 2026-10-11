@@ -260,6 +260,13 @@ El guion dice *quién crea* cada objeto; el manual del habitante dice *cómo se 
 la tarjeta) y **dónde se obtiene** en la UI. Lo genera `--reparto` desde el campo `responsable` de cada objeto
 (un hecho del organigrama: el órgano; quién dentro del órgano lo recibe es DECISIÓN del colectivo, `meta.reparto`).
 
+- **Lo que se siembra como wiki no lleva tablas** (D-O34, 2026-10-11): el renderer de upstream (`src/backend/renderStyledText.js`)
+  no tiene sintaxis de tabla ni `<br>` y una tabla sale como texto con barras. `--reparto --wiki <md>` escribe la variante
+  para la wiki (por responsable, una lista con un ítem por objeto; cabeceras sin número) y `--out` la del dosier y el sitio (con
+  tablas). Cualquier otro cuerpo con tablas (el manual) pasa por `pub/tools/md-sin-tablas.py` (tabla → lista; si pasa de 20000
+  bytes, el límite del formulario de edición, se parte en dos páginas enlazadas). Gate: `pub/tools/wiki-render-check.js` con el
+  renderer real dentro de un contenedor de la imagen (0 líneas con `|`, sin `<table`, ≤ 20000). La wiki de reparto se siembra
+  **sin** enlaces `/c/…` (con ellos pasa de 20000); los enlaces van en el md del dosier y en la página del sitio.
 - **Nunca códigos ni semillas** (§5): la guía dice *quién* y *dónde*, nunca *cuál*.
 - Con `--ledger` (tras `--hot`) añade el enlace público de cada objeto: `/c/tribe/:id`, `/c/calendars/:id`,
   `/c/rooms/:id`, `/c/maps/:id`, `/c/wiki/:id`, `/c/events/:eventId` (rutas de 1.2.3, `backend.js:7977-8607`).

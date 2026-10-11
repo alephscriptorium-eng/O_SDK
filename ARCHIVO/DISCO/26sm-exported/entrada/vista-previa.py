@@ -46,12 +46,14 @@ def tarjeta(it, tabla, base_real):
 
 mc = json.loads((V / 'manifest-c.json').read_text(encoding='utf-8'))
 ma = json.loads((V / 'manifest-app.json').read_text(encoding='utf-8'))
+mg = json.loads((V / 'manifest-guia.json').read_text(encoding='utf-8')) if (V / 'manifest-guia.json').exists() else {'items': []}
 css = ('body{font-family:system-ui,sans-serif;max-width:1100px;margin:0 auto;padding:16px;color:#1a1a1a;background:#f4f4f4}'
        'h1{font-size:1.5rem}h2{margin-top:2.5rem;border-bottom:3px solid #0452C5;padding-bottom:4px}'
        '.aviso{background:#FF981F;color:#fff;padding:12px 16px;border-radius:6px;font-weight:600}'
        '.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px}'
        'figure{margin:0;background:#fff;border:1px solid #ddd;border-radius:6px;overflow:hidden}'
        'figure img{width:100%;display:block;max-height:420px;object-fit:cover;object-position:top}'
+       '.guias{grid-template-columns:1fr}.guias figure img{max-height:none}'
        'figcaption{padding:10px 12px;font-size:.9rem}code{font-size:.75rem;word-break:break-all}'
        '.nota{background:#fff;border-left:4px solid #0452C5;padding:10px 14px;margin:12px 0}')
 partes = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -70,7 +72,12 @@ partes = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><meta nam
           '<div class="nota">Vista de una persona recién llegada, conectada al pub pero sin pertenecer aún a ningún grupo: ve los grupos abiertos con su tarjeta, '
           'las páginas, calendarios, mapas, eventos y listas. Las salas solo aparecen cuando se entra en el grupo que las tiene.</div>',
           '<div class="grid">', *[tarjeta(it, QUE_APP, '') for it in ma['items']], '</div>',
-          f'<p><small>{len(mc["items"])} capturas públicas + {len(ma["items"])} internas · fuente: <code>ARCHIVO/DISCO/26sm-exported/vista-previa/</code> (rama dev/26sm-exported) · '
+          *(['<h2>3 · Guías para validar (páginas enteras)</h2>',
+             '<div class="nota">Las páginas largas que explican el procedimiento, tal como se leen en la web pública: organigrama y funcionamiento, '
+             'manual de bienvenida (en dos partes) y guía de reparto de accesos. Leedlas enteras y decidnos si se entiende (formulario, bloque D). '
+             'Se muestran sin tablas a propósito: el visor de Oasis no las dibuja.</div>',
+             '<div class="grid guias">', *[tarjeta(it, QUE_C, PUB) for it in mg['items']], '</div>'] if mg['items'] else []),
+          f'<p><small>{len(mc["items"])} capturas públicas + {len(ma["items"])} internas + {len(mg["items"])} guías enteras · fuente: <code>ARCHIVO/DISCO/26sm-exported/vista-previa/</code> (rama dev/26sm-exported) · '
           'generado por <code>entrada/vista-previa.py</code> desde <code>entrada/capturar.py</code>.</small></p></body></html>']
 (V / 'index.html').write_text('\n'.join(partes), encoding='utf-8')
 tot = sum(p.stat().st_size for p in V.rglob('*') if p.is_file() and '.chrome-profile' not in p.parts)

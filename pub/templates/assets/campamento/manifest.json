@@ -310,9 +310,17 @@
       "id": "wiki_onboarding",
       "section": "wiki",
       "file": "wiki-wiki_onboarding.png",
-      "bytes": 18388,
-      "sha256": "f0367e0f92b7caff5d9e35c36c1087ccdc9ac5388dfcc789e24ca0b8b10d2e2f",
-      "blobId": "&8DZ+D5K3yv9dnjXDbBCHzNyaxTiN/MeJ4kyguLENLi8=.sha256"
+      "bytes": 19392,
+      "sha256": "f8fb9ce649d71db0c07f3905b3135ae13afb96a3cf4c6f99ff3f4cdf8b874a83",
+      "blobId": "&+Puc5knXHbDAfzkFsxNa4Tr7lqPPTG+Z/z9M34uHSoM=.sha256"
+    },
+    {
+      "id": "wiki_onboarding_2",
+      "section": "wiki",
+      "file": "wiki-wiki_onboarding_2.png",
+      "bytes": 19303,
+      "sha256": "1f8a16196beb866c26210adc11ee0a6996e98fb61666617c4b64fdfcf03c3618",
+      "blobId": "&H4oWGWvrhmwmIQrcEe4KaZbpj7YWZmF8S2T9/PA8Nhg=.sha256"
     },
     {
       "id": "wiki_reparto",
@@ -326,17 +334,25 @@
       "id": "wiki_onboarding",
       "section": "wiki-file",
       "file": "wiki/wiki_onboarding.md",
-      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md",
-      "bytes": 20170,
-      "sha256": "7c22efd0d5bc30b7fc69a9e9f14a0616276c932e875fd5bd2185f115d2dfd182"
+      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md",
+      "bytes": 10635,
+      "sha256": "434ba9e4cdc575e656c799f6dfc4b8e3a26f722860929f337365de295d16e668"
+    },
+    {
+      "id": "wiki_onboarding_2",
+      "section": "wiki-file",
+      "file": "wiki/wiki_onboarding_2.md",
+      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md",
+      "bytes": 10058,
+      "sha256": "c1aa0370e7294da1f3642c29472b887405a7adf0e0ac782fab26998a4dacbe6b"
     },
     {
       "id": "wiki_reparto",
       "section": "wiki-file",
       "file": "wiki/wiki_reparto.md",
-      "from": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.md",
-      "bytes": 17060,
-      "sha256": "cf03a9bdf8b4470450f2556fe89fa1a863e1779d1f2a2c52c212ee3caa708a16"
+      "from": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.wiki.md",
+      "bytes": 18848,
+      "sha256": "ce99e33dfb3393056d9271be062e0b033df3ed62f42b9a6e5c37d5421f16fc01"
     }
   ]
 }

@@ -493,3 +493,12 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
 | Evidencia de verificación por tercero (T9) | V + mesa | WP-O37 |
 
 — **O**
+
+- **D-O34 · 2026-10-11 · Ningún cuerpo que se siembre como wiki en Oasis lleva tablas; el renderer de upstream no se toca.**
+  Medido: `src/backend/renderStyledText.js` no tiene sintaxis de tabla ni `<br>` y `renderWikiBody` mete cada bloque en un
+  `<p>`; una tabla markdown sale como texto con barras. Como la wiki se replica por SSB y la leen clientes con el Oasis de
+  upstream, el arreglo va en lo que enviamos, no en `src/` (ni guard): `reparto.js` produce una forma `wiki` (listas, sin
+  números en cabeceras) además del md con tablas del dosier y el sitio; `pub/tools/md-sin-tablas.py` reexpresa cualquier
+  otro cuerpo (el manual, partido en dos por el límite de 20000 del formulario) y `pub/tools/wiki-render-check.js` lo
+  verifica con el renderer real. Afecta a WP-O131 (guía de reparto), WP-O136. No se corrige a mano la wiki ya sembrada en
+  un drill: se vacía y se relanza.

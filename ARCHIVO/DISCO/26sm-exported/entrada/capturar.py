@@ -53,6 +53,7 @@ def main():
     ap.add_argument('--prefix', default='c'); ap.add_argument('--urls', default='')
     ap.add_argument('--ledger', default=str(ROOT / 'ARCHIVO/DISCO/26sm-exported/drill/ledger-drill-26s.json'))
     ap.add_argument('--profile', default=''); ap.add_argument('--max-kb', type=int, default=400)
+    ap.add_argument('--height', type=int, default=2400, help='alto de la ventana (las páginas de guía enteras: 9000)')
     ap.add_argument('--relink', action='store_true', help='solo vuelve a asociar cada captura existente del manifest con su objeto (sin capturar)')
     a = ap.parse_args()
     out = Path(a.out).resolve(); img = out / 'img'; img.mkdir(parents=True, exist_ok=True)
@@ -85,7 +86,11 @@ def main():
     for i, p in enumerate(urls, 1):
         name = f'{a.prefix}-{slug(p)}.png'[:120]
         f = img / name
-        ok = shot(f'{a.base}{p}', f, profile=str(profile))
+        if not a.urls:   # del sitemap/ledger: saltar lo que el visor no sirve (índices de módulo, tribus sin contenido expuesto)
+            try:
+                if 'cn-notfound' in fetch(f'{a.base}{p}?nc={int(time.time())}'): print(f'  – {p[:60]} (no accesible)'); continue
+            except Exception as e: print(f'  ✗ {p[:60]} ({e})'); continue
+        ok = shot(f'{a.base}{p}', f, height=a.height, profile=str(profile))
         if not ok: print(f'  ✗ {p}'); continue
         sec, oid, title = objeto_de(p, ledger)
         b = f.read_bytes()

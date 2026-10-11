@@ -1,0 +1,42 @@
+{
+  "base": "http://localhost:8188",
+  "at": "2026-10-11T18:55:02Z",
+  "items": [
+    {
+      "url": "/c/wiki/guia-de-reparto-de-accesos-np6tdrpx",
+      "file": "img/guia-c-wiki-guia-de-reparto-de-accesos-np6tdrpx.jpg",
+      "bytes": 978727,
+      "sha256": "fd9012760ecff37c92f65fe2d4b1f927ebcac98f470758363c6b28e5cacdefad",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-2-de-2-c3fpqdkw",
+      "file": "img/guia-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-2-de-2-c3fpqdkw.jpg",
+      "bytes": 603604,
+      "sha256": "9a06a9efc5d756461a06f4d37cc830be0556a2a3f76ac6235a7e9403c7f49b03",
+      "section": "wiki",
+      "id": "wiki_onboarding_2",
+      "title": "Oasis para el nodo · manual de bienvenida · 2 de 2"
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-1-de-2-mqgzmzyz",
+      "file": "img/guia-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-1-de-2-mqgzmzyz.jpg",
+      "bytes": 637695,
+      "sha256": "e2076d26a4b8f9e872584c29530b6d2b697c6bf77636dcc6201a511528aadeb0",
+      "section": "wiki",
+      "id": "wiki_onboarding",
+      "title": "Oasis para el nodo · manual de bienvenida · 1 de 2"
+    },
+    {
+      "url": "/c/wiki/organigrama-y-funcionamiento-t5kbdoph",
+      "file": "img/guia-c-wiki-organigrama-y-funcionamiento-t5kbdoph.jpg",
+      "bytes": 275784,
+      "sha256": "7b9b52def20cabf5be868225f4560aafbdad0bb47fc7687b455a25821df3a259",
+      "section": "wiki",
+      "id": "wiki_organigrama",
+      "title": "Organigrama y funcionamiento"
+    }
+  ]
+}
