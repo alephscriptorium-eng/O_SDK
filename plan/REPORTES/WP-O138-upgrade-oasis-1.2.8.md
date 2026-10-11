@@ -194,11 +194,19 @@ lecturas que lo sostienen, en los hallazgos H1-H6.
 - **H3 · Las opiniones pasan a ser mensajes propios.** `<tipo>Opinion` con `target` y `category`, en
   vez de tombstone + copia. Los modelos (57 ficheros) recomponen el recuento leyendo. Para el visor
   `/c` es lectura; lo mide U4.
-- **H4 · El refresco de fondo arranca solo.** `refreshAll` (dirección propia, visibilidad de Phone,
-  `announceOasisVersion`, avisos automáticos) corría con la primera petición no estática; ahora
-  también a los 5 s del arranque. Son las mismas llamadas que en 1.2.5 (el healthcheck ya las
-  disparaba). `ensureSelfAddressPublished` no cambia: devuelve `present` si el mapa local ya tiene la
-  dirección (bot) y `skipped` sin cartera (HUB).
+- **H4 · El refresco de fondo arranca solo, y ahora publica el `karmaScore` del nodo (DESVIACIÓN en
+  U3; DECISIÓN del custodio).** `refreshAll` corría con la primera petición no estática; ahora
+  también a los 5 s del arranque. La primera versión de este párrafo decía «son las mismas llamadas
+  que en 1.2.5»: **era falso** y lo destapó el gate. En 1.2.5 `ensureSelfAddressPublished()` y
+  `getUserEngagementScore(viewer)` solo se llamaban desde `GET /activity` (`backend.js:6289-6290` de
+  `560580d7`), una página que nadie visita en un HUB; en 1.2.8 upstream las mueve a `refreshAll`
+  (`backend.js:14642-14643`). `getUserEngagementScore` publica un `karmaScore` propio si el valor
+  **cambió** (o nunca se publicó) y han pasado **24 h** desde el último (`banking_model.js:1140-1163`).
+  Consecuencia medida: el HUB local, que nunca había publicado uno, publicó `karmaScore = 4` a los
+  ~35 s de arrancar en 1.2.8 (seq 14, tras su `oasisVersion` en seq 13). Consecuencia leída: todo
+  backend (HUB, bots, cliente) publicará su `karmaScore` sin que nadie lo pida, **como mucho uno al
+  día y solo cuando el valor cambie**, de forma indefinida. `ensureSelfAddressPublished` devuelve
+  `present` si el mapa local ya tiene la dirección (bot) y `skipped` sin cartera (HUB): no cambia.
 - **H5 · Página de indexado mientras el sbot no está `ready`.** Cualquier ruta, también `/c`, responde
   200 con la página «sincronizando» (refresco a 5 s) hasta que el log drena. `hub-cache` puede guardar
   esa página unos segundos tras recrear el HUB: el §4 paso 8 ya purga la caché antes de `hub --strict`.
