@@ -44,6 +44,27 @@ Contrato mínimo del JSON de entrada (el de Acampada: `ARCHIVO/DISCO/retro-expor
 Se transcribe de lo que el colectivo publica (imagen, texto); lo que no esté, no se inventa
 (`<pendiente: …>`).
 
+**Entrada v2 (2026-10-11, aditiva): el JSON manda.** La herramienta solo lee del organigrama los `id` y los
+nombres; la plantilla se escribía a mano. Para que la plantilla se **derive** del organigrama (y no al revés), la
+v2 añade hechos de instancia sin tocar ningún `id` de la v1:
+
+- `documento` + `ciudad`, `titulo_publicado`, `fuente { blog, wiki, fecha_publicacion, imagen }`.
+- `instancia`: `pub`, `visor_publico`, `oasis_version { declarada, observada }`, `workflow`, `idioma`, `autoria`,
+  `reparto { mesa_tecnica, entrega }`, `invite_asamblea`, `marca { logo_oficial, logos[], canva[] }`. Es lo que
+  antes vivía solo en `meta` de la plantilla.
+- `lugares[]` con `id`, `nombre`, `ciudad`, `lat`, `lng`, `precision`; los órganos apuntan con `reunion.lugar_id`.
+- Por órgano (y por miembro o subgrupo): `apertura` ∈ `abierto | portavocias | externo | base` (lo que la imagen
+  dice: «abiertas a toda la población», «sin poder de decisión», espacios con otros colectivos), `reunion
+  { periodicidad, hora, lugar_id, nota }`, `responsable_reparto` (id de órgano). Los `subgrupos.lista[]` pasan de
+  texto a `{ id, nombre, … }`: cada canal tiene `id` y la sub-tribu que lo sustituye lo cita en `origen`.
+- `metodos_y_conceptos[].wiki: true` cuando el método se publica como página.
+- `metadatos.version: 2`, `derivado_a`, `como`.
+
+La regla pública/privada **no** va en el organigrama: la aplica el derivador (R1-R5) a partir de `apertura`. Lo que el
+derivador redacta por su cuenta (descripciones que no están literales en la entrada) lo apunta en un
+`procedencia.json` al lado, del que sale el formulario de revisión para el colectivo (USAMOS / DUDA / POR DEFECTO).
+Demo: `ARCHIVO/DISCO/26sm-exported/entrada/` (organigrama v2, `derivar-acampada26s.py`, `formulario.py`).
+
 ## 2. Mapeo: cinco reglas
 
 | Regla | De → a | Modelo |

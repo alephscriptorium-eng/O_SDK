@@ -4,9 +4,74 @@
     "subtitulo": "Organigrama y funcionamiento",
     "descripcion": "Estructura asamblearia, horizontal y en red",
     "tipo": "organigrama",
-    "objetivo_del_movimiento": "Paralizar el país mediante una huelga general para lograr un cambio de modelo que resuelva el problema de la vivienda y el resto de problemas para la calidad de vida de las personas."
+    "objetivo_del_movimiento": "Paralizar el país mediante una huelga general para lograr un cambio de modelo que resuelva el problema de la vivienda y el resto de problemas para la calidad de vida de las personas.",
+    "ciudad": "Madrid",
+    "titulo_publicado": "ORGANIGRAMA Y FUNCIONAMIENTO ACAMPADA 26S MADRID",
+    "fuente": {
+      "blog": "https://acampada26s.net/c/blog/organigrama-y-funcionamiento-acampada-26s-madrid-sbcuz1g9",
+      "wiki": "https://acampada26s.net/c/wiki/wiki-acampada26s-l6j3zajv",
+      "fecha_publicacion": "2026-10-06",
+      "imagen": "ARCHIVO/DISCO/26sm-exported/entrada/esquema.jpg",
+      "nota": "esquema.jpg es la captura del visor público del pub con la imagen del organigrama; las URL se leen en ella."
+    }
   },
-
+  "instancia": {
+    "pub": "acampada26s.net",
+    "visor_publico": "https://acampada26s.net/c",
+    "oasis_version": {
+      "declarada": "1.2.3",
+      "observada": "<pendiente: medir en el pub (oasisVersion del feed del pub) antes de activar>"
+    },
+    "idioma": "es",
+    "workflow": "activists",
+    "autoria": "<DECISIÓN del colectivo: qué identidad crea cada tribu; solo el autor la borra o reestructura>",
+    "reparto": {
+      "mesa_tecnica": "<pendiente: quién es la mesa técnica de Acampada26S>",
+      "entrega": "Cada órgano nombra a quién de los suyos le llega el acceso. Tribus abiertas: QR impreso o botón en la tarjeta. Tribus estrictas y listas cerradas: el autor invita en mano. Nunca por un canal que quede escrito."
+    },
+    "invite_asamblea": "./oasis.sh invite 500",
+    "marca": {
+      "logo_oficial": "<pendiente: elegir uno de los seis logos de assets/ para el avatar y las portadas>",
+      "logos": [
+        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S.png",
+        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-AZUL.png",
+        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BLANCO.png",
+        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-BYN.png",
+        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-A26S-NARANJA-AZUL.png",
+        "ARCHIVO/DISCO/26sm-exported/assets/LOGO-AZUL-A26S-NARANJAA.png"
+      ],
+      "canva": [
+        {
+          "pieza": "KIT VISUAL",
+          "enlace": "https://canva.link/82o6d2lwolcctsw",
+          "carpeta": "ARCHIVO/DISCO/26sm-exported/canva/kit-visual/",
+          "estado": "pendiente de descarga"
+        },
+        {
+          "pieza": "POST",
+          "enlace": "https://canva.link/4qk1xlcplw2fa65",
+          "carpeta": "ARCHIVO/DISCO/26sm-exported/canva/post/",
+          "estado": "pendiente de descarga"
+        },
+        {
+          "pieza": "RECURSOS GRÁFICOS",
+          "enlace": "https://canva.link/tatovgme5p4ty6v",
+          "carpeta": "ARCHIVO/DISCO/26sm-exported/canva/recursos-graficos/",
+          "estado": "pendiente de descarga"
+        }
+      ]
+    }
+  },
+  "lugares": [
+    {
+      "id": "sol_14",
+      "nombre": "Puerta del Sol nº 14",
+      "ciudad": "Madrid",
+      "lat": 40.4169,
+      "lng": -3.7035,
+      "precision": "<pendiente: confirmar coordenadas (aproximadas, puestas en la plantilla WP-O129 el 2026-10-07)>"
+    }
+  ],
   "organos": [
     {
       "id": "asamblea_general",
@@ -24,7 +89,14 @@
       "periodicidad": "diaria",
       "hora": "20:00",
       "lugar": "Puerta del Sol nº 14",
-      "usa_metodo": "tecnica_semaforo"
+      "usa_metodo": "tecnica_semaforo",
+      "apertura": "abierto",
+      "reunion": {
+        "periodicidad": "diaria",
+        "hora": "20:00",
+        "lugar_id": "sol_14"
+      },
+      "responsable_reparto": "asamblea_general"
     },
     {
       "id": "asamblea_internodos",
@@ -40,7 +112,14 @@
       "periodicidad": "diaria",
       "hora": "19:00",
       "nota_horario": "previa a la Asamblea General",
-      "composicion": "portavocias_rotativas"
+      "composicion": "portavocias_rotativas",
+      "apertura": "portavocias",
+      "reunion": {
+        "periodicidad": "diaria",
+        "hora": "19:00",
+        "nota": "previa a la Asamblea General"
+      },
+      "responsable_reparto": "asamblea_internodos"
     },
     {
       "id": "nodos_territoriales",
@@ -56,12 +135,59 @@
       ],
       "periodicidad": "variable según cada nodo",
       "miembros": [
-        { "id": "nodo_norte", "nombre": "Nodo Norte" },
-        { "id": "nodo_oeste", "nombre": "Nodo Oeste" },
-        { "id": "nodo_centro", "nombre": "Nodo Centro" },
-        { "id": "nodo_este", "nombre": "Nodo Este" },
-        { "id": "nodo_sur", "nombre": "Nodo Sur" }
-      ]
+        {
+          "id": "nodo_norte",
+          "nombre": "Nodo Norte",
+          "apertura": "abierto",
+          "reunion": {
+            "periodicidad": "variable",
+            "hora": "<pendiente: hora de la asamblea del nodo>"
+          },
+          "responsable_reparto": "nodo_norte"
+        },
+        {
+          "id": "nodo_oeste",
+          "nombre": "Nodo Oeste",
+          "apertura": "abierto",
+          "reunion": {
+            "periodicidad": "variable",
+            "hora": "<pendiente: hora de la asamblea del nodo>"
+          },
+          "responsable_reparto": "nodo_oeste"
+        },
+        {
+          "id": "nodo_centro",
+          "nombre": "Nodo Centro",
+          "apertura": "abierto",
+          "reunion": {
+            "periodicidad": "variable",
+            "hora": "<pendiente: hora de la asamblea del nodo>"
+          },
+          "responsable_reparto": "nodo_centro"
+        },
+        {
+          "id": "nodo_este",
+          "nombre": "Nodo Este",
+          "apertura": "abierto",
+          "reunion": {
+            "periodicidad": "variable",
+            "hora": "<pendiente: hora de la asamblea del nodo>"
+          },
+          "responsable_reparto": "nodo_este"
+        },
+        {
+          "id": "nodo_sur",
+          "nombre": "Nodo Sur",
+          "apertura": "abierto",
+          "reunion": {
+            "periodicidad": "variable",
+            "hora": "<pendiente: hora de la asamblea del nodo>"
+          },
+          "responsable_reparto": "nodo_sur"
+        }
+      ],
+      "apertura": "abierto",
+      "responsable_reparto": "nodos_territoriales"
     },
     {
       "id": "personas",
@@ -74,7 +200,8 @@
         "Uniéndose a una comisión de trabajo",
         "Siguiendo los canales de comunicación",
         "Participando en las actividades y eventos"
-      ]
+      ],
+      "apertura": "base"
     },
     {
       "id": "comisiones_de_trabajo",
@@ -83,35 +210,130 @@
       "descripcion": "Funcionamiento, convivencia y desarrollo de la acampada.",
       "acceso": "Abiertas a toda la población",
       "miembros": [
-        { "id": "comision_comunicacion", "nombre": "Comunicación", "descripcion": "Comunicación interna y externa, redes, medios, diseño, etc.", "ver_detalle": "comision_de_comunicacion" },
-        { "id": "comision_urbanismo", "nombre": "Urbanismo", "descripcion": "Vivienda, ciudad, planificación." },
-        { "id": "comision_cuidados", "nombre": "Cuidados", "descripcion": "Bienestar, salud, primeros auxilios." },
-        { "id": "comision_dinamizacion", "nombre": "Dinamización", "descripcion": "Facilita las asambleas y procesos de decisión." },
-        { "id": "comision_mediacion", "nombre": "Mediación", "descripcion": "Resolución de conflictos y convivencia." },
-        { "id": "comision_limpieza", "nombre": "Limpieza", "descripcion": "Gestión de residuos y mantenimiento." },
-        { "id": "comision_abastecimiento", "nombre": "Abastecimiento", "descripcion": "Alimentación, materiales y suministros." }
-      ]
+        {
+          "id": "comision_comunicacion",
+          "nombre": "Comunicación",
+          "descripcion": "Comunicación interna y externa, redes, medios, diseño, etc.",
+          "ver_detalle": "comision_de_comunicacion",
+          "apertura": "abierto",
+          "responsable_reparto": "comision_comunicacion"
+        },
+        {
+          "id": "comision_urbanismo",
+          "nombre": "Urbanismo",
+          "descripcion": "Vivienda, ciudad, planificación.",
+          "apertura": "abierto",
+          "responsable_reparto": "comision_urbanismo"
+        },
+        {
+          "id": "comision_cuidados",
+          "nombre": "Cuidados",
+          "descripcion": "Bienestar, salud, primeros auxilios.",
+          "apertura": "abierto",
+          "responsable_reparto": "comision_cuidados"
+        },
+        {
+          "id": "comision_dinamizacion",
+          "nombre": "Dinamización",
+          "descripcion": "Facilita las asambleas y procesos de decisión.",
+          "apertura": "abierto",
+          "responsable_reparto": "comision_dinamizacion"
+        },
+        {
+          "id": "comision_mediacion",
+          "nombre": "Mediación",
+          "descripcion": "Resolución de conflictos y convivencia.",
+          "apertura": "abierto",
+          "responsable_reparto": "comision_mediacion"
+        },
+        {
+          "id": "comision_limpieza",
+          "nombre": "Limpieza",
+          "descripcion": "Gestión de residuos y mantenimiento.",
+          "apertura": "abierto",
+          "responsable_reparto": "comision_limpieza"
+        },
+        {
+          "id": "comision_abastecimiento",
+          "nombre": "Abastecimiento",
+          "descripcion": "Alimentación, materiales y suministros.",
+          "apertura": "abierto",
+          "responsable_reparto": "comision_abastecimiento"
+        }
+      ],
+      "apertura": "abierto"
     },
     {
       "id": "comision_de_comunicacion",
       "nombre": "Comisión de Comunicación",
       "tipo": "comision",
       "descripcion": "Facilita la comunicación dentro y fuera de la acampada. Coordina con nodos, comisiones y Asamblea General.",
-      "coordina_con": ["nodos_territoriales", "comisiones_de_trabajo", "asamblea_general"],
+      "coordina_con": [
+        "nodos_territoriales",
+        "comisiones_de_trabajo",
+        "asamblea_general"
+      ],
       "subgrupos": {
         "plataforma": "Telegram",
         "lista": [
-          "General",
-          "Redes / contenido digital",
-          "Comunicación interna",
-          "Audiovisual (foto/vídeo)",
-          "Diseño y branding",
-          "Cultura y eventos",
-          "Relaciones públicas (PIAR)",
-          "Coordinación / gabinete de crisis",
-          "Corrección de textos"
+          {
+            "id": "com_general",
+            "nombre": "General",
+            "apertura": "abierto",
+            "responsable_reparto": "comision_de_comunicacion"
+          },
+          {
+            "id": "com_redes",
+            "nombre": "Redes / contenido digital",
+            "apertura": "abierto",
+            "responsable_reparto": "comision_de_comunicacion"
+          },
+          {
+            "id": "com_interna",
+            "nombre": "Comunicación interna",
+            "apertura": "abierto",
+            "responsable_reparto": "comision_de_comunicacion"
+          },
+          {
+            "id": "com_audiovisual",
+            "nombre": "Audiovisual (foto/vídeo)",
+            "apertura": "abierto",
+            "responsable_reparto": "comision_de_comunicacion"
+          },
+          {
+            "id": "com_diseno",
+            "nombre": "Diseño y branding",
+            "apertura": "abierto",
+            "responsable_reparto": "comision_de_comunicacion"
+          },
+          {
+            "id": "com_cultura",
+            "nombre": "Cultura y eventos",
+            "apertura": "abierto",
+            "responsable_reparto": "comision_de_comunicacion"
+          },
+          {
+            "id": "com_piar",
+            "nombre": "Relaciones públicas (PIAR)",
+            "apertura": "abierto",
+            "responsable_reparto": "comision_de_comunicacion"
+          },
+          {
+            "id": "com_crisis",
+            "nombre": "Coordinación / gabinete de crisis",
+            "apertura": "abierto",
+            "responsable_reparto": "comision_de_comunicacion"
+          },
+          {
+            "id": "com_correccion",
+            "nombre": "Corrección de textos",
+            "apertura": "abierto",
+            "responsable_reparto": "comision_de_comunicacion"
+          }
         ]
-      }
+      },
+      "apertura": "abierto",
+      "responsable_reparto": "comision_de_comunicacion"
     },
     {
       "id": "otros_espacios_de_articulacion",
@@ -121,17 +343,23 @@
         {
           "id": "intercsos",
           "nombre": "InterCSOs",
-          "descripcion": "Relación con entidades y actores de la sociedad civil (ámbito estatal e internacional)."
+          "descripcion": "Relación con entidades y actores de la sociedad civil (ámbito estatal e internacional).",
+          "apertura": "externo",
+          "responsable_reparto": "intercsos",
+          "pub": "<pendiente: pub de la entidad, si lo tiene>"
         },
         {
           "id": "asamblea_de_colectivos",
           "nombre": "Asamblea de Colectivos",
-          "descripcion": "Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas."
+          "descripcion": "Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas.",
+          "apertura": "externo",
+          "responsable_reparto": "asamblea_de_colectivos",
+          "pub": "<pendiente: pubs de los colectivos aliados>"
         }
-      ]
+      ],
+      "apertura": "externo"
     }
   ],
-
   "relaciones": [
     {
       "origen": "personas",
@@ -149,7 +377,13 @@
     },
     {
       "origen": "asamblea_internodos",
-      "destino": ["nodo_norte", "nodo_oeste", "nodo_centro", "nodo_este", "nodo_sur"],
+      "destino": [
+        "nodo_norte",
+        "nodo_oeste",
+        "nodo_centro",
+        "nodo_este",
+        "nodo_sur"
+      ],
       "direccion": "bidireccional",
       "etiqueta": null,
       "nota": "Línea ramificada con flechas hacia cada nodo y de vuelta hacia la Asamblea Internodos (vía portavocías)"
@@ -193,16 +427,30 @@
       "etiqueta": null
     }
   ],
-
   "flujo_de_decision": {
-    "ascendente": ["personas", "nodos_territoriales", "asamblea_internodos", "asamblea_general"],
-    "descendente": ["asamblea_general", "asamblea_internodos", "nodos_territoriales", "personas"],
+    "ascendente": [
+      "personas",
+      "nodos_territoriales",
+      "asamblea_internodos",
+      "asamblea_general"
+    ],
+    "descendente": [
+      "asamblea_general",
+      "asamblea_internodos",
+      "nodos_territoriales",
+      "personas"
+    ],
     "secuencia_diaria": [
-      { "hora": "19:00", "organo": "asamblea_internodos" },
-      { "hora": "20:00", "organo": "asamblea_general" }
+      {
+        "hora": "19:00",
+        "organo": "asamblea_internodos"
+      },
+      {
+        "hora": "20:00",
+        "organo": "asamblea_general"
+      }
     ]
   },
-
   "metodos_y_conceptos": [
     {
       "id": "tecnica_semaforo",
@@ -210,28 +458,50 @@
       "descripcion": "Método de consenso para valorar las propuestas en la Asamblea General.",
       "aplicado_en": "asamblea_general",
       "valores": [
-        { "color": "verde", "significado": "Acuerdo / A favor" },
-        { "color": "amarillo", "significado": "Dudas / A revisar" },
-        { "color": "rojo", "significado": "En contra" }
-      ]
+        {
+          "color": "verde",
+          "significado": "Acuerdo / A favor"
+        },
+        {
+          "color": "amarillo",
+          "significado": "Dudas / A revisar"
+        },
+        {
+          "color": "rojo",
+          "significado": "En contra"
+        }
+      ],
+      "wiki": true
     },
     {
       "id": "portavocias_rotativas",
       "nombre": "Portavocías rotativas",
-      "aplicado_en": ["nodos_territoriales", "asamblea_internodos"],
+      "aplicado_en": [
+        "nodos_territoriales",
+        "asamblea_internodos"
+      ],
       "caracteristicas": [
         "2-3 portavoces por nodo",
         "Rotativas",
         "Sin poder de decisión",
         "Transmiten las propuestas de su nodo"
-      ]
+      ],
+      "wiki": true
     }
   ],
-
   "metadatos": {
+    "version": 2,
     "notas_de_transcripcion": [
       "En la imagen original aparece 'Espocición de nodos y comisiones'; se ha normalizado a 'Exposición'.",
       "Las flechas sin texto en la imagen tienen 'etiqueta': null."
-    ]
+    ],
+    "v2": [
+      "v2 (2026-10-11) es aditiva: ningún id de la v1 cambia; se añaden hechos de instancia y lo que la plantilla necesita.",
+      "Campos nuevos: documento.{ciudad,titulo_publicado,fuente} · instancia · lugares[] · por órgano: apertura, reunion, responsable_reparto · subgrupos con id · metodos.wiki.",
+      "apertura ∈ abierto | portavocias | externo | base: es lo que la imagen dice de cada órgano («abiertas a toda la población», «sin poder de decisión», espacios con otros colectivos). La regla pública/privada vive en el derivador (MAPEO R1), no aquí.",
+      "Lo marcado <pendiente> o <DECISIÓN> lo contesta el colectivo (formulario del dosier); nada se inventa."
+    ],
+    "derivado_a": "pub/templates/acampada26s.json",
+    "como": "ARCHIVO/DISCO/26sm-exported/entrada/derivar-acampada26s.py"
   }
 }

@@ -7,7 +7,8 @@
     "workflow": "activists",
     "idioma": "es",
     "version_oasis": "1.2.3",
-    "organigrama": "ARCHIVO/DISCO/retro-exporter/entrada/acampada26s_organigrama.json",
+    "organigrama": "ARCHIVO/DISCO/26sm-exported/entrada/acampada26s_organigrama.json",
+    "derivada_por": "ARCHIVO/DISCO/26sm-exported/entrada/derivar-acampada26s.py",
     "autoria": "<DECISIÓN del colectivo: qué identidad crea cada tribu; solo el autor la borra o reestructura>",
     "reparto": {
       "mesa_tecnica": "<pendiente: quién es la mesa técnica de Acampada26S>",
@@ -31,7 +32,8 @@
         "feed",
         "forum"
       ],
-      "responsable": "asamblea_general"
+      "responsable": "asamblea_general",
+      "image": "tribu-asamblea_general.png"
     },
     {
       "id": "asamblea_internodos",
@@ -50,7 +52,8 @@
         "forum"
       ],
       "nota": "La membresía son las portavocías vigentes: rotar = salir + invitar (la clave de la tribu rota en cada salida).",
-      "responsable": "asamblea_internodos"
+      "responsable": "asamblea_internodos",
+      "image": "tribu-asamblea_internodos.png"
     },
     {
       "id": "nodo_norte",
@@ -69,7 +72,8 @@
         "forum",
         "event"
       ],
-      "responsable": "nodo_norte"
+      "responsable": "nodo_norte",
+      "image": "tribu-nodo_norte.png"
     },
     {
       "id": "nodo_oeste",
@@ -88,7 +92,8 @@
         "forum",
         "event"
       ],
-      "responsable": "nodo_oeste"
+      "responsable": "nodo_oeste",
+      "image": "tribu-nodo_oeste.png"
     },
     {
       "id": "nodo_centro",
@@ -107,7 +112,8 @@
         "forum",
         "event"
       ],
-      "responsable": "nodo_centro"
+      "responsable": "nodo_centro",
+      "image": "tribu-nodo_centro.png"
     },
     {
       "id": "nodo_este",
@@ -126,7 +132,8 @@
         "forum",
         "event"
       ],
-      "responsable": "nodo_este"
+      "responsable": "nodo_este",
+      "image": "tribu-nodo_este.png"
     },
     {
       "id": "nodo_sur",
@@ -145,7 +152,8 @@
         "forum",
         "event"
       ],
-      "responsable": "nodo_sur"
+      "responsable": "nodo_sur",
+      "image": "tribu-nodo_sur.png"
     },
     {
       "id": "comision_comunicacion",
@@ -164,7 +172,8 @@
         "forum",
         "task"
       ],
-      "responsable": "comision_comunicacion"
+      "responsable": "comision_comunicacion",
+      "image": "tribu-comision_comunicacion.png"
     },
     {
       "id": "comision_urbanismo",
@@ -184,7 +193,8 @@
         "forum",
         "task"
       ],
-      "responsable": "comision_urbanismo"
+      "responsable": "comision_urbanismo",
+      "image": "tribu-comision_urbanismo.png"
     },
     {
       "id": "comision_cuidados",
@@ -203,7 +213,8 @@
         "forum",
         "task"
       ],
-      "responsable": "comision_cuidados"
+      "responsable": "comision_cuidados",
+      "image": "tribu-comision_cuidados.png"
     },
     {
       "id": "comision_dinamizacion",
@@ -222,7 +233,8 @@
         "forum",
         "task"
       ],
-      "responsable": "comision_dinamizacion"
+      "responsable": "comision_dinamizacion",
+      "image": "tribu-comision_dinamizacion.png"
     },
     {
       "id": "comision_mediacion",
@@ -241,7 +253,8 @@
         "forum",
         "task"
       ],
-      "responsable": "comision_mediacion"
+      "responsable": "comision_mediacion",
+      "image": "tribu-comision_mediacion.png"
     },
     {
       "id": "comision_limpieza",
@@ -260,7 +273,8 @@
         "forum",
         "task"
       ],
-      "responsable": "comision_limpieza"
+      "responsable": "comision_limpieza",
+      "image": "tribu-comision_limpieza.png"
     },
     {
       "id": "comision_abastecimiento",
@@ -279,12 +293,12 @@
         "forum",
         "task"
       ],
-      "responsable": "comision_abastecimiento"
+      "responsable": "comision_abastecimiento",
+      "image": "tribu-comision_abastecimiento.png"
     },
     {
       "id": "com_general",
-      "origen": "comision_de_comunicacion",
-      "parent": "comision_comunicacion",
+      "origen": "com_general",
       "title": "Comunicación · General",
       "description": "Grupo general de la comisión (antes: grupo de Telegram).",
       "tags": [
@@ -297,12 +311,13 @@
         "feed",
         "forum"
       ],
-      "responsable": "comision_de_comunicacion"
+      "parent": "comision_comunicacion",
+      "responsable": "comision_de_comunicacion",
+      "image": "tribu-com_general.png"
     },
     {
       "id": "com_redes",
-      "origen": "comision_de_comunicacion",
-      "parent": "comision_comunicacion",
+      "origen": "com_redes",
       "title": "Comunicación · Redes y contenido digital",
       "description": "Redes sociales y contenido digital.",
       "tags": [
@@ -317,12 +332,13 @@
         "forum",
         "task"
       ],
-      "responsable": "comision_de_comunicacion"
+      "parent": "comision_comunicacion",
+      "responsable": "comision_de_comunicacion",
+      "image": "tribu-com_redes.png"
     },
     {
       "id": "com_interna",
-      "origen": "comision_de_comunicacion",
-      "parent": "comision_comunicacion",
+      "origen": "com_interna",
       "title": "Comunicación · Interna",
       "description": "Comunicación interna de la acampada.",
       "tags": [
@@ -336,12 +352,13 @@
         "feed",
         "forum"
       ],
-      "responsable": "comision_de_comunicacion"
+      "parent": "comision_comunicacion",
+      "responsable": "comision_de_comunicacion",
+      "image": "tribu-com_interna.png"
     },
     {
       "id": "com_audiovisual",
-      "origen": "comision_de_comunicacion",
-      "parent": "comision_comunicacion",
+      "origen": "com_audiovisual",
       "title": "Comunicación · Audiovisual",
       "description": "Foto y vídeo. Lo publicado va a Images, Videos, Audios y Podcasts.",
       "tags": [
@@ -355,12 +372,13 @@
         "feed",
         "media"
       ],
-      "responsable": "comision_de_comunicacion"
+      "parent": "comision_comunicacion",
+      "responsable": "comision_de_comunicacion",
+      "image": "tribu-com_audiovisual.png"
     },
     {
       "id": "com_diseno",
-      "origen": "comision_de_comunicacion",
-      "parent": "comision_comunicacion",
+      "origen": "com_diseno",
       "title": "Comunicación · Diseño y branding",
       "description": "Diseño gráfico e identidad visual. Lo publicado va a Images y Docs.",
       "tags": [
@@ -374,12 +392,13 @@
         "feed",
         "media"
       ],
-      "responsable": "comision_de_comunicacion"
+      "parent": "comision_comunicacion",
+      "responsable": "comision_de_comunicacion",
+      "image": "tribu-com_diseno.png"
     },
     {
       "id": "com_cultura",
-      "origen": "comision_de_comunicacion",
-      "parent": "comision_comunicacion",
+      "origen": "com_cultura",
       "title": "Comunicación · Cultura y eventos",
       "description": "Programación cultural. Los actos se publican como Events.",
       "tags": [
@@ -393,12 +412,13 @@
         "feed",
         "event"
       ],
-      "responsable": "comision_de_comunicacion"
+      "parent": "comision_comunicacion",
+      "responsable": "comision_de_comunicacion",
+      "image": "tribu-com_cultura.png"
     },
     {
       "id": "com_piar",
-      "origen": "comision_de_comunicacion",
-      "parent": "comision_comunicacion",
+      "origen": "com_piar",
       "title": "Comunicación · Relaciones públicas (PIAR)",
       "description": "Relación con medios y entidades. Los comunicados salen por Blogs y la lista «Comunicados».",
       "tags": [
@@ -412,12 +432,13 @@
         "feed",
         "forum"
       ],
-      "responsable": "comision_de_comunicacion"
+      "parent": "comision_comunicacion",
+      "responsable": "comision_de_comunicacion",
+      "image": "tribu-com_piar.png"
     },
     {
       "id": "com_crisis",
-      "origen": "comision_de_comunicacion",
-      "parent": "comision_comunicacion",
+      "origen": "com_crisis",
       "title": "Comunicación · Coordinación y gabinete de crisis",
       "description": "Coordinación y respuesta rápida. Los avisos urgentes van a Emergencies.",
       "tags": [
@@ -431,12 +452,13 @@
         "feed",
         "forum"
       ],
-      "responsable": "comision_de_comunicacion"
+      "parent": "comision_comunicacion",
+      "responsable": "comision_de_comunicacion",
+      "image": "tribu-com_crisis.png"
     },
     {
       "id": "com_correccion",
-      "origen": "comision_de_comunicacion",
-      "parent": "comision_comunicacion",
+      "origen": "com_correccion",
       "title": "Comunicación · Corrección de textos",
       "description": "Revisión de textos antes de publicar. Se trabaja en Pads.",
       "tags": [
@@ -449,7 +471,9 @@
       "content": [
         "feed"
       ],
-      "responsable": "comision_de_comunicacion"
+      "parent": "comision_comunicacion",
+      "responsable": "comision_de_comunicacion",
+      "image": "tribu-com_correccion.png"
     },
     {
       "id": "intercsos",
@@ -467,7 +491,8 @@
         "feed",
         "forum"
       ],
-      "responsable": "intercsos"
+      "responsable": "intercsos",
+      "image": "tribu-intercsos.png"
     },
     {
       "id": "asamblea_colectivos",
@@ -485,7 +510,8 @@
         "feed",
         "forum"
       ],
-      "responsable": "asamblea_de_colectivos"
+      "responsable": "asamblea_de_colectivos",
+      "image": "tribu-asamblea_colectivos.png"
     }
   ],
   "rooms": [
@@ -499,7 +525,9 @@
       "tags": [
         "asamblea"
       ],
-      "responsable": "asamblea_general"
+      "responsable": "asamblea_general",
+      "image": "sala-sala_asamblea_general.png",
+      "clearnetPublic": false
     },
     {
       "id": "sala_internodos",
@@ -511,7 +539,9 @@
       "tags": [
         "internodos"
       ],
-      "responsable": "asamblea_internodos"
+      "responsable": "asamblea_internodos",
+      "image": "sala-sala_internodos.png",
+      "clearnetPublic": false
     },
     {
       "id": "sala_nodo_norte",
@@ -523,7 +553,9 @@
       "tags": [
         "nodo"
       ],
-      "responsable": "nodo_norte"
+      "responsable": "nodo_norte",
+      "image": "sala-sala_nodo_norte.png",
+      "clearnetPublic": false
     },
     {
       "id": "sala_nodo_oeste",
@@ -535,7 +567,9 @@
       "tags": [
         "nodo"
       ],
-      "responsable": "nodo_oeste"
+      "responsable": "nodo_oeste",
+      "image": "sala-sala_nodo_oeste.png",
+      "clearnetPublic": false
     },
     {
       "id": "sala_nodo_centro",
@@ -547,7 +581,9 @@
       "tags": [
         "nodo"
       ],
-      "responsable": "nodo_centro"
+      "responsable": "nodo_centro",
+      "image": "sala-sala_nodo_centro.png",
+      "clearnetPublic": false
     },
     {
       "id": "sala_nodo_este",
@@ -559,7 +595,9 @@
       "tags": [
         "nodo"
       ],
-      "responsable": "nodo_este"
+      "responsable": "nodo_este",
+      "image": "sala-sala_nodo_este.png",
+      "clearnetPublic": false
     },
     {
       "id": "sala_nodo_sur",
@@ -571,7 +609,9 @@
       "tags": [
         "nodo"
       ],
-      "responsable": "nodo_sur"
+      "responsable": "nodo_sur",
+      "image": "sala-sala_nodo_sur.png",
+      "clearnetPublic": false
     }
   ],
   "calendars": [
@@ -593,7 +633,8 @@
           "nota": "Puerta del Sol nº 14. Ratifica consensos con la técnica del semáforo."
         }
       ],
-      "responsable": "asamblea_general"
+      "responsable": "asamblea_general",
+      "clearnetPublic": true
     },
     {
       "id": "cal_internodos",
@@ -613,7 +654,8 @@
           "nota": "Previa a la Asamblea General."
         }
       ],
-      "responsable": "asamblea_internodos"
+      "responsable": "asamblea_internodos",
+      "clearnetPublic": false
     },
     {
       "id": "cal_nodo_norte",
@@ -627,13 +669,14 @@
       "dates": [
         {
           "label": "Asamblea del nodo",
-          "hora": "<pendiente>",
+          "hora": "<pendiente: hora de la asamblea del nodo>",
           "recurrencia": "variable",
           "offsetDays": 2,
           "nota": "Periodicidad según cada nodo."
         }
       ],
-      "responsable": "nodo_norte"
+      "responsable": "nodo_norte",
+      "clearnetPublic": false
     },
     {
       "id": "cal_nodo_oeste",
@@ -647,13 +690,14 @@
       "dates": [
         {
           "label": "Asamblea del nodo",
-          "hora": "<pendiente>",
+          "hora": "<pendiente: hora de la asamblea del nodo>",
           "recurrencia": "variable",
           "offsetDays": 2,
           "nota": "Periodicidad según cada nodo."
         }
       ],
-      "responsable": "nodo_oeste"
+      "responsable": "nodo_oeste",
+      "clearnetPublic": false
     },
     {
       "id": "cal_nodo_centro",
@@ -667,13 +711,14 @@
       "dates": [
         {
           "label": "Asamblea del nodo",
-          "hora": "<pendiente>",
+          "hora": "<pendiente: hora de la asamblea del nodo>",
           "recurrencia": "variable",
           "offsetDays": 2,
           "nota": "Periodicidad según cada nodo."
         }
       ],
-      "responsable": "nodo_centro"
+      "responsable": "nodo_centro",
+      "clearnetPublic": false
     },
     {
       "id": "cal_nodo_este",
@@ -687,13 +732,14 @@
       "dates": [
         {
           "label": "Asamblea del nodo",
-          "hora": "<pendiente>",
+          "hora": "<pendiente: hora de la asamblea del nodo>",
           "recurrencia": "variable",
           "offsetDays": 2,
           "nota": "Periodicidad según cada nodo."
         }
       ],
-      "responsable": "nodo_este"
+      "responsable": "nodo_este",
+      "clearnetPublic": false
     },
     {
       "id": "cal_nodo_sur",
@@ -707,13 +753,14 @@
       "dates": [
         {
           "label": "Asamblea del nodo",
-          "hora": "<pendiente>",
+          "hora": "<pendiente: hora de la asamblea del nodo>",
           "recurrencia": "variable",
           "offsetDays": 2,
           "nota": "Periodicidad según cada nodo."
         }
       ],
-      "responsable": "nodo_sur"
+      "responsable": "nodo_sur",
+      "clearnetPublic": false
     }
   ],
   "events": [
@@ -731,7 +778,9 @@
       "tags": [
         "asamblea",
         "sol"
-      ]
+      ],
+      "responsable": "asamblea_general",
+      "image": "evento-evento_asamblea_general.png"
     }
   ],
   "mailing": [
@@ -785,11 +834,15 @@
       "id": "wiki_organigrama",
       "origen": "documento",
       "title": "Organigrama y funcionamiento",
-      "body": "<pendiente: texto del organigrama redactado por el colectivo a partir del JSON de entrada>",
+      "body": "# Acampada26S · Organigrama y funcionamiento\n\n> Página generada desde el organigrama publicado por el colectivo el 2026-10-06 (https://acampada26s.net/c/blog/organigrama-y-funcionamiento-acampada-26s-madrid-sbcuz1g9). El colectivo la revisa y la corrige; la fuente es la imagen, no esta página.\n\n**Estructura asamblearia, horizontal y en red.** Objetivo del movimiento: Paralizar el país mediante una huelga general para lograr un cambio de modelo que resuelva el problema de la vivienda y el resto de problemas para la calidad de vida de las personas.\n\n## Asamblea General\nÓrgano mayor de representación.\nSe reúne: diaria a las 20:00, en Puerta del Sol nº 14.\n- Ratifica consensos (técnica del semáforo)\n- Espacio informativo y de consenso\n- Exposición de nodos y comisiones\n- Lectura de comunicados y eventos\n- Revisión de acuerdos y temas para los nodos\n\n## Asamblea Internodos\nReunión de portavocías de los nodos territoriales.\nSe reúne: diaria a las 19:00 (previa a la Asamblea General).\n- Pone en común las propuestas de los nodos\n- Aglutina consensos para la Asamblea General\n- Portavocías rotativas, sin poder de decisión\n\n## Nodos territoriales\n- Asambleas abiertas por barrios/territorios\n- Debaten los temas de la Asamblea General\n- Elaboran propuestas y buscan consensos\n- Eligen 2-3 portavoces (rotativos) para la Asamblea Internodos\n- Periodicidad variable (según cada nodo)\n\n- **Nodo Norte**\n- **Nodo Oeste**\n- **Nodo Centro**\n- **Nodo Este**\n- **Nodo Sur**\n\n## Personas\nParticipación individual.\n- Acudiendo a su nodo territorial\n- Uniéndose a una comisión de trabajo\n- Siguiendo los canales de comunicación\n- Participando en las actividades y eventos\n\n## Comisiones de trabajo\nFuncionamiento, convivencia y desarrollo de la acampada.\nAbiertas a toda la población.\n\n- **Comunicación**: Comunicación interna y externa, redes, medios, diseño, etc.\n- **Urbanismo**: Vivienda, ciudad, planificación.\n- **Cuidados**: Bienestar, salud, primeros auxilios.\n- **Dinamización**: Facilita las asambleas y procesos de decisión.\n- **Mediación**: Resolución de conflictos y convivencia.\n- **Limpieza**: Gestión de residuos y mantenimiento.\n- **Abastecimiento**: Alimentación, materiales y suministros.\n\n## Comisión de Comunicación\nFacilita la comunicación dentro y fuera de la acampada. Coordina con nodos, comisiones y Asamblea General.\n\nSubgrupos (hoy en Telegram):\n- General\n- Redes / contenido digital\n- Comunicación interna\n- Audiovisual (foto/vídeo)\n- Diseño y branding\n- Cultura y eventos\n- Relaciones públicas (PIAR)\n- Coordinación / gabinete de crisis\n- Corrección de textos\n\n## Otros espacios de articulación\n\n- **InterCSOs**: Relación con entidades y actores de la sociedad civil (ámbito estatal e internacional).\n- **Asamblea de Colectivos**: Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas.\n\n## Flujo de decisión\n\n- Ascendente: Personas → Nodos territoriales → Asamblea Internodos → Asamblea General\n- Descendente: Asamblea General → Asamblea Internodos → Nodos territoriales → Personas\n- Cada día: 19:00 Asamblea Internodos · 20:00 Asamblea General\n\n## Técnica del semáforo\nMétodo de consenso para valorar las propuestas en la Asamblea General.\n- Verde: Acuerdo / A favor\n- Amarillo: Dudas / A revisar\n- Rojo: En contra\n\n## Portavocías rotativas\n- 2-3 portavoces por nodo\n- Rotativas\n- Sin poder de decisión\n- Transmiten las propuestas de su nodo\n",
       "editPolicy": "open",
       "tags": [
         "organigrama"
-      ]
+      ],
+      "image": "wiki-wiki_organigrama.png",
+      "clearnetPublic": true,
+      "responsable": "documento",
+      "nota": "Cuerpo generado desde el organigrama por derivar-acampada26s.py; el colectivo lo revisa en el formulario."
     },
     {
       "id": "wiki_semaforo",
@@ -799,7 +852,10 @@
       "editPolicy": "author",
       "tags": [
         "metodo"
-      ]
+      ],
+      "image": "wiki-wiki_semaforo.png",
+      "clearnetPublic": true,
+      "responsable": "asamblea_general"
     },
     {
       "id": "wiki_portavocias",
@@ -809,7 +865,10 @@
       "editPolicy": "author",
       "tags": [
         "metodo"
-      ]
+      ],
+      "image": "wiki-wiki_portavocias.png",
+      "clearnetPublic": true,
+      "responsable": "asamblea_internodos"
     },
     {
       "id": "wiki_onboarding",
@@ -819,7 +878,25 @@
       "editPolicy": "open",
       "tags": [
         "manual"
-      ]
+      ],
+      "image": "wiki-wiki_onboarding.png",
+      "clearnetPublic": true,
+      "responsable": "personas"
+    },
+    {
+      "id": "wiki_reparto",
+      "origen": "documento",
+      "title": "Guía de reparto de accesos",
+      "file": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.md",
+      "editPolicy": "author",
+      "tags": [
+        "manual",
+        "reparto"
+      ],
+      "image": "wiki-wiki_reparto.png",
+      "clearnetPublic": true,
+      "responsable": "documento",
+      "nota": "La genera template-seed.js --reparto: libro del operador, sin códigos."
     }
   ],
   "maps": [
@@ -836,7 +913,10 @@
         "sol"
       ],
       "markers": [],
-      "responsable": "asamblea_general"
+      "nota": "<pendiente: confirmar coordenadas (aproximadas, puestas en la plantilla WP-O129 el 2026-10-07)>",
+      "responsable": "asamblea_general",
+      "image": "mapa-mapa_sol.png",
+      "clearnetPublic": false
     },
     {
       "id": "mapa_nodos",
@@ -851,7 +931,9 @@
       ],
       "markers": [],
       "nota": "Los marcadores los pone cada nodo; no se inventan coordenadas.",
-      "responsable": "nodos_territoriales"
+      "responsable": "nodos_territoriales",
+      "image": "mapa-mapa_nodos.png",
+      "clearnetPublic": true
     }
   ],
   "votes": {

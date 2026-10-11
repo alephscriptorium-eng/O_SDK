@@ -9,40 +9,62 @@ nada: los nombres propios son los del colectivo. Lo que se mantiene en el tiempo
 
 | Qué | Dónde | Estado |
 |---|---|---|
-| **Doc viva** (leer primero): método, vías de activación, kit visual, secretaría, reparto | `docs/PUB/TEMPLATE-PROTOCOL.md` | al día 2026-10-10 |
-| **Entrada**: organigrama transcrito y su imagen original | `entrada/acampada26s_organigrama.json` · `entrada/esquema.jpg` | copia 1:1 de `../retro-exporter/entrada/` (transcripción del 2026-10-07); el correcto de momento |
-| **Plantilla** de la 26S (no se duplica: vive en el repo) | `pub/templates/acampada26s.json` · contrato `pub/templates/SCHEMA.md` | 16 tribus + 9 sub-tribus, 7 salas, 7 calendarios, 1 evento, 4 listas, 4 wikis, 2 mapas; 8 pendientes del colectivo |
+| **Doc viva** (leer primero): método, vías de activación, kit visual, secretaría, reparto; contrato de entrada v2 en §1 | `docs/PUB/TEMPLATE-PROTOCOL.md` | al día 2026-10-11 |
+| **Entrada v2 · el JSON manda**: organigrama transcrito de la imagen + hechos de instancia (fuente, pub, lugares, apertura, reuniones, canales con id, marca, reparto) | `entrada/acampada26s_organigrama.json` · imagen original `entrada/esquema.jpg` | v2 2026-10-11; 33 ids; los 24 de la v1 intactos |
+| **Derivador**: construye la plantilla desde el organigrama con las reglas R1-R5 y el contrato WP-O131 (`image`, `clearnetPublic`, `responsable`, `wiki_reparto`, `meta.reparto`); apunta en `procedencia.json` qué textos redactó él | `entrada/derivar-acampada26s.py` → `pub/templates/acampada26s.json` · `entrada/procedencia.json` | determinista (dos ejecuciones, mismos bytes); 38 textos del derivador |
+| **Plantilla** derivada (no se edita a mano) | `pub/templates/acampada26s.json` · contrato `pub/templates/SCHEMA.md` | 16 tribus + 9 sub-tribus, 7 salas, 7 calendarios, 1 evento, 4 listas, 5 wikis, 2 mapas; 9 pendientes, todos del colectivo |
+| **Formulario para branding y contenidos**: todo lo que se creará, en lenguaje llano, con USAMOS / DUDA / POR DEFECTO, casillas GO y campos de respuesta | `entrada/formulario.py` → `FORMULARIO-BRANDING-CONTENIDOS.md` | generado 2026-10-11; 51 objetos, 6 logos, 3 piezas Canva, 11 preguntas; ⏳ sin enviar |
+| Guion de activación humana · guía de reparto (libro del operador, sin códigos) | `guion-acampada26s.md` (`--guion`) · `guia-reparto-acampada26s.md` (`--reparto`) | regenerados 2026-10-11, exit 0 |
 | Mapeo organigrama → Oasis (trazable por `id`) | `../retro-exporter/MAPEO.md` | cerrado 2026-10-07 |
-| **Logos** del colectivo (6 variantes, 1021×1134 PNG) | `assets/` · inventario `assets/MANIFEST.md` | recibidos 2026-10-11 |
-| **Canva**: kit visual, post, recursos gráficos | `canva/` · índice `canva/README.md` | ⬜ **pendiente de descarga** (enlaces de edición: piden sesión) |
-| Kit visual 512×512 para la plantilla (tribus, salas…) | `pub/templates/assets/acampada26s/` (generador `pub/tools/template-kit.py`) | ⬜ no generado; decidir antes si se parte de los logos o del kit de Canva |
-| Guion / guía de reparto / mensaje de entrada | `../retro-exporter/guion-acampada26s.md` hoy · aquí cuando se regeneren con los materiales reales | ⬜ |
+| **Logos** del colectivo (6 variantes, 1021×1134 PNG) | `assets/` · inventario `assets/MANIFEST.md` | recibidos 2026-10-11; oficial sin elegir (formulario A1) |
+| **Canva**: kit visual, post, recursos gráficos | `canva/` · índice `canva/README.md` | ⬜ **pendiente de descarga** (enlaces de edición: piden sesión; formulario A2) |
+| Kit visual 512×512 para la plantilla | `pub/templates/assets/acampada26s/` (generador `pub/tools/template-kit.py`) | ⬜ no generado (PIL ausente en el Python base; marca sin decidir) |
 
 ## Cómo se trabaja esta carpeta
 
 1. **Materiales primero, ejecución después.** Nada de esta carpeta publica nada: se recopila, se ordena
    y se deja regenerable. La activación (vía fría o caliente) sigue `docs/PUB/TEMPLATE-PROTOCOL.md` y
    pide GO del custodio paso a paso, como en `../scriptorium-exported/runbook-*.md`.
-2. **La entrada no se edita a mano.** Si el colectivo corrige el organigrama, se corrige
-   `entrada/acampada26s_organigrama.json` y se anota en `metadatos.notas_de_transcripcion`; la
-   plantilla y el guion se regeneran:
-
-   ```sh
-   node pub/tools/template-seed.js \
-     --template pub/templates/acampada26s.json \
-     --organigrama ARCHIVO/DISCO/26sm-exported/entrada/acampada26s_organigrama.json \
-     --out ARCHIVO/DISCO/26sm-exported/guion-acampada26s.md --guion
-   ```
-
+2. **El JSON manda.** Si el colectivo corrige algo (una hora, un nombre, un texto), se corrige en
+   `entrada/acampada26s_organigrama.json` (nunca en la plantilla ni en el formulario) y se regenera todo
+   con los comandos de abajo. Lo que el derivador redacta por su cuenta está en `DESC`/`TITULO_SUB` de
+   `derivar-acampada26s.py`; cuando el colectivo lo confirme, pasa al JSON como `descripcion`.
 3. **Los binarios de Canva** van a `canva/<carpeta>/` tal cual se exportan, más un `MANIFEST.md` por
-   carpeta (fichero, px, bytes, sha256, para qué sirve), regenerado con `canva/manifest.py`. Lo
-   derivado (recortes, 512×512) va a `pub/templates/assets/acampada26s/` por el generador, nunca a mano.
+   carpeta regenerado con `canva/manifest.py`. Lo derivado (512×512) va a `pub/templates/assets/acampada26s/`
+   por el generador, nunca a mano.
 4. **Secretos, ninguno.** Aquí no hay invites, `secret` ni credenciales; los enlaces de Canva son de
    edición compartida y se tratan como material del colectivo, no como credencial.
 
+## Comandos que regeneran todo (en este orden)
+
+```sh
+python -X utf8 ARCHIVO/DISCO/26sm-exported/entrada/derivar-acampada26s.py        # plantilla + procedencia.json
+node pub/tools/template-seed.js --template pub/templates/acampada26s.json \
+  --organigrama ARCHIVO/DISCO/26sm-exported/entrada/acampada26s_organigrama.json \
+  --out ARCHIVO/DISCO/26sm-exported/guion-acampada26s.md --guion                # guion (exit 0, 33 ids)
+node pub/tools/template-seed.js --template pub/templates/acampada26s.json \
+  --organigrama ARCHIVO/DISCO/26sm-exported/entrada/acampada26s_organigrama.json \
+  --out ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.md --reparto       # guía de reparto
+python -X utf8 ARCHIVO/DISCO/26sm-exported/entrada/formulario.py                  # formulario
+python -X utf8 ARCHIVO/DISCO/26sm-exported/canva/manifest.py                      # manifiestos de canva/
+```
+
+## Evidencia de la ronda «el JSON manda» (2026-10-11)
+
+| Comprobación | Comando | Salida |
+|---|---|---|
+| Derivador determinista | `derivar-acampada26s.py` ×2 + `sha256sum` de plantilla y procedencia | mismos bytes |
+| Guion | `template-seed.js --guion` | `origen comprobado contra organigrama: sí (33 ids)` · `9 pendientes` · exit 0 |
+| Reparto | `template-seed.js --reparto` | `9 pendientes` · exit 0 |
+| Pendientes restantes (todos del colectivo) | §14 del guion | `meta.autoria` · 5 horas de nodo · coordenadas de Sol 14 · 2 pubs aliados |
+| Diff semántico contra la plantilla a mano (`git show 030c1012:pub/templates/acampada26s.json`) | script de comparación por `id` (title, private, inviteMode, status, listType, mapType, description…) | mismos 51 objetos + `wiki_reparto`; ningún título ni privacidad cambia; solo campos añadidos (`image`, `clearnetPublic`, `responsable`, `nota`), `origen` de las 9 sub-tribus (ahora su subgrupo) y `meta.organigrama` |
+| No regresión de Campamento | `template-seed.js --guion` sobre `pub/templates/campamento.json` | `24 ids` · `11 pendientes` · exit 0 |
+| Formulario sin jerga | `grep -iE '\b(sbot|blob|clearnet|feed|ssb|sha256|json|bipf|docker)\b'` sobre el `.md` | 0 líneas; 78 filas numeradas |
+
 ## Pendientes (2026-10-11)
 
-- [ ] Descargar las tres piezas de Canva (ver `canva/README.md`) y rellenar sus manifiestos.
-- [ ] Decidir con el colectivo cuál de las 6 variantes del logo es la **oficial** para el `about` del pub / bot.
-- [ ] Rellenar los 8 `<pendiente>` de `pub/templates/acampada26s.json` (plaza, mesa técnica, autoría…).
-- [ ] Generar el kit 512×512 y la guía de reparto con los materiales reales.
+- [ ] Enviar `FORMULARIO-BRANDING-CONTENIDOS.md` a branding y contenidos; incorporar respuestas al JSON v2 y regenerar.
+- [ ] Descargar las tres piezas de Canva (`canva/README.md`) y rellenar sus manifiestos.
+- [ ] Logo oficial (formulario A1) → avatar de la secretaría y kit 512×512 con la marca.
+- [ ] Medir `oasisVersion` del pub `acampada26s.net` (`instancia.oasis_version.observada`).
+- [ ] Paquete «congelado» para el operador de la 26S (runbook externo + compose aislado): siguiente micro-tarea.

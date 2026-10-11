@@ -1,0 +1,134 @@
+{
+  "asamblea_colectivos": {
+    "description": "derivador"
+  },
+  "asamblea_general": {
+    "description": "derivador"
+  },
+  "asamblea_internodos": {
+    "description": "derivador"
+  },
+  "com_audiovisual": {
+    "description": "derivador"
+  },
+  "com_correccion": {
+    "description": "derivador"
+  },
+  "com_crisis": {
+    "description": "derivador"
+  },
+  "com_cultura": {
+    "description": "derivador"
+  },
+  "com_diseno": {
+    "description": "derivador"
+  },
+  "com_general": {
+    "description": "derivador"
+  },
+  "com_interna": {
+    "description": "derivador"
+  },
+  "com_piar": {
+    "description": "derivador"
+  },
+  "com_redes": {
+    "description": "derivador"
+  },
+  "comision_abastecimiento": {
+    "description": "organigrama"
+  },
+  "comision_comunicacion": {
+    "description": "derivador"
+  },
+  "comision_cuidados": {
+    "description": "organigrama"
+  },
+  "comision_dinamizacion": {
+    "description": "derivador"
+  },
+  "comision_limpieza": {
+    "description": "organigrama"
+  },
+  "comision_mediacion": {
+    "description": "organigrama"
+  },
+  "comision_urbanismo": {
+    "description": "organigrama"
+  },
+  "evento_asamblea_general": {
+    "description": "derivador"
+  },
+  "intercsos": {
+    "description": "derivador"
+  },
+  "lista_acuerdos": {
+    "description": "derivador"
+  },
+  "lista_colectivos": {
+    "description": "derivador"
+  },
+  "lista_comunicados": {
+    "description": "derivador"
+  },
+  "lista_intercsos": {
+    "description": "derivador"
+  },
+  "mapa_nodos": {
+    "description": "derivador"
+  },
+  "mapa_sol": {
+    "description": "derivador"
+  },
+  "nodo_centro": {
+    "description": "derivador"
+  },
+  "nodo_este": {
+    "description": "derivador"
+  },
+  "nodo_norte": {
+    "description": "derivador"
+  },
+  "nodo_oeste": {
+    "description": "derivador"
+  },
+  "nodo_sur": {
+    "description": "derivador"
+  },
+  "sala_asamblea_general": {
+    "description": "derivador"
+  },
+  "sala_internodos": {
+    "description": "derivador"
+  },
+  "sala_nodo_centro": {
+    "description": "derivador"
+  },
+  "sala_nodo_este": {
+    "description": "derivador"
+  },
+  "sala_nodo_norte": {
+    "description": "derivador"
+  },
+  "sala_nodo_oeste": {
+    "description": "derivador"
+  },
+  "sala_nodo_sur": {
+    "description": "derivador"
+  },
+  "wiki_onboarding": {
+    "body": "derivador"
+  },
+  "wiki_organigrama": {
+    "body": "organigrama"
+  },
+  "wiki_portavocias": {
+    "body": "derivador"
+  },
+  "wiki_reparto": {
+    "body": "derivador"
+  },
+  "wiki_semaforo": {
+    "body": "derivador"
+  }
+}
