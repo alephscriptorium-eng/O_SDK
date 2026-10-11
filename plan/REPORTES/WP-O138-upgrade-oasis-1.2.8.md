@@ -229,16 +229,58 @@ entrypoint y Dockerfile), `pub/panel-api`, sitio. La deriva de `.dockerignore` y
 
 ## 5. Gates
 
-Pendiente: se rellena con comando y salida al ejecutar U0-U7 y US.
+Stack local (`pub/docker-compose.pub.yml` + `pub/.env.local`, `volumes-dev/`, identidades desechables),
+2026-10-11/12, `G="bash devops/scripts/upgrade-gates.sh --local"`. Tres nodos (`GATE_NODES` por defecto: sin retro).
+`E='pub:oasisVersion=+1 hub:oasisVersion=+1,karmaScore=+0..1 bot:oasisVersion=+1,pubAvailability=+0..1,about=+0..1,karmaScore=+0..1'`.
+
+| Gate | Comando | Resultado |
+|---|---|---|
+| **U0** línea base | nodos parados · `$G backup pre128` (3,1 M) · `compose up -d --no-build --wait` con la imagen 1.2.5 (`5cfdf8ddca7f`; el compose no cambia en el ciclo) · `$G snapshot pre128` | tres nodos `healthy` en 1.2.5, `log=db2`, `seq = registros = sbot`: pub 14 (`contact=7 oasisVersion=7`) · HUB 12 (`(cifrado)=1 about=2 contact=1 oasisVersion=7 pub=1`) · bot 28 (`about=4 contact=1 karmaScore=3 oasisVersion=7 pub=1 pubAvailability=9 ubiAllocation=2 wallet=1`, dirección `EYMWF4ED…`, épocas `2026-09,2026-10`, `motor:pub=true`) |
+| **U1** árbol | §2 · `annex` · `--check` | 7 ficheros · 53 invariantes `=`, ningún `!` · audit `pendiente=0` · `upgrade-behaviour-diff.sh 560580d7 28fc1a68 --check` de este fichero: «todas las líneas tienen disposición … y el registro lleva las seis cabeceras», rc=0 |
+| **U2** imagen | `docker tag …:latest …:1.2.5-vieja` · `compose build oasis-pub` · humo con `docker run --rm --network none --entrypoint sh` | Primer build `88237f84ebfd`: **traía `/app/volumes-real` con el `ssb-data` del bot retro, `secret` incluido** (§7; `.dockerignore` no lo excluía). Corregido en `b3ff2d9e`, reconstruido → `34cce18f8c3f` (1,57 GB): versión 1.2.8; `node --check` de `backend.js`, `clearnet_view.js`, `db2_legacy.js`; `src/server/node_modules → ../base/node_modules`; guard 7 (1), guard 6 (4 y 2), `blobs.max = 50`, `url` del 5.º guard; **0 ficheros `secret`**, sin `volumes-*`, sin `.env*` en `/app/pub`. La imagen contaminada ya no existe (`docker image inspect` falla) y no arrancó ningún contenedor |
+| **U3** recrear y medir | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre128 --expect '…'` | `healthy` a los 5-10 s. Con el delta del plan: **`GATE: DESVIACIÓN`** — `hub … Δseq=2 · karmaScore+1 oasisVersion+1 → karmaScore+1 no esperado` (H4). Parada, causa leída y medida (`karmaScore = 4`, seq 14), DECISIÓN del custodio: **aceptarlo y declararlo**. Con `$E`: pub `oasisVersion+1` · HUB `karmaScore+1 oasisVersion+1` · bot `oasisVersion+1` → **`GATE OK`**. Logs: `ssb-ref` y `multiserver` «patcheado», `ssb-blobs` «ya parcheado», 0 errores (`EROFS|EACCES|ReferenceError|TypeError|Cannot find module`), `Blob size limit: 50 MB`, «Admin access» 1 en HUB y bot y 0 en el pub (no copiado). `db2/indexes` del pub: `oasisActivity` presente junto a `base contacts ebt keys oasisLinks`. Memoria: HUB 71 MiB / 1,5 GiB · bot 71 MiB · pub 39 MiB |
+| **U4** visor | `$G hub --strict` | **`GATE OK`** (16 comprobaciones): 200, MISS→HIT, una CSP, idioma independiente del visitante, `?lang=`, 18 concurrentes sin cruce, selector y `?theme=`, 36 enlaces con `lang` y 45 con `theme`, variante de tema cacheada aparte, `?type=files`, sitemap 15 URLs https, RSS |
+| **U4** séptimo guard | blob `&8DZ+…` referenciado en `/c`: `docker exec hub rm` → `GET /c/blob` directo al HUB (`Host: localhost`) → buscar el fichero | Primer intento con el HUB **sin pares** (artefacto del stack local, como en WP-O135: `conn.json` con IPs viejas): **404 a los 30,03 s** (el tope nuevo de `getResolved`, H6: antes la petición quedaba abierta). Tras `hub-conn-fix.js 'net:oasis-pub:8009~shs:<KEY>'` → `connected`: el blob vuelve solo (el `want` pendiente se cumple); borrado otra vez → **200, 17 316 B, 0,07 s** y el fichero está de nuevo en el contenedor (Oasis lo escribe en `blobs/sha256/f0/f0367e…`, no en la ruta de sbot `f0/367e…`). Blob no referenciado (`&AAAA…`) → **404** |
+| **U5** peor caso del bot | `$G snapshot u5` · `$G worst` · `$G check u5 --expect 'bot:karmaScore=+0..1,about=+0..1 hub:karmaScore=+0..1'` | `/banking`, `/transfers`, `/shops`, `/market`, `/school` → 200. **Δseq = 0 en los tres**; `wallet`, `(cifrado)` y dirección sin moverse → `GATE OK` |
+| **U6** invite completo | `$G snapshot u6` · `invite.create({uses:1, external:'gate.example.org'})` por `ssb-client` en el pub · host → IP del pub en el bridge · `docker run -d --name oasis-gate-u6-desechable --network oasis-pub-scriptorium_oasis_pub_net -e OASIS_SNAPSHOT=off … backend` · `ssb-probe.js` `SSB_ACTION=invite-accept` · `$G check u6 --expect 'pub:contact=+1 hub:karmaScore=+0..1 bot:about=+0..1,karmaScore=+0..1'` · `docker rm -f` | desechable `running` en 1.2.8; `"accept": true`, pub `connected`; **pub `contact+1`**, HUB y bot 0 → `GATE OK`. El invite no se imprimió (solo su forma: host y puerto 8009). Desechable retirado |
+| **US** snapshot | `$G snapshot us` · `pub-snapshot.sh --local status` · `--local build` · `$G check us` | «cada 6 h, dentro del contenedor»; el pub ya lo había reconstruido solo al arrancar en 1.2.8 (67 213 B, 212 mensajes, 6 feeds); build `{"ok":true,"messages":216,"feeds":6,"boxed":5,"bytes":67866,"ms":176}`; Δseq = 0 en los tres → `GATE OK` (H1: `createLogStream` sin cotas sigue sirviendo) |
+| **U7** repetible | `compose stop` de los tres · `$G restore pre128 --yes` · `render-wallet-bot-config.sh pub/.env.local` (rc=0) · `$G up pub|hub|bot` · `$G check pre128 --expect "$E"` | `healthy` a los 5 s. **Mismo delta que la primera vez**: pub `oasisVersion+1` · HUB `karmaScore+1 oasisVersion+1` · bot `oasisVersion+1` → `GATE OK`; 0 errores en los tres logs |
+
+No aplican UM ni UR (no cambia el motor: `db2.tsv` en verde).
 
 ## 6. Delta de publicación
 
-Declarado: `pub:oasisVersion=+1 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1,about=+0..1`.
-Medido en local y en el host: pendiente (§5).
+Local, por nodo, desde `pre128` (1.2.5), medido dos veces (U3 y U7): **pub `oasisVersion+1`** (más `contact+1` por el
+invite de U6) · **HUB `oasisVersion+1` + `karmaScore+1`** · **bot `oasisVersion+1`** (ni `pubAvailability`, ni
+`about`, ni `karmaScore` salieron: el bot ya tenía tres `karmaScore` y su valor no cambió).
+
+Declarado para el host (decisión del custodio sobre H4, 2026-10-12):
+
+```
+pub:oasisVersion=+1 hub:oasisVersion=+1,karmaScore=+0..1 bot:oasisVersion=+1,pubAvailability=+0..1,about=+0..1,karmaScore=+0..1
+```
+
+Después del ciclo, HUB y bot podrán publicar un `karmaScore` propio como mucho una vez al día y solo si el valor
+cambia: deja de ser una desviación en los `check` posteriores. Medido en el host: pendiente (§8).
 
 ## 7. Correcciones al protocolo
 
 Pendiente de cerrar. Hasta ahora:
+
+- **`.dockerignore` no excluía `volumes-real/`** (`b3ff2d9e`). La carpeta nació en WP-O135 (D-O33) y el
+  primer build local posterior metió en la imagen la identidad real del bot retro. Lo cazó el humo de U2
+  (`ls /app`), antes de arrancar nada. UPGRADE §3.4 U2 debe decir que el humo comprueba **0 ficheros
+  `secret`** en la imagen (`find / -xdev -name secret`), no solo la ausencia de `.env*`; y AGENTES §2.9, que
+  un nodo real en la máquina operadora vive en una carpeta excluida del contexto de build.
+- **Una disposición leída volvió a salir falsa** (H4): «son las mismas llamadas que en 1.2.5». El diff de
+  comportamiento no ve una llamada que **cambia de sitio** (de una ruta de GUI a un temporizador): no es una
+  línea `publish` nueva. Es el tercer ciclo en que lo destapa U3 y no la lectura (1.2.2, 1.2.3, 1.2.8).
+  Pendiente: que `upgrade-behaviour-diff.sh` saque en `timers` las funciones que pasan a llamarse desde el
+  refresco de fondo.
+- UPGRADE §3.4 (delta declarado): desde 1.2.6, `karmaScore=+0..1` en HUB y en cada bot, al subir y en
+  cualquier `check` posterior separado más de 24 h.
+- Prueba del séptimo guard: el fichero reaparece en la ruta de Oasis (`blobs/sha256/<2>/<64 hex>`), no en la
+  de sbot (`<2>/<62 hex>`); buscar con `find -name '<hex>*'`.
 
 - `docs/roles/mantener.md`, tabla «Qué hará el agente», paso 3: dice «las cinco diferencias» y
   «exactamente seis ficheros»; son 7 guards y 7 ficheros desde WP-O135.
