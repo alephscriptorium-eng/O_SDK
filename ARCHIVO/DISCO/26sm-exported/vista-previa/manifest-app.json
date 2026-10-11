@@ -1,0 +1,114 @@
+{
+  "base": "http://localhost:3100",
+  "at": "2026-10-11T18:22:57Z",
+  "items": [
+    {
+      "url": "/",
+      "file": "img/app-portada.jpg",
+      "bytes": 168097,
+      "sha256": "414860682ced6f983607e4c9953cd5f48b8d7c1e92bcc18d226df40552882a77",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/tribes",
+      "file": "img/app-tribes.jpg",
+      "bytes": 211069,
+      "sha256": "71433d8f286fc2c534b111f26178a67713708e71b23af55266c297b5b5e82a15",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/tribe/%25jpa%2FUCqYnk4ON%2BxEfpT4sGRZu8c8ts5wklznYeWjqoo%3D.sha256",
+      "file": "img/app-tribe-jpa-ucqy.jpg",
+      "bytes": 144156,
+      "sha256": "80b03d984cb00d2778f5eb780f7517e41df2a2e02a1c10c34baa2e412abbb7b2",
+      "section": "tribes",
+      "id": "asamblea_colectivos",
+      "title": "Asamblea de Colectivos"
+    },
+    {
+      "url": "/wiki",
+      "file": "img/app-wiki.jpg",
+      "bytes": 154376,
+      "sha256": "6416c45cf1881461894601b704bc68a10093680f9181f4ef4c6b4fda6ff12954",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/wiki/guia-de-reparto-de-accesos",
+      "file": "img/app-wiki-guia-de-reparto-de-accesos.png",
+      "bytes": 189999,
+      "sha256": "f4d3c1202544df696d950290d027b9ad04aeb46e006663737a723cba0a6d73e1",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/calendars",
+      "file": "img/app-calendars.png",
+      "bytes": 167918,
+      "sha256": "ef31fbe86be2969aebe37ecc04387e97dd4386e6b88036b824e41753e22736d3",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/calendars/%25oxMNuMY9OutRhnPiEVtqDzwShZY2cnUDCNFjT5suriQ%3D.sha256",
+      "file": "img/app-calendars-oxmnumy9.png",
+      "bytes": 247471,
+      "sha256": "cdf56df5a46a1343be38a4160636793470b568a5763fd1307f2eefc7698afde5",
+      "section": "calendars",
+      "id": "cal_asamblea_general",
+      "title": "Asamblea General"
+    },
+    {
+      "url": "/rooms",
+      "file": "img/app-rooms.png",
+      "bytes": 131760,
+      "sha256": "97aca75be8e85a397725d93626ddd136d0b4cc0657a80a92dcfd42c83dd7f175",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/maps",
+      "file": "img/app-maps.png",
+      "bytes": 228176,
+      "sha256": "19503aff8b8098478ea454339a5175d1557ae4fc77ba6253819cc7536f831ad3",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/events",
+      "file": "img/app-events.jpg",
+      "bytes": 177787,
+      "sha256": "18f35a8f1f68e643e7718614ddf996d64f879ec40d371a96220822a136700145",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/mailing",
+      "file": "img/app-mailing.png",
+      "bytes": 183241,
+      "sha256": "98bf1cc16c2a3b89eece1c68d1470886a710849be42ed891f5429110867cbf96",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/author/%40U9DgIVuWoZ7OTPnE%2BNWtVN6EP06P%2BNSdnl97PcuC1PE%3D.ed25519",
+      "file": "img/app-author-u9dgivuw.png",
+      "bytes": 242161,
+      "sha256": "f742da3322a398bc3d85bda9888fdb329d69618233d82abb78b7e4d75688c9da",
+      "section": null,
+      "id": null,
+      "title": null
+    }
+  ]
+}

@@ -193,6 +193,11 @@ contrato del directorio en `pub/templates/assets/README.md`. Medido en 1.2.3:
   `clearnetPublic: true` (y uno por repetición de un evento recurrente), y es una unidad de permiso como las
   demás (hace público en la web abierta lo que antes solo veían los habitantes). Las tribus públicas salen en
   `/c/tribe/:id` (medido: 24 de 24 con contenido).
+- **Las tribus no salen en `/c` por existir** (medido en el drill de la 26S, 2026-10-11): `getClearnetTribes`
+  (`backend.js:895-907`) solo lista tribus con **contenido expuesto** a clearnet; recién sembradas, `/c/tribe/:id`
+  responde «no accesible». En la guía de reparto y en el formulario del colectivo, «visible en la web» de una tribu
+  es *cuando publique algo expuesto*. Las salas, dentro de su tribu, solo las ven sus miembros (en `/rooms` de un
+  cliente ajeno: vacío).
 - **Kit con la marca del colectivo** (2026-10-11): `template-kit.py --brand <marca.json>`, donde `marca.json` sale del organigrama
   (`instancia.marca`, escrito por el derivador del dosier): foto de lona de fondo, caja de color con el nombre, etiqueta por tipo, logo;
   fuentes y fondos por ruta con sha256 en el `manifest.json` (`brand`). Las fuentes propietarias no se vendorizan. Sin `--brand`, el
@@ -238,6 +243,14 @@ Un bot más de la serie del pub (HUB §11): cuenta SSB propia, contenedor propio
   la máquina operadora **todo** `retro-seed.sh` / `retro-tombstone.sh` lleva `--pub-id` del pub real: sin él
   tomarían el pub desechable de `.env.local` y el gate `pubConnected` no casaría. La mudanza, paso a paso:
   HUB §11 («mudanza o baja de un bot»); la de la demo, en el runbook de mudanza de su dosier (enlazado desde la ficha de instancia).
+- **Drill en entorno separado** (2026-10-11). Con el bot real en la máquina operadora, un drill local **no puede** usar el
+  servicio `oasis-retro-bot` de `.env.local` (montaría `volumes-real/`). `pub/docker-compose.drill.yml` (override) +
+  `pub/scripts/drill-26s.sh` levantan otro proyecto (`oasis-drill-<id>`, contenedores `drill<id>-*`, puertos 8109/8188/8543,
+  datos en `volumes-dev/drill-<id>/`, env `pub/.env.drill-<id>` no versionado, `OASIS_RETRO_BOT_TEMPLATE=<plantilla>`), con un
+  `guard` que falla si algún contenedor del drill monta `volumes-real/`. Se mide con `GATE_DATA_ROOT=… OASIS_PUB_ENV_FILE=.env.drill-<id>
+  GATE_NODES='pub:drill<id>-pub:oasis-pub hub:drill<id>-hub:oasis-hub retro:drill<id>-retro-bot:oasis-retro-bot' upgrade-gates.sh --local`.
+  La vista interna se captura con el drill del cliente (`client/docker-compose.drill.yml`), unido al pub del drill por invite
+  (mismo `caps.shs`, accept por socket, `hub-conn-fix`). Receta completa: runbook del dosier de la 26S.
 
 ### 4.6 Guía de reparto de accesos (el libro del operador)
 

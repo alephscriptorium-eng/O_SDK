@@ -14,6 +14,7 @@ nada: los nombres propios son los del colectivo. Lo que se mantiene en el tiempo
 | **Derivador**: construye la plantilla desde el organigrama con las reglas R1-R5 y el contrato WP-O131 (`image`, `clearnetPublic`, `responsable`, `wiki_reparto`, `meta.reparto`); apunta en `procedencia.json` qué textos redactó él; escribe `marca.json` para el generador de tarjetas | `entrada/derivar-acampada26s.py` → `pub/templates/acampada26s.json` · `entrada/procedencia.json` · `entrada/marca.json` | determinista; 33 textos del derivador + 5 mixtos (nodos: frase nuestra + barrios literales) |
 | **Plantilla** derivada (no se edita a mano) | `pub/templates/acampada26s.json` · contrato `pub/templates/SCHEMA.md` | 16 tribus + 9 sub-tribus, 7 salas, 7 calendarios, 1 evento, 4 listas, 5 wikis, 2 mapas; 9 pendientes, todos del colectivo |
 | **Formulario v2 para branding y contenidos**: todo lo que se creará, en lenguaje llano, con USAMOS / DUDA / POR DEFECTO, casillas GO y campos de respuesta; A3 «así aplicaremos vuestro kit», B4-B5 (5 nodos o 3 agrupaciones; reuniones observadas), C-X candidatos | `entrada/formulario.py` → `FORMULARIO-BRANDING-CONTENIDOS.md` | v2 2026-10-11; 51 objetos + 4 candidatos, 85 filas, 10 preguntas B; ⏳ sin enviar |
+| **Vista previa real** (drill local en entorno separado, bot desechable; 16 capturas de la web pública + 12 del cliente; para adjuntar al formulario) | `runbook-drill-26s.md` · `vista-previa/index.html` (+ `vista-previa.zip`, gitignored) · `entrada/capturar.py`, `entrada/vista-previa.py` · `drill/ledger-drill-26s.json`, `drill/guia-reparto-drill-26s.md` · método: `pub/docker-compose.drill.yml`, `pub/scripts/drill-26s.sh` | ✅ 2026-10-11: G-1…G10 en verde, 145 mensajes sembrados en el pub del drill, real intacto |
 | Guion de activación humana · guía de reparto (libro del operador, sin códigos) | `guion-acampada26s.md` (`--guion`) · `guia-reparto-acampada26s.md` (`--reparto`) | regenerados 2026-10-11, exit 0 |
 | Mapeo organigrama → Oasis (trazable por `id`) | `../retro-exporter/MAPEO.md` | cerrado 2026-10-07 |
 | **Logos** del colectivo (6 variantes, 1021×1134 PNG) | `assets/` · inventario `assets/MANIFEST.md` | recibidos 2026-10-11; oficial sin elegir (formulario A1) |
@@ -84,9 +85,19 @@ python -X utf8 ARCHIVO/DISCO/26sm-exported/canva/manifest.py                    
 | Revisión visual | `pruebas/_contacto.png` (hoja de contacto + simulación del recorte 280×140 del hub) | nombre legible en la banda central; logo con aire; sin sombras ni iconos |
 | Formulario | `formulario.py` | A4 con las muestras; lista negra 0 |
 
+## Evidencia de la vista previa real (2026-10-11)
+
+Gate a gate con comando y salida: `runbook-drill-26s.md`. Resumen: entorno `oasis-drill-26s` separado del real (guard: ningún
+contenedor monta `volumes-real/`); bootstrap del bot y del HUB por invite; `about` con el avatar (+1 medido); dry-run y 10 bloques
+con delta = previsto (145 mensajes); HUB con el feed del bot en 10 s; sitemap 1 calendario, 7 eventos, 1 mapa, 5 wikis; cliente
+desechable unido y replicando (seq 149); 28 capturas; pub Δ1 (contact del cliente), HUB Δ0; bot real con las mismas fechas que
+antes. Hallazgos nuevos: las tribus no salen en `/c` hasta exponer contenido; las salas solo para miembros; el cliente de un drill
+anterior tenía otro `caps.shs`; `/c/blob/<id>` directo con el id codificado entero responde 404 (las páginas sí sirven las imágenes).
+
 ## Pendientes (2026-10-11)
 
-- [ ] Enviar `FORMULARIO-BRANDING-CONTENIDOS.md` a branding y contenidos; incorporar respuestas al JSON v2 y regenerar.
+- [ ] Enviar `FORMULARIO-BRANDING-CONTENIDOS.md` + `vista-previa.zip` a branding y contenidos; incorporar respuestas al JSON y regenerar.
+- [ ] Decidir `drill-26s.sh wipe` (43 MB en `volumes-dev/drill-26s/`) o conservarlo para repetir capturas.
 - [ ] Canva: conseguir RECURSOS GRÁFICOS y las 2 páginas que faltan del POST; rellenar la columna «Para qué» de los manifiestos.
 - [ ] Decidir si los 96 MB de Canva se versionan o van a `.gitignore` (queda el manifiesto).
 - [ ] GO de branding al kit (formulario A3-A4) y al avatar (A1); si entregan Gill Sans, regenerar con `marca.json → fuentes` apuntando fuera del repo.

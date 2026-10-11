@@ -77,6 +77,7 @@
     "pub:local:ecoin:info": "docker compose --env-file pub/.env.local -f pub/docker-compose.pub.yml --profile wallet exec ecoin ecoind -rpcconnect=127.0.0.1 -rpcport=7474 getinfo",
     "pub:local:wallet-bot:up": "docker compose --env-file pub/.env.local -f pub/docker-compose.pub.yml --profile wallet up -d --no-deps oasis-wallet-bot",
     "pub:wallet-bot:render": "bash ./pub/scripts/render-wallet-bot-config.sh",
+    "pub:drill:26s": "bash ./pub/scripts/drill-26s.sh",
     "pub:local:retro-bot:up": "docker compose --env-file pub/.env.local -f pub/docker-compose.pub.yml --profile retro up -d --no-deps oasis-retro-bot",
     "pub:local:retro-bot:seed": "bash ./pub/scripts/retro-seed.sh",
     "pub:local:retro-bot:tombstone": "bash ./pub/scripts/retro-tombstone.sh",

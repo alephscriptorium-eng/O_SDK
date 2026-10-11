@@ -85,7 +85,7 @@ function reparto(t, { template, ledger, pending, organigrama } = {}) {
       const a = accessOf(section, x);
       const key = keyOf(section, x.id);
       let pub = '—';
-      if (section === 'tribes') pub = x.private ? 'no (privada)' : (key ? `[/c/tribe/…](${CLEARNET_PATH.tribes}${encodeURIComponent(key)})` : 'cuando tenga contenido expuesto');
+      if (section === 'tribes') pub = x.private ? 'no (privada)' : (key ? `[/c/tribe/…](${CLEARNET_PATH.tribes}${encodeURIComponent(key)}) (sale cuando exponga contenido)` : 'cuando tenga contenido expuesto');
       else if (publicInC(section, x)) pub = key ? `[${CLEARNET_PATH[section]}…](${CLEARNET_PATH[section]}${encodeURIComponent(key)})` : 'sí (tras la activación)';
       else pub = 'no';
       out(`| **${x.title}** (${section === 'tribes' && x.parent ? 'sub-tribu' : section}) | ${a.tipo} | ${a.quien} | ${a.como} | ${pub} |`);

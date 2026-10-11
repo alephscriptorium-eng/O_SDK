@@ -46,11 +46,13 @@ node_run_setup() {
   NODE_LOCAL="${1:-0}"
   local repo_root; repo_root="$(cd "$DEVOPS_DIR/.." && pwd)"
   if [ "$NODE_LOCAL" = 1 ]; then
-    NODE_COMPOSE_DIR="$repo_root/pub"; NODE_ENV_FILE=".env.local"; NODE_DATA="$repo_root/volumes-dev"; NODE_SUDO=""
-    # El retro local puede ser un nodo REAL fuera de volumes-dev (D-O33): su .ssb es el que diga .env.local
+    # Un drill en entorno separado (p. ej. pub/scripts/drill-26s.sh) mide con su propio env y su propia raíz de datos
+    # (mismo layout oasis-pub/ oasis-hub/ oasis-retro-bot/ bajo GATE_DATA_ROOT). Sin las variables: .env.local y volumes-dev/.
+    NODE_COMPOSE_DIR="$repo_root/pub"; NODE_ENV_FILE="${OASIS_PUB_ENV_FILE:-.env.local}"; NODE_DATA="${GATE_DATA_ROOT:-$repo_root/volumes-dev}"; NODE_SUDO=""
+    # El retro local puede ser un nodo REAL fuera de volumes-dev (D-O33): su .ssb es el que diga el env
     # (OASIS_RETRO_BOT_SSB_DATA_DIR, relativo a pub/). Sin la variable, el layout de volumes-dev de siempre.
     NODE_RETRO_DATA=""
-    local retro_dir; retro_dir="$(grep -m1 '^OASIS_RETRO_BOT_SSB_DATA_DIR=' "$repo_root/pub/.env.local" 2>/dev/null | cut -d= -f2-)"
+    local retro_dir; retro_dir="$(grep -m1 '^OASIS_RETRO_BOT_SSB_DATA_DIR=' "$repo_root/pub/$NODE_ENV_FILE" 2>/dev/null | cut -d= -f2-)"
     if [ -n "$retro_dir" ]; then
       case "$retro_dir" in /*) NODE_RETRO_DATA="$retro_dir" ;; *) NODE_RETRO_DATA="$(cd "$repo_root/pub" && cd "$retro_dir" 2>/dev/null && pwd)" ;; esac
     fi

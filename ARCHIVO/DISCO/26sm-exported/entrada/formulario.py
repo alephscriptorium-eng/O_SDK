@@ -72,7 +72,7 @@ w(f'# Formulario · lo que vamos a crear en el espacio digital de {doc["titulo"]
   '**Qué es cada cosa (en la aplicación tienen otros nombres, entre paréntesis):**', '',
   '- **Grupo** («tribu»): un espacio con su muro, su foro, sus tareas y su calendario. Puede ser abierto (se entra con un código o un QR) o cerrado (solo entra quien invite el responsable; lo que se escribe va cifrado).',
   '- **Subgrupo**: un grupo dentro de otro; hereda si es abierto o cerrado.',
-  '- **Sala**: voz y texto en directo, para quien no está en la plaza. Va siempre dentro de un grupo.',
+  '- **Sala**: voz y texto en directo, para quien no está en la plaza. Va siempre dentro de un grupo y solo la ven sus miembros.',
   '- **Calendario**: las convocatorias periódicas. **Evento**: una convocatoria concreta que se anuncia también hacia fuera.',
   '- **Lista de correo**: mensajes de uno a muchos. Abierta (cualquiera se suscribe) o cerrada (solo miembros, cifrada).',
   '- **Página** («wiki»): texto fijo que se puede editar. **Mapa**: un punto, o un mapa colaborativo donde cada nodo marca el suyo.',
@@ -135,6 +135,27 @@ if pruebas:
 else:
     w(f'Las tarjetas de muestra se generan en `{DOSIER}/pruebas/` en la siguiente ronda; esta fila se rellenará sola.', '')
 
+w('### A5 · Vista previa real', '')
+VP = D / 'vista-previa'
+if (VP / 'index.html').exists():
+    mc = json.loads((VP / 'manifest-c.json').read_text(encoding='utf-8')) if (VP / 'manifest-c.json').exists() else {'items': []}
+    ma = json.loads((VP / 'manifest-app.json').read_text(encoding='utf-8')) if (VP / 'manifest-app.json').exists() else {'items': []}
+    w(f'Hemos montado un pub de prueba en un ordenador local con vuestros materiales y hemos sembrado todo lo de este formulario. '
+      f'Estas son **capturas reales** de cómo queda: abrid `{DOSIER}/vista-previa/index.html` (o el zip `vista-previa.zip`). '
+      f'{len(mc["items"])} capturas de la web pública y {len(ma["items"])} de dentro de la aplicación. Si algo os lía, es así exactamente como va a quedar. Decidnos:', '',
+      f'- A5.1 {CHK} Así nos vale · {CHK} cambios: ______',
+      f'- A5.2 Lo que hemos visto al sembrar: los **grupos no salen en la web** hasta que publican algo expuesto (recién creados, su dirección pública responde «no accesible»); '
+      f'las **salas** solo las ve quien está dentro de su grupo. {CHK} entendido · {CHK} queremos hablarlo', '')
+else:
+    w(f'La vista previa se genera en `{DOSIER}/vista-previa/` tras el drill local; esta fila se rellenará sola.', '')
+CAPTURA = {}
+for mf in (D / 'vista-previa/manifest-c.json', D / 'vista-previa/manifest-app.json'):
+    if mf.exists():
+        for it in json.loads(mf.read_text(encoding='utf-8'))['items']:
+            if it.get('id'): CAPTURA.setdefault(it['id'].split('#')[0], it['file'])
+def captura(oid):
+    f = CAPTURA.get(oid); return f'`vista-previa/{f}`' if f else ''
+
 # ---------------- B · datos pendientes ----------------
 w('## B · Datos que solo vosotros sabéis (contenidos)', '',
   'Sin estas respuestas lo creamos igual, pero con huecos. Cada fila dice dónde se usa.', '')
@@ -185,9 +206,9 @@ w('### C-G · Grupos', '')
 filas = []
 for i, x in enumerate(T['tribes'], 1):
     nombre = x['title'] + (' *(subgrupo de Comisión de Comunicación)*' if x.get('parent') else '')
-    filas.append((f'C-G{i}', nombre, x['description'], estado(x['id']), entrada_grupo(x), SI if not x['private'] else NO,
-                  organo(x['responsable']), CHK, ''))
-tabla(('#', 'Grupo', 'Descripción que usaremos', 'Estado', 'Cómo se entra', 'Visible en la web', 'Responsable del reparto', 'GO', 'Cambios'), filas)
+    filas.append((f'C-G{i}', nombre, x['description'], estado(x['id']), entrada_grupo(x), ('sí, cuando publique algo expuesto' if not x['private'] else NO),
+                  organo(x['responsable']), captura(x['id']), CHK, ''))
+tabla(('#', 'Grupo', 'Descripción que usaremos', 'Estado', 'Cómo se entra', 'Visible en la web', 'Responsable del reparto', 'Captura', 'GO', 'Cambios'), filas)
 
 w('### C-S · Salas de voz y texto', '')
 filas = []
@@ -202,15 +223,15 @@ for i, x in enumerate(T['calendars'], 1):
     d = x['dates'][0]
     cuando = f'{d["recurrencia"]}' + (f' a las {d["hora"]}' if not pend(d['hora']) else ' (se rellena fecha a fecha, ver B5)')
     filas.append((f'C-C{i}', x['title'], cuando, d.get('nota', ''), 'USAMOS' if not pend(d['hora']) else 'DUDA',
-                  SI if x['clearnetPublic'] else NO + ' (va dentro de un grupo)', organo(x['responsable']), CHK, ''))
-tabla(('#', 'Calendario', 'Cuándo', 'Nota que usaremos', 'Estado', 'Visible en la web', 'Responsable del reparto', 'GO', 'Cambios'), filas)
+                  SI if x['clearnetPublic'] else NO + ' (va dentro de un grupo)', organo(x['responsable']), captura(x['id']), CHK, ''))
+tabla(('#', 'Calendario', 'Cuándo', 'Nota que usaremos', 'Estado', 'Visible en la web', 'Responsable del reparto', 'Captura', 'GO', 'Cambios'), filas)
 
 w('### C-E · Evento', '')
 filas = []
 for i, x in enumerate(T['events'], 1):
     filas.append((f'C-E{i}', x['title'], x['description'], f'{x["recurrencia"]} a las {x["hora"]}, {x["location"]}', estado(x['id']),
-                  SI if x['clearnetPublic'] else NO, organo(x['responsable']), CHK, ''))
-tabla(('#', 'Evento', 'Descripción que usaremos', 'Cuándo y dónde', 'Estado', 'Visible en la web', 'Responsable del reparto', 'GO', 'Cambios'), filas)
+                  SI if x['clearnetPublic'] else NO, organo(x['responsable']), captura(x['id']), CHK, ''))
+tabla(('#', 'Evento', 'Descripción que usaremos', 'Cuándo y dónde', 'Estado', 'Visible en la web', 'Responsable del reparto', 'Captura', 'GO', 'Cambios'), filas)
 
 w('### C-L · Listas de correo', '')
 filas = []
@@ -223,16 +244,16 @@ w('### C-P · Páginas', '', 'El texto completo de cada página está en el bloq
 filas = []
 for i, x in enumerate(T['wiki'], 1):
     filas.append((f'C-P{i}', x['title'], 'cualquiera la edita' if x['editPolicy'] == 'open' else 'solo quien la crea',
-                  SI if x['clearnetPublic'] else NO, organo(x['responsable']), CHK, ''))
-tabla(('#', 'Página', 'Quién la edita', 'Visible en la web', 'Responsable', 'GO', 'Cambios'), filas)
+                  SI if x['clearnetPublic'] else NO, organo(x['responsable']), captura(x['id']), CHK, ''))
+tabla(('#', 'Página', 'Quién la edita', 'Visible en la web', 'Responsable', 'Captura', 'GO', 'Cambios'), filas)
 
 w('### C-M · Mapas', '')
 filas = []
 for i, x in enumerate(T['maps'], 1):
     tipo_m = 'un solo punto' if x['mapType'] == 'SINGLE' else 'colaborativo: cada nodo añade su punto'
     filas.append((f'C-M{i}', x['title'], x['description'], estado(x['id']), tipo_m, SI if x['clearnetPublic'] else NO + ' (solo dentro)',
-                  organo(x['responsable']), CHK, ''))
-tabla(('#', 'Mapa', 'Descripción que usaremos', 'Estado', 'Tipo', 'Visible en la web', 'Responsable del reparto', 'GO', 'Cambios'), filas)
+                  organo(x['responsable']), captura(x['id']), CHK, ''))
+tabla(('#', 'Mapa', 'Descripción que usaremos', 'Estado', 'Tipo', 'Visible en la web', 'Responsable del reparto', 'Captura', 'GO', 'Cambios'), filas)
 
 w('### C-X · Candidatos: lo que vuestros posts sugieren y el organigrama no tiene', '',
   'No los creamos salvo que marquéis «crear». Si los marcáis, decidnos quién los lleva.', '')

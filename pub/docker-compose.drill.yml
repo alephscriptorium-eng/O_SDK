@@ -1,0 +1,60 @@
+# =============================================================================
+# docker-compose.drill.yml — DRILL del pub con identidades DESECHABLES (ronda «vista previa real», 2026-10-11).
+# Override de docker-compose.pub.yml: mismo código y mismas imágenes, pero otro proyecto, otros contenedores,
+# otros puertos y otros datos. No toca NADA del stack real de la casa (proyecto oasis-pub-scriptorium,
+# volumes-dev/oasis-pub, volumes-dev/oasis-hub) ni, sobre todo, el bot nº 3 real (oasis-pub-retro-bot,
+# volumes-real/oasis-retro-bot: D-O33, mudado del VPS; no se arranca, no se para, no se lee).
+#
+# Uso (SIEMPRE desde la raíz del repo, SIEMPRE con los dos -f y el --env-file del drill):
+#   bash pub/scripts/drill-26s.sh prep|up|status|guard|down|wipe        # envuelve el compose de abajo
+#   D="docker compose -p oasis-drill-26s --env-file pub/.env.drill-26s -f pub/docker-compose.pub.yml -f pub/docker-compose.drill.yml"
+#
+# Qué levanta: oasis-pub (drill26s-pub, sbot 8109), pub-web (drill26s-web, 8188/8543), oasis-hub (drill26s-hub),
+# hub-cache (drill26s-hub-cache) y oasis-retro-bot (drill26s-retro-bot, sin perfil: `up` lo arrastra).
+# Qué NO levanta: panel-api, ecoin, wallet-bot, frontend (perfil «nunca»).
+# Datos: volumes-dev/drill-26s/{oasis-pub,oasis-hub,oasis-retro-bot}/… (mismo layout que volumes-dev/, para
+# que upgrade-gates.sh --local mida con GATE_DATA_ROOT=volumes-dev/drill-26s y OASIS_PUB_ENV_FILE=.env.drill-26s).
+# La caché del HUB es el volumen nombrado del proyecto (oasis-drill-26s_hub_http_cache): no se cruza con el real.
+# Cliente para la vista interna: el drill del cliente (client/docker-compose.drill.yml, GUI 3100) unido por invite.
+# =============================================================================
+
+# Red de seguridad: aunque se olvide «-p oasis-drill-26s», este fichero nunca opera sobre oasis-pub-scriptorium.
+name: oasis-drill-26s
+
+services:
+  oasis-pub:
+    container_name: drill26s-pub
+    restart: "no"
+
+  pub-panel-api:
+    profiles: ["nunca"]
+
+  pub-web:
+    container_name: drill26s-web
+    restart: "no"
+    depends_on: !reset []          # el compose base depende de pub-panel-api, que aquí no corre
+    ports: !override
+      - "${OASIS_PUB_HTTP_PORT:-8188}:80"
+      - "${OASIS_PUB_HTTPS_PORT:-8543}:443"
+
+  oasis-hub:
+    container_name: drill26s-hub
+    restart: "no"
+
+  hub-cache:
+    container_name: drill26s-hub-cache
+    restart: "no"
+
+  ecoin:
+    profiles: ["nunca"]
+
+  oasis-wallet-bot:
+    profiles: ["nunca"]
+
+  oasis-retro-bot:
+    profiles: !override []         # sin perfil: forma parte del drill desde el primer `up`
+    container_name: drill26s-retro-bot
+    restart: "no"
+
+  pub-frontend:
+    profiles: ["nunca"]

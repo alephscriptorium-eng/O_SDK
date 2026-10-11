@@ -462,6 +462,9 @@ declara en su `about` y **no se lista a sí mismo**. El pub no se toca para aña
   la reactivación exige ese log entero (RECOVERY §4). Lo que no se hace: unfollow del pub (`contact`),
   `about` de despedida, tombstones por «limpiar» (cada uno es un mensaje; si se decide, TEMPLATE §9).
 
+Drill con un bot real en la máquina: nunca sobre el servicio de `.env.local`; entorno separado (`pub/docker-compose.drill.yml`,
+`pub/scripts/drill-26s.sh`, TEMPLATE §4.5) con `guard` contra `volumes-real/`.
+
 ## 12. Poner o cambiar el nombre de un bot (`about`)
 
 Vale para cualquier bot de la serie. **Irreversible** (`AGENTES.md` §3): el `about` es append-only; un

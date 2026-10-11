@@ -1,0 +1,151 @@
+{
+  "base": "http://localhost:8188",
+  "at": "2026-10-11T18:06:29Z",
+  "items": [
+    {
+      "url": "/c",
+      "file": "img/c-c.jpg",
+      "bytes": 210380,
+      "sha256": "b99243cee4aeae7c4d3d4823b05bbd269b4aca8f174e4fc3d8d598246f9b292c",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/inhabitant/%40U9DgIVuWoZ7OTPnE%2BNWtVN6EP06P%2BNSdnl97PcuC1PE%3D.ed25519",
+      "file": "img/c-c-inhabitant-u9dgivuw.jpg",
+      "bytes": 214792,
+      "sha256": "41e0e1a1335b64f14ff3a82e198a6f864d1908d578cbfc4b9646c16f51665547",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/calendars/asamblea-general-oxmnumy9",
+      "file": "img/c-c-calendars-asamblea-general-oxmnumy9.png",
+      "bytes": 93467,
+      "sha256": "16c796f14e67da8d03891a656dc02b0b69a8d275c50e9365dcedcfdbc8bf21d8",
+      "section": "calendars",
+      "id": "cal_asamblea_general",
+      "title": "Asamblea General"
+    },
+    {
+      "url": "/c/events/asamblea-general-puerta-del-sol-vy2mrlae",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-vy2mrlae.png",
+      "bytes": 60810,
+      "sha256": "b37b27c404d0bd59d349ae84466dfcb7661b54b94a2f60905b61ba87c5c06c0e",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/events/asamblea-general-puerta-del-sol-h4bsvmfa",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-h4bsvmfa.png",
+      "bytes": 60816,
+      "sha256": "4823679f5a7d62f2f8ee99d8bb0be190055c60c554ad311af53aa0aa3cbae19d",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/events/asamblea-general-puerta-del-sol-lve7wxgf",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-lve7wxgf.png",
+      "bytes": 60808,
+      "sha256": "a44bdb78147a20acbdf8db8b9fa4ed4ef52fb9cdce8293a5821d992ca530a397",
+      "section": "events",
+      "id": "evento_asamblea_general#3",
+      "title": "Asamblea General · Puerta del Sol"
+    },
+    {
+      "url": "/c/events/asamblea-general-puerta-del-sol-upjklt2h",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-upjklt2h.png",
+      "bytes": 60817,
+      "sha256": "47b48d820695dfb1e759aacbd3d1a32e9f519af7899bb0f23211d0254688dc6f",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/events/asamblea-general-puerta-del-sol-6mwklhbv",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-6mwklhbv.png",
+      "bytes": 60833,
+      "sha256": "af47ec525666c613402430b689a1992321fd546682f1ba1c8d476cbd063f6369",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/events/asamblea-general-puerta-del-sol-klkel0t2",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-klkel0t2.png",
+      "bytes": 60802,
+      "sha256": "92800335c0fdec712eb1a2627447ee60ee51ef7dbc0a2192abede7c0ed210444",
+      "section": "events",
+      "id": "evento_asamblea_general#6",
+      "title": "Asamblea General · Puerta del Sol"
+    },
+    {
+      "url": "/c/events/asamblea-general-puerta-del-sol-wjf9o4ye",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-wjf9o4ye.png",
+      "bytes": 60837,
+      "sha256": "35eb7c6601b2ab80c2fe85da09f2423b7e90f1c2cd2ff36e31f25607e1bdb767",
+      "section": "events",
+      "id": "evento_asamblea_general#7",
+      "title": "Asamblea General · Puerta del Sol"
+    },
+    {
+      "url": "/c/maps/nodos-territoriales-vhocdyne",
+      "file": "img/c-c-maps-nodos-territoriales-vhocdyne.jpg",
+      "bytes": 81210,
+      "sha256": "be79eeec85b42fada65f64eb9df27231527fff7b5a1a8f9cf2db87da395a6886",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/wiki/guia-de-reparto-de-accesos-vnpv3aij",
+      "file": "img/c-c-wiki-guia-de-reparto-de-accesos-vnpv3aij.jpg",
+      "bytes": 305591,
+      "sha256": "54bdbbc1ccac5a24b6a2a44541c589d3be65b920e949de44b70cd6d3e377090d",
+      "section": "wiki",
+      "id": "wiki_reparto",
+      "title": "Guía de reparto de accesos"
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-l9yojftm",
+      "file": "img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-l9yojftm.jpg",
+      "bytes": 229227,
+      "sha256": "322cee12611da95a7e054b59859c88c3514723f1d59e00c097ee7f78b03f46b5",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/wiki/portavocias-rotativas-6vbv5ohb",
+      "file": "img/c-c-wiki-portavocias-rotativas-6vbv5ohb.jpg",
+      "bytes": 83159,
+      "sha256": "6db9fb5daa0ea175611a788ba82ae1a6f7a1c3e4eed8fbc0d8d2140638739bc5",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/wiki/tecnica-del-semaforo-zl2nwlpr",
+      "file": "img/c-c-wiki-tecnica-del-semaforo-zl2nwlpr.jpg",
+      "bytes": 78358,
+      "sha256": "6ce1f353211616a2464a49ff9eec442cd4404c5c4ec4193539242680a1beeed4",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/wiki/organigrama-y-funcionamiento-wpattrsz",
+      "file": "img/c-c-wiki-organigrama-y-funcionamiento-wpattrsz.jpg",
+      "bytes": 207918,
+      "sha256": "a3cf2cc53054a0776527774f9c0b1cf0ff6492e22b5c0618fd593d1816342c16",
+      "section": "wiki",
+      "id": "wiki_organigrama",
+      "title": "Organigrama y funcionamiento"
+    }
+  ],
+  "nota": "Las tribus no salen en /c hasta que tienen contenido expuesto (backend.js getClearnetTribes: cuenta ítems con nivel clearnet); recién sembradas, /c/tribe/<id> responde «no accesible». Se ven en el cliente."
+}
