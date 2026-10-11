@@ -250,7 +250,9 @@ Un bot más de la serie del pub (HUB §11): cuenta SSB propia, contenedor propio
   `guard` que falla si algún contenedor del drill monta `volumes-real/`. Se mide con `GATE_DATA_ROOT=… OASIS_PUB_ENV_FILE=.env.drill-<id>
   GATE_NODES='pub:drill<id>-pub:oasis-pub hub:drill<id>-hub:oasis-hub retro:drill<id>-retro-bot:oasis-retro-bot' upgrade-gates.sh --local`.
   La vista interna se captura con el drill del cliente (`client/docker-compose.drill.yml`), unido al pub del drill por invite
-  (mismo `caps.shs`, accept por socket, `hub-conn-fix`). Receta completa: runbook del dosier de la 26S.
+  (mismo `caps.shs`, accept por socket, `hub-conn-fix`). Receta completa: runbook del dosier de la 26S. Un HUB recién nacido
+  publica **una vez** un `about` con `visibilityPrefs.clearnetSince` (`backend.js:883-891`); si la foto base se toma antes,
+  el gate lo ve como `hub:about=+1`: esperar `hub:about=+0..1` en la primera medida de un HUB nuevo.
 
 ### 4.6 Guía de reparto de accesos (el libro del operador)
 
@@ -263,10 +265,15 @@ la tarjeta) y **dónde se obtiene** en la UI. Lo genera `--reparto` desde el cam
 - **Lo que se siembra como wiki no lleva tablas** (D-O34, 2026-10-11): el renderer de upstream (`src/backend/renderStyledText.js`)
   no tiene sintaxis de tabla ni `<br>` y una tabla sale como texto con barras. `--reparto --wiki <md>` escribe la variante
   para la wiki (por responsable, una lista con un ítem por objeto; cabeceras sin número) y `--out` la del dosier y el sitio (con
-  tablas). Cualquier otro cuerpo con tablas (el manual) pasa por `pub/tools/md-sin-tablas.py` (tabla → lista; si pasa de 20000
-  bytes, el límite del formulario de edición, se parte en dos páginas enlazadas). Gate: `pub/tools/wiki-render-check.js` con el
-  renderer real dentro de un contenedor de la imagen (0 líneas con `|`, sin `<table`, ≤ 20000). La wiki de reparto se siembra
-  **sin** enlaces `/c/…` (con ellos pasa de 20000); los enlaces van en el md del dosier y en la página del sitio.
+  tablas). Y **cada página de wiki cabe en su mensaje**: por encima de 6000 B el cuerpo viaja en un `bodyBlob` que un
+  cliente no pide solo (`wiki_model.js:50,53-57`: `blobs.get` sin `want`) y quien llega después ve la página vacía (medido en
+  el drill de la 26S: el HUB la tenía porque el seeder la empujó; el cliente, no). `pub/tools/md-sin-tablas.py` hace las dos
+  cosas: tabla → lista, cabeceras sin número, sin `# título` (Oasis ya lo pinta), y **parte en páginas ≤ 5600 B** por `##`,
+  equilibradas, con el índice de páginas (wikilinks por título) arriba y abajo; escribe un índice `.wiki.json` del que el
+  derivador saca una entrada `wiki[]` por página (`wiki_onboarding`, `_2`, …; `wiki_reparto`, `_2`, …). Gate:
+  `pub/tools/wiki-render-check.js` con el renderer real dentro de un contenedor de la imagen (0 líneas con `|`, sin `<table`,
+  ≤ 6000 B). La wiki de reparto se siembra **sin** enlaces `/c/…`; los enlaces van en el md del dosier y en la página del
+  sitio. Orden de regeneración (plantilla ↔ guía, dos pasadas hasta punto fijo): `ARCHIVO/DISCO/26sm-exported/entrada/regenerar.sh`.
 - **Nunca códigos ni semillas** (§5): la guía dice *quién* y *dónde*, nunca *cuál*.
 - Con `--ledger` (tras `--hot`) añade el enlace público de cada objeto: `/c/tribe/:id`, `/c/calendars/:id`,
   `/c/rooms/:id`, `/c/maps/:id`, `/c/wiki/:id`, `/c/events/:eventId` (rutas de 1.2.3, `backend.js:7977-8607`).

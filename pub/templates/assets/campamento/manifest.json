@@ -310,49 +310,145 @@
       "id": "wiki_onboarding",
       "section": "wiki",
       "file": "wiki-wiki_onboarding.png",
-      "bytes": 19392,
-      "sha256": "f8fb9ce649d71db0c07f3905b3135ae13afb96a3cf4c6f99ff3f4cdf8b874a83",
-      "blobId": "&+Puc5knXHbDAfzkFsxNa4Tr7lqPPTG+Z/z9M34uHSoM=.sha256"
+      "bytes": 19377,
+      "sha256": "ec189bbdd623594000d7aed5353ae0e86c17b418440bafb77a39eb0b4a2df3b5",
+      "blobId": "&7BibvdYjWUAA167VNTrg6GwXtBhEC6+3ejnrC0ot87U=.sha256"
     },
     {
       "id": "wiki_onboarding_2",
       "section": "wiki",
       "file": "wiki-wiki_onboarding_2.png",
-      "bytes": 19303,
-      "sha256": "1f8a16196beb866c26210adc11ee0a6996e98fb61666617c4b64fdfcf03c3618",
-      "blobId": "&H4oWGWvrhmwmIQrcEe4KaZbpj7YWZmF8S2T9/PA8Nhg=.sha256"
+      "bytes": 19767,
+      "sha256": "6fcc676cdd9a5382909a6463af5f3090a8121d3481cb73cb030c59701aafb9da",
+      "blobId": "&b8xnbN2aU4KQmmRjr18wkKgSHTSBy3PLAwxZcBqvudo=.sha256"
+    },
+    {
+      "id": "wiki_onboarding_3",
+      "section": "wiki",
+      "file": "wiki-wiki_onboarding_3.png",
+      "bytes": 19935,
+      "sha256": "f96cf74eac0fad1b8536f70568287ac396f2452a4a1a26cfa7008219b624f560",
+      "blobId": "&+Wz3TqwPrRuFNvcFaCh6w5byRSpKGibPpwCCGbYk9WA=.sha256"
+    },
+    {
+      "id": "wiki_onboarding_4",
+      "section": "wiki",
+      "file": "wiki-wiki_onboarding_4.png",
+      "bytes": 19637,
+      "sha256": "31598ebfdfb2d5dbea2c923fce7cb0b58ea4d56451b32da22f36f2a01f6ca960",
+      "blobId": "&MVmOv9+y1dvqLJI/znywtY6k1WRRsy2iLzbyoB9sqWA=.sha256"
+    },
+    {
+      "id": "wiki_onboarding_5",
+      "section": "wiki",
+      "file": "wiki-wiki_onboarding_5.png",
+      "bytes": 19421,
+      "sha256": "9c42e1683b78bae72d85df78777deb59dc453970cf9d95ff8eb30cce2fb125ab",
+      "blobId": "&nELhaDt4uucthd94d33rWdxFOXDPnZX/jrMMzi+xJas=.sha256"
     },
     {
       "id": "wiki_reparto",
       "section": "wiki",
       "file": "wiki-wiki_reparto.png",
-      "bytes": 14325,
-      "sha256": "873d010eac3e0ce5664d5995cc3a4f9acc31ffca66308bc26800a0f1c739e8ab",
-      "blobId": "&hz0BDqw+DOVmTVmVzDpPmswx/8pmMIvCaACg8cc56Ks=.sha256"
+      "bytes": 15393,
+      "sha256": "b8ae360c2fb9afb05e6fa7a70d8aba162734b16580399cf113e228b03cb56653",
+      "blobId": "&uK42DC+5r7Beb6enDYq6Fic0sWWAOZzxE+IosDy1ZlM=.sha256"
+    },
+    {
+      "id": "wiki_reparto_2",
+      "section": "wiki",
+      "file": "wiki-wiki_reparto_2.png",
+      "bytes": 15811,
+      "sha256": "32c72e1c962cb0c4eee7413d0a13a58aee69a6917567494e3fee96bb7dc1aceb",
+      "blobId": "&MscuHJYssMTu50E9ChOliu5pppF1Z0lOP+6Wu33BrOs=.sha256"
+    },
+    {
+      "id": "wiki_reparto_3",
+      "section": "wiki",
+      "file": "wiki-wiki_reparto_3.png",
+      "bytes": 15972,
+      "sha256": "33fbb5e2231a47839db8cba36b26dd81cd3a91608c9fe0b311bdeb510e3770c8",
+      "blobId": "&M/u14iMaR4OduMujaybdgc06kWCMn+CzEb3rUQ43cMg=.sha256"
+    },
+    {
+      "id": "wiki_reparto_4",
+      "section": "wiki",
+      "file": "wiki-wiki_reparto_4.png",
+      "bytes": 15316,
+      "sha256": "e407f28b000d2191b5bd5babb65ae4afb1e45bb0766de460f93d5faca2c17ed0",
+      "blobId": "&5AfyiwANIZG1vVurtlrkr7HkW7B2beRg+T1frKLBftA=.sha256"
     },
     {
       "id": "wiki_onboarding",
       "section": "wiki-file",
       "file": "wiki/wiki_onboarding.md",
       "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md",
-      "bytes": 10635,
-      "sha256": "434ba9e4cdc575e656c799f6dfc4b8e3a26f722860929f337365de295d16e668"
+      "bytes": 5469,
+      "sha256": "8c4b2458a58493adb7a95dd96e52812bfa47f3820fc5ad8ba55816232b88c085"
     },
     {
       "id": "wiki_onboarding_2",
       "section": "wiki-file",
       "file": "wiki/wiki_onboarding_2.md",
       "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md",
-      "bytes": 10058,
-      "sha256": "c1aa0370e7294da1f3642c29472b887405a7adf0e0ac782fab26998a4dacbe6b"
+      "bytes": 5673,
+      "sha256": "e4954c167fd07a727df89007859b98603dff9b84b6f8508d991777d9bebe691e"
+    },
+    {
+      "id": "wiki_onboarding_3",
+      "section": "wiki-file",
+      "file": "wiki/wiki_onboarding_3.md",
+      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-3.wiki.md",
+      "bytes": 4629,
+      "sha256": "327c2fd742a8ddb4fd60a51172ec22de2e0f7ab51762efe8221ac2d7188bfee3"
+    },
+    {
+      "id": "wiki_onboarding_4",
+      "section": "wiki-file",
+      "file": "wiki/wiki_onboarding_4.md",
+      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-4.wiki.md",
+      "bytes": 4077,
+      "sha256": "56f15b99ab105a1d29fa395b7f8b2720bc4e9c9427cb0893ab5cf3b4507e3a45"
+    },
+    {
+      "id": "wiki_onboarding_5",
+      "section": "wiki-file",
+      "file": "wiki/wiki_onboarding_5.md",
+      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-5.wiki.md",
+      "bytes": 2187,
+      "sha256": "56b26e25304854db71eb1f795de10ede10631611eceedca78273ef706e636b83"
     },
     {
       "id": "wiki_reparto",
       "section": "wiki-file",
       "file": "wiki/wiki_reparto.md",
       "from": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.wiki.md",
-      "bytes": 18848,
-      "sha256": "ce99e33dfb3393056d9271be062e0b033df3ed62f42b9a6e5c37d5421f16fc01"
+      "bytes": 5241,
+      "sha256": "97022fcfda28450675c52f36c37a486c82b7a532a2f0cd0521499e41f27c38b4"
+    },
+    {
+      "id": "wiki_reparto_2",
+      "section": "wiki-file",
+      "file": "wiki/wiki_reparto_2.md",
+      "from": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento-2.wiki.md",
+      "bytes": 5047,
+      "sha256": "b2e2645111f604c1c641786865f69abb44e7cbe1935e8daf794593d6a4c1ad87"
+    },
+    {
+      "id": "wiki_reparto_3",
+      "section": "wiki-file",
+      "file": "wiki/wiki_reparto_3.md",
+      "from": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento-3.wiki.md",
+      "bytes": 4989,
+      "sha256": "a7df870141c9649e4210820619483164df79be5113723b941cc7f6a408f92ad6"
+    },
+    {
+      "id": "wiki_reparto_4",
+      "section": "wiki-file",
+      "file": "wiki/wiki_reparto_4.md",
+      "from": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento-4.wiki.md",
+      "bytes": 4355,
+      "sha256": "357db588a89f03c92b849bc5e048baec376edabf99a412bb51b6828727236177"
     }
   ]
 }

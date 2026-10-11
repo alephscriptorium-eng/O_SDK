@@ -19,7 +19,15 @@ GUIA = f'{DOSIER}/guia-reparto-acampada26s.md'
 # por template-seed.js --reparto --wiki y por pub/tools/md-sin-tablas.py (el manual, partido en dos por el límite de 20000).
 GUIA_WIKI = f'{DOSIER}/guia-reparto-acampada26s.wiki.md'
 ONBOARDING = 'ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md'
-ONBOARDING_WIKI = ['ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md', 'ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md']
+ONBOARDING_WIKI = 'ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md'
+
+
+def paginas_wiki(wiki_md, titulo):
+    """Páginas de una wiki partida por md-sin-tablas.py (índice .wiki.json al lado). Sin índice: una sola página."""
+    idx = ROOT / (wiki_md[:-len('.wiki.md')] + '.wiki.json')
+    if idx.exists():
+        return [(pg['file'], pg['title']) for pg in json.loads(idx.read_text(encoding='utf-8'))['paginas']]
+    return [(wiki_md, titulo)]
 
 o = json.loads(SRC.read_text(encoding='utf-8'))
 inst, doc = o['instancia'], o['documento']
@@ -227,7 +235,7 @@ for x in maps: marca(x['id'], 'description', 'derivador')
 
 # ---------- R3 · métodos → convención de voto + wikis; wiki del organigrama generada ----------
 def wiki_organigrama():
-    L = [f'# {doc["titulo"]} · {doc["subtitulo"]}', '',
+    L = [   # sin «# título»: Oasis pinta el título de la página, y en /c saldría dos veces
          f'> Página generada desde el organigrama publicado por el colectivo el {doc["fuente"]["fecha_publicacion"]} '
          f'({doc["fuente"]["blog"]}). El colectivo la revisa y la corrige; la fuente es la imagen, no esta página.', '',
          f'**{doc["descripcion"]}.** Objetivo del movimiento: {doc["objetivo_del_movimiento"]}', '']
@@ -277,15 +285,19 @@ wiki = [
          body='2-3 portavoces por nodo, rotativas, sin poder de decisión: transmiten las propuestas de su nodo a la Asamblea Internodos. '
               'En Oasis: ser portavoz = ser miembro de la tribu Asamblea Internodos durante el turno; al terminar, se sale de la tribu y entra la siguiente portavocía.',
          editPolicy='author', tags=['metodo'], image=img('wiki', 'wiki_portavocias'), clearnetPublic=True, responsable='asamblea_internodos'),
-    dict(id='wiki_onboarding', origen='personas', title='Oasis para el nodo · manual de bienvenida · 1 de 2', file=ONBOARDING_WIKI[0], editPolicy='open', tags=['manual'],
-         image=img('wiki', 'wiki_onboarding'), clearnetPublic=True, responsable='personas',
-         nota=f'Variante sin tablas de {ONBOARDING} (pub/tools/md-sin-tablas.py), partida en dos por el límite de 20000 del formulario de wiki.'),
-    dict(id='wiki_onboarding_2', origen='personas', title='Oasis para el nodo · manual de bienvenida · 2 de 2', file=ONBOARDING_WIKI[1], editPolicy='open', tags=['manual'],
-         image=img('wiki', 'wiki_onboarding_2'), clearnetPublic=True, responsable='personas'),
-    dict(id='wiki_reparto', origen='documento', title='Guía de reparto de accesos', file=GUIA_WIKI, editPolicy='author', tags=['manual', 'reparto'],
-         image=img('wiki', 'wiki_reparto'), clearnetPublic=True, responsable='documento',
-         nota=f'La genera template-seed.js --reparto --wiki (sin tablas): libro del operador, sin códigos. El md con tablas del dosier es {GUIA}.'),
 ]
+# Manual y guía: una entrada por página (≤ 5600 B cada una: el cuerpo va dentro del mensaje, no en un blob que un
+# cliente no pide solo; D-O34). Las páginas se enlazan entre sí por título (wikilinks).
+for k, (f, titulo) in enumerate(paginas_wiki(ONBOARDING_WIKI, 'Oasis para el nodo · manual de bienvenida'), 1):
+    oid = 'wiki_onboarding' if k == 1 else f'wiki_onboarding_{k}'
+    wiki.append(dict(id=oid, origen='personas', title=titulo, file=f, editPolicy='open', tags=['manual'],
+                     image=img('wiki', oid), clearnetPublic=True, responsable='personas',
+                     nota=f'Página {k} del manual sin tablas (pub/tools/md-sin-tablas.py sobre {ONBOARDING}).'))
+for k, (f, titulo) in enumerate(paginas_wiki(GUIA_WIKI, 'Guía de reparto de accesos'), 1):
+    oid = 'wiki_reparto' if k == 1 else f'wiki_reparto_{k}'
+    wiki.append(dict(id=oid, origen='documento', title=titulo, file=f, editPolicy='author', tags=['manual', 'reparto'],
+                     image=img('wiki', oid), clearnetPublic=True, responsable='documento',
+                     nota=f'Página {k} de la guía (template-seed.js --reparto --wiki + md-sin-tablas.py): libro del operador, sin códigos. El md con tablas del dosier es {GUIA}.'))
 for w in wiki: marca(w['id'], 'body', 'organigrama' if w['id'] == 'wiki_organigrama' else 'derivador')
 
 # ---------- Convenciones, addenda y guion (método: MAPEO §2-§3) ----------

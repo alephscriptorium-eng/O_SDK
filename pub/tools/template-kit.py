@@ -273,6 +273,7 @@ def avatar_brand(brand, out, size=512, texto=None):
 def build(template, font, out, brand=None):
     t = json.loads(Path(template).read_text(encoding='utf-8'))
     out = Path(out); out.mkdir(parents=True, exist_ok=True); (out / 'wiki').mkdir(exist_ok=True)
+    for viejo in (out / 'wiki').glob('*.md'): viejo.unlink()   # sin restos de una partición anterior con más páginas
     label = {'tribes': 'tribu', 'rooms': 'sala', 'maps': 'mapa', 'events': 'evento', 'wiki': 'wiki'}
     manifest = {'template': t['meta']['id'], 'font_sha256': blob_id(font)[0] if font else None, 'items': []}
     if brand: manifest['brand'] = brand.sha_inputs()

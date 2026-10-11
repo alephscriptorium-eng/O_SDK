@@ -26,7 +26,7 @@
 - **Página** («wiki»): texto fijo que se puede editar. **Mapa**: un punto, o un mapa colaborativo donde cada nodo marca el suyo.
 - **Visible en la web**: lo que puede ver cualquiera desde el navegador, sin cuenta, en `https://acampada26s.net/c`.
 
-**Recuento de lo que se creará:** 25 grupos (incluidos 9 subgrupos), 7 salas, 7 calendarios, 1 evento, 4 listas de correo, 6 páginas, 2 mapas; 41 imágenes de tarjeta. Más 4 candidatos que solo se crean si decís «crear» (bloque C-X).
+**Recuento de lo que se creará:** 25 grupos (incluidos 9 subgrupos), 7 salas, 7 calendarios, 1 evento, 4 listas de correo, 12 páginas, 2 mapas; 47 imágenes de tarjeta. Más 4 candidatos que solo se crean si decís «crear» (bloque C-X).
 
 ## A · Marca (branding)
 
@@ -59,7 +59,7 @@ Dos ya las tenemos exportadas. Falta la tercera (la vista pública sale en blanc
 
 ### A3 · Así aplicaremos vuestro kit (USAMOS: sale de vuestra guía visual)
 
-Generaremos **41 imágenes** (una por grupo, sala, mapa, evento y página; cuadradas, 512 píxeles) con vuestras reglas. Lo que sigue no es una pregunta: es cómo lo vamos a hacer. Decidnos solo si algo no encaja.
+Generaremos **47 imágenes** (una por grupo, sala, mapa, evento y página; cuadradas, 512 píxeles) con vuestras reglas. Lo que sigue no es una pregunta: es cómo lo vamos a hacer. Decidnos solo si algo no encaja.
 
 | # | Regla | Cómo la aplicamos | Fuente |
 |---|---|---|---|
@@ -73,7 +73,7 @@ Decisiones que sí os pedimos:
 
 - A3.6 Tipografía: [ ] vale Cabin Condensed · [ ] os pasamos los ficheros de Gill Sans Condensed y Gill Sans (los usaremos sin subirlos al proyecto)
 - A3.7 Fondos de lona: [ ] usad las fotos que trae el PDF de la guía · [ ] os pasamos las originales a más resolución
-- A3.8 [ ] Queremos ver la prueba (A4) antes de dar el visto bueno a las 41
+- A3.8 [ ] Queremos ver la prueba (A4) antes de dar el visto bueno a las 47
 
 ### A4 · Prueba visual
 
@@ -92,7 +92,7 @@ Hemos hecho estas de muestra con vuestras reglas. Abridlas y decidnos:
 
 ### A5 · Vista previa real
 
-Hemos montado un pub de prueba en un ordenador local con vuestros materiales y hemos sembrado todo lo de este formulario. Estas son **capturas reales** de cómo queda: abrid `ARCHIVO/DISCO/26sm-exported/vista-previa/index.html` (o el zip `vista-previa.zip`). 17 capturas de la web pública y 12 de dentro de la aplicación. Si algo os lía, es así exactamente como va a quedar. Decidnos:
+Hemos montado un pub de prueba en un ordenador local con vuestros materiales y hemos sembrado todo lo de este formulario. Estas son **capturas reales** de cómo queda: abrid `ARCHIVO/DISCO/26sm-exported/vista-previa/index.html` (o el zip `vista-previa.zip`). 23 capturas de la web pública y 13 de dentro de la aplicación. Si algo os lía, es así exactamente como va a quedar. Decidnos:
 
 - A5.1 [ ] Así nos vale · [ ] cambios: ______
 - A5.2 Lo que hemos visto al sembrar: los **grupos no salen en la web** hasta que publican algo expuesto (recién creados, su dirección pública responde «no accesible»); las **salas** solo las ve quien está dentro de su grupo. [ ] entendido · [ ] queremos hablarlo
@@ -146,7 +146,7 @@ Una tabla por tipo. La columna **Estado** va sobre el texto; las columnas **Cóm
 | C-G22 | Comunicación · Coordinación y gabinete de crisis *(subgrupo de Comisión de Comunicación)* | Coordinación y respuesta rápida. Los avisos urgentes van a Emergencies. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
 | C-G23 | Comunicación · Corrección de textos *(subgrupo de Comisión de Comunicación)* | Revisión de textos antes de publicar. Se trabaja en Pads. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
 | C-G24 | InterCSOs | Relación con entidades y actores de la sociedad civil (ámbito estatal e internacional). Tribu de enlace. | DUDA | solo por invitación del responsable | sí, cuando publique algo expuesto | InterCSOs |  | [ ] |  |
-| C-G25 | Asamblea de Colectivos | Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas. Tribu de enlace. | DUDA | solo por invitación del responsable | sí, cuando publique algo expuesto | Asamblea de Colectivos | `vista-previa/img/app-tribe-ysg-510c.jpg` | [ ] |  |
+| C-G25 | Asamblea de Colectivos | Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas. Tribu de enlace. | DUDA | solo por invitación del responsable | sí, cuando publique algo expuesto | Asamblea de Colectivos | `vista-previa/img/app-tribe-ysn6cdec.png` | [ ] |  |
 
 ### C-S · Salas de voz y texto
 
@@ -164,7 +164,7 @@ Una tabla por tipo. La columna **Estado** va sobre el texto; las columnas **Cóm
 
 | # | Calendario | Cuándo | Nota que usaremos | Estado | Visible en la web | Responsable del reparto | Captura | GO | Cambios |
 |---|---|---|---|---|---|---|---|---|---|
-| C-C1 | Asamblea General | diaria a las 20:00 | Puerta del Sol nº 14. Ratifica consensos con la técnica del semáforo. | USAMOS | sí | Asamblea General | `vista-previa/img/c-c-calendars-asamblea-general-wl3zgfzk.png` | [ ] |  |
+| C-C1 | Asamblea General | diaria a las 20:00 | Puerta del Sol nº 14. Ratifica consensos con la técnica del semáforo. | USAMOS | sí | Asamblea General | `vista-previa/img/c-c-calendars-asamblea-general-scf5jdkw.png` | [ ] |  |
 | C-C2 | Asamblea Internodos | diaria a las 19:00 | Previa a la Asamblea General. | USAMOS | no (va dentro de un grupo) | Asamblea Internodos |  | [ ] |  |
 | C-C3 | Nodo Norte | variable (se rellena fecha a fecha, ver B5) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Norte |  | [ ] |  |
 | C-C4 | Nodo Oeste | variable (se rellena fecha a fecha, ver B5) | Periodicidad según cada nodo. | DUDA | no (va dentro de un grupo) | Nodo Oeste |  | [ ] |  |
@@ -176,7 +176,7 @@ Una tabla por tipo. La columna **Estado** va sobre el texto; las columnas **Cóm
 
 | # | Evento | Descripción que usaremos | Cuándo y dónde | Estado | Visible en la web | Responsable del reparto | Captura | GO | Cambios |
 |---|---|---|---|---|---|---|---|---|---|
-| C-E1 | Asamblea General · Puerta del Sol | Cada día a las 20:00 en Puerta del Sol nº 14. Espacio informativo y de consenso; ratificación con la técnica del semáforo. | diaria a las 20:00, Puerta del Sol nº 14, Madrid | DUDA | sí | Asamblea General | `vista-previa/img/c-c-events-asamblea-general-puerta-del-sol-iusabnjx.png` | [ ] |  |
+| C-E1 | Asamblea General · Puerta del Sol | Cada día a las 20:00 en Puerta del Sol nº 14. Espacio informativo y de consenso; ratificación con la técnica del semáforo. | diaria a las 20:00, Puerta del Sol nº 14, Madrid | DUDA | sí | Asamblea General | `vista-previa/img/c-c-events-asamblea-general-puerta-del-sol-kdghv5ki.png` | [ ] |  |
 
 ### C-L · Listas de correo
 
@@ -193,19 +193,25 @@ El texto completo de cada página está en el bloque D; aquí solo el título y 
 
 | # | Página | Quién la edita | Visible en la web | Responsable | Captura | GO | Cambios |
 |---|---|---|---|---|---|---|---|
-| C-P1 | Organigrama y funcionamiento | cualquiera la edita | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-organigrama-y-funcionamiento-t5kbdoph.jpg` | [ ] |  |
-| C-P2 | Técnica del semáforo | solo quien la crea | sí | Asamblea General |  | [ ] |  |
-| C-P3 | Portavocías rotativas | solo quien la crea | sí | Asamblea Internodos | `vista-previa/img/c-c-wiki-portavocias-rotativas-6qu187ke.jpg` | [ ] |  |
-| C-P4 | Oasis para el nodo · manual de bienvenida · 1 de 2 | cualquiera la edita | sí | Personas | `vista-previa/img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-1-de-2-mqgzmzyz.jpg` | [ ] |  |
-| C-P5 | Oasis para el nodo · manual de bienvenida · 2 de 2 | cualquiera la edita | sí | Personas | `vista-previa/img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-2-de-2-c3fpqdkw.jpg` | [ ] |  |
-| C-P6 | Guía de reparto de accesos | solo quien la crea | sí | Todo el colectivo |  | [ ] |  |
+| C-P1 | Organigrama y funcionamiento | cualquiera la edita | sí | Todo el colectivo |  | [ ] |  |
+| C-P2 | Técnica del semáforo | solo quien la crea | sí | Asamblea General | `vista-previa/img/c-c-wiki-tecnica-del-semaforo-lg6lxhip.jpg` | [ ] |  |
+| C-P3 | Portavocías rotativas | solo quien la crea | sí | Asamblea Internodos | `vista-previa/img/c-c-wiki-portavocias-rotativas-yftk1g9o.jpg` | [ ] |  |
+| C-P4 | Oasis para el nodo · manual de bienvenida · 1 de 5 | cualquiera la edita | sí | Personas | `vista-previa/img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-1-de-5-zskrxgad.jpg` | [ ] |  |
+| C-P5 | Oasis para el nodo · manual de bienvenida · 2 de 5 | cualquiera la edita | sí | Personas | `vista-previa/img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-2-de-5-ggqulwlr.jpg` | [ ] |  |
+| C-P6 | Oasis para el nodo · manual de bienvenida · 3 de 5 | cualquiera la edita | sí | Personas | `vista-previa/img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-3-de-5-utqxx3xn.jpg` | [ ] |  |
+| C-P7 | Oasis para el nodo · manual de bienvenida · 4 de 5 | cualquiera la edita | sí | Personas | `vista-previa/img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-4-de-5-fojkyiwv.jpg` | [ ] |  |
+| C-P8 | Oasis para el nodo · manual de bienvenida · 5 de 5 | cualquiera la edita | sí | Personas |  | [ ] |  |
+| C-P9 | Guía de reparto de accesos · 1 de 4 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-1-de-4-h13b0bsx.jpg` | [ ] |  |
+| C-P10 | Guía de reparto de accesos · 2 de 4 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-2-de-4-qnbmzkub.jpg` | [ ] |  |
+| C-P11 | Guía de reparto de accesos · 3 de 4 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-3-de-4-utcq6hpi.jpg` | [ ] |  |
+| C-P12 | Guía de reparto de accesos · 4 de 4 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-4-de-4-7g1ozob3.jpg` | [ ] |  |
 
 ### C-M · Mapas
 
 | # | Mapa | Descripción que usaremos | Estado | Tipo | Visible en la web | Responsable del reparto | Captura | GO | Cambios |
 |---|---|---|---|---|---|---|---|---|---|
 | C-M1 | Puerta del Sol nº 14 | Lugar de la Asamblea General, cada día a las 20:00 (junto a Goiko Grill). | DUDA | un solo punto | no (solo dentro) | Asamblea General |  | [ ] |  |
-| C-M2 | Nodos territoriales | Mapa colaborativo: cada nodo marca dónde se reúne. | DUDA | colaborativo: cada nodo añade su punto | sí | Nodos territoriales | `vista-previa/img/c-c-maps-nodos-territoriales-myzdna6g.jpg` | [ ] |  |
+| C-M2 | Nodos territoriales | Mapa colaborativo: cada nodo marca dónde se reúne. | DUDA | colaborativo: cada nodo añade su punto | sí | Nodos territoriales | `vista-previa/img/c-c-maps-nodos-territoriales-uhm68w0x.jpg` | [ ] |  |
 
 ### C-X · Candidatos: lo que vuestros posts sugieren y el organigrama no tiene
 
@@ -226,8 +232,6 @@ Leedlas enteras. Marcad «revisada» y anotad cambios con el número de página.
 
 Texto que se publicará (4 KB). [ ] revisada · cambios: ______
 
-> # Acampada26S · Organigrama y funcionamiento
-> 
 > > Página generada desde el organigrama publicado por el colectivo el 2026-10-06 (https://acampada26s.net/c/blog/organigrama-y-funcionamiento-acampada-26s-madrid-sbcuz1g9). El colectivo la revisa y la corrige; la fuente es la imagen, no esta página.
 > 
 > **Estructura asamblearia, horizontal y en red.** Objetivo del movimiento: Paralizar el país mediante una huelga general para lograr un cambio de modelo que resuelva el problema de la vivienda y el resto de problemas para la calidad de vida de las personas.
@@ -330,17 +334,41 @@ Texto que se publicará (1 KB). [ ] revisada · cambios: ______
 
 > 2-3 portavoces por nodo, rotativas, sin poder de decisión: transmiten las propuestas de su nodo a la Asamblea Internodos. En Oasis: ser portavoz = ser miembro de la tribu Asamblea Internodos durante el turno; al terminar, se sale de la tribu y entra la siguiente portavocía.
 
-### D4 · Oasis para el nodo · manual de bienvenida · 1 de 2
+### D4 · Oasis para el nodo · manual de bienvenida · 1 de 5
 
-Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md` (10 KB). [ ] revisada · cambios: ______
+Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md` (5 KB). [ ] revisada · cambios: ______
 
-### D5 · Oasis para el nodo · manual de bienvenida · 2 de 2
+### D5 · Oasis para el nodo · manual de bienvenida · 2 de 5
 
-Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md` (9 KB). [ ] revisada · cambios: ______
+Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md` (5 KB). [ ] revisada · cambios: ______
 
-### D6 · Guía de reparto de accesos
+### D6 · Oasis para el nodo · manual de bienvenida · 3 de 5
 
-Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md` (17 KB). [ ] revisada · cambios: ______
+Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-3.wiki.md` (4 KB). [ ] revisada · cambios: ______
+
+### D7 · Oasis para el nodo · manual de bienvenida · 4 de 5
+
+Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-4.wiki.md` (3 KB). [ ] revisada · cambios: ______
+
+### D8 · Oasis para el nodo · manual de bienvenida · 5 de 5
+
+Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-5.wiki.md` (2 KB). [ ] revisada · cambios: ______
+
+### D9 · Guía de reparto de accesos · 1 de 4
+
+Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md` (4 KB). [ ] revisada · cambios: ______
+
+### D10 · Guía de reparto de accesos · 2 de 4
+
+Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-2.wiki.md` (4 KB). [ ] revisada · cambios: ______
+
+### D11 · Guía de reparto de accesos · 3 de 4
+
+Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-3.wiki.md` (5 KB). [ ] revisada · cambios: ______
+
+### D12 · Guía de reparto de accesos · 4 de 4
+
+Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-4.wiki.md` (3 KB). [ ] revisada · cambios: ______
 
 ## E · Lo que NO vamos a crear todavía
 

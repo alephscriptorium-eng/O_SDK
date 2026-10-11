@@ -1,12 +1,12 @@
 {
   "base": "http://localhost:3100",
-  "at": "2026-10-11T18:56:05Z",
+  "at": "2026-10-11T19:55:38Z",
   "items": [
     {
       "url": "/",
       "file": "img/app-portada.jpg",
-      "bytes": 169160,
-      "sha256": "fdba9e4921d7758c38beeba24fcc9c80c8bd5f93117f1b213ce99b09cbf3c4f8",
+      "bytes": 169914,
+      "sha256": "a6003a8bb745c40cfca0d0a214440298a16772bda70ce2ddbc0a5897f4497883",
       "section": null,
       "id": null,
       "title": null
@@ -14,17 +14,17 @@
     {
       "url": "/tribes",
       "file": "img/app-tribes.jpg",
-      "bytes": 213317,
-      "sha256": "bfcce52e4dd473ba096aac13aa0a699bfab8f840898ceb2f178f898711718d67",
+      "bytes": 189371,
+      "sha256": "1ee70898be58eb584f12157c178b666801226641b037880ad6625d788756ac15",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/tribe/%25ySg%2F510cdCyzXpSeg5UsVnCjOx7VyDWSN4c%2FE8wCAY8%3D.sha256",
-      "file": "img/app-tribe-ysg-510c.jpg",
-      "bytes": 143291,
-      "sha256": "ce8694034c6506cd31206f753316fd860a21b17a6d0c0dcbd330874214bf0da7",
+      "url": "/tribe/%25YSn6cDeCd4coWxGZ%2F8GuoRXwtuzfDaHkRDn4ieLHPZs%3D.sha256",
+      "file": "img/app-tribe-ysn6cdec.png",
+      "bytes": 215869,
+      "sha256": "3df383bd29417bda5a592e8cef988bcf2d9681d6323344e1cabaa560ec1331b1",
       "section": "tribes",
       "id": "asamblea_colectivos",
       "title": "Asamblea de Colectivos"
@@ -32,17 +32,26 @@
     {
       "url": "/wiki",
       "file": "img/app-wiki.jpg",
-      "bytes": 193004,
-      "sha256": "7136e28946efcac561950591839a857890f889dd963f5f8b20ba34a42f617532",
+      "bytes": 213407,
+      "sha256": "a798cb139b71af35dc5aa58b6f0e1ccf9d5ef09d51c50439b9eb6899c26e702b",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/wiki/guia-de-reparto-de-accesos",
-      "file": "img/app-wiki-guia-de-reparto-de-accesos.png",
-      "bytes": 189740,
-      "sha256": "6ef7dc0122c365cc2cd8fbefd4896f167b6689fcda1de2b8ea1e1817df98d291",
+      "url": "/wiki/oasis-para-el-nodo-manual-de-bienvenida-1-de-5",
+      "file": "img/app-wiki-oasis-para-el-nodo-manual-de-bienvenida-1-de-5.jpg",
+      "bytes": 274990,
+      "sha256": "bcc2d377a75d44ed17b48381f6ec5dda9583dc7ad98efe4d58e1ef82295856be",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/wiki/guia-de-reparto-de-accesos-1-de-4",
+      "file": "img/app-wiki-guia-de-reparto-de-accesos-1-de-4.jpg",
+      "bytes": 317370,
+      "sha256": "080aff6f2ff695b9faec10af9e2cff76d32b86bc1811037d98347158d94428c1",
       "section": null,
       "id": null,
       "title": null
@@ -50,17 +59,17 @@
     {
       "url": "/calendars",
       "file": "img/app-calendars.png",
-      "bytes": 176667,
-      "sha256": "b32554d08e50ca8687c008734c2dd803cc5f78893604aeded50ca92dedaebcc3",
+      "bytes": 166945,
+      "sha256": "61865ba9e1dffbe3eb256a90505f3878d4df8a606a0573bd040d44e6e6450f91",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/calendars/%25wl3ZGfzk9eGUgNltMPFJVKbMJPIuE%2FagBWmoNzIk9xk%3D.sha256",
-      "file": "img/app-calendars-wl3zgfzk.png",
-      "bytes": 246715,
-      "sha256": "3a7e2113e8d4b9a2ab81964b23626359e9e3132479d52081a97e2a1085a156fb",
+      "url": "/calendars/%25sCF5JdkWUoV2AZzVG1YvG1sYRIPL0FbSfqqimQ4jHnE%3D.sha256",
+      "file": "img/app-calendars-scf5jdkw.png",
+      "bytes": 244785,
+      "sha256": "a2481094e04cc0337784bcbe6564b5383d9b387406c58b43b28c1a0215288305",
       "section": "calendars",
       "id": "cal_asamblea_general",
       "title": "Asamblea General"
@@ -68,17 +77,17 @@
     {
       "url": "/rooms",
       "file": "img/app-rooms.png",
-      "bytes": 132996,
-      "sha256": "2fdee1826199dfc887999cc33feae6431ed0ec4ad9dcb6780ea90a3bba4180bc",
+      "bytes": 132571,
+      "sha256": "e5587d1ea11777cd8d20f4fb411dce6b8941ac5902ff46e6ec6b441ff0a022d0",
       "section": null,
       "id": null,
       "title": null
     },
     {
       "url": "/maps",
-      "file": "img/app-maps.jpg",
-      "bytes": 124073,
-      "sha256": "0d6f19346cee40e0c511520cc04f3a8a41783e9f5694f3540f71d4396768ec72",
+      "file": "img/app-maps.png",
+      "bytes": 227652,
+      "sha256": "66a0a49995d4462868dd1d242a4e7826a69c7b16cbeaeddd691b395745b3f4ac",
       "section": null,
       "id": null,
       "title": null
@@ -86,8 +95,8 @@
     {
       "url": "/events",
       "file": "img/app-events.jpg",
-      "bytes": 192753,
-      "sha256": "47ce23b718d6e7f62c6b8ea43a89a64cc32864499b1ffd38220457edd33a548e",
+      "bytes": 179340,
+      "sha256": "e3ccc0f547a24d6ec58545127ab404443dc3e0d64b34f2aca8f2e48c82d39dfb",
       "section": null,
       "id": null,
       "title": null
@@ -95,17 +104,17 @@
     {
       "url": "/mailing",
       "file": "img/app-mailing.png",
-      "bytes": 223001,
-      "sha256": "0b4c08fc78c93015e223a89defd266771469972ad4783bb5c9541cee8e524e42",
+      "bytes": 183664,
+      "sha256": "932f987c76c445553c5d180371a98ade93f5bb21c016abb7d36fab66da04d005",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/author/%40al0mhjPJ4RCxQIc1lbhofdDSP0sa%2F30Px9918YGxI4o%3D.ed25519",
-      "file": "img/app-author-al0mhjpj.png",
-      "bytes": 246417,
-      "sha256": "ca22dce56ab4970fbf6fc57e800cf9dfaecc4cfe12890295650827be9e550969",
+      "url": "/inhabitants",
+      "file": "img/app-inhabitants.jpg",
+      "bytes": 151101,
+      "sha256": "d2553d1ca5079959951464af2faf26a1bfd6588933edbd9faa75a9b805c49ba6",
       "section": null,
       "id": null,
       "title": null

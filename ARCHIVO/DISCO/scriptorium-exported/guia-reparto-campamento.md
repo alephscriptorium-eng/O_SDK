@@ -152,7 +152,7 @@ Libro del **operador** (la mesa técnica): a qué órgano le toca cada tribu, sa
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
 | **Organigrama y funcionamiento** (wiki) | wiki (open) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
-| **Guía de reparto de accesos** (wiki) | wiki (author) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
+| **Guía de reparto de accesos · 1 de 4** (wiki) | wiki (author) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
 
 ## 20. Técnica del semáforo  `responsable: tecnica_semaforo`
 
@@ -170,8 +170,7 @@ Libro del **operador** (la mesa técnica): a qué órgano le toca cada tribu, sa
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Oasis para el nodo · manual de bienvenida · 1 de 2** (wiki) | wiki (open) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
-| **Oasis para el nodo · manual de bienvenida · 2 de 2** (wiki) | wiki (open) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
+| **Oasis para el nodo · manual de bienvenida · 1 de 5** (wiki) | wiki (open) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
 
 ## Reglas que no cambian
 

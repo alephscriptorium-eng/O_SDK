@@ -1,0 +1,32 @@
+{
+  "titulo": "Oasis para el nodo · manual de bienvenida",
+  "max": 5600,
+  "src": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md",
+  "paginas": [
+    {
+      "file": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md",
+      "title": "Oasis para el nodo · manual de bienvenida · 1 de 5",
+      "bytes": 5361
+    },
+    {
+      "file": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md",
+      "title": "Oasis para el nodo · manual de bienvenida · 2 de 5",
+      "bytes": 5564
+    },
+    {
+      "file": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-3.wiki.md",
+      "title": "Oasis para el nodo · manual de bienvenida · 3 de 5",
+      "bytes": 4546
+    },
+    {
+      "file": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-4.wiki.md",
+      "title": "Oasis para el nodo · manual de bienvenida · 4 de 5",
+      "bytes": 4012
+    },
+    {
+      "file": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-5.wiki.md",
+      "title": "Oasis para el nodo · manual de bienvenida · 5 de 5",
+      "bytes": 2158
+    }
+  ]
+}

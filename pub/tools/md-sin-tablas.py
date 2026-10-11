@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-# md-sin-tablas.py · reexpresa un markdown para el renderer de wikis de Oasis (src/backend/renderStyledText.js), que no
-# tiene tablas ni <br> y vuelve «## 2. X» un ítem numerado además de cabecera (D-O34). Conserva toda la información:
-#   - cada fila de tabla → un ítem «- **col1** · col2 · col3» (la cabecera de la tabla se cita una vez en cursiva);
-#   - «## N. Título» → «## Título»; «####» → «###» (el renderer no pasa de 3);
-#   - las referencias «§N» se mantienen (son texto).
-# Con --max N y --split, si el resultado pasa de N bytes se parte en trozos por cabeceras «##», cada uno con
-# un enlace al siguiente/anterior (wikilink por título). Salida determinista.
-#   python -X utf8 pub/tools/md-sin-tablas.py <entrada.md> <salida.md> [--max 20000 --split --titulo "Manual de bienvenida"]
-import argparse, re, sys
+# md-sin-tablas.py · prepara un markdown para sembrarlo como wiki en Oasis sin tocar el código de upstream (D-O34):
+#   1. sin tablas: cada fila → un ítem «- **col1** · col2 · col3» (el renderer de Oasis no tiene tablas ni <br>);
+#   2. sin «## N.» en cabeceras (el renderer las vuelve ítem numerado) y sin «####» (el renderer no pasa de ###);
+#   3. sin «# título» al principio: Oasis pinta el título de la página y saldría dos veces;
+#   4. en páginas de como mucho --max bytes (por defecto 5600): el cuerpo de una wiki que pasa de 6000 B viaja en
+#      un blob aparte que un cliente no pide solo (src/models/wiki_model.js:53-57) y la página se ve vacía. Por
+#      debajo, el cuerpo va dentro del mensaje y se lee siempre. Se parte por cabeceras «##», equilibrado, con un
+#      índice de páginas (wikilinks por título) al principio y al final de cada una.
+# Salida: <dst>, <dst sin .wiki.md>-2.wiki.md, … y un índice <dst sin .md>.json [{file, title, bytes}] que leen los
+# derivadores de plantilla para crear una entrada wiki[] por página. Determinista.
+#   python -X utf8 pub/tools/md-sin-tablas.py <entrada.md> <salida.wiki.md> --titulo "Título" [--max 5600]
+import argparse, json, re, sys
 from pathlib import Path
 
 
@@ -36,56 +39,63 @@ def sin_tablas(md: str) -> str:
         if m: l = f'### {m.group(2)}'
         out.append(l); i += 1
     s = '\n'.join(out)
+    s = re.sub(r'^# [^\n]*\n+', '', s, count=1)   # el título lo pone Oasis
     return re.sub(r'\n{3,}', '\n\n', s).strip() + '\n'
 
 
 def partir(md: str, maxb: int, titulo: str):
-    """Parte por «## » en trozos ≤ maxb bytes (mejor esfuerzo); devuelve [(título, cuerpo)]."""
-    cab = re.match(r'^(# [^\n]*\n)', md)
-    intro = cab.group(1) if cab else ''
-    resto = md[len(intro):]
-    secs = re.split(r'(?m)^(?=## )', resto)
-    total = len(resto.encode('utf-8')); n_obj = -(-total // (maxb - 600))   # trozos equilibrados, no «todo y un resto»
-    objetivo = total / n_obj
-    partes, cur = [], ''
+    """Trozos por «## » (y por párrafos si una sección sola pasa de maxb), equilibrados, cada uno ≤ maxb con su índice."""
+    secs = re.split(r'(?m)^(?=## )', md)
+    piezas = []
     for sec in secs:
-        if cur and len(partes) < n_obj - 1 and len(cur.encode('utf-8')) + len(sec.encode('utf-8')) / 2 > objetivo:
-            partes.append(cur); cur = sec
-        else:
-            cur += sec
-    if cur: partes.append(cur)
-    n = len(partes)
-    res = []
-    for k, cuerpo in enumerate(partes, 1):
-        t = f'{titulo} · {k} de {n}' if n > 1 else titulo
-        nav = []
-        if k > 1: nav.append(f'Anterior: [[{titulo} · {k - 1} de {n}]]')
-        if k < n: nav.append(f'Siguiente: [[{titulo} · {k + 1} de {n}]]')
-        body = f'# {t}\n\n' + ('*Parte {k} de {n}.* ' if n > 1 else '') + cuerpo.strip() + ('\n\n' + ' · '.join(nav) if nav else '') + '\n'
-        res.append((t, body))
-    return res
+        if len(sec.encode('utf-8')) <= maxb: piezas.append(sec); continue
+        for par in re.split(r'\n{2,}', sec):   # sección demasiado larga: por párrafos
+            piezas.append(par.strip() + '\n\n')
+    nav_reserva = 260   # «Parte k de n» arriba e índice de páginas abajo (crece con n; se comprueba al final)
+    total = sum(len(p.encode('utf-8')) for p in piezas)
+    n_obj = max(1, -(-total // (maxb - nav_reserva)))
+    while True:
+        objetivo = total / n_obj
+        partes, cur = [], ''
+        for p in piezas:
+            if cur and len(partes) < n_obj - 1 and len(cur.encode('utf-8')) + len(p.encode('utf-8')) / 2 > objetivo:
+                partes.append(cur); cur = p
+            else:
+                cur += p
+        if cur: partes.append(cur)
+        n = len(partes)
+        titulos = [f'{titulo} · {k} de {n}' if n > 1 else titulo for k in range(1, n + 1)]
+        indice = 'Páginas: ' + ' · '.join(f'[[{t}]]' for t in titulos) if n > 1 else ''
+        res = []
+        for k, cuerpo in enumerate(partes, 1):
+            body = (f'*Parte {k} de {n}.*\n\n' if n > 1 else '') + cuerpo.strip() + (f'\n\n{indice}\n' if n > 1 else '\n')
+            res.append((titulos[k - 1], body))
+        if all(len(b.encode('utf-8')) <= maxb for _, b in res) or n_obj > 40: return res
+        n_obj += 1
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('src'); ap.add_argument('dst'); ap.add_argument('--max', type=int, default=0)
-    ap.add_argument('--split', action='store_true'); ap.add_argument('--titulo', default='')
+    ap.add_argument('src'); ap.add_argument('dst'); ap.add_argument('--max', type=int, default=5600)
+    ap.add_argument('--titulo', required=True)
     a = ap.parse_args()
     md = sin_tablas(Path(a.src).read_text(encoding='utf-8'))
-    bad = sum(1 for l in md.split('\n') if l.lstrip().startswith('|'))
-    size = len(md.encode('utf-8'))
     dst = Path(a.dst)
-    if a.max and size > a.max and a.split:
-        partes = partir(md, a.max, a.titulo or dst.stem)
-        for k, (t, body) in enumerate(partes, 1):
-            f = dst if k == 1 else dst.with_name(dst.name.replace('.wiki.md', f'-{k}.wiki.md'))
-            f.write_text(body, encoding='utf-8')
-            print(f'{f.as_posix()}  {len(body.encode("utf-8"))} B  «{t}»')
-        print(f'{len(partes)} partes (origen {size} B > {a.max}); líneas con |: {bad}')
-    else:
-        dst.write_text(md, encoding='utf-8')
-        print(f'{dst.as_posix()}  {size} B  líneas con |: {bad}' + (f'  ⚠ > {a.max}' if a.max and size > a.max else ''))
-    sys.exit(1 if bad else 0)
+    base = dst.name[:-len('.wiki.md')] if dst.name.endswith('.wiki.md') else dst.stem
+    partes = partir(md, a.max, a.titulo)
+    indice = []
+    for k, (t, body) in enumerate(partes, 1):
+        f = dst if k == 1 else dst.with_name(f'{base}-{k}.wiki.md')
+        f.write_text(body, encoding='utf-8')
+        indice.append({'file': f.as_posix(), 'title': t, 'bytes': len(body.encode('utf-8'))})
+    # páginas sobrantes de una ejecución anterior con más partes
+    for viejo in dst.parent.glob(f'{base}-*.wiki.md'):
+        if viejo.as_posix() not in {i['file'] for i in indice}: viejo.unlink()
+    idx = dst.with_name(f'{base}.wiki.json')
+    idx.write_text(json.dumps({'titulo': a.titulo, 'max': a.max, 'src': Path(a.src).as_posix(), 'paginas': indice}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    bad = sum(1 for l in md.split('\n') if l.lstrip().startswith('|'))
+    print(f'{len(partes)} página(s) ≤ {a.max} B · ' + ' · '.join(f'{i["bytes"]} B' for i in indice) + f' · líneas con |: {bad} · índice {idx.as_posix()}')
+    sys.exit(1 if bad or any(i['bytes'] > a.max for i in indice) else 0)
 
 
 if __name__ == '__main__':

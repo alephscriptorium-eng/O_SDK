@@ -48,7 +48,11 @@ function reparto(t, { template, ledger, pending, organigrama, forma = 'md' } = {
   const rep = m.reparto || {};
   const sections = ['tribes', 'rooms', 'calendars', 'mailing', 'maps', 'events', 'wiki'];
   const byResp = new Map();
+  // Una wiki partida en páginas (wiki_x, wiki_x_2, …) es UN objeto para el reparto: se lista una vez, con su nº de páginas.
+  const pagesOf = (id) => (t.wiki || []).filter(w => w.id === id || new RegExp(`^${id}_\d+$`).test(w.id)).length;
   sections.forEach(section => (t[section] || []).forEach(x => {
+    if (section === 'wiki' && /_\d+$/.test(x.id)) return;
+    if (section === 'wiki' && pagesOf(x.id) > 1) x = { ...x, title: `${x.title.replace(/ · 1 de \d+$/, '')} (${pagesOf(x.id)} páginas)` };
     const r = x.responsable || '<pendiente: responsable>';
     if (!byResp.has(r)) byResp.set(r, []);
     byResp.get(r).push({ section, x });
@@ -65,8 +69,7 @@ function reparto(t, { template, ledger, pending, organigrama, forma = 'md' } = {
 
   const md = [];
   const out = (s = '') => md.push(s);
-  out(`# Guía de reparto de accesos · ${m.nombre}`);
-  out();
+  if (!wiki) { out(`# Guía de reparto de accesos · ${m.nombre}`); out(); }   // en la wiki el título lo pone Oasis
   out(`Libro del **operador** (la mesa técnica): a qué órgano le toca cada tribu, sala, calendario, lista o mapa, qué tipo de acceso lleva y dónde se obtiene. Generada por \`pub/tools/template-seed.js --reparto\` desde \`${template ? require('path').basename(template) : 'la plantilla'}\`; no se edita a mano.`);
   out();
   out('> **Aquí no hay ningún código.** Los códigos de invitación viven en la tarjeta de cada objeto, dentro del Oasis de quien lo reparte, y se entregan en mano o por QR impreso. Esta guía dice *quién* y *dónde*, nunca *cuál*.');

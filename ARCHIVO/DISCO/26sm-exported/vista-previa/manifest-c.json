@@ -1,28 +1,28 @@
 {
   "base": "http://localhost:8188",
-  "at": "2026-10-11T18:54:44Z",
+  "at": "2026-10-11T19:47:53Z",
   "items": [
     {
       "url": "/c",
-      "file": "img/c-c.png",
-      "bytes": 33180,
-      "sha256": "1742b6157986fd224af4f6336252a294f9b8cf220eda8a242f9d6db6ee1b2014",
+      "file": "img/c-c.jpg",
+      "bytes": 247494,
+      "sha256": "e8cc2e3b4bf4e8212e59a1ce49694b74828c28b6dbda2f80e022eb11c5c5e14f",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/c/inhabitant/%40al0mhjPJ4RCxQIc1lbhofdDSP0sa%2F30Px9918YGxI4o%3D.ed25519",
-      "file": "img/c-c-inhabitant-al0mhjpj.jpg",
-      "bytes": 216227,
-      "sha256": "889037730a17499ff480f412951aea430c8cbc4b82e2ff6b0d84e1a3825facc0",
+      "url": "/c/inhabitant/%40ck3YtzwIp9jokXj%2B24uF179BJKsQXg1YJrTuFGar8H8%3D.ed25519",
+      "file": "img/c-c-inhabitant-ck3ytzwi.jpg",
+      "bytes": 176102,
+      "sha256": "c8c6252ceb17a0eaaaa03a99e52485c24a356b14e0816f3768e6e97bb51029a8",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/c/calendars/asamblea-general-wl3zgfzk",
-      "file": "img/c-c-calendars-asamblea-general-wl3zgfzk.png",
+      "url": "/c/calendars/asamblea-general-scf5jdkw",
+      "file": "img/c-c-calendars-asamblea-general-scf5jdkw.png",
       "bytes": 93467,
       "sha256": "16c796f14e67da8d03891a656dc02b0b69a8d275c50e9365dcedcfdbc8bf21d8",
       "section": "calendars",
@@ -30,8 +30,8 @@
       "title": "Asamblea General"
     },
     {
-      "url": "/c/events/asamblea-general-puerta-del-sol-iusabnjx",
-      "file": "img/c-c-events-asamblea-general-puerta-del-sol-iusabnjx.png",
+      "url": "/c/events/asamblea-general-puerta-del-sol-kdghv5ki",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-kdghv5ki.png",
       "bytes": 60810,
       "sha256": "b37b27c404d0bd59d349ae84466dfcb7661b54b94a2f60905b61ba87c5c06c0e",
       "section": "events",
@@ -39,35 +39,35 @@
       "title": "Asamblea General · Puerta del Sol"
     },
     {
-      "url": "/c/events/asamblea-general-puerta-del-sol-vuavsboq",
-      "file": "img/c-c-events-asamblea-general-puerta-del-sol-vuavsboq.png",
+      "url": "/c/events/asamblea-general-puerta-del-sol-hcinvp74",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-hcinvp74.png",
       "bytes": 60816,
       "sha256": "4823679f5a7d62f2f8ee99d8bb0be190055c60c554ad311af53aa0aa3cbae19d",
-      "section": null,
-      "id": null,
-      "title": null
-    },
-    {
-      "url": "/c/events/asamblea-general-puerta-del-sol-kcblshkq",
-      "file": "img/c-c-events-asamblea-general-puerta-del-sol-kcblshkq.png",
-      "bytes": 60808,
-      "sha256": "a44bdb78147a20acbdf8db8b9fa4ed4ef52fb9cdce8293a5821d992ca530a397",
-      "section": null,
-      "id": null,
-      "title": null
-    },
-    {
-      "url": "/c/events/asamblea-general-puerta-del-sol-wmxoznn4",
-      "file": "img/c-c-events-asamblea-general-puerta-del-sol-wmxoznn4.png",
-      "bytes": 60817,
-      "sha256": "47b48d820695dfb1e759aacbd3d1a32e9f519af7899bb0f23211d0254688dc6f",
       "section": "events",
-      "id": "evento_asamblea_general#4",
+      "id": "evento_asamblea_general#2",
       "title": "Asamblea General · Puerta del Sol"
     },
     {
-      "url": "/c/events/asamblea-general-puerta-del-sol-cfptqvw6",
-      "file": "img/c-c-events-asamblea-general-puerta-del-sol-cfptqvw6.png",
+      "url": "/c/events/asamblea-general-puerta-del-sol-r0owqqiz",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-r0owqqiz.png",
+      "bytes": 60808,
+      "sha256": "a44bdb78147a20acbdf8db8b9fa4ed4ef52fb9cdce8293a5821d992ca530a397",
+      "section": "events",
+      "id": "evento_asamblea_general#3",
+      "title": "Asamblea General · Puerta del Sol"
+    },
+    {
+      "url": "/c/events/asamblea-general-puerta-del-sol-kjz6qwcu",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-kjz6qwcu.png",
+      "bytes": 60817,
+      "sha256": "47b48d820695dfb1e759aacbd3d1a32e9f519af7899bb0f23211d0254688dc6f",
+      "section": null,
+      "id": null,
+      "title": null
+    },
+    {
+      "url": "/c/events/asamblea-general-puerta-del-sol-8nucc1wb",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-8nucc1wb.png",
       "bytes": 60833,
       "sha256": "af47ec525666c613402430b689a1992321fd546682f1ba1c8d476cbd063f6369",
       "section": "events",
@@ -75,8 +75,8 @@
       "title": "Asamblea General · Puerta del Sol"
     },
     {
-      "url": "/c/events/asamblea-general-puerta-del-sol-y7xjno4g",
-      "file": "img/c-c-events-asamblea-general-puerta-del-sol-y7xjno4g.png",
+      "url": "/c/events/asamblea-general-puerta-del-sol-fvlch6ra",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-fvlch6ra.png",
       "bytes": 60802,
       "sha256": "92800335c0fdec712eb1a2627447ee60ee51ef7dbc0a2192abede7c0ed210444",
       "section": "events",
@@ -84,8 +84,8 @@
       "title": "Asamblea General · Puerta del Sol"
     },
     {
-      "url": "/c/events/asamblea-general-puerta-del-sol-lryhllz0",
-      "file": "img/c-c-events-asamblea-general-puerta-del-sol-lryhllz0.png",
+      "url": "/c/events/asamblea-general-puerta-del-sol-daxpbufz",
+      "file": "img/c-c-events-asamblea-general-puerta-del-sol-daxpbufz.png",
       "bytes": 60837,
       "sha256": "35eb7c6601b2ab80c2fe85da09f2423b7e90f1c2cd2ff36e31f25607e1bdb767",
       "section": "events",
@@ -93,68 +93,121 @@
       "title": "Asamblea General · Puerta del Sol"
     },
     {
-      "url": "/c/maps/nodos-territoriales-myzdna6g",
-      "file": "img/c-c-maps-nodos-territoriales-myzdna6g.jpg",
-      "bytes": 81210,
-      "sha256": "be79eeec85b42fada65f64eb9df27231527fff7b5a1a8f9cf2db87da395a6886",
+      "url": "/c/maps/nodos-territoriales-uhm68w0x",
+      "file": "img/c-c-maps-nodos-territoriales-uhm68w0x.jpg",
+      "bytes": 72066,
+      "sha256": "07b037e1133c600127dc26b85c75353d90309c0a6276449299133d17cbde1be7",
       "section": "maps",
       "id": "mapa_nodos",
       "title": "Nodos territoriales"
     },
     {
-      "url": "/c/wiki/guia-de-reparto-de-accesos-np6tdrpx",
-      "file": "img/c-c-wiki-guia-de-reparto-de-accesos-np6tdrpx.jpg",
-      "bytes": 288410,
-      "sha256": "fdac009cf79d5872009d7ff99a45c3ccdc6bc1fc141fc9efa00034279a9eae8e",
+      "url": "/c/wiki/guia-de-reparto-de-accesos-4-de-4-7g1ozob3",
+      "file": "img/c-c-wiki-guia-de-reparto-de-accesos-4-de-4-7g1ozob3.jpg",
+      "bytes": 229050,
+      "sha256": "4c92bf16e426643d2783483404473ec141ca3c571472780fec79513a4428540f",
+      "section": "wiki",
+      "id": "wiki_reparto_4",
+      "title": "Guía de reparto de accesos · 4 de 4"
+    },
+    {
+      "url": "/c/wiki/guia-de-reparto-de-accesos-3-de-4-utcq6hpi",
+      "file": "img/c-c-wiki-guia-de-reparto-de-accesos-3-de-4-utcq6hpi.jpg",
+      "bytes": 248183,
+      "sha256": "e0a9193ecee989534aea086f6e4f0e3adf5f84977a4a39b7c991220cf55a6f08",
+      "section": "wiki",
+      "id": "wiki_reparto_3",
+      "title": "Guía de reparto de accesos · 3 de 4"
+    },
+    {
+      "url": "/c/wiki/guia-de-reparto-de-accesos-2-de-4-qnbmzkub",
+      "file": "img/c-c-wiki-guia-de-reparto-de-accesos-2-de-4-qnbmzkub.jpg",
+      "bytes": 221752,
+      "sha256": "4b5aa5454b7c00d6f48bc784b5889b09eed86269a58b5942acf330621c7a61bc",
+      "section": "wiki",
+      "id": "wiki_reparto_2",
+      "title": "Guía de reparto de accesos · 2 de 4"
+    },
+    {
+      "url": "/c/wiki/guia-de-reparto-de-accesos-1-de-4-h13b0bsx",
+      "file": "img/c-c-wiki-guia-de-reparto-de-accesos-1-de-4-h13b0bsx.jpg",
+      "bytes": 249455,
+      "sha256": "87f90534dfcec0d79511361e8d8188d9ea2f74fdddeb422285f18871cd3eb586",
+      "section": "wiki",
+      "id": "wiki_reparto",
+      "title": "Guía de reparto de accesos · 1 de 4"
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-5-de-5-ij7nqp1c",
+      "file": "img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-5-de-5-ij7nqp1c.jpg",
+      "bytes": 155022,
+      "sha256": "1aa21b18d03b53d9be8fe32f9a02965d025e0196eefb9502d70584be5d099209",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-2-de-2-c3fpqdkw",
-      "file": "img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-2-de-2-c3fpqdkw.jpg",
-      "bytes": 261150,
-      "sha256": "92f378dd0d77be724894052cde9ea6b4e4feef7b021eb9256a91e3b92ef5782c",
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-4-de-5-fojkyiwv",
+      "file": "img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-4-de-5-fojkyiwv.jpg",
+      "bytes": 194089,
+      "sha256": "456270f2fdea4024984335ad49d1beb8a958299cc70043065ebccb46a82e0dc2",
+      "section": "wiki",
+      "id": "wiki_onboarding_4",
+      "title": "Oasis para el nodo · manual de bienvenida · 4 de 5"
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-3-de-5-utqxx3xn",
+      "file": "img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-3-de-5-utqxx3xn.jpg",
+      "bytes": 221890,
+      "sha256": "30dc90e17f2df1945d909520f6e61ed668221f4d8e31bdaf81a7e7a3cfbc9945",
+      "section": "wiki",
+      "id": "wiki_onboarding_3",
+      "title": "Oasis para el nodo · manual de bienvenida · 3 de 5"
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-2-de-5-ggqulwlr",
+      "file": "img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-2-de-5-ggqulwlr.jpg",
+      "bytes": 204236,
+      "sha256": "ca65308943b7f828aaf3fbd8e65a4ec38fa93ce23189965e4c1a75fcb96e6a71",
       "section": "wiki",
       "id": "wiki_onboarding_2",
-      "title": "Oasis para el nodo · manual de bienvenida · 2 de 2"
+      "title": "Oasis para el nodo · manual de bienvenida · 2 de 5"
     },
     {
-      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-1-de-2-mqgzmzyz",
-      "file": "img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-1-de-2-mqgzmzyz.jpg",
-      "bytes": 234639,
-      "sha256": "1c9fff39b865e30c6e50737af37fa42c68dfea01b4a5da829bc753d337b02d14",
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-1-de-5-zskrxgad",
+      "file": "img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-1-de-5-zskrxgad.jpg",
+      "bytes": 192392,
+      "sha256": "f1e83508bb9b407ac3ba05a054e62ee4a144b23f8deaff16cf1d03eafac23829",
       "section": "wiki",
       "id": "wiki_onboarding",
-      "title": "Oasis para el nodo · manual de bienvenida · 1 de 2"
+      "title": "Oasis para el nodo · manual de bienvenida · 1 de 5"
     },
     {
-      "url": "/c/wiki/portavocias-rotativas-6qu187ke",
-      "file": "img/c-c-wiki-portavocias-rotativas-6qu187ke.jpg",
-      "bytes": 83159,
-      "sha256": "6db9fb5daa0ea175611a788ba82ae1a6f7a1c3e4eed8fbc0d8d2140638739bc5",
+      "url": "/c/wiki/portavocias-rotativas-yftk1g9o",
+      "file": "img/c-c-wiki-portavocias-rotativas-yftk1g9o.jpg",
+      "bytes": 72722,
+      "sha256": "56b6f83a892482510f82ff930916afe6e874724c3dee196a86e553989a7a348e",
       "section": "wiki",
       "id": "wiki_portavocias",
       "title": "Portavocías rotativas"
     },
     {
-      "url": "/c/wiki/tecnica-del-semaforo-4xwshwt8",
-      "file": "img/c-c-wiki-tecnica-del-semaforo-4xwshwt8.jpg",
-      "bytes": 78358,
-      "sha256": "6ce1f353211616a2464a49ff9eec442cd4404c5c4ec4193539242680a1beeed4",
+      "url": "/c/wiki/tecnica-del-semaforo-lg6lxhip",
+      "file": "img/c-c-wiki-tecnica-del-semaforo-lg6lxhip.jpg",
+      "bytes": 68179,
+      "sha256": "0d2483fef3e136129b0cc05127267ebf200da2543457ad66e5219e3e8da93c35",
+      "section": "wiki",
+      "id": "wiki_semaforo",
+      "title": "Técnica del semáforo"
+    },
+    {
+      "url": "/c/wiki/organigrama-y-funcionamiento-albyrcwr",
+      "file": "img/c-c-wiki-organigrama-y-funcionamiento-albyrcwr.jpg",
+      "bytes": 174332,
+      "sha256": "e53801818d4188d7329a68dbead6afb3a4500cf43db7aeae30138ea5c96e4f19",
       "section": null,
       "id": null,
       "title": null
-    },
-    {
-      "url": "/c/wiki/organigrama-y-funcionamiento-t5kbdoph",
-      "file": "img/c-c-wiki-organigrama-y-funcionamiento-t5kbdoph.jpg",
-      "bytes": 207918,
-      "sha256": "a3cf2cc53054a0776527774f9c0b1cf0ff6492e22b5c0618fd593d1816342c16",
-      "section": "wiki",
-      "id": "wiki_organigrama",
-      "title": "Organigrama y funcionamiento"
     }
-  ],
-  "nota": "Solo páginas que el visor sirve: las tribus no salen en /c hasta exponer contenido; los índices de módulo (/c/wiki, /c/events…) no existen."
+  ]
 }

@@ -290,13 +290,11 @@ Las crea la identidad que las vaya a presidir: el token de la sala se firma con 
 - Description: Relación con entidades de la sociedad civil. Cifrada: solo miembros.
 - Type: **CLOSED** (cifrada: añadir miembros al crearla)
 
-## 7. Wikis (6) — `Menú → Wiki → Create page`
+## 7. Wikis (12) — `Menú → Wiki → Create page`
 
 ### 7.1 Organigrama y funcionamiento  `origen: documento`
 - Edit policy: **open** · Tags: organigrama
-- Cuerpo: # Acampada26S · Organigrama y funcionamiento
-
-> Página generada desde el organigrama publicado por el colectivo el 2026-10-06 (https://acampada26s.net/c/blog/organigrama-y-funcionamiento-acampada-26s-madrid-sbcuz1g9). El colectivo la revisa y la corrige; la fuente es la imagen, no esta página.
+- Cuerpo: > Página generada desde el organigrama publicado por el colectivo el 2026-10-06 (https://acampada26s.net/c/blog/organigrama-y-funcionamiento-acampada-26s-madrid-sbcuz1g9). El colectivo la revisa y la corrige; la fuente es la imagen, no esta página.
 
 **Estructura asamblearia, horizontal y en red.** Objetivo del movimiento: Paralizar el país mediante una huelga general para lograr un cambio de modelo que resuelva el problema de la vivienda y el resto de problemas para la calidad de vida de las personas.
 
@@ -394,17 +392,41 @@ Método de consenso para valorar las propuestas en la Asamblea General.
 - Edit policy: **author** · Tags: metodo
 - Cuerpo: 2-3 portavoces por nodo, rotativas, sin poder de decisión: transmiten las propuestas de su nodo a la Asamblea Internodos. En Oasis: ser portavoz = ser miembro de la tribu Asamblea Internodos durante el turno; al terminar, se sale de la tribu y entra la siguiente portavocía.
 
-### 7.4 Oasis para el nodo · manual de bienvenida · 1 de 2  `origen: personas`
+### 7.4 Oasis para el nodo · manual de bienvenida · 1 de 5  `origen: personas`
 - Edit policy: **open** · Tags: manual
 - Cuerpo: pegar `ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md`
 
-### 7.5 Oasis para el nodo · manual de bienvenida · 2 de 2  `origen: personas`
+### 7.5 Oasis para el nodo · manual de bienvenida · 2 de 5  `origen: personas`
 - Edit policy: **open** · Tags: manual
 - Cuerpo: pegar `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md`
 
-### 7.6 Guía de reparto de accesos  `origen: documento`
+### 7.6 Oasis para el nodo · manual de bienvenida · 3 de 5  `origen: personas`
+- Edit policy: **open** · Tags: manual
+- Cuerpo: pegar `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-3.wiki.md`
+
+### 7.7 Oasis para el nodo · manual de bienvenida · 4 de 5  `origen: personas`
+- Edit policy: **open** · Tags: manual
+- Cuerpo: pegar `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-4.wiki.md`
+
+### 7.8 Oasis para el nodo · manual de bienvenida · 5 de 5  `origen: personas`
+- Edit policy: **open** · Tags: manual
+- Cuerpo: pegar `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-5.wiki.md`
+
+### 7.9 Guía de reparto de accesos · 1 de 4  `origen: documento`
 - Edit policy: **author** · Tags: manual, reparto
 - Cuerpo: pegar `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md`
+
+### 7.10 Guía de reparto de accesos · 2 de 4  `origen: documento`
+- Edit policy: **author** · Tags: manual, reparto
+- Cuerpo: pegar `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-2.wiki.md`
+
+### 7.11 Guía de reparto de accesos · 3 de 4  `origen: documento`
+- Edit policy: **author** · Tags: manual, reparto
+- Cuerpo: pegar `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-3.wiki.md`
+
+### 7.12 Guía de reparto de accesos · 4 de 4  `origen: documento`
+- Edit policy: **author** · Tags: manual, reparto
+- Cuerpo: pegar `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-4.wiki.md`
 
 ## 8. Mapas (2) — `Menú → Maps → Create`
 

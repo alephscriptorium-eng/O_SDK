@@ -1,8 +1,8 @@
 {
   "meta": {
     "id": "acampada26s",
-    "whoami": "@al0mhjPJ4RCxQIc1lbhofdDSP0sa/30Px9918YGxI4o=.ed25519",
-    "pubId": "@ZGTLNqBHKcC+dGWfM0gZlb0FNuhNsCTxJSyoEvTJJpA=.ed25519"
+    "whoami": "@ck3YtzwIp9jokXj+24uF179BJKsQXg1YJrTuFGar8H8=.ed25519",
+    "pubId": "@YINL3GAWgxOtkqHhbgLf7tzpl0pIiyqW3Yu4b5JiM0o=.ed25519"
   },
   "blobs": {
     "tribu-asamblea_general.png": "&1lU4teL9KPcPISaQaq/c3ZQTOqZJ7lkAA1XOLBWJLmg=.sha256",
@@ -41,458 +41,512 @@
     "wiki-wiki_organigrama.png": "&8oS93f5at+ieQgcxezCbNa2ZnvesQymyY0LCwNfOnyI=.sha256",
     "wiki-wiki_semaforo.png": "&Wyh1jOkLwcYqmY831lDxZzkwSfl9igC0lxu3PIMONkI=.sha256",
     "wiki-wiki_portavocias.png": "&0VrQDTUyjcWwhvMgYKGVXEpu7G/6hhwO/jrEOv4mLqU=.sha256",
-    "wiki-wiki_onboarding.png": "&exgwS0I0Oz4srswvZSAdG3YiQlGwDTc1UGPBk70Wi0s=.sha256",
-    "wiki-wiki_onboarding_2.png": "&UGsVKKuBAd6AqqTVpbq7yYDwVtt2eFaUlBupYUHTKLY=.sha256",
-    "wiki-wiki_reparto.png": "&MFlLUjBJJ+WhsU4+aZJ+GVfLZTk23HoAQaGUGmQLxPQ=.sha256",
+    "wiki-wiki_onboarding.png": "&hPUoLBrjBbSn+OCWAXk5BTS3N1qWSbUvpsxoz+/9vfY=.sha256",
+    "wiki-wiki_onboarding_2.png": "&j7LKanLDgRe462FX3tICytYOeQ63dSYaLTlf9h+M5bc=.sha256",
+    "wiki-wiki_onboarding_3.png": "&WgDaomBCl7e8IZ9CTkaxtbCQ5ZD1PsoxrionysBBYXg=.sha256",
+    "wiki-wiki_onboarding_4.png": "&pLdAZOwrr3j7zIy6mKQgo7M7aHBWb9EY+toBk7EQ1ns=.sha256",
+    "wiki-wiki_onboarding_5.png": "&rK29BPCXvoYi2tSisEwlmpCOmZgeetkK/939OhsqEsY=.sha256",
+    "wiki-wiki_reparto.png": "&/MG6iKaO6g4zfdvXpK8iD4z209088+E3vfqWCIKlLTA=.sha256",
+    "wiki-wiki_reparto_2.png": "&fsQ9FrOnUqXKaQCpSVwERUmG1uz87b/BygC3FSw0j+4=.sha256",
+    "wiki-wiki_reparto_3.png": "&G6d5/2bxZP7+IanoONa3tm7eUK9rW6TOzqRcKPO9WHo=.sha256",
+    "wiki-wiki_reparto_4.png": "&bzE9SCdXhVYQ0K8m0h8hfDJ1b3D3RIh638xC4CQFSMk=.sha256",
     "mapa-mapa_sol.png": "&REYQ3lni0Q+zkuGY8b5aVNTAp6Mk/MuYrNdPLVGzUWI=.sha256",
     "mapa-mapa_nodos.png": "&lLpl91fTDM0xjGnJ2HTDkVHJVDFCAvQnT+WJT+owgFM=.sha256"
   },
   "tribes": {
     "asamblea_general": {
-      "key": "%viGGerCKKloDu2cSTRGHLqkPief/6TkcqKBPcyfY/2I=.sha256",
-      "at": "2026-10-11T18:48:09.657Z"
+      "key": "%CRSG8k0s/24eAxHF+vjA2TJDmI1atQqgKWvZxhmmPAU=.sha256",
+      "at": "2026-10-11T19:41:24.930Z"
     },
     "asamblea_internodos": {
-      "key": "%K9RnVHSNIkNFJVgGBhtD4jK5PEqgEF03xRLIWpg9x2g=.sha256",
-      "at": "2026-10-11T18:48:09.753Z"
+      "key": "%cyWGlbI3RQBVV46Pa0peTlPFogeYDbM1a9THWEpe6Ag=.sha256",
+      "at": "2026-10-11T19:41:25.001Z"
     },
     "nodo_norte": {
-      "key": "%YVx8LWfF/5S7V2P1QmaVMs6ox3e8Zcmj41nJD9k9GIk=.sha256",
-      "at": "2026-10-11T18:48:09.921Z"
+      "key": "%Zy7lXceDlpAIqjGRgYMCiMH7KxA6YWuxUAyBMDO9BhY=.sha256",
+      "at": "2026-10-11T19:41:25.094Z"
     },
     "nodo_oeste": {
-      "key": "%CQcrs3V8EvqiwpV6AMk1UkSOLJk3hR0/556XJ92SoDw=.sha256",
-      "at": "2026-10-11T18:48:10.135Z"
+      "key": "%AryCJ6rIS1szsHTuaG1oCrQLgMi2CvRcghUm0CHzmog=.sha256",
+      "at": "2026-10-11T19:41:25.233Z"
     },
     "nodo_centro": {
-      "key": "%MVKnojqV9nxDgcNQtmfE8sYhbgOuy2NOE/Qhnd0hV3U=.sha256",
-      "at": "2026-10-11T18:48:10.245Z"
+      "key": "%/LLEFUdxa5wcJQ39zfCWMSLacDgX5b90imuHThmko74=.sha256",
+      "at": "2026-10-11T19:41:25.433Z"
     },
     "nodo_este": {
-      "key": "%N4wURGDPN0jJSrhn6ywIBe9ilifbN870fFAyn71kYxE=.sha256",
-      "at": "2026-10-11T18:48:10.346Z"
+      "key": "%KoGGQOOj2MQ76EjV4NFFW3vnvZqWoVXmLgEUtgTZkOI=.sha256",
+      "at": "2026-10-11T19:41:25.530Z"
     },
     "nodo_sur": {
-      "key": "%Z0MzHcEbhFilLsuw+4gT8xZZk3QE+wEIBU3c8pT+iTY=.sha256",
-      "at": "2026-10-11T18:48:10.463Z"
+      "key": "%2ZtA/vHHekZ2YQQTn5ZGZmEBHeDGNhaEnlG60Te7cPI=.sha256",
+      "at": "2026-10-11T19:41:25.641Z"
     },
     "comision_comunicacion": {
-      "key": "%yVseyG343n2hI60eRHWLS2atpD6D8zHF2nbSufdNzwg=.sha256",
-      "at": "2026-10-11T18:48:10.572Z"
+      "key": "%C4uHZ301+AeKVBgDAvTQZ5yfgS8TmAiWkVzW90YEUJs=.sha256",
+      "at": "2026-10-11T19:41:25.747Z"
     },
     "comision_urbanismo": {
-      "key": "%/iRe2yU8s56eit+wDxQwa6etkcflgoIsz6LOmsROpqY=.sha256",
-      "at": "2026-10-11T18:48:10.702Z"
+      "key": "%A8e1r4f6AUPt+xJdtm1ZRoDCK9ydgzUGe1BH2YsYDnY=.sha256",
+      "at": "2026-10-11T19:41:25.850Z"
     },
     "comision_cuidados": {
-      "key": "%becEKSCjFNaLReQ52aCj7sSxTzqcLsA9bVcPnkaKYlU=.sha256",
-      "at": "2026-10-11T18:48:10.807Z"
+      "key": "%5DxI+A22yxwJcI8vJvDd54MT1LJf7mgcLrk082TU6tY=.sha256",
+      "at": "2026-10-11T19:41:25.982Z"
     },
     "comision_dinamizacion": {
-      "key": "%IU57mnzfFQPRWlL4sjBUIYJv5avaOAxED9EJk9kSRz8=.sha256",
-      "at": "2026-10-11T18:48:10.902Z"
+      "key": "%ejxwK+d714e+eu9MCz1q0TXtFrYL4ehBK3C9DFEMnuE=.sha256",
+      "at": "2026-10-11T19:41:26.090Z"
     },
     "comision_mediacion": {
-      "key": "%1u4ZILWCN1rroAND/XmWxXXpXG/NoeadG939hYOhARk=.sha256",
-      "at": "2026-10-11T18:48:11.012Z"
+      "key": "%J24J8rovQK9LfJbs8nCIgHdgG9peVyEJLPpZaNy8cwA=.sha256",
+      "at": "2026-10-11T19:41:26.206Z"
     },
     "comision_limpieza": {
-      "key": "%DIrKc2UZjLSdRGueI8+39kGsLkWSRa6/DddVx2yL60k=.sha256",
-      "at": "2026-10-11T18:48:11.118Z"
+      "key": "%1wqbcufH2dVQ60kYYNNftApF1Zkyh79ao63rJY05ko0=.sha256",
+      "at": "2026-10-11T19:41:26.320Z"
     },
     "comision_abastecimiento": {
-      "key": "%PUykkmN+/Oi8UGcnYsKNcVZ+aPb7x5ch7KvmHHRK1s8=.sha256",
-      "at": "2026-10-11T18:48:11.248Z"
+      "key": "%8qvtzsipP8axLxSvfzHeFdJiVOMn9Gz3L1bseCT5wGQ=.sha256",
+      "at": "2026-10-11T19:41:26.451Z"
     },
     "intercsos": {
-      "key": "%q3qKWEkqsmEz/z9m35awunDx9FRCxjAbaDVNVfwlRfY=.sha256",
-      "at": "2026-10-11T18:48:11.359Z"
+      "key": "%AAR9VJ6ebjhAMpxQ7tawvGAY4KLt1ZRblOrG3cspWbM=.sha256",
+      "at": "2026-10-11T19:41:26.585Z"
     },
     "asamblea_colectivos": {
-      "key": "%ySg/510cdCyzXpSeg5UsVnCjOx7VyDWSN4c/E8wCAY8=.sha256",
-      "at": "2026-10-11T18:48:11.464Z"
+      "key": "%YSn6cDeCd4coWxGZ/8GuoRXwtuzfDaHkRDn4ieLHPZs=.sha256",
+      "at": "2026-10-11T19:41:26.758Z"
     }
   },
   "subtribes": {
     "com_general": {
-      "key": "%ZHpx8tj5rrfXofvq/waFR8EGl05608gGOQF9NRRi/DI=.sha256",
-      "at": "2026-10-11T18:48:19.331Z"
+      "key": "%gJyVr2v4IgDf+XGBSDXCiJEMqNsx98i2wJ9vphaX6yc=.sha256",
+      "at": "2026-10-11T19:41:35.145Z"
     },
     "com_redes": {
-      "key": "%ltUFrB9OpwAEBV5AP1q+Oy0RqvH2ET7jetsrIYFUXUg=.sha256",
-      "at": "2026-10-11T18:48:19.400Z"
+      "key": "%jzZPNZwxkZJobSYguew9bnrr0PD5Jldu8NNWNQfmKwY=.sha256",
+      "at": "2026-10-11T19:41:35.227Z"
     },
     "com_interna": {
-      "key": "%mfwDnj3/NAnX9mHJxZz8vP1ijjnUd6zI8W7nrxlbvcY=.sha256",
-      "at": "2026-10-11T18:48:19.480Z"
+      "key": "%9QP24izM6Zoan4/n2A7zTGHKIoyK5fF5Lj/8hxnK3j0=.sha256",
+      "at": "2026-10-11T19:41:35.308Z"
     },
     "com_audiovisual": {
-      "key": "%lwGu4bzpPn+aZMa77aMyqFCZncl8sFQnHPoGx23j5gQ=.sha256",
-      "at": "2026-10-11T18:48:19.582Z"
+      "key": "%NE39i8BVE8da6xZYaWf8S8HFGMZRdOgDvPwOzrKlIao=.sha256",
+      "at": "2026-10-11T19:41:35.424Z"
     },
     "com_diseno": {
-      "key": "%MqBf14w/sZD925v8MPPYzKws1E+xGSQiyB3vw9TBE3I=.sha256",
-      "at": "2026-10-11T18:48:19.695Z"
+      "key": "%NfhO+1s7dXn9dROTxl8c/GbVgcyEaFOgaWcdI3jwAnE=.sha256",
+      "at": "2026-10-11T19:41:35.570Z"
     },
     "com_cultura": {
-      "key": "%sr+SKkrZ7UTNBno+dC4/3dXWX7Eo8dLRALLKXNbQQPA=.sha256",
-      "at": "2026-10-11T18:48:19.790Z"
+      "key": "%midHAAIOrqxiRNjBIyiZJh+WtyjhpdAtk+PjiookQV0=.sha256",
+      "at": "2026-10-11T19:41:35.710Z"
     },
     "com_piar": {
-      "key": "%ecNWrLnN4sHJZxedtEGsMsj5qY//ujON0bBhAAWROoo=.sha256",
-      "at": "2026-10-11T18:48:19.880Z"
+      "key": "%85sAQYWEyWeFFw39maL2xQt+dQHsreJDjLoEP+ID6lM=.sha256",
+      "at": "2026-10-11T19:41:35.944Z"
     },
     "com_crisis": {
-      "key": "%gdmL4Y8CZTDdJxpkZbXz6FF+fHQfi/imShwZjkh9Lgs=.sha256",
-      "at": "2026-10-11T18:48:19.970Z"
+      "key": "%1SRvRfLA2iigtnWk0ADYX4dpGufolqrCDpt4cYMxKIE=.sha256",
+      "at": "2026-10-11T19:41:36.331Z"
     },
     "com_correccion": {
-      "key": "%BmxxBBwa3SnbYz3mRc1m+1CRWIX9PNrzKMOqeBVQV3o=.sha256",
-      "at": "2026-10-11T18:48:20.054Z"
+      "key": "%4vQp5CWGSfbuvoEoEtzXjp0Ma/ycX9aviexLBhAnpLw=.sha256",
+      "at": "2026-10-11T19:41:36.505Z"
     }
   },
   "invites": {
     "asamblea_general": {
-      "key": "invite:%viGGerCKKloDu2cSTRGHLqkPief/6TkcqKBPcyfY/2I=.sha256",
-      "at": "2026-10-11T18:48:27.900Z"
+      "key": "invite:%CRSG8k0s/24eAxHF+vjA2TJDmI1atQqgKWvZxhmmPAU=.sha256",
+      "at": "2026-10-11T19:41:45.637Z"
     },
     "nodo_norte": {
-      "key": "invite:%YVx8LWfF/5S7V2P1QmaVMs6ox3e8Zcmj41nJD9k9GIk=.sha256",
-      "at": "2026-10-11T18:48:28.582Z"
+      "key": "invite:%Zy7lXceDlpAIqjGRgYMCiMH7KxA6YWuxUAyBMDO9BhY=.sha256",
+      "at": "2026-10-11T19:41:46.585Z"
     },
     "nodo_oeste": {
-      "key": "invite:%CQcrs3V8EvqiwpV6AMk1UkSOLJk3hR0/556XJ92SoDw=.sha256",
-      "at": "2026-10-11T18:48:29.297Z"
+      "key": "invite:%AryCJ6rIS1szsHTuaG1oCrQLgMi2CvRcghUm0CHzmog=.sha256",
+      "at": "2026-10-11T19:41:47.337Z"
     },
     "nodo_centro": {
-      "key": "invite:%MVKnojqV9nxDgcNQtmfE8sYhbgOuy2NOE/Qhnd0hV3U=.sha256",
-      "at": "2026-10-11T18:48:29.981Z"
+      "key": "invite:%/LLEFUdxa5wcJQ39zfCWMSLacDgX5b90imuHThmko74=.sha256",
+      "at": "2026-10-11T19:41:48.151Z"
     },
     "nodo_este": {
-      "key": "invite:%N4wURGDPN0jJSrhn6ywIBe9ilifbN870fFAyn71kYxE=.sha256",
-      "at": "2026-10-11T18:48:30.702Z"
+      "key": "invite:%KoGGQOOj2MQ76EjV4NFFW3vnvZqWoVXmLgEUtgTZkOI=.sha256",
+      "at": "2026-10-11T19:41:48.988Z"
     },
     "nodo_sur": {
-      "key": "invite:%Z0MzHcEbhFilLsuw+4gT8xZZk3QE+wEIBU3c8pT+iTY=.sha256",
-      "at": "2026-10-11T18:48:31.385Z"
+      "key": "invite:%2ZtA/vHHekZ2YQQTn5ZGZmEBHeDGNhaEnlG60Te7cPI=.sha256",
+      "at": "2026-10-11T19:41:49.692Z"
     },
     "comision_comunicacion": {
-      "key": "invite:%yVseyG343n2hI60eRHWLS2atpD6D8zHF2nbSufdNzwg=.sha256",
-      "at": "2026-10-11T18:48:32.102Z"
+      "key": "invite:%C4uHZ301+AeKVBgDAvTQZ5yfgS8TmAiWkVzW90YEUJs=.sha256",
+      "at": "2026-10-11T19:41:50.540Z"
     },
     "comision_urbanismo": {
-      "key": "invite:%/iRe2yU8s56eit+wDxQwa6etkcflgoIsz6LOmsROpqY=.sha256",
-      "at": "2026-10-11T18:48:32.811Z"
+      "key": "invite:%A8e1r4f6AUPt+xJdtm1ZRoDCK9ydgzUGe1BH2YsYDnY=.sha256",
+      "at": "2026-10-11T19:41:51.605Z"
     },
     "comision_cuidados": {
-      "key": "invite:%becEKSCjFNaLReQ52aCj7sSxTzqcLsA9bVcPnkaKYlU=.sha256",
-      "at": "2026-10-11T18:48:33.674Z"
+      "key": "invite:%5DxI+A22yxwJcI8vJvDd54MT1LJf7mgcLrk082TU6tY=.sha256",
+      "at": "2026-10-11T19:41:52.624Z"
     },
     "comision_dinamizacion": {
-      "key": "invite:%IU57mnzfFQPRWlL4sjBUIYJv5avaOAxED9EJk9kSRz8=.sha256",
-      "at": "2026-10-11T18:48:34.347Z"
+      "key": "invite:%ejxwK+d714e+eu9MCz1q0TXtFrYL4ehBK3C9DFEMnuE=.sha256",
+      "at": "2026-10-11T19:41:53.596Z"
     },
     "comision_mediacion": {
-      "key": "invite:%1u4ZILWCN1rroAND/XmWxXXpXG/NoeadG939hYOhARk=.sha256",
-      "at": "2026-10-11T18:48:35.045Z"
+      "key": "invite:%J24J8rovQK9LfJbs8nCIgHdgG9peVyEJLPpZaNy8cwA=.sha256",
+      "at": "2026-10-11T19:41:54.494Z"
     },
     "comision_limpieza": {
-      "key": "invite:%DIrKc2UZjLSdRGueI8+39kGsLkWSRa6/DddVx2yL60k=.sha256",
-      "at": "2026-10-11T18:48:35.736Z"
+      "key": "invite:%1wqbcufH2dVQ60kYYNNftApF1Zkyh79ao63rJY05ko0=.sha256",
+      "at": "2026-10-11T19:41:55.464Z"
     },
     "comision_abastecimiento": {
-      "key": "invite:%PUykkmN+/Oi8UGcnYsKNcVZ+aPb7x5ch7KvmHHRK1s8=.sha256",
-      "at": "2026-10-11T18:48:36.411Z"
+      "key": "invite:%8qvtzsipP8axLxSvfzHeFdJiVOMn9Gz3L1bseCT5wGQ=.sha256",
+      "at": "2026-10-11T19:41:56.289Z"
     },
     "com_general": {
-      "key": "invite:%ZHpx8tj5rrfXofvq/waFR8EGl05608gGOQF9NRRi/DI=.sha256",
-      "at": "2026-10-11T18:48:37.325Z"
+      "key": "invite:%gJyVr2v4IgDf+XGBSDXCiJEMqNsx98i2wJ9vphaX6yc=.sha256",
+      "at": "2026-10-11T19:41:57.116Z"
     },
     "com_redes": {
-      "key": "invite:%ltUFrB9OpwAEBV5AP1q+Oy0RqvH2ET7jetsrIYFUXUg=.sha256",
-      "at": "2026-10-11T18:48:38.023Z"
+      "key": "invite:%jzZPNZwxkZJobSYguew9bnrr0PD5Jldu8NNWNQfmKwY=.sha256",
+      "at": "2026-10-11T19:41:57.892Z"
     },
     "com_interna": {
-      "key": "invite:%mfwDnj3/NAnX9mHJxZz8vP1ijjnUd6zI8W7nrxlbvcY=.sha256",
-      "at": "2026-10-11T18:48:38.707Z"
+      "key": "invite:%9QP24izM6Zoan4/n2A7zTGHKIoyK5fF5Lj/8hxnK3j0=.sha256",
+      "at": "2026-10-11T19:41:58.652Z"
     },
     "com_audiovisual": {
-      "key": "invite:%lwGu4bzpPn+aZMa77aMyqFCZncl8sFQnHPoGx23j5gQ=.sha256",
-      "at": "2026-10-11T18:48:39.502Z"
+      "key": "invite:%NE39i8BVE8da6xZYaWf8S8HFGMZRdOgDvPwOzrKlIao=.sha256",
+      "at": "2026-10-11T19:41:59.345Z"
     },
     "com_diseno": {
-      "key": "invite:%MqBf14w/sZD925v8MPPYzKws1E+xGSQiyB3vw9TBE3I=.sha256",
-      "at": "2026-10-11T18:48:40.198Z"
+      "key": "invite:%NfhO+1s7dXn9dROTxl8c/GbVgcyEaFOgaWcdI3jwAnE=.sha256",
+      "at": "2026-10-11T19:42:00.106Z"
     },
     "com_cultura": {
-      "key": "invite:%sr+SKkrZ7UTNBno+dC4/3dXWX7Eo8dLRALLKXNbQQPA=.sha256",
-      "at": "2026-10-11T18:48:40.888Z"
+      "key": "invite:%midHAAIOrqxiRNjBIyiZJh+WtyjhpdAtk+PjiookQV0=.sha256",
+      "at": "2026-10-11T19:42:00.874Z"
     },
     "com_piar": {
-      "key": "invite:%ecNWrLnN4sHJZxedtEGsMsj5qY//ujON0bBhAAWROoo=.sha256",
-      "at": "2026-10-11T18:48:41.571Z"
+      "key": "invite:%85sAQYWEyWeFFw39maL2xQt+dQHsreJDjLoEP+ID6lM=.sha256",
+      "at": "2026-10-11T19:42:02.050Z"
     },
     "com_crisis": {
-      "key": "invite:%gdmL4Y8CZTDdJxpkZbXz6FF+fHQfi/imShwZjkh9Lgs=.sha256",
-      "at": "2026-10-11T18:48:42.233Z"
+      "key": "invite:%1SRvRfLA2iigtnWk0ADYX4dpGufolqrCDpt4cYMxKIE=.sha256",
+      "at": "2026-10-11T19:42:02.885Z"
     },
     "com_correccion": {
-      "key": "invite:%BmxxBBwa3SnbYz3mRc1m+1CRWIX9PNrzKMOqeBVQV3o=.sha256",
-      "at": "2026-10-11T18:48:42.911Z"
+      "key": "invite:%4vQp5CWGSfbuvoEoEtzXjp0Ma/ycX9aviexLBhAnpLw=.sha256",
+      "at": "2026-10-11T19:42:03.901Z"
     }
   },
   "rooms": {
     "sala_asamblea_general": {
-      "key": "%4DnxHl1w+Y+gYQ0q/RRFdw03pg9Snz8RfUVcYyBYXpg=.sha256",
-      "at": "2026-10-11T18:48:50.859Z"
+      "key": "%mq835KZD4W/L3n8kdQ+5KHMPMfvalJs2PGhO4hbAGV0=.sha256",
+      "at": "2026-10-11T19:42:10.868Z"
     },
     "sala_internodos": {
-      "key": "%VmZAb6diDbc5POGS1qTLOGeirkbPyV+RYIj+YXYFSjk=.sha256",
-      "at": "2026-10-11T18:48:50.923Z"
+      "key": "%A6gHMzwIB77Ez5O0+THyWKBW+5SemDrJ4OknpK8y1RY=.sha256",
+      "at": "2026-10-11T19:42:10.965Z"
     },
     "sala_nodo_norte": {
-      "key": "%u0dWzVuhqAK3K4ghDiP4DDqUsmiZ8GZRRQF0g7zpg4E=.sha256",
-      "at": "2026-10-11T18:48:50.996Z"
+      "key": "%NRSkKwC2ocR6ged3Puajkay4WmkvE3yHSZkE3rJmfQE=.sha256",
+      "at": "2026-10-11T19:42:11.693Z"
     },
     "sala_nodo_oeste": {
-      "key": "%5hiXbmgdsb081SWTLTxU6DR93MzZUhqY08H/APNyWxw=.sha256",
-      "at": "2026-10-11T18:48:51.080Z"
+      "key": "%wfY1qkqL8ITJM/aDlqmbgj6v2EWzYYF3ZFjfHV3f+f4=.sha256",
+      "at": "2026-10-11T19:42:12.538Z"
     },
     "sala_nodo_centro": {
-      "key": "%npw81gau+B6dtgM4Soya4+E7wkC+cokxvwH4Uu1t35c=.sha256",
-      "at": "2026-10-11T18:48:51.162Z"
+      "key": "%ZeihmwpPk3UdCqmBsOpA/GIR6pkcvRfS65ZAvcBUva4=.sha256",
+      "at": "2026-10-11T19:42:12.630Z"
     },
     "sala_nodo_este": {
-      "key": "%D78NDWPaIO1R5zoK121LW4tRotsuxS4KIQgwcVtIcSg=.sha256",
-      "at": "2026-10-11T18:48:51.771Z"
+      "key": "%+ugba3lpjs+K/qFXB0PmXLCADZSSB61xY+j/SDnscYM=.sha256",
+      "at": "2026-10-11T19:42:12.730Z"
     },
     "sala_nodo_sur": {
-      "key": "%yScSgmttgc7jka2WGrHp0S66D1c1ScOv93sgRWE8+24=.sha256",
-      "at": "2026-10-11T18:48:51.854Z"
+      "key": "%mx3qQSozA9ZWZdgeiKO4xXPoXmQYHiGwsH+bUPIdRto=.sha256",
+      "at": "2026-10-11T19:42:13.315Z"
     }
   },
   "calendars": {
     "cal_asamblea_general": {
-      "key": "%wl3ZGfzk9eGUgNltMPFJVKbMJPIuE/agBWmoNzIk9xk=.sha256",
-      "at": "2026-10-11T18:49:00.191Z"
+      "key": "%sCF5JdkWUoV2AZzVG1YvG1sYRIPL0FbSfqqimQ4jHnE=.sha256",
+      "at": "2026-10-11T19:42:23.113Z"
     },
     "cal_asamblea_general#2": {
-      "key": "date:%wl3ZGfzk9eGUgNltMPFJVKbMJPIuE/agBWmoNzIk9xk=.sha256",
-      "at": "2026-10-11T18:49:00.747Z"
+      "key": "date:%sCF5JdkWUoV2AZzVG1YvG1sYRIPL0FbSfqqimQ4jHnE=.sha256",
+      "at": "2026-10-11T19:42:23.708Z"
     },
     "cal_asamblea_general#3": {
-      "key": "date:%wl3ZGfzk9eGUgNltMPFJVKbMJPIuE/agBWmoNzIk9xk=.sha256",
-      "at": "2026-10-11T18:49:01.308Z"
+      "key": "date:%sCF5JdkWUoV2AZzVG1YvG1sYRIPL0FbSfqqimQ4jHnE=.sha256",
+      "at": "2026-10-11T19:42:24.328Z"
     },
     "cal_asamblea_general#4": {
-      "key": "date:%wl3ZGfzk9eGUgNltMPFJVKbMJPIuE/agBWmoNzIk9xk=.sha256",
-      "at": "2026-10-11T18:49:01.881Z"
+      "key": "date:%sCF5JdkWUoV2AZzVG1YvG1sYRIPL0FbSfqqimQ4jHnE=.sha256",
+      "at": "2026-10-11T19:42:24.961Z"
     },
     "cal_asamblea_general#5": {
-      "key": "date:%wl3ZGfzk9eGUgNltMPFJVKbMJPIuE/agBWmoNzIk9xk=.sha256",
-      "at": "2026-10-11T18:49:02.431Z"
+      "key": "date:%sCF5JdkWUoV2AZzVG1YvG1sYRIPL0FbSfqqimQ4jHnE=.sha256",
+      "at": "2026-10-11T19:42:25.534Z"
     },
     "cal_asamblea_general#6": {
-      "key": "date:%wl3ZGfzk9eGUgNltMPFJVKbMJPIuE/agBWmoNzIk9xk=.sha256",
-      "at": "2026-10-11T18:49:02.998Z"
+      "key": "date:%sCF5JdkWUoV2AZzVG1YvG1sYRIPL0FbSfqqimQ4jHnE=.sha256",
+      "at": "2026-10-11T19:42:26.150Z"
     },
     "cal_asamblea_general#7": {
-      "key": "date:%wl3ZGfzk9eGUgNltMPFJVKbMJPIuE/agBWmoNzIk9xk=.sha256",
-      "at": "2026-10-11T18:49:03.604Z"
+      "key": "date:%sCF5JdkWUoV2AZzVG1YvG1sYRIPL0FbSfqqimQ4jHnE=.sha256",
+      "at": "2026-10-11T19:42:26.811Z"
     },
     "cal_internodos": {
-      "key": "%9GQ4eT/W4wzfDpAt+sgkMtpsrVvUyZkBAWjKnR2eIpE=.sha256",
-      "at": "2026-10-11T18:49:05.227Z"
+      "key": "%N88fGKMqkPBDLS7oKmlOc3Qhj5tmKD8dqugPAT0npiY=.sha256",
+      "at": "2026-10-11T19:42:28.464Z"
     },
     "cal_internodos#2": {
-      "key": "date:%9GQ4eT/W4wzfDpAt+sgkMtpsrVvUyZkBAWjKnR2eIpE=.sha256",
-      "at": "2026-10-11T18:49:05.813Z"
+      "key": "date:%N88fGKMqkPBDLS7oKmlOc3Qhj5tmKD8dqugPAT0npiY=.sha256",
+      "at": "2026-10-11T19:42:29.138Z"
     },
     "cal_internodos#3": {
-      "key": "date:%9GQ4eT/W4wzfDpAt+sgkMtpsrVvUyZkBAWjKnR2eIpE=.sha256",
-      "at": "2026-10-11T18:49:06.393Z"
+      "key": "date:%N88fGKMqkPBDLS7oKmlOc3Qhj5tmKD8dqugPAT0npiY=.sha256",
+      "at": "2026-10-11T19:42:29.729Z"
     },
     "cal_internodos#4": {
-      "key": "date:%9GQ4eT/W4wzfDpAt+sgkMtpsrVvUyZkBAWjKnR2eIpE=.sha256",
-      "at": "2026-10-11T18:49:07.146Z"
+      "key": "date:%N88fGKMqkPBDLS7oKmlOc3Qhj5tmKD8dqugPAT0npiY=.sha256",
+      "at": "2026-10-11T19:42:30.372Z"
     },
     "cal_internodos#5": {
-      "key": "date:%9GQ4eT/W4wzfDpAt+sgkMtpsrVvUyZkBAWjKnR2eIpE=.sha256",
-      "at": "2026-10-11T18:49:07.756Z"
+      "key": "date:%N88fGKMqkPBDLS7oKmlOc3Qhj5tmKD8dqugPAT0npiY=.sha256",
+      "at": "2026-10-11T19:42:31.046Z"
     },
     "cal_internodos#6": {
-      "key": "date:%9GQ4eT/W4wzfDpAt+sgkMtpsrVvUyZkBAWjKnR2eIpE=.sha256",
-      "at": "2026-10-11T18:49:08.355Z"
+      "key": "date:%N88fGKMqkPBDLS7oKmlOc3Qhj5tmKD8dqugPAT0npiY=.sha256",
+      "at": "2026-10-11T19:42:31.843Z"
     },
     "cal_internodos#7": {
-      "key": "date:%9GQ4eT/W4wzfDpAt+sgkMtpsrVvUyZkBAWjKnR2eIpE=.sha256",
-      "at": "2026-10-11T18:49:08.956Z"
+      "key": "date:%N88fGKMqkPBDLS7oKmlOc3Qhj5tmKD8dqugPAT0npiY=.sha256",
+      "at": "2026-10-11T19:42:32.545Z"
     },
     "cal_nodo_norte": {
-      "key": "%S77PHB6e067L3/wuXRL0lhqOe1jgL3NixCTVuRfQ6rU=.sha256",
-      "at": "2026-10-11T18:49:10.607Z"
+      "key": "%tCoV4Niti4vT83SDPHpAXURKsCbp2pcpEJi09dDJn8g=.sha256",
+      "at": "2026-10-11T19:42:34.241Z"
     },
     "cal_nodo_oeste": {
-      "key": "%04vfvm4OF5DG/YKwUQZ0ui4KafrPcASDClzDAFyaTHU=.sha256",
-      "at": "2026-10-11T18:49:12.233Z"
+      "key": "%q3+iZnP+gIiA0aFPaHXk9FD+xz4HqAXzrMLEoCN6ZGs=.sha256",
+      "at": "2026-10-11T19:42:35.875Z"
     },
     "cal_nodo_centro": {
-      "key": "%R1lCbg2Yx3/+4xrZWLnlidPyOIiaExUWpZyVKpAKSpw=.sha256",
-      "at": "2026-10-11T18:49:13.875Z"
+      "key": "%uXddSmviI6F3a4w73nh1nvgcjQtYmd3rmULJ5VHmKW8=.sha256",
+      "at": "2026-10-11T19:42:37.486Z"
     },
     "cal_nodo_este": {
-      "key": "%tNwVG/vk7qITjlPh9Lt0rqm1g3Wo+we38+W3/gmUS9M=.sha256",
-      "at": "2026-10-11T18:49:15.511Z"
+      "key": "%2AfqYvU4SUGjWHuphMw3TP1eH6XHu4xTcMtXRoJzaVI=.sha256",
+      "at": "2026-10-11T19:42:39.119Z"
     },
     "cal_nodo_sur": {
-      "key": "%gbVBpRcozPbaWJMxEvf/qTbKhBAMW0MKvz7C5VDqGyo=.sha256",
-      "at": "2026-10-11T18:49:17.252Z"
+      "key": "%GQZfCw0cc9hSRyAP8RYOl02gsG3VGR9QplobWeo6P2o=.sha256",
+      "at": "2026-10-11T19:42:40.757Z"
     }
   },
   "events": {
     "evento_asamblea_general#1": {
-      "key": "%IusAbNJXgLI9equkPFRo10zFhrUZ+U9j0rny3y5ruQM=.sha256",
-      "at": "2026-10-11T18:49:24.496Z"
+      "key": "%kDGhv5kIAgoJRbqEtRc7/OojrxAjyEK3eVNVi4z1gEM=.sha256",
+      "at": "2026-10-11T19:42:48.168Z"
     },
     "evento_asamblea_general#2": {
-      "key": "%v/UaVSBOqcPTMWwJ1GXTy0XNQUMsMvR3Vz6QORHQaJs=.sha256",
-      "at": "2026-10-11T18:49:24.518Z"
+      "key": "%hCINvP74Y34cR+mz2a0aKQiLgOr88nuFEnWSJW5VT8M=.sha256",
+      "at": "2026-10-11T19:42:48.188Z"
     },
     "evento_asamblea_general#3": {
-      "key": "%kcblShK+QN7pEcZbgmzWdr4PR8R5lpPeLLvLYzSNLWA=.sha256",
-      "at": "2026-10-11T18:49:24.538Z"
+      "key": "%R0OWQqizY8/hJ6a16IuEnFTMsvwDa43n6jeolgp7ZQg=.sha256",
+      "at": "2026-10-11T19:42:48.218Z"
     },
     "evento_asamblea_general#4": {
-      "key": "%WMXOZNN42T+ZsJZ5cBicPy7ebf83AQsmzUzgv0aCTxE=.sha256",
-      "at": "2026-10-11T18:49:24.554Z"
+      "key": "%KJz6Qw+cu4Ik2Z8WwsXrxlHPmchq2/yCpVVgi0/YRsc=.sha256",
+      "at": "2026-10-11T19:42:48.238Z"
     },
     "evento_asamblea_general#5": {
-      "key": "%CfPtqvW6Wan2a1GFTYYrDG+jiNWgxKoxeIF+5C9C2u4=.sha256",
-      "at": "2026-10-11T18:49:24.573Z"
+      "key": "%8NucC1WbQb3ef9hu4pLvmY1EwUsLk2yKu82d4XYiAnM=.sha256",
+      "at": "2026-10-11T19:42:48.256Z"
     },
     "evento_asamblea_general#6": {
-      "key": "%y7XJNo4g4Sl9MWEyoc51qQBOy8uiDO+Aa3uxwFluK3M=.sha256",
-      "at": "2026-10-11T18:49:24.594Z"
+      "key": "%fvlCh6rAIJP5+HRTGMybxKEwUrr86Dp/IF+TXKZTVZ0=.sha256",
+      "at": "2026-10-11T19:42:48.274Z"
     },
     "evento_asamblea_general#7": {
-      "key": "%LRYHllZ0KwWVtACTHDtitMP3IKgm/VStpq5qUdf5+E0=.sha256",
-      "at": "2026-10-11T18:49:24.616Z"
+      "key": "%DaxpBUfZxwZ2hPVGjyRlZM31AEAtMGshUsyFk7c0cVY=.sha256",
+      "at": "2026-10-11T19:42:48.297Z"
     }
   },
   "mailing": {
     "lista_acuerdos": {
-      "key": "%p4L4WpQ4SSYgCbDuk3+zDdRQz/RaYXjNJ8DrC1yr+rM=.sha256",
-      "at": "2026-10-11T18:49:29.738Z"
+      "key": "%5x6K+OY66L9/AzJIjeDO7rVr2cuxxdK1Vw12AylwBbs=.sha256",
+      "at": "2026-10-11T19:42:55.392Z"
     },
     "lista_comunicados": {
-      "key": "%E+cc50HfouFrfI0QSmpuz9fBkYJJfwLizIYDjFiHtiY=.sha256",
-      "at": "2026-10-11T18:49:29.757Z"
+      "key": "%2r48EU3IyJYOQUexgbJ6JqT0FxB0NQylyg6RJsKgSh8=.sha256",
+      "at": "2026-10-11T19:42:55.409Z"
     },
     "lista_colectivos": {
-      "key": "%Mdnj3Ikjbbxyz6BaQpH0Drm7AH6p3t5FrZl2gRZO4EM=.sha256",
-      "at": "2026-10-11T18:49:29.776Z"
+      "key": "%dTDdzsIIDth/nibb5ekDqRx0dD2ZeVMSQ0PDe/ceIzo=.sha256",
+      "at": "2026-10-11T19:42:55.433Z"
     },
     "lista_intercsos": {
-      "key": "%jsmSooo96WdofYVlkANDFA/8xABB1Cw7hLAIdyaC250=.sha256",
-      "at": "2026-10-11T18:49:29.791Z"
+      "key": "%BKlrrXYePDBTzlapKHdBeDDAH4l9OVUX+xSL25LXTxo=.sha256",
+      "at": "2026-10-11T19:42:55.448Z"
     }
   },
   "wiki": {
     "wiki_organigrama": {
-      "key": "%T5kbdOpHI3YFnjLYEiDlDsd+Peehk1WIarjXSHjl2ic=.sha256",
-      "at": "2026-10-11T18:49:34.883Z"
+      "key": "%A/LBYrCWRYimlUXqBxtqWD2cr8mPgLe7Ky7Av0Houj0=.sha256",
+      "at": "2026-10-11T19:43:03.604Z"
     },
     "wiki_semaforo": {
-      "key": "%4xWs/HWt8bUbE7VBUcPYuHmWAVNDfiLlvHKlksUMuDw=.sha256",
-      "at": "2026-10-11T18:49:35.474Z"
+      "key": "%Lg6lxHipETrf4b5LReXzAjyr5agCJ5cskGaZ/wtgy38=.sha256",
+      "at": "2026-10-11T19:43:04.220Z"
     },
     "wiki_portavocias": {
-      "key": "%6qU187kesbmAlC1bazh3VztFU5dmHr6hXlSSABSgT1c=.sha256",
-      "at": "2026-10-11T18:49:36.058Z"
+      "key": "%YFtK1g9o6BtmzYMExazpJZSegUYnnU0y10ojEpZfhmA=.sha256",
+      "at": "2026-10-11T19:43:04.797Z"
     },
     "wiki_onboarding": {
-      "key": "%MqgzMzyZmf2XssiKiZqi9nM/XunRk0zTVX0y9mpJ9gA=.sha256",
-      "at": "2026-10-11T18:49:36.658Z"
+      "key": "%zSKrxGAdEu2SREjNeMj/Qrlw+06bMAVdxbHHPQSVbhk=.sha256",
+      "at": "2026-10-11T19:43:05.455Z"
     },
     "wiki_onboarding_2": {
-      "key": "%c3FPqDkW/otb3/o26TObPIroEqGaLcxNerF/SBBNQj4=.sha256",
-      "at": "2026-10-11T18:49:37.430Z"
+      "key": "%GgqulwLr2Hcy2So/Ea+lK+WAP1mSq7lXmuQx4JZoga0=.sha256",
+      "at": "2026-10-11T19:43:06.051Z"
+    },
+    "wiki_onboarding_3": {
+      "key": "%UtQxX3XnxSmJ7AZNgSRoN9R3Xdm9CGGL0NvCyMmmn0U=.sha256",
+      "at": "2026-10-11T19:43:06.634Z"
+    },
+    "wiki_onboarding_4": {
+      "key": "%FojKYIwvZLQ6Hzy+/f3sJYdwMjipHWE8GwrZIn+rrxo=.sha256",
+      "at": "2026-10-11T19:43:07.236Z"
+    },
+    "wiki_onboarding_5": {
+      "key": "%I/j7nQ/p1cLxAQk5EHPG/yNhFAhqDXzfylOd0S2KIak=.sha256",
+      "at": "2026-10-11T19:43:07.884Z"
     },
     "wiki_reparto": {
-      "key": "%N+p6TdRPxqbebeCvmMlzTSnYFNe/XWEFLysaT/saSHI=.sha256",
-      "at": "2026-10-11T18:49:38.060Z"
+      "key": "%h13B0BsXmY2yC36dvVW3gj1YLand78hXIueh4rRxjDI=.sha256",
+      "at": "2026-10-11T19:43:08.469Z"
+    },
+    "wiki_reparto_2": {
+      "key": "%QnBMZkubdrKwW1CX9cr4TI1rfsmUBS6W0wL8B5u3yfw=.sha256",
+      "at": "2026-10-11T19:43:09.076Z"
+    },
+    "wiki_reparto_3": {
+      "key": "%uTcQ6hpIHdfkurmAnp7T0pIz75lBgrecLggKn/g90Bg=.sha256",
+      "at": "2026-10-11T19:43:09.656Z"
+    },
+    "wiki_reparto_4": {
+      "key": "%7G1OzOB3NIc6tCHOBXK9ODzfDoIxfidFnq4NVZWiP2g=.sha256",
+      "at": "2026-10-11T19:43:10.258Z"
     }
   },
   "maps": {
     "mapa_sol": {
-      "key": "%5saJX9RS51BLQRiJQHjaxJ/l2xvMhVTbLpJbmlWGzbk=.sha256",
-      "at": "2026-10-11T18:49:42.081Z"
+      "key": "%P8QJjIVnJXORfAaQ3Akqi9+WIrFcxROdYSkQRSnpf00=.sha256",
+      "at": "2026-10-11T19:43:14.837Z"
     },
     "mapa_nodos": {
-      "key": "%mYzdna6GxX6e64ene1bmJGCVb+ID3lg8weaCNSRPSq8=.sha256",
-      "at": "2026-10-11T18:49:42.134Z"
+      "key": "%uHm68w0x4Vj9Ke9ULfTC2hPw7un/j0cFyl8kh+gH16c=.sha256",
+      "at": "2026-10-11T19:43:14.899Z"
     }
   },
   "clearnet": {
     "calendars:cal_asamblea_general": {
-      "key": "clearnet:%wl3ZGfzk9eGUgNltMPFJVKbMJPIuE/agBWmoNzIk9xk=.sha256",
-      "at": "2026-10-11T18:49:46.351Z"
+      "key": "clearnet:%sCF5JdkWUoV2AZzVG1YvG1sYRIPL0FbSfqqimQ4jHnE=.sha256",
+      "at": "2026-10-11T19:43:19.483Z"
     },
     "maps:mapa_nodos": {
-      "key": "clearnet:%mYzdna6GxX6e64ene1bmJGCVb+ID3lg8weaCNSRPSq8=.sha256",
-      "at": "2026-10-11T18:49:46.369Z"
+      "key": "clearnet:%uHm68w0x4Vj9Ke9ULfTC2hPw7un/j0cFyl8kh+gH16c=.sha256",
+      "at": "2026-10-11T19:43:19.499Z"
     },
     "wiki:wiki_organigrama": {
-      "key": "clearnet:%T5kbdOpHI3YFnjLYEiDlDsd+Peehk1WIarjXSHjl2ic=.sha256",
-      "at": "2026-10-11T18:49:46.384Z"
+      "key": "clearnet:%A/LBYrCWRYimlUXqBxtqWD2cr8mPgLe7Ky7Av0Houj0=.sha256",
+      "at": "2026-10-11T19:43:19.513Z"
     },
     "wiki:wiki_semaforo": {
-      "key": "clearnet:%4xWs/HWt8bUbE7VBUcPYuHmWAVNDfiLlvHKlksUMuDw=.sha256",
-      "at": "2026-10-11T18:49:46.398Z"
+      "key": "clearnet:%Lg6lxHipETrf4b5LReXzAjyr5agCJ5cskGaZ/wtgy38=.sha256",
+      "at": "2026-10-11T19:43:19.527Z"
     },
     "wiki:wiki_portavocias": {
-      "key": "clearnet:%6qU187kesbmAlC1bazh3VztFU5dmHr6hXlSSABSgT1c=.sha256",
-      "at": "2026-10-11T18:49:46.413Z"
+      "key": "clearnet:%YFtK1g9o6BtmzYMExazpJZSegUYnnU0y10ojEpZfhmA=.sha256",
+      "at": "2026-10-11T19:43:19.539Z"
     },
     "wiki:wiki_onboarding": {
-      "key": "clearnet:%MqgzMzyZmf2XssiKiZqi9nM/XunRk0zTVX0y9mpJ9gA=.sha256",
-      "at": "2026-10-11T18:49:46.428Z"
+      "key": "clearnet:%zSKrxGAdEu2SREjNeMj/Qrlw+06bMAVdxbHHPQSVbhk=.sha256",
+      "at": "2026-10-11T19:43:19.551Z"
     },
     "wiki:wiki_onboarding_2": {
-      "key": "clearnet:%c3FPqDkW/otb3/o26TObPIroEqGaLcxNerF/SBBNQj4=.sha256",
-      "at": "2026-10-11T18:49:46.449Z"
+      "key": "clearnet:%GgqulwLr2Hcy2So/Ea+lK+WAP1mSq7lXmuQx4JZoga0=.sha256",
+      "at": "2026-10-11T19:43:19.565Z"
+    },
+    "wiki:wiki_onboarding_3": {
+      "key": "clearnet:%UtQxX3XnxSmJ7AZNgSRoN9R3Xdm9CGGL0NvCyMmmn0U=.sha256",
+      "at": "2026-10-11T19:43:19.579Z"
+    },
+    "wiki:wiki_onboarding_4": {
+      "key": "clearnet:%FojKYIwvZLQ6Hzy+/f3sJYdwMjipHWE8GwrZIn+rrxo=.sha256",
+      "at": "2026-10-11T19:43:19.596Z"
+    },
+    "wiki:wiki_onboarding_5": {
+      "key": "clearnet:%I/j7nQ/p1cLxAQk5EHPG/yNhFAhqDXzfylOd0S2KIak=.sha256",
+      "at": "2026-10-11T19:43:19.610Z"
     },
     "wiki:wiki_reparto": {
-      "key": "clearnet:%N+p6TdRPxqbebeCvmMlzTSnYFNe/XWEFLysaT/saSHI=.sha256",
-      "at": "2026-10-11T18:49:46.467Z"
+      "key": "clearnet:%h13B0BsXmY2yC36dvVW3gj1YLand78hXIueh4rRxjDI=.sha256",
+      "at": "2026-10-11T19:43:19.623Z"
+    },
+    "wiki:wiki_reparto_2": {
+      "key": "clearnet:%QnBMZkubdrKwW1CX9cr4TI1rfsmUBS6W0wL8B5u3yfw=.sha256",
+      "at": "2026-10-11T19:43:19.638Z"
+    },
+    "wiki:wiki_reparto_3": {
+      "key": "clearnet:%uTcQ6hpIHdfkurmAnp7T0pIz75lBgrecLggKn/g90Bg=.sha256",
+      "at": "2026-10-11T19:43:19.652Z"
+    },
+    "wiki:wiki_reparto_4": {
+      "key": "clearnet:%7G1OzOB3NIc6tCHOBXK9ODzfDoIxfidFnq4NVZWiP2g=.sha256",
+      "at": "2026-10-11T19:43:19.668Z"
     },
     "events:evento_asamblea_general#1": {
-      "key": "clearnet:%IusAbNJXgLI9equkPFRo10zFhrUZ+U9j0rny3y5ruQM=.sha256",
-      "at": "2026-10-11T18:49:46.484Z"
+      "key": "clearnet:%kDGhv5kIAgoJRbqEtRc7/OojrxAjyEK3eVNVi4z1gEM=.sha256",
+      "at": "2026-10-11T19:43:19.686Z"
     },
     "events:evento_asamblea_general#2": {
-      "key": "clearnet:%v/UaVSBOqcPTMWwJ1GXTy0XNQUMsMvR3Vz6QORHQaJs=.sha256",
-      "at": "2026-10-11T18:49:46.499Z"
+      "key": "clearnet:%hCINvP74Y34cR+mz2a0aKQiLgOr88nuFEnWSJW5VT8M=.sha256",
+      "at": "2026-10-11T19:43:19.707Z"
     },
     "events:evento_asamblea_general#3": {
-      "key": "clearnet:%kcblShK+QN7pEcZbgmzWdr4PR8R5lpPeLLvLYzSNLWA=.sha256",
-      "at": "2026-10-11T18:49:46.514Z"
+      "key": "clearnet:%R0OWQqizY8/hJ6a16IuEnFTMsvwDa43n6jeolgp7ZQg=.sha256",
+      "at": "2026-10-11T19:43:19.723Z"
     },
     "events:evento_asamblea_general#4": {
-      "key": "clearnet:%WMXOZNN42T+ZsJZ5cBicPy7ebf83AQsmzUzgv0aCTxE=.sha256",
-      "at": "2026-10-11T18:49:46.529Z"
+      "key": "clearnet:%KJz6Qw+cu4Ik2Z8WwsXrxlHPmchq2/yCpVVgi0/YRsc=.sha256",
+      "at": "2026-10-11T19:43:19.739Z"
     },
     "events:evento_asamblea_general#5": {
-      "key": "clearnet:%CfPtqvW6Wan2a1GFTYYrDG+jiNWgxKoxeIF+5C9C2u4=.sha256",
-      "at": "2026-10-11T18:49:46.553Z"
+      "key": "clearnet:%8NucC1WbQb3ef9hu4pLvmY1EwUsLk2yKu82d4XYiAnM=.sha256",
+      "at": "2026-10-11T19:43:19.753Z"
     },
     "events:evento_asamblea_general#6": {
-      "key": "clearnet:%y7XJNo4g4Sl9MWEyoc51qQBOy8uiDO+Aa3uxwFluK3M=.sha256",
-      "at": "2026-10-11T18:49:46.617Z"
+      "key": "clearnet:%fvlCh6rAIJP5+HRTGMybxKEwUrr86Dp/IF+TXKZTVZ0=.sha256",
+      "at": "2026-10-11T19:43:19.769Z"
     },
     "events:evento_asamblea_general#7": {
-      "key": "clearnet:%LRYHllZ0KwWVtACTHDtitMP3IKgm/VStpq5qUdf5+E0=.sha256",
-      "at": "2026-10-11T18:49:46.648Z"
+      "key": "clearnet:%DaxpBUfZxwZ2hPVGjyRlZM31AEAtMGshUsyFk7c0cVY=.sha256",
+      "at": "2026-10-11T19:43:19.787Z"
     }
   }
 }

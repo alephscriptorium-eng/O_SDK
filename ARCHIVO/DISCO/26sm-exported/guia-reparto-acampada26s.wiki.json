@@ -1,0 +1,27 @@
+{
+  "titulo": "Guía de reparto de accesos",
+  "max": 5600,
+  "src": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md",
+  "paginas": [
+    {
+      "file": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md",
+      "title": "Guía de reparto de accesos · 1 de 4",
+      "bytes": 4715
+    },
+    {
+      "file": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-2.wiki.md",
+      "title": "Guía de reparto de accesos · 2 de 4",
+      "bytes": 4838
+    },
+    {
+      "file": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-3.wiki.md",
+      "title": "Guía de reparto de accesos · 3 de 4",
+      "bytes": 5327
+    },
+    {
+      "file": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-4.wiki.md",
+      "title": "Guía de reparto de accesos · 4 de 4",
+      "bytes": 4036
+    }
+  ]
+}

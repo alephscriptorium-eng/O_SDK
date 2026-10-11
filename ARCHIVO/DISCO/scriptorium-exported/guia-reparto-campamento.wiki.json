@@ -1,0 +1,27 @@
+{
+  "titulo": "Guía de reparto de accesos",
+  "max": 5600,
+  "src": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.wiki.md",
+  "paginas": [
+    {
+      "file": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.wiki.md",
+      "title": "Guía de reparto de accesos · 1 de 4",
+      "bytes": 5192
+    },
+    {
+      "file": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento-2.wiki.md",
+      "title": "Guía de reparto de accesos · 2 de 4",
+      "bytes": 4990
+    },
+    {
+      "file": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento-3.wiki.md",
+      "title": "Guía de reparto de accesos · 3 de 4",
+      "bytes": 4952
+    },
+    {
+      "file": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento-4.wiki.md",
+      "title": "Guía de reparto de accesos · 4 de 4",
+      "bytes": 4294
+    }
+  ]
+}

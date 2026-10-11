@@ -1,42 +1,96 @@
 {
   "base": "http://localhost:8188",
-  "at": "2026-10-11T18:55:02Z",
+  "at": "2026-10-11T19:48:14Z",
   "items": [
     {
-      "url": "/c/wiki/guia-de-reparto-de-accesos-np6tdrpx",
-      "file": "img/guia-c-wiki-guia-de-reparto-de-accesos-np6tdrpx.jpg",
-      "bytes": 978727,
-      "sha256": "fd9012760ecff37c92f65fe2d4b1f927ebcac98f470758363c6b28e5cacdefad",
+      "url": "/c/wiki/guia-de-reparto-de-accesos-1-de-4-h13b0bsx",
+      "file": "img/guia-c-wiki-guia-de-reparto-de-accesos-1-de-4-h13b0bsx.jpg",
+      "bytes": 259386,
+      "sha256": "72b848ce04c350d882e79f42c5674edce4b1c31691674a054bf7ce8483331f3a",
+      "section": "wiki",
+      "id": "wiki_reparto",
+      "title": "Guía de reparto de accesos · 1 de 4"
+    },
+    {
+      "url": "/c/wiki/guia-de-reparto-de-accesos-2-de-4-qnbmzkub",
+      "file": "img/guia-c-wiki-guia-de-reparto-de-accesos-2-de-4-qnbmzkub.jpg",
+      "bytes": 265997,
+      "sha256": "e830e95c7d2caf271a4b4fe89a71eba160b60147769347ac22b58d9824b5a4bf",
+      "section": "wiki",
+      "id": "wiki_reparto_2",
+      "title": "Guía de reparto de accesos · 2 de 4"
+    },
+    {
+      "url": "/c/wiki/guia-de-reparto-de-accesos-3-de-4-utcq6hpi",
+      "file": "img/guia-c-wiki-guia-de-reparto-de-accesos-3-de-4-utcq6hpi.jpg",
+      "bytes": 280401,
+      "sha256": "caf064ea09d7fe7927a9c156fa891cab7c877b49b9d2e92854dad6d8c0a5d5d5",
+      "section": "wiki",
+      "id": "wiki_reparto_3",
+      "title": "Guía de reparto de accesos · 3 de 4"
+    },
+    {
+      "url": "/c/wiki/guia-de-reparto-de-accesos-4-de-4-7g1ozob3",
+      "file": "img/guia-c-wiki-guia-de-reparto-de-accesos-4-de-4-7g1ozob3.jpg",
+      "bytes": 235269,
+      "sha256": "03a32c35be281cf3ee5743c667572bcd6e329b0ef1689da7a88029f114103247",
+      "section": "wiki",
+      "id": "wiki_reparto_4",
+      "title": "Guía de reparto de accesos · 4 de 4"
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-1-de-5-zskrxgad",
+      "file": "img/guia-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-1-de-5-zskrxgad.jpg",
+      "bytes": 301826,
+      "sha256": "8d68878275108587110bbfd18ff02ee76800f65be880789ec9d14222ed28f49c",
+      "section": "wiki",
+      "id": "wiki_onboarding",
+      "title": "Oasis para el nodo · manual de bienvenida · 1 de 5"
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-2-de-5-ggqulwlr",
+      "file": "img/guia-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-2-de-5-ggqulwlr.jpg",
+      "bytes": 314138,
+      "sha256": "f3888160614dd1a47c7c0e3a95579ad64b1afea28d34bcc6ceccbff71eba273c",
+      "section": "wiki",
+      "id": "wiki_onboarding_2",
+      "title": "Oasis para el nodo · manual de bienvenida · 2 de 5"
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-3-de-5-utqxx3xn",
+      "file": "img/guia-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-3-de-5-utqxx3xn.jpg",
+      "bytes": 270883,
+      "sha256": "d638b74d876697f978cf24b5d4b9c59b1d18a4706e95c020cfb8914d9fcaf6f3",
+      "section": "wiki",
+      "id": "wiki_onboarding_3",
+      "title": "Oasis para el nodo · manual de bienvenida · 3 de 5"
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-4-de-5-fojkyiwv",
+      "file": "img/guia-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-4-de-5-fojkyiwv.jpg",
+      "bytes": 224039,
+      "sha256": "d1905526638f3e7349a2e845de4920eb589de7562d030e9945a5f0fc8374b1a4",
+      "section": "wiki",
+      "id": "wiki_onboarding_4",
+      "title": "Oasis para el nodo · manual de bienvenida · 4 de 5"
+    },
+    {
+      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-5-de-5-ij7nqp1c",
+      "file": "img/guia-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-5-de-5-ij7nqp1c.jpg",
+      "bytes": 155022,
+      "sha256": "1aa21b18d03b53d9be8fe32f9a02965d025e0196eefb9502d70584be5d099209",
       "section": null,
       "id": null,
       "title": null
     },
     {
-      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-2-de-2-c3fpqdkw",
-      "file": "img/guia-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-2-de-2-c3fpqdkw.jpg",
-      "bytes": 603604,
-      "sha256": "9a06a9efc5d756461a06f4d37cc830be0556a2a3f76ac6235a7e9403c7f49b03",
-      "section": "wiki",
-      "id": "wiki_onboarding_2",
-      "title": "Oasis para el nodo · manual de bienvenida · 2 de 2"
-    },
-    {
-      "url": "/c/wiki/oasis-para-el-nodo-manual-de-bienvenida-1-de-2-mqgzmzyz",
-      "file": "img/guia-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-1-de-2-mqgzmzyz.jpg",
-      "bytes": 637695,
-      "sha256": "e2076d26a4b8f9e872584c29530b6d2b697c6bf77636dcc6201a511528aadeb0",
-      "section": "wiki",
-      "id": "wiki_onboarding",
-      "title": "Oasis para el nodo · manual de bienvenida · 1 de 2"
-    },
-    {
-      "url": "/c/wiki/organigrama-y-funcionamiento-t5kbdoph",
-      "file": "img/guia-c-wiki-organigrama-y-funcionamiento-t5kbdoph.jpg",
-      "bytes": 275784,
-      "sha256": "7b9b52def20cabf5be868225f4560aafbdad0bb47fc7687b455a25821df3a259",
-      "section": "wiki",
-      "id": "wiki_organigrama",
-      "title": "Organigrama y funcionamiento"
+      "url": "/c/wiki/organigrama-y-funcionamiento-albyrcwr",
+      "file": "img/guia-c-wiki-organigrama-y-funcionamiento-albyrcwr.jpg",
+      "bytes": 227100,
+      "sha256": "c1528e87da7bde6b326a30c021821352a61f9c717bad61dd3de856750340f768",
+      "section": null,
+      "id": null,
+      "title": null
     }
   ]
 }

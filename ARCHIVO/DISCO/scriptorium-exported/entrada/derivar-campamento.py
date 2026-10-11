@@ -108,17 +108,21 @@ for x in t['maps']:
     x['tags'] = [('plaza' if g == 'sol' else g) for g in x['tags']]
     if x['id'] == 'mapa_sol':
         x['id'] = 'mapa_plaza'; x['title'] = 'La plaza'; x['image'] = img('mapa', x)
-t['wiki'] = [w for w in t['wiki'] if w['id'] != 'wiki_reparto']   # la de Acampada apunta a su dosier; Campamento trae la suya
+t['wiki'] = [w for w in t['wiki'] if not w['id'].startswith('wiki_reparto')]   # la de Acampada apunta a su dosier; Campamento trae la suya
 for x in t['wiki']:
     x['image'] = img('wiki', x)
     x['clearnetPublic'] = True
     x['responsable'] = x['origen']
-t['wiki'].append({
-    'id': 'wiki_reparto', 'origen': 'documento', 'title': 'Guía de reparto de accesos',
-    'file': GUIA_WIKI, 'editPolicy': 'author', 'tags': ['manual', 'reparto'],
-    'image': 'wiki-wiki_reparto.png', 'clearnetPublic': True, 'responsable': 'documento',
-    'nota': 'La genera template-seed.js --reparto --wiki (sin tablas, D-O34): libro del operador, sin códigos. El md con tablas (dosier y Sala 02) es ' + GUIA + '.'
-})
+_idx = ROOT / GUIA_WIKI.replace('.wiki.md', '.wiki.json')
+_pags = [(pg['file'], pg['title']) for pg in json.loads(_idx.read_text(encoding='utf-8'))['paginas']] if _idx.exists() else [(GUIA_WIKI, 'Guía de reparto de accesos')]
+for _k, (_f, _t) in enumerate(_pags, 1):
+    _oid = 'wiki_reparto' if _k == 1 else f'wiki_reparto_{_k}'
+    t['wiki'].append({
+        'id': _oid, 'origen': 'documento', 'title': _t,
+        'file': _f, 'editPolicy': 'author', 'tags': ['manual', 'reparto'],
+        'image': f'wiki-{_oid}.png', 'clearnetPublic': True, 'responsable': 'documento',
+        'nota': 'Página ' + str(_k) + ' de la guía sin tablas (D-O34, ≤ 5600 B por página): libro del operador, sin códigos. El md con tablas (dosier y Sala 02) es ' + GUIA + '.'
+    })
 
 DST_T.write_text(json.dumps(t, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 DST_O.write_text(json.dumps(o, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
