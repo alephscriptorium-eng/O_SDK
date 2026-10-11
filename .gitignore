@@ -100,3 +100,9 @@ src/server/node_modules.full/
 !src/base/node_modules/
 !src/base/**/node_modules/
 !src/base/**
+
+# Canva de la 26S: exportaciones pesadas (96 MB) fuera de git; queda el MANIFEST.md con sha256 (ARCHIVO/DISCO/26sm-exported/canva/README.md)
+ARCHIVO/DISCO/26sm-exported/canva/*/*.pdf
+ARCHIVO/DISCO/26sm-exported/canva/*/*.png
+ARCHIVO/DISCO/26sm-exported/canva/*/*.jpg
+ARCHIVO/DISCO/26sm-exported/canva/*/*.svg

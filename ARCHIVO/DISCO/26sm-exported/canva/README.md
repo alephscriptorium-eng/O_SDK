@@ -6,9 +6,9 @@ Enlaces entregados por el custodio el 2026-10-11 (acortadores `canva.link`), res
 
 | Pieza | Acortador | Diseño (resuelto) | Carpeta destino | Estado |
 |---|---|---|---|---|
-| KIT VISUAL | `https://canva.link/82o6d2lwolcctsw` | `https://www.canva.com/design/DAHXCGOgH2E/1lIYrVroTYfzQt8tZDZXyA/edit` | `kit-visual/` | ⬜ |
-| POST | `https://canva.link/4qk1xlcplw2fa65` | `https://www.canva.com/design/DAHXEHpvYUY/u85j_5kJNWXNBBhGR-30UA/edit` | `post/` | ⬜ |
-| RECURSOS GRÁFICOS | `https://canva.link/tatovgme5p4ty6v` | `https://www.canva.com/design/DAHXEFmMbQg/kJsQnfXnGSAv1v0VndVo3g/edit` | `recursos-graficos/` | ⬜ |
+| KIT VISUAL | `https://canva.link/82o6d2lwolcctsw` | `https://www.canva.com/design/DAHXCGOgH2E/1lIYrVroTYfzQt8tZDZXyA/edit` | `kit-visual/` | ✓ 2026-10-11: `ACAMPADA BRAND KIT .pdf` (19 págs, 24,5 MB), exportado por el equipo |
+| POST | `https://canva.link/4qk1xlcplw2fa65` | `https://www.canva.com/design/DAHXEHpvYUY/u85j_5kJNWXNBBhGR-30UA/edit` | `post/` | ✓ 2026-10-11: 32 PNG 1080×1350 (de 34 páginas del diseño; sin duplicados por sha256), exportado por el equipo |
+| RECURSOS GRÁFICOS | `https://canva.link/tatovgme5p4ty6v` | `https://www.canva.com/design/DAHXEFmMbQg/kJsQnfXnGSAv1v0VndVo3g/edit` | `recursos-graficos/` | ⬜ (la vista pública sale en blanco: hace falta exportarlo con sesión) |
 
 ## Cómo exportar (Canva → aquí)
 
@@ -29,8 +29,14 @@ python -X utf8 ARCHIVO/DISCO/26sm-exported/canva/manifest.py
 La columna «Para qué» de cada `MANIFEST.md` se rellena a mano y se conserva entre ejecuciones mientras
 el sha256 del fichero no cambie.
 
-## Lo que no se ha podido medir
+## Cómo llegaron (2026-10-11)
 
-La extensión Claude in Chrome no estaba conectada en la sesión del 2026-10-11, así que el contenido de
-los tres diseños **no se ha visto**: no se sabe cuántas páginas tiene cada uno ni qué formatos ofrece.
-Lo de arriba es el procedimiento genérico; se corrige al primer intento real.
+- La extensión Claude in Chrome no estaba conectada: los `/edit` dan 403 sin sesión. La variante `/view` de cada
+  diseño es pública (HTTP 200) y expone miniaturas firmadas y caducas (`disableexport=T`): sirven para ver, no para usar.
+  Medido con ellas: KIT VISUAL «ACAMPADA BRAND KIT» 19 páginas 16:9; POST «POST ACAMPADA26S» 34 páginas 4:5;
+  RECURSOS GRÁFICOS 1 página que sale en blanco.
+- Dos piezas las exportó el equipo desde su sesión y las dejó en la carpeta del dosier; se movieron aquí sin renombrar
+  (el PDF conserva el espacio antes de `.pdf` tal como salió de Canva). Faltan 2 páginas del POST y toda la pieza de
+  recursos gráficos.
+- Peso: 96 MB de binarios. Si se decide no versionarlos, van a `.gitignore` y queda solo el `MANIFEST.md` (sha256) como
+  prueba de qué había.

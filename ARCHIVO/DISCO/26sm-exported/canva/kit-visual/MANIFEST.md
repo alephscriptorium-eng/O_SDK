@@ -4,4 +4,4 @@ Origen: ver `../README.md`. Generado por `../manifest.py`; la columna «Para qu�
 
 | Fichero | px | bytes | sha256 | Para qué |
 |---|---|---|---|---|
-| *(vacío: nada descargado todavía)* | | | | |
+| `ACAMPADA BRAND KIT .pdf` | — | 25640794 | `309c882d86df7e6601fd76ce0c284c04a1a06d01c93d808a4704293e55dc110f` | <pendiente> |

@@ -17,7 +17,7 @@ nada: los nombres propios son los del colectivo. Lo que se mantiene en el tiempo
 | Guion de activación humana · guía de reparto (libro del operador, sin códigos) | `guion-acampada26s.md` (`--guion`) · `guia-reparto-acampada26s.md` (`--reparto`) | regenerados 2026-10-11, exit 0 |
 | Mapeo organigrama → Oasis (trazable por `id`) | `../retro-exporter/MAPEO.md` | cerrado 2026-10-07 |
 | **Logos** del colectivo (6 variantes, 1021×1134 PNG) | `assets/` · inventario `assets/MANIFEST.md` | recibidos 2026-10-11; oficial sin elegir (formulario A1) |
-| **Canva**: kit visual, post, recursos gráficos | `canva/` · índice `canva/README.md` | ⬜ **pendiente de descarga** (enlaces de edición: piden sesión; formulario A2) |
+| **Canva**: kit visual, post, recursos gráficos | `canva/` · índice `canva/README.md` · manifiestos por pieza | ✓ kit visual (PDF 19 págs) y post (32 PNG 1080×1350) recibidos 2026-10-11, exportados por el equipo · ⬜ recursos gráficos y 2 páginas del post |
 | Kit visual 512×512 para la plantilla | `pub/templates/assets/acampada26s/` (generador `pub/tools/template-kit.py`) | ⬜ no generado (PIL ausente en el Python base; marca sin decidir) |
 
 ## Cómo se trabaja esta carpeta
@@ -64,7 +64,8 @@ python -X utf8 ARCHIVO/DISCO/26sm-exported/canva/manifest.py                    
 ## Pendientes (2026-10-11)
 
 - [ ] Enviar `FORMULARIO-BRANDING-CONTENIDOS.md` a branding y contenidos; incorporar respuestas al JSON v2 y regenerar.
-- [ ] Descargar las tres piezas de Canva (`canva/README.md`) y rellenar sus manifiestos.
+- [ ] Canva: conseguir RECURSOS GRÁFICOS y las 2 páginas que faltan del POST; rellenar la columna «Para qué» de los manifiestos.
+- [ ] Decidir si los 96 MB de Canva se versionan o van a `.gitignore` (queda el manifiesto).
 - [ ] Logo oficial (formulario A1) → avatar de la secretaría y kit 512×512 con la marca.
 - [ ] Medir `oasisVersion` del pub `acampada26s.net` (`instancia.oasis_version.observada`).
 - [ ] Paquete «congelado» para el operador de la 26S (runbook externo + compose aislado): siguiente micro-tarea.
