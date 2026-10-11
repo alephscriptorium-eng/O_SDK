@@ -394,36 +394,45 @@
       "section": "wiki",
       "file": "wiki-wiki_reparto.png",
       "lona": "lona-036.jpg",
-      "bytes": 333564,
-      "sha256": "fcc1ba88a68eea0e337ddbd7a4af220f8cf6d3dd3cf3e137bdfa960882a52d30",
-      "blobId": "&/MG6iKaO6g4zfdvXpK8iD4z209088+E3vfqWCIKlLTA=.sha256"
+      "bytes": 333867,
+      "sha256": "e7f7408ab33f58552276057a9d4ae6b8a76338f60ee4d7170b69f1d76b3419e0",
+      "blobId": "&5/dAirM/WFUidgV6nUrmuKdjOPYO5NcXC2nx12s0GeA=.sha256"
     },
     {
       "id": "wiki_reparto_2",
       "section": "wiki",
       "file": "wiki-wiki_reparto_2.png",
       "lona": "lona-116.jpg",
-      "bytes": 357482,
-      "sha256": "7ec43d16b3a752a5ca6900a9495c04454986d6ecfcedbfc1ca00b7152c348fee",
-      "blobId": "&fsQ9FrOnUqXKaQCpSVwERUmG1uz87b/BygC3FSw0j+4=.sha256"
+      "bytes": 357734,
+      "sha256": "6b9696549a5b8f03383724e8168e854ab9c67b16127277436efa5a8dbf03f70c",
+      "blobId": "&a5aWVJpbjwM4NyToFo6FSrnGexYScndDbvpajb8D9ww=.sha256"
     },
     {
       "id": "wiki_reparto_3",
       "section": "wiki",
       "file": "wiki-wiki_reparto_3.png",
       "lona": "lona-122.jpg",
-      "bytes": 336366,
-      "sha256": "1ba779ff66f164fefe21a9e838d6b7b66ede50af6b5ba4cecea45c28f3bd587a",
-      "blobId": "&G6d5/2bxZP7+IanoONa3tm7eUK9rW6TOzqRcKPO9WHo=.sha256"
+      "bytes": 336680,
+      "sha256": "7f05a884a87103bfd515f2b43b26bb365bf418e8c4abb84410a10a7552696a24",
+      "blobId": "&fwWohKhxA7/VFfK0Oya7Nlv0GOjEq7hEEKEKdVJpaiQ=.sha256"
     },
     {
       "id": "wiki_reparto_4",
       "section": "wiki",
       "file": "wiki-wiki_reparto_4.png",
       "lona": "lona-071.jpg",
-      "bytes": 355112,
-      "sha256": "6f313d482757855610d0af26d21f217c32756f70f744887adfcc42e0240548c9",
-      "blobId": "&bzE9SCdXhVYQ0K8m0h8hfDJ1b3D3RIh638xC4CQFSMk=.sha256"
+      "bytes": 355396,
+      "sha256": "8a9192d65b2a0fb4a4ade64bc649138fc55193aa609e6840dd82f592d466455f",
+      "blobId": "&ipGS1lsqD7SkreZLxkkTj8VRk6pgnmhA3YL1ktRmRV8=.sha256"
+    },
+    {
+      "id": "wiki_reparto_5",
+      "section": "wiki",
+      "file": "wiki-wiki_reparto_5.png",
+      "lona": "lona-036.jpg",
+      "bytes": 334350,
+      "sha256": "14f0cee2c965b20c69e1b22cc45266156ebbd38ba1fe7b78b0c4eb52c62a4097",
+      "blobId": "&FPDO4sllsgxp4bIsxFJmFW6704uh/nt4sMTrUsYqQJc=.sha256"
     },
     {
       "id": "wiki_onboarding",
@@ -438,64 +447,72 @@
       "section": "wiki-file",
       "file": "wiki/wiki_onboarding_2.md",
       "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md",
-      "bytes": 5673,
-      "sha256": "e4954c167fd07a727df89007859b98603dff9b84b6f8508d991777d9bebe691e"
+      "bytes": 3062,
+      "sha256": "8089db883108e72ea501e150827628401f2452006b49c9dd79336cd50342f2bc"
     },
     {
       "id": "wiki_onboarding_3",
       "section": "wiki-file",
       "file": "wiki/wiki_onboarding_3.md",
       "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-3.wiki.md",
-      "bytes": 4629,
-      "sha256": "327c2fd742a8ddb4fd60a51172ec22de2e0f7ab51762efe8221ac2d7188bfee3"
+      "bytes": 4730,
+      "sha256": "e5fff2e436b6e0589774f42421289fc15405122f2e2251b265b51d8072a4a605"
     },
     {
       "id": "wiki_onboarding_4",
       "section": "wiki-file",
       "file": "wiki/wiki_onboarding_4.md",
       "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-4.wiki.md",
-      "bytes": 4077,
-      "sha256": "56f15b99ab105a1d29fa395b7f8b2720bc4e9c9427cb0893ab5cf3b4507e3a45"
+      "bytes": 4829,
+      "sha256": "ad3827d4e7eb1ea897d77e30015ebbdd7d9aa320363661c8d50930cec9678e1f"
     },
     {
       "id": "wiki_onboarding_5",
       "section": "wiki-file",
       "file": "wiki/wiki_onboarding_5.md",
       "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo-5.wiki.md",
-      "bytes": 2187,
-      "sha256": "56b26e25304854db71eb1f795de10ede10631611eceedca78273ef706e636b83"
+      "bytes": 4505,
+      "sha256": "8e5233203c6407f86beae70a4d76cc17a4426c2e96c4d47a34d050b27df30327"
     },
     {
       "id": "wiki_reparto",
       "section": "wiki-file",
       "file": "wiki/wiki_reparto.md",
       "from": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md",
-      "bytes": 4758,
-      "sha256": "0f27ad79b8f2c1742c777854272aa8fc2a65abdb9658b611ab8b190d0a5c05d2"
+      "bytes": 5222,
+      "sha256": "fd29815d0091c699c58af8b435cac501d33eac88e614508a961fb5d938dcfc3d"
     },
     {
       "id": "wiki_reparto_2",
       "section": "wiki-file",
       "file": "wiki/wiki_reparto_2.md",
       "from": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-2.wiki.md",
-      "bytes": 4891,
-      "sha256": "31f6fc039e4ffe6127177a5c4c5cc369aef57641c80eada501eed3e3528415a8"
+      "bytes": 5297,
+      "sha256": "b618306fc5d39712163d11d3f98adadbffa33169afe57356620b9af4d7b48ad0"
     },
     {
       "id": "wiki_reparto_3",
       "section": "wiki-file",
       "file": "wiki/wiki_reparto_3.md",
       "from": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-3.wiki.md",
-      "bytes": 5369,
-      "sha256": "bec891c3cb552cc9e7a25da111a1a389144e1ab6f086aefc8d0ac1fbff6e2df2"
+      "bytes": 4876,
+      "sha256": "30e1576d29a956248e1b83245cf7f7bce99e048cd832786e3a0cb601bcfc19b9"
     },
     {
       "id": "wiki_reparto_4",
       "section": "wiki-file",
       "file": "wiki/wiki_reparto_4.md",
       "from": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-4.wiki.md",
-      "bytes": 4091,
-      "sha256": "0c7a59c87a13578ba11d6394415711391b18c564d2381b54bc8a291f12b039ce"
+      "bytes": 5280,
+      "sha256": "12d6740df021b9ac76146c1dc0d6649494bc76b80aae7741fda90ab164647a2e"
+    },
+    {
+      "id": "wiki_reparto_5",
+      "section": "wiki-file",
+      "file": "wiki/wiki_reparto_5.md",
+      "from": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-5.wiki.md",
+      "bytes": 4674,
+      "sha256": "e286543ae0fd52d2b70b4e781bff80642e8c97fca27d5bbf815b444b0f4c2145"
     }
   ],
   "brand": {

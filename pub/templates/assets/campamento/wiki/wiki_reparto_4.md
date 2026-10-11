@@ -1,61 +1,24 @@
-*Parte 4 de 4.*
+*Parte 4 de 5.*
 
-## Asamblea de Colectivos
+## Abastecimiento
 
-Responsable del reparto: `asamblea_de_colectivos`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
+Responsable del reparto: `comision_abastecimiento`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
 
-- **Asamblea de Colectivos** (tribes) · tribu pública estricta · reparte: el autor de la tribu · dónde: Solo el autor: Menú → Tribes → la tribu → Generate invite, un código por persona, entregado en mano. · web: cuando tenga contenido expuesto
-- **Asamblea de Colectivos** (mailing) · lista cerrada (cifrada) · reparte: el autor de la lista · dónde: El autor añade miembros: Menú → Mailing → la lista → Members. · web: no
+- **Comisión de Abastecimiento** (tribes) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
 
-## Nodos territoriales
+## Comisión de Comunicación
 
-Responsable del reparto: `nodos_territoriales`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
+Responsable del reparto: `comision_de_comunicacion`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
 
-- **Nodos territoriales** (maps) · mapa colaborativo · reparte: nadie reparte: es abierto · dónde: Invitación pública en la tarjeta del mapa (Menú → Maps); cualquiera añade marcadores. · web: sí (tras la activación)
+- **Comunicación · General** (sub-tribu) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Comunicación · Redes y contenido digital** (sub-tribu) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Comunicación · Interna** (sub-tribu) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Comunicación · Audiovisual** (sub-tribu) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Comunicación · Diseño y branding** (sub-tribu) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Comunicación · Cultura y eventos** (sub-tribu) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Comunicación · Relaciones públicas (PIAR)** (sub-tribu) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Comunicación · Coordinación y gabinete de crisis** (sub-tribu) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Comunicación · Corrección de textos** (sub-tribu) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Comunicados** (mailing) · lista abierta · reparte: nadie · dónde: Quien escribe queda suscrito; nada que repartir. · web: no
 
-## documento
-
-Responsable del reparto: `documento`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
-
-- **Organigrama y funcionamiento** (wiki) · wiki (open) · reparte: nadie · dónde: Menú → Wiki. Edita según la política de la página. · web: sí (tras la activación)
-- **Guía de reparto de accesos · 1 de 4** (wiki) · wiki (author) · reparte: nadie · dónde: Menú → Wiki. Edita según la política de la página. · web: sí (tras la activación)
-
-## Técnica del semáforo
-
-Responsable del reparto: `tecnica_semaforo`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
-
-- **Técnica del semáforo** (wiki) · wiki (author) · reparte: nadie · dónde: Menú → Wiki. Edita según la política de la página. · web: sí (tras la activación)
-
-## Portavocías rotativas
-
-Responsable del reparto: `portavocias_rotativas`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
-
-- **Portavocías rotativas** (wiki) · wiki (author) · reparte: nadie · dónde: Menú → Wiki. Edita según la política de la página. · web: sí (tras la activación)
-
-## Personas
-
-Responsable del reparto: `personas`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
-
-- **Oasis para el nodo · manual de bienvenida · 1 de 5** (wiki) · wiki (open) · reparte: nadie · dónde: Menú → Wiki. Edita según la política de la página. · web: sí (tras la activación)
-
-## Reglas que no cambian
-
-- Un acceso entregado no se retira: en una tribu privada, sacar a alguien rota la clave y lo publicado antes ya está leído.
-- Los códigos de un solo uso se consumen al usarse; las invitaciones abiertas valen hasta que el autor las retira.
-- Nada de esta guía se pega en un canal que deje el código escrito (listas, chats de terceros).
-- El manual del habitante (cómo entrar con el móvil) es otro documento: la mesa técnica reparte los dos juntos.
-
-## Pendiente de decidir por el colectivo (10)
-
-- meta.pub: <pendiente: pub del colectivo>
-- meta.autoria: <DECISIÓN del colectivo: qué identidad crea cada tribu; solo el autor la borra o reestructura>
-- calendars[2] cal_nodo_norte.dates[0].hora: <pendiente: hora de la asamblea del nodo>
-- calendars[3] cal_nodo_oeste.dates[0].hora: <pendiente: hora de la asamblea del nodo>
-- calendars[4] cal_nodo_centro.dates[0].hora: <pendiente: hora de la asamblea del nodo>
-- calendars[5] cal_nodo_este.dates[0].hora: <pendiente: hora de la asamblea del nodo>
-- calendars[6] cal_nodo_sur.dates[0].hora: <pendiente: hora de la asamblea del nodo>
-- maps[0] mapa_plaza.nota: <pendiente: confirmar coordenadas (aproximadas, puestas en la plantilla WP-O129 el 2026-10-07)> <pendiente: coordenadas de la plaza; 0,0 es el valor sin decidir, no una ubicación>
-- federation[0].pub: <pendiente: pub de la entidad, si lo tiene>
-- federation[1].pub: <pendiente: pubs de los colectivos aliados>
-
-Páginas: [[Guía de reparto de accesos · 1 de 4]] · [[Guía de reparto de accesos · 2 de 4]] · [[Guía de reparto de accesos · 3 de 4]] · [[Guía de reparto de accesos · 4 de 4]]
+Páginas: [[Guía de reparto de accesos · 1 de 5]] · [[Guía de reparto de accesos · 2 de 5]] · [[Guía de reparto de accesos · 3 de 5]] · [[Guía de reparto de accesos · 4 de 5]] · [[Guía de reparto de accesos · 5 de 5]]

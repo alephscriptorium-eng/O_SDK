@@ -504,3 +504,12 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   tocar `src/` también para esto: se parte en páginas enlazadas. `pub/tools/wiki-render-check.js` lo verifica con el
   renderer real (0 tablas, ≤ 6000 B). Afecta a WP-O131 (guía de reparto), WP-O136. No se corrige a mano la wiki ya sembrada en
   un drill: se vacía y se relanza.
+- **D-O35 · 2026-10-11 · Los códigos de acceso de las tribus sembradas los reparte la mesa técnica con herramienta; ningún código vive en un documento.**
+  Upstream (1.2.3-1.2.5) no muestra en la tarjeta de una tribu su invitación abierta (H9 de WP-O135) y la secretaría, autora de
+  todo, no tiene pantalla: sin esto nadie entraría. Los códigos multiuso ya están en claro en el registro (públicos por diseño):
+  se **mantienen** y se recuperan con `pub/tools/tribe-codes.js` (`secretaria.sh <id> codigos`), que los da en una **hoja de
+  códigos** con un QR por tribu (el QR codifica el código) para imprimir, repartir y destruir; los de un uso de las tribus
+  estrictas los genera la misma herramienta como autora, con PERMISO, y se muestran una sola vez. Ni la guía, ni el ledger, ni
+  los logs, ni los reportes llevan códigos; `list` los enmascara. `src/` no se toca (D-O34 ampliada: ni renderer, ni blobs, ni
+  invitaciones). Quien ejecuta la activación es la mesa técnica del colectivo desde un clon del repo (`TEMPLATE-RUNBOOK.md`),
+  nunca la casa sobre un pub ajeno. Afecta a WP-O131 (guía de reparto), WP-O137.

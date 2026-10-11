@@ -55,7 +55,7 @@ a «probado».
 | Acotar o apagar la centralita de llamadas del pub (Phone y Rooms, Oasis ≥ 1.2.2) | [`HUB-PROTOCOL.md`](./PUB/HUB-PROTOCOL.md) §14 | [`CAPACIDAD.md`](./PUB/CAPACIDAD.md) §4 |
 | Acoger y desplegar una obra del Teatro | [`TEATRO-PROTOCOL.md`](./PUB/TEATRO-PROTOCOL.md) · [curaduría](./PUB/TEATRO-CURADURIA-PROTOCOL.md) · [sidecar RRSS](./PUB/RRSS-SIDECAR-PROTOCOL.md) | — |
 | Sacar una obra a la escena P2P (torrent, ed2k) y anunciarla en Oasis | [`TEATRO-P2P-PROTOCOL.md`](./PUB/TEATRO-P2P-PROTOCOL.md) | §3 de esta página: el anuncio es irreversible |
-| Convertir el organigrama de un colectivo en tribus, salas, calendarios y listas de su pub (plantilla) | [`TEMPLATE-PROTOCOL.md`](./PUB/TEMPLATE-PROTOCOL.md) | §3 de esta página: cada tribu es permanente; nunca con la identidad del pub (D-O28) |
+| Convertir el organigrama de un colectivo en tribus, salas, calendarios y listas de su pub (plantilla) | [`TEMPLATE-PROTOCOL.md`](./PUB/TEMPLATE-PROTOCOL.md) · paso a paso para la mesa técnica: [`TEMPLATE-RUNBOOK.md`](./PUB/TEMPLATE-RUNBOOK.md) | §3 de esta página: cada tribu es permanente; nunca con la identidad del pub (D-O28); los primeros códigos los reparte la mesa técnica (TEMPLATE §4.6) |
 | Saber qué crece y si hay que limitarlo | [`CAPACIDAD.md`](./PUB/CAPACIDAD.md) · `devops/scripts/capacity.sh` | — |
 | Algo se ha roto (disco, repo, identidad) | [`RECOVERY-PROTOCOL.md`](./PUB/RECOVERY-PROTOCOL.md) | **no toques nada antes de §0** |
 
@@ -103,6 +103,7 @@ expreso del custodio en el momento**, aunque el plan general ya esté aprobado.
 | `docker compose down -v`, borrar volúmenes | se lleva estado no derivable | `client/scripts/guard-destroy.sh`; backup < 24 h |
 | **Mudar un nodo de máquina** (su `secret` y su log a otro host) | dos instancias vivas, o arrancar el destino con un log más corto, bifurcan el feed; el destino publica un `oasisVersion` si cambia de versión | HUB §11 «mudanza o baja»: parar el origen → copiar con sha256 → leer el log en frío (`S` = seq del pub) → arrancar el destino → el origen no vuelve a arrancar (`rm -sf`) |
 | **Tombstone** (borrado lógico de un objeto propio) | es otro mensaje, append-only; solo esconde, lo original sigue en todos los logs | TEMPLATE §9: dry-run, lista cerrada, PERMISO por bloque, conteo antes/después |
+| **Código de un uso de tribu** (`secretaria.sh <id> codigos one-use <tribu> --yes`) | publica un `tribe-invite-msg` y una versión nueva de la tribu; el código se muestra una vez y no se guarda | PERMISO por código, a petición del órgano; TEMPLATE §4.6. La hoja de códigos multiuso (`sheet`) no publica nada: se imprime y se destruye |
 | Reload del edge | tumba todos los vhosts si la config es inválida | `validate` antes |
 
 **Subagentes.** El clasificador de permisos de una sesión puede denegar a un subagente una

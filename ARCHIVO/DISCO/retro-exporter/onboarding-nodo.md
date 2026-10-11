@@ -177,26 +177,32 @@ para eso es. Menú → **Tribus** → **Crear Tribu**, y rellena:
 - **Estado**: *Privada* (por defecto — la tribu y todo lo que hay dentro va
   cifrado) o *Pública*.
 - **Modo**: *Estricto* — solo tú generas códigos de invitación; o *Abierta*
-  — cualquier miembro puede invitar, y la tribu puede mantener además una
-  invitación abierta permanente (botón Unirse + QR para todo el mundo).
+  — cualquier miembro puede invitar, y la tribu puede mantener además un
+  código multiuso permanente (el que va en la hoja de códigos y en el QR
+  impreso de la mesa técnica).
 
 Al crearla eres el primer miembro y el **autor** de la tribu: solo el autor
 puede borrarla o cambiar su estructura. **Grupos de trabajo dentro de una
 comisión:** abre la tribu de la comisión y crea una **sub-tribu** desde
 dentro — las sub-tribus heredan su privacidad.
 
-**Cómo unirse a una tribu** (una comisión, un grupo de trabajo…), tres
-caminos:
+**Cómo unirse a una tribu** (una comisión, un grupo de trabajo…). Siempre
+es lo mismo: un código, pegado en menú → **Tribus** → **INTRODUCIR
+INVITACIÓN** (también en menú → **Invitaciones** → sección **Tribus**). Lo
+que cambia es de dónde sale el código:
 
-1. **Con un código.** Pídeselo a su autor (modo estricto) o a cualquier
-   miembro (modo abierto); abre menú → **Invites** → sección **Tribus**,
-   pega el código y únete. Un código de un solo uso se consume al usarlo.
-2. **Con el botón UNIRSE A LA TRIBU.** Las tribus con invitación abierta
-   muestran el código y el botón **UNIRSE A LA TRIBU** en su propia tarjeta.
-   Un toque.
-3. **Con un QR.** Toda invitación abierta tiene su código QR: la mesa
-   técnica puede imprimir un QR por comisión — lo escaneas con la cámara,
-   confirmas, y estás dentro.
+1. **De la hoja de códigos o del QR impreso.** Los grupos abiertos tienen
+   un código multiuso que la mesa técnica reparte en una hoja o pegado como
+   QR por comisión. Escanea el QR con la cámara (es el código en texto:
+   cópialo) o teclea el código, pégalo en INTRODUCIR INVITACIÓN y estás
+   dentro. En esta versión de Oasis la tarjeta de la tribu **no** muestra
+   ese código ni un botón de unirse: el código llega por la mesa técnica.
+2. **De un miembro.** En un grupo abierto, cualquiera que ya esté dentro
+   abre la tarjeta de la tribu → **Generar invitación** y te pasa el código
+   (un código por persona).
+3. **De la mesa técnica, para los grupos estrictos.** Solo la secretaría
+   que creó el grupo puede dar códigos; la mesa técnica te lo entrega en
+   mano. Un código de un solo uso se consume al usarlo.
 
 Tras unirse, todo ocurre solo: tu Oasis importa la clave de la tribu, te
 añade a la lista de miembros y sigue a los demás para que empecéis a
@@ -208,8 +214,9 @@ la clave de la tribu, así que quien queda fuera ya no puede leer lo
 *nuevo*. Lo que alguien ya leyó, leído está.
 
 **Para el nodo:** una tribu por comisión, una sub-tribu por grupo de
-trabajo. *Estricto* para grupos cerrados (legal, prensa); *Abierta* más un
-QR impreso para los abiertos (punto de información, cocina, turnos).
+trabajo. *Estricto* para grupos cerrados (legal, prensa: cada alta pasa por
+la mesa técnica); *Abierta* más el código multiuso en un QR impreso para los
+abiertos (punto de información, cocina, turnos).
 
 ---
 

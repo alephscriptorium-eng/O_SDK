@@ -290,7 +290,7 @@ Las crea la identidad que las vaya a presidir: el token de la sala se firma con 
 - Description: Relación con entidades de la sociedad civil. Cifrada: solo miembros.
 - Type: **CLOSED** (cifrada: añadir miembros al crearla)
 
-## 7. Wikis (12) — `Menú → Wiki → Create page`
+## 7. Wikis (13) — `Menú → Wiki → Create page`
 
 ### 7.1 Organigrama y funcionamiento  `origen: documento`
 - Edit policy: **open** · Tags: organigrama
@@ -412,21 +412,25 @@ Método de consenso para valorar las propuestas en la Asamblea General.
 - Edit policy: **open** · Tags: manual
 - Cuerpo: pegar `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-5.wiki.md`
 
-### 7.9 Guía de reparto de accesos · 1 de 4  `origen: documento`
+### 7.9 Guía de reparto de accesos · 1 de 5  `origen: documento`
 - Edit policy: **author** · Tags: manual, reparto
 - Cuerpo: pegar `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md`
 
-### 7.10 Guía de reparto de accesos · 2 de 4  `origen: documento`
+### 7.10 Guía de reparto de accesos · 2 de 5  `origen: documento`
 - Edit policy: **author** · Tags: manual, reparto
 - Cuerpo: pegar `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-2.wiki.md`
 
-### 7.11 Guía de reparto de accesos · 3 de 4  `origen: documento`
+### 7.11 Guía de reparto de accesos · 3 de 5  `origen: documento`
 - Edit policy: **author** · Tags: manual, reparto
 - Cuerpo: pegar `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-3.wiki.md`
 
-### 7.12 Guía de reparto de accesos · 4 de 4  `origen: documento`
+### 7.12 Guía de reparto de accesos · 4 de 5  `origen: documento`
 - Edit policy: **author** · Tags: manual, reparto
 - Cuerpo: pegar `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-4.wiki.md`
+
+### 7.13 Guía de reparto de accesos · 5 de 5  `origen: documento`
+- Edit policy: **author** · Tags: manual, reparto
+- Cuerpo: pegar `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-5.wiki.md`
 
 ## 8. Mapas (2) — `Menú → Maps → Create`
 

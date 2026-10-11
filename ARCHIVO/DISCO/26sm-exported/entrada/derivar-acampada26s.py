@@ -326,7 +326,8 @@ guion = dict(workflow=inst['workflow'],
 meta = dict(id='acampada26s', nombre=doc['titulo'], descripcion=f'{doc["descripcion"]}, expresada en objetos de Oasis {inst["oasis_version"]["declarada"]}',
             pub=inst['pub'], workflow=inst['workflow'], idioma=inst['idioma'], version_oasis=inst['oasis_version']['declarada'],
             organigrama=str(SRC.relative_to(ROOT)).replace('\\', '/'), derivada_por=f'{DOSIER}/entrada/derivar-acampada26s.py',
-            autoria=inst['autoria'], reparto=inst['reparto'])
+            autoria=inst['autoria'], reparto=inst['reparto'], activacion=inst.get('activacion', {}),
+            version_oasis_observada=inst['oasis_version'].get('observada'))
 
 t = dict(meta=meta, tribes=tribes, rooms=rooms, calendars=calendars, events=events, mailing=mailing, wiki=wiki, maps=maps,
          votes=votes, emergencies=emergencies, courts=courts, federation=federation, addenda=addenda, guion=guion)

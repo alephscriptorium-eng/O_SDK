@@ -100,7 +100,7 @@ termina con exit 0 y todos los `origen` resueltos; cada firma citada en SCHEMA e
 
 ## 4. Activación
 
-### 4.1 Las tres vías
+### 4.1 Las cuatro vías
 
 | Vía | Qué hace | Dónde | Reversible | Estado |
 |---|---|---|---|---|
@@ -161,7 +161,8 @@ node pub/tools/template-seed.js --template <json> (--guion | --reparto | --hot |
 - **Ledger** `<keysDir>/plantilla-<id>.json` (`~/.ssb/oasis/keys/`, 0600; entidad → clave de mensaje y
   nombre de imagen → blob id), escrito **tras cada publicación**: reejecutar salta lo hecho; las wikis
   además son idempotentes por slug (`wiki_model.js:298-300`). Los códigos de invitación abierta que
-  devuelve `generateOpenInvite` **no se guardan ni se imprimen**.
+  devuelve `generateOpenInvite` **no los guarda ni imprime el seeder**: viven en claro en el registro (`tribe-open-invite.code`,
+  públicos por diseño, multiuso) y la mesa técnica los recupera cuando los necesita con `pub/tools/tribe-codes.js` (§4.6, D-O35).
 - **Trampas conocidas**: el stream vivo de tribus obliga a `process.exit`; `parliament` exige legislatura
   activa; eventos y calendarios exigen fecha futura; votaciones ≥ 7 días; `diaria` no existe (7 fechas
   semanales); una `hora` `<pendiente>` siembra a las 12:00 y queda listada como pendiente. Medidas en el
@@ -253,6 +254,16 @@ Un bot más de la serie del pub (HUB §11): cuenta SSB propia, contenedor propio
   (mismo `caps.shs`, accept por socket, `hub-conn-fix`). Receta completa: runbook del dosier de la 26S. Un HUB recién nacido
   publica **una vez** un `about` con `visibilityPrefs.clearnetSince` (`backend.js:883-891`); si la foto base se toma antes,
   el gate lo ve como `hub:about=+1`: esperar `hub:about=+0..1` en la primera medida de un HUB nuevo.
+- **Secretaría operada por el colectivo, en su máquina** (2026-10-11, WP-O137). Quien activa la plantilla es la mesa técnica del
+  colectivo, desde un clon del repo: `pub/scripts/secretaria.sh <id> prep|caps|config|up|status|join|about|seed|tombstone|snapshot|check|codigos|backup|down`
+  (paso a paso en [`TEMPLATE-RUNBOOK.md`](./TEMPLATE-RUNBOOK.md)). Variante B (por defecto): `pub/docker-compose.secretaria.yml`,
+  override con un solo servicio (proyecto `oasis-secretaria-<id>`, contenedor `secretaria-<id>-bot`, datos en
+  `volumes-real/secretaria-<id>/`, env `pub/.env.secretaria-<id>` no versionado) y `pub/config/retro-bot/ssb-config.<id>` con el
+  **`caps.shs` del pub del colectivo** (sin él no hay handshake: es el primer gate). `join` lee el invite de un fichero o sin eco
+  (nunca por argumento), deduce el feed id y la dirección del pub y los escribe en el env; luego el bootstrap de arriba. `check`
+  mide solo el nodo retro (`GATE_NODES`) y guarda el `sequence` del pub visto desde el bot para el Δ0 del pub. Variante A (junto
+  al pub, mismo compose, perfil `retro`): `SECRETARIA_COMPOSE=pub SECRETARIA_ENV=pub/.env.prod`, mismas órdenes. Los ayudantes
+  (probe, conn-fix, join, about) están en `pub/scripts/lib-retro.sh`, compartidos con el drill.
 
 ### 4.6 Guía de reparto de accesos (el libro del operador)
 
@@ -275,6 +286,17 @@ la tarjeta) y **dónde se obtiene** en la UI. Lo genera `--reparto` desde el cam
   ≤ 6000 B). La wiki de reparto se siembra **sin** enlaces `/c/…`; los enlaces van en el md del dosier y en la página del
   sitio. Orden de regeneración (plantilla ↔ guía, dos pasadas hasta punto fijo): `ARCHIVO/DISCO/26sm-exported/entrada/regenerar.sh`.
 - **Nunca códigos ni semillas** (§5): la guía dice *quién* y *dónde*, nunca *cuál*.
+- **Lo que la interfaz hace de verdad** (medido en el drill de la 26S, 2026-10-11, WP-O137). En upstream 1.2.3-1.2.5 la tarjeta de
+  una tribu **no** muestra su invitación abierta: ni botón «Unirse» ni QR (`TRIBE_LOG_TYPES`, `tribes_model.js:8`, no indexa
+  `tribe-open-invite`; H9 de WP-O135). El código existe, es multiuso y se redime en Menú → Tribus → INTRODUCIR INVITACIÓN
+  (`/tribes/join-code`). «Generar invitación» solo lo ve un miembro (abierta) o el autor (estricta), y el autor de lo sembrado es
+  la secretaría, sin pantalla. Por eso la guía lleva la sección **«Primer acceso»** (cómo entra la primera persona de cada órgano)
+  y la mesa técnica tiene `pub/tools/tribe-codes.js` (`pub/scripts/retro-codes.sh`, `secretaria.sh <id> codigos`): `list`
+  (enmascarado), `sheet --out <dir> [--brand marca.json]` (hoja HTML imprimible con un QR por tribu abierta: el QR codifica el
+  **código**, no la URL `localhost` del QR de upstream) y `one-use <tribu> [--yes]` (`generateInvite` como autora: 2 mensajes,
+  PERMISO; el código se muestra una vez). Lee los marcadores directamente del registro (el modelo no los ve) y usa los modelos
+  reales de `src/models` por `seed-hot.openModels` (ninguna criptografía duplicada). Probado en seco contra el drill: 22 abiertas
+  con código, 3 estrictas sin él, Δ0 en los tres nodos.
 - Con `--ledger` (tras `--hot`) añade el enlace público de cada objeto: `/c/tribe/:id`, `/c/calendars/:id`,
   `/c/rooms/:id`, `/c/maps/:id`, `/c/wiki/:id`, `/c/events/:eventId` (rutas de 1.2.3, `backend.js:7977-8607`).
 - **Una fuente, tres salidas, ninguna editada a mano**: (1) markdown del dosier; (2) wiki en Oasis (entrada
@@ -294,8 +316,9 @@ la tarjeta) y **dónde se obtiene** en la UI. Lo genera `--reparto` desde el cam
   `200 image/png`. Medido en el drill: 1 calendario, 7 eventos, 1 mapa, 5 wikis, 24 tribus; 0 salas (todas con tribu).
 - `./oasis.sh status` (pares) y, si hubo secretaría, su `sequence` subiendo en el pub
   (`pub/tools/ssb-probe.js`).
-- Las tribus con invitación abierta muestran código y QR en su tarjeta; **el código no se copia a
-  ningún documento**.
+- Las tribus con invitación abierta **no** muestran su código en la tarjeta (upstream 1.2.3-1.2.5, H9): la mesa técnica lo
+  saca con `secretaria.sh <id> codigos sheet` (hoja con un QR por tribu). **El código no se copia a ningún documento** salvo esa
+  hoja, que se imprime, se reparte y se destruye.
 - El feed del pub no ha cambiado: mismo `sequence` antes y después (si cambió, parada dura).
 
 ## 6. Lo irreversible y lo que la plantilla nunca lleva

@@ -1,57 +1,43 @@
-*Parte 2 de 4.*
+*Parte 2 de 5.*
+
+## Asamblea Internodos
+
+Responsable del reparto: `asamblea_internodos`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
+
+- **Asamblea Internodos** (tribes) · tribu privada estricta · reparte: la secretaría, a petición del órgano · dónde: Solo la secretaría (autora) genera un código de un uso por persona, a petición del órgano, entregado en mano; se redime en Menú → Tribus → INTRODUCIR INVITACIÓN. Sin ella nadie más entra: cada alta pasa por la mesa técnica. · web: no (privada)
+- **Sala · Internodos** (rooms) · sala solo por invitación · reparte: el autor de la sala · dónde: Quien la preside: Menú → Salas → la sala → Generar invitación. Si la preside la secretaría, hoy no hay herramienta para ello: DECISIÓN (abrirla a su tribu). · web: no
+- **Asamblea Internodos** (calendars) · calendario de tribu · reparte: el de la tribu · dónde: Lo ven los miembros de la tribu; el acceso es el de la tribu. · web: no
+
+## Nodo Norte
+
+Responsable del reparto: `nodo_norte`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
+
+- **Nodo Norte** (tribes) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Sala · Nodo Norte** (rooms) · sala abierta · reparte: nadie reparte: es de su tribu · dónde: La ven y entran los miembros de su tribu (Menú → Salas); sin tribu, cualquiera que la vea. · web: no
+- **Nodo Norte** (calendars) · calendario de tribu · reparte: el de la tribu · dónde: Lo ven los miembros de la tribu; el acceso es el de la tribu. · web: no
+
+## Nodo Oeste
+
+Responsable del reparto: `nodo_oeste`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
+
+- **Nodo Oeste** (tribes) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Sala · Nodo Oeste** (rooms) · sala abierta · reparte: nadie reparte: es de su tribu · dónde: La ven y entran los miembros de su tribu (Menú → Salas); sin tribu, cualquiera que la vea. · web: no
+- **Nodo Oeste** (calendars) · calendario de tribu · reparte: el de la tribu · dónde: Lo ven los miembros de la tribu; el acceso es el de la tribu. · web: no
 
 ## Nodo Centro
 
 Responsable del reparto: `nodo_centro`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
 
-- **Nodo Centro** (tribes) · tribu abierta con invitación abierta · reparte: cualquier miembro puede invitar · dónde: Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. · web: cuando tenga contenido expuesto
-- **Sala · Nodo Centro** (rooms) · sala abierta · reparte: nadie reparte: es abierta · dónde: Entra cualquier miembro de su tribu; sin tribu, cualquiera que la vea en Rooms. · web: no
+- **Nodo Centro** (tribes) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Sala · Nodo Centro** (rooms) · sala abierta · reparte: nadie reparte: es de su tribu · dónde: La ven y entran los miembros de su tribu (Menú → Salas); sin tribu, cualquiera que la vea. · web: no
 - **Nodo Centro** (calendars) · calendario de tribu · reparte: el de la tribu · dónde: Lo ven los miembros de la tribu; el acceso es el de la tribu. · web: no
 
 ## Nodo Este
 
 Responsable del reparto: `nodo_este`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
 
-- **Nodo Este** (tribes) · tribu abierta con invitación abierta · reparte: cualquier miembro puede invitar · dónde: Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. · web: cuando tenga contenido expuesto
-- **Sala · Nodo Este** (rooms) · sala abierta · reparte: nadie reparte: es abierta · dónde: Entra cualquier miembro de su tribu; sin tribu, cualquiera que la vea en Rooms. · web: no
+- **Nodo Este** (tribes) · tribu abierta con código multiuso · reparte: la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro · dónde: Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. · web: cuando tenga contenido expuesto
+- **Sala · Nodo Este** (rooms) · sala abierta · reparte: nadie reparte: es de su tribu · dónde: La ven y entran los miembros de su tribu (Menú → Salas); sin tribu, cualquiera que la vea. · web: no
 - **Nodo Este** (calendars) · calendario de tribu · reparte: el de la tribu · dónde: Lo ven los miembros de la tribu; el acceso es el de la tribu. · web: no
 
-## Nodo Sur
-
-Responsable del reparto: `nodo_sur`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
-
-- **Nodo Sur** (tribes) · tribu abierta con invitación abierta · reparte: cualquier miembro puede invitar · dónde: Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. · web: cuando tenga contenido expuesto
-- **Sala · Nodo Sur** (rooms) · sala abierta · reparte: nadie reparte: es abierta · dónde: Entra cualquier miembro de su tribu; sin tribu, cualquiera que la vea en Rooms. · web: no
-- **Nodo Sur** (calendars) · calendario de tribu · reparte: el de la tribu · dónde: Lo ven los miembros de la tribu; el acceso es el de la tribu. · web: no
-
-## Comunicación
-
-Responsable del reparto: `comision_comunicacion`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
-
-- **Comisión de Comunicación** (tribes) · tribu abierta con invitación abierta · reparte: cualquier miembro puede invitar · dónde: Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. · web: cuando tenga contenido expuesto
-
-## Urbanismo
-
-Responsable del reparto: `comision_urbanismo`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
-
-- **Comisión de Urbanismo** (tribes) · tribu abierta con invitación abierta · reparte: cualquier miembro puede invitar · dónde: Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. · web: cuando tenga contenido expuesto
-
-## Cuidados
-
-Responsable del reparto: `comision_cuidados`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
-
-- **Comisión de Cuidados** (tribes) · tribu abierta con invitación abierta · reparte: cualquier miembro puede invitar · dónde: Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. · web: cuando tenga contenido expuesto
-
-## Dinamización
-
-Responsable del reparto: `comision_dinamizacion`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
-
-- **Comisión de Dinamización** (tribes) · tribu abierta con invitación abierta · reparte: cualquier miembro puede invitar · dónde: Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. · web: cuando tenga contenido expuesto
-
-## Mediación
-
-Responsable del reparto: `comision_mediacion`. Un ítem por objeto: tipo de acceso · quién reparte · dónde se obtiene · si se ve en la web (`/c`).
-
-- **Comisión de Mediación** (tribes) · tribu abierta con invitación abierta · reparte: cualquier miembro puede invitar · dónde: Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. · web: cuando tenga contenido expuesto
-
-Páginas: [[Guía de reparto de accesos · 1 de 4]] · [[Guía de reparto de accesos · 2 de 4]] · [[Guía de reparto de accesos · 3 de 4]] · [[Guía de reparto de accesos · 4 de 4]]
+Páginas: [[Guía de reparto de accesos · 1 de 5]] · [[Guía de reparto de accesos · 2 de 5]] · [[Guía de reparto de accesos · 3 de 5]] · [[Guía de reparto de accesos · 4 de 5]] · [[Guía de reparto de accesos · 5 de 5]]

@@ -26,7 +26,7 @@
 - **Página** («wiki»): texto fijo que se puede editar. **Mapa**: un punto, o un mapa colaborativo donde cada nodo marca el suyo.
 - **Visible en la web**: lo que puede ver cualquiera desde el navegador, sin cuenta, en `https://acampada26s.net/c`.
 
-**Recuento de lo que se creará:** 25 grupos (incluidos 9 subgrupos), 7 salas, 7 calendarios, 1 evento, 4 listas de correo, 12 páginas, 2 mapas; 47 imágenes de tarjeta. Más 4 candidatos que solo se crean si decís «crear» (bloque C-X).
+**Recuento de lo que se creará:** 25 grupos (incluidos 9 subgrupos), 7 salas, 7 calendarios, 1 evento, 4 listas de correo, 13 páginas, 2 mapas; 48 imágenes de tarjeta. Más 4 candidatos que solo se crean si decís «crear» (bloque C-X).
 
 ## A · Marca (branding)
 
@@ -59,7 +59,7 @@ Dos ya las tenemos exportadas. Falta la tercera (la vista pública sale en blanc
 
 ### A3 · Así aplicaremos vuestro kit (USAMOS: sale de vuestra guía visual)
 
-Generaremos **47 imágenes** (una por grupo, sala, mapa, evento y página; cuadradas, 512 píxeles) con vuestras reglas. Lo que sigue no es una pregunta: es cómo lo vamos a hacer. Decidnos solo si algo no encaja.
+Generaremos **48 imágenes** (una por grupo, sala, mapa, evento y página; cuadradas, 512 píxeles) con vuestras reglas. Lo que sigue no es una pregunta: es cómo lo vamos a hacer. Decidnos solo si algo no encaja.
 
 | # | Regla | Cómo la aplicamos | Fuente |
 |---|---|---|---|
@@ -73,7 +73,7 @@ Decisiones que sí os pedimos:
 
 - A3.6 Tipografía: [ ] vale Cabin Condensed · [ ] os pasamos los ficheros de Gill Sans Condensed y Gill Sans (los usaremos sin subirlos al proyecto)
 - A3.7 Fondos de lona: [ ] usad las fotos que trae el PDF de la guía · [ ] os pasamos las originales a más resolución
-- A3.8 [ ] Queremos ver la prueba (A4) antes de dar el visto bueno a las 47
+- A3.8 [ ] Queremos ver la prueba (A4) antes de dar el visto bueno a las 48
 
 ### A4 · Prueba visual
 
@@ -122,31 +122,31 @@ Una tabla por tipo. La columna **Estado** va sobre el texto; las columnas **Cóm
 
 | # | Grupo | Descripción que usaremos | Estado | Cómo se entra | Visible en la web | Responsable del reparto | Captura | GO | Cambios |
 |---|---|---|---|---|---|---|---|---|---|
-| C-G1 | Asamblea General | Órgano mayor de representación. Ratifica consensos (semáforo), espacio informativo, exposición de nodos y comisiones, lectura de comunicados. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Asamblea General |  | [ ] |  |
+| C-G1 | Asamblea General | Órgano mayor de representación. Ratifica consensos (semáforo), espacio informativo, exposición de nodos y comisiones, lectura de comunicados. | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Asamblea General |  | [ ] |  |
 | C-G2 | Asamblea Internodos | Portavocías rotativas de los nodos territoriales. Pone en común las propuestas de los nodos y aglutina consensos para la Asamblea General. Sin poder de decisión. | DUDA | cerrado y cifrado; invita el responsable | no | Asamblea Internodos |  | [ ] |  |
-| C-G3 | Nodo Norte | Asamblea abierta de barrios y territorios del norte. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Chamartín: Prosperidad, El Viso, Ciudad Jardín, Hispanoamérica, Nueva España, Castilla. Tetuán: Cuatro Caminos, Bellas Vistas, Castillejos, Berruguete, Almenara, Valdeacederas, Fuencarral, El Pilar, La Paz, Mirasierra, Montecarmelo, Tres Olivos, Las Tablas, Sanchinarro Hortaleza, Pinar del Rey, Canillas, Valdebebas, El Pardo, Municipios, Alcobendas, San Sebastián de los Reyes, Tres Cantos, Colmenar Viejo, San Agustín del Guadalix, Algete, Soto del Real, Manzanares el Real. | DUDA la primera frase · USAMOS los barrios | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Nodo Norte |  | [ ] |  |
-| C-G4 | Nodo Oeste | Asamblea abierta de barrios y territorios del oeste. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Latina, Aluche, Lucero, Campamento, Puerta del Ángel, Casa de Campo, Carabanchel occidental, Moncloa, Aravaca, Valdemarín, El Plantío, Móstoles, Alcorcón, Pozuelo de Alarcón, Majadahonda, Las Rozas, Boadilla del Monte, Villaviciosa de Odón, Villanueva de la Cañada, Brunete, Navalcarnero. | DUDA la primera frase · USAMOS los barrios | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Nodo Oeste |  | [ ] |  |
-| C-G5 | Nodo Centro | Asamblea abierta de barrios y territorios del centro. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Centro: Sol, Palacio, Embajadores, Cortes, Justicia, Universidad Malasaña, Chueca, Lavapiés, La Latina, Austrias, Barrio de las Letras, Huertas, Gran Vía. Chamberí: Trafalgar, Malasaña/Universidad, Almagro, Ríos Rosas, Gaztambide, Arapiles, Argüelles, Moncloa, Retiro / Jerónimos, Salamanca: Goya, Lista, Recoletos. | DUDA la primera frase · USAMOS los barrios | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Nodo Centro |  | [ ] |  |
-| C-G6 | Nodo Este | Asamblea abierta de barrios y territorios del este. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Ciudad Lineal: Ventas, Pueblo Nuevo, Quintana, Concepción, San Pascual... Moratalaz, Vicálvaro, San Blas, Canillejas, Simancas, Las Rosas, Rejas, Barajas, Alameda de Osuna. Campo de las Naciones, Alcalá de Henares, Torrejón de Ardoz, Coslada, San Fernando de Henares, Rivas-Vaciamadrid, Mejorada del Campo, Velilla de San Antonio, Arganda del Rey, Paracuellos de Jarama, Meco, Daganzo. | DUDA la primera frase · USAMOS los barrios | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Nodo Este |  | [ ] |  |
-| C-G7 | Nodo Sur | Asamblea abierta de barrios y territorios del sur. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Arganzuela, Delicias, Legazpi, Usera, Orcasitas, Orcasur, San Fermín, Moscardó, Almendrales, Carabanchel, Opañel, San Isidro, Vista Alegre, Puerta Bonita, Abrantes, Buenavista, Vallecas, Puente de Vallecas, Villa de Vallecas, Ensanche de Vallecas, Villaverde. Getafe, Leganés, Fuenlabrada, Parla, Pinto, Valdemoro, Humanes de Madrid, Ciempozuelos, San Martín de la Vega. | DUDA la primera frase · USAMOS los barrios | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Nodo Sur |  | [ ] |  |
-| C-G8 | Comisión de Comunicación | Comunicación interna y externa, redes, medios, diseño. Coordina con nodos, comisiones y Asamblea General. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
-| C-G9 | Comisión de Urbanismo | Vivienda, ciudad, planificación. | USAMOS | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Urbanismo |  | [ ] |  |
-| C-G10 | Comisión de Cuidados | Bienestar, salud, primeros auxilios. | USAMOS | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Cuidados |  | [ ] |  |
-| C-G11 | Comisión de Dinamización | Facilita las asambleas y los procesos de decisión. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Dinamización |  | [ ] |  |
-| C-G12 | Comisión de Mediación | Resolución de conflictos y convivencia. | USAMOS | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Mediación |  | [ ] |  |
-| C-G13 | Comisión de Limpieza | Gestión de residuos y mantenimiento. | USAMOS | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Limpieza |  | [ ] |  |
-| C-G14 | Comisión de Abastecimiento | Alimentación, materiales y suministros. | USAMOS | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Abastecimiento |  | [ ] |  |
-| C-G15 | Comunicación · General *(subgrupo de Comisión de Comunicación)* | Grupo general de la comisión (antes: grupo de Telegram). | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
-| C-G16 | Comunicación · Redes y contenido digital *(subgrupo de Comisión de Comunicación)* | Redes sociales y contenido digital. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
-| C-G17 | Comunicación · Interna *(subgrupo de Comisión de Comunicación)* | Comunicación interna de la acampada. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
-| C-G18 | Comunicación · Audiovisual *(subgrupo de Comisión de Comunicación)* | Foto y vídeo. Lo publicado va a Images, Videos, Audios y Podcasts. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
-| C-G19 | Comunicación · Diseño y branding *(subgrupo de Comisión de Comunicación)* | Diseño gráfico e identidad visual. Lo publicado va a Images y Docs. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
-| C-G20 | Comunicación · Cultura y eventos *(subgrupo de Comisión de Comunicación)* | Programación cultural. Los actos se publican como Events. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
-| C-G21 | Comunicación · Relaciones públicas (PIAR) *(subgrupo de Comisión de Comunicación)* | Relación con medios y entidades. Los comunicados salen por Blogs y la lista «Comunicados». | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
-| C-G22 | Comunicación · Coordinación y gabinete de crisis *(subgrupo de Comisión de Comunicación)* | Coordinación y respuesta rápida. Los avisos urgentes van a Emergencies. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
-| C-G23 | Comunicación · Corrección de textos *(subgrupo de Comisión de Comunicación)* | Revisión de textos antes de publicar. Se trabaja en Pads. | DUDA | cualquiera, con código o QR de la tarjeta | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
-| C-G24 | InterCSOs | Relación con entidades y actores de la sociedad civil (ámbito estatal e internacional). Tribu de enlace. | DUDA | solo por invitación del responsable | sí, cuando publique algo expuesto | InterCSOs |  | [ ] |  |
-| C-G25 | Asamblea de Colectivos | Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas. Tribu de enlace. | DUDA | solo por invitación del responsable | sí, cuando publique algo expuesto | Asamblea de Colectivos | `vista-previa/img/app-tribe-ysn6cdec.png` | [ ] |  |
+| C-G3 | Nodo Norte | Asamblea abierta de barrios y territorios del norte. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Chamartín: Prosperidad, El Viso, Ciudad Jardín, Hispanoamérica, Nueva España, Castilla. Tetuán: Cuatro Caminos, Bellas Vistas, Castillejos, Berruguete, Almenara, Valdeacederas, Fuencarral, El Pilar, La Paz, Mirasierra, Montecarmelo, Tres Olivos, Las Tablas, Sanchinarro Hortaleza, Pinar del Rey, Canillas, Valdebebas, El Pardo, Municipios, Alcobendas, San Sebastián de los Reyes, Tres Cantos, Colmenar Viejo, San Agustín del Guadalix, Algete, Soto del Real, Manzanares el Real. | DUDA la primera frase · USAMOS los barrios | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Nodo Norte |  | [ ] |  |
+| C-G4 | Nodo Oeste | Asamblea abierta de barrios y territorios del oeste. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Latina, Aluche, Lucero, Campamento, Puerta del Ángel, Casa de Campo, Carabanchel occidental, Moncloa, Aravaca, Valdemarín, El Plantío, Móstoles, Alcorcón, Pozuelo de Alarcón, Majadahonda, Las Rozas, Boadilla del Monte, Villaviciosa de Odón, Villanueva de la Cañada, Brunete, Navalcarnero. | DUDA la primera frase · USAMOS los barrios | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Nodo Oeste |  | [ ] |  |
+| C-G5 | Nodo Centro | Asamblea abierta de barrios y territorios del centro. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Centro: Sol, Palacio, Embajadores, Cortes, Justicia, Universidad Malasaña, Chueca, Lavapiés, La Latina, Austrias, Barrio de las Letras, Huertas, Gran Vía. Chamberí: Trafalgar, Malasaña/Universidad, Almagro, Ríos Rosas, Gaztambide, Arapiles, Argüelles, Moncloa, Retiro / Jerónimos, Salamanca: Goya, Lista, Recoletos. | DUDA la primera frase · USAMOS los barrios | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Nodo Centro |  | [ ] |  |
+| C-G6 | Nodo Este | Asamblea abierta de barrios y territorios del este. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Ciudad Lineal: Ventas, Pueblo Nuevo, Quintana, Concepción, San Pascual... Moratalaz, Vicálvaro, San Blas, Canillejas, Simancas, Las Rosas, Rejas, Barajas, Alameda de Osuna. Campo de las Naciones, Alcalá de Henares, Torrejón de Ardoz, Coslada, San Fernando de Henares, Rivas-Vaciamadrid, Mejorada del Campo, Velilla de San Antonio, Arganda del Rey, Paracuellos de Jarama, Meco, Daganzo. | DUDA la primera frase · USAMOS los barrios | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Nodo Este |  | [ ] |  |
+| C-G7 | Nodo Sur | Asamblea abierta de barrios y territorios del sur. Debate los temas de la Asamblea General, elabora propuestas y elige 2-3 portavoces rotativos. Barrios: Arganzuela, Delicias, Legazpi, Usera, Orcasitas, Orcasur, San Fermín, Moscardó, Almendrales, Carabanchel, Opañel, San Isidro, Vista Alegre, Puerta Bonita, Abrantes, Buenavista, Vallecas, Puente de Vallecas, Villa de Vallecas, Ensanche de Vallecas, Villaverde. Getafe, Leganés, Fuenlabrada, Parla, Pinto, Valdemoro, Humanes de Madrid, Ciempozuelos, San Martín de la Vega. | DUDA la primera frase · USAMOS los barrios | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Nodo Sur |  | [ ] |  |
+| C-G8 | Comisión de Comunicación | Comunicación interna y externa, redes, medios, diseño. Coordina con nodos, comisiones y Asamblea General. | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
+| C-G9 | Comisión de Urbanismo | Vivienda, ciudad, planificación. | USAMOS | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Urbanismo |  | [ ] |  |
+| C-G10 | Comisión de Cuidados | Bienestar, salud, primeros auxilios. | USAMOS | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Cuidados |  | [ ] |  |
+| C-G11 | Comisión de Dinamización | Facilita las asambleas y los procesos de decisión. | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Dinamización |  | [ ] |  |
+| C-G12 | Comisión de Mediación | Resolución de conflictos y convivencia. | USAMOS | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Mediación |  | [ ] |  |
+| C-G13 | Comisión de Limpieza | Gestión de residuos y mantenimiento. | USAMOS | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Limpieza |  | [ ] |  |
+| C-G14 | Comisión de Abastecimiento | Alimentación, materiales y suministros. | USAMOS | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Abastecimiento |  | [ ] |  |
+| C-G15 | Comunicación · General *(subgrupo de Comisión de Comunicación)* | Grupo general de la comisión (antes: grupo de Telegram). | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
+| C-G16 | Comunicación · Redes y contenido digital *(subgrupo de Comisión de Comunicación)* | Redes sociales y contenido digital. | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
+| C-G17 | Comunicación · Interna *(subgrupo de Comisión de Comunicación)* | Comunicación interna de la acampada. | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
+| C-G18 | Comunicación · Audiovisual *(subgrupo de Comisión de Comunicación)* | Foto y vídeo. Lo publicado va a Images, Videos, Audios y Podcasts. | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
+| C-G19 | Comunicación · Diseño y branding *(subgrupo de Comisión de Comunicación)* | Diseño gráfico e identidad visual. Lo publicado va a Images y Docs. | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
+| C-G20 | Comunicación · Cultura y eventos *(subgrupo de Comisión de Comunicación)* | Programación cultural. Los actos se publican como Events. | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
+| C-G21 | Comunicación · Relaciones públicas (PIAR) *(subgrupo de Comisión de Comunicación)* | Relación con medios y entidades. Los comunicados salen por Blogs y la lista «Comunicados». | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
+| C-G22 | Comunicación · Coordinación y gabinete de crisis *(subgrupo de Comisión de Comunicación)* | Coordinación y respuesta rápida. Los avisos urgentes van a Emergencies. | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
+| C-G23 | Comunicación · Corrección de textos *(subgrupo de Comisión de Comunicación)* | Revisión de textos antes de publicar. Se trabaja en Pads. | DUDA | cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más) | sí, cuando publique algo expuesto | Comisión de Comunicación |  | [ ] |  |
+| C-G24 | InterCSOs | Relación con entidades y actores de la sociedad civil (ámbito estatal e internacional). Tribu de enlace. | DUDA | solo con un código de un uso que da la secretaría a petición del responsable (cada alta pasa por la mesa técnica) | sí, cuando publique algo expuesto | InterCSOs |  | [ ] |  |
+| C-G25 | Asamblea de Colectivos | Encuentro con otros colectivos, movimientos y organizaciones. Coordinación y alianzas. Tribu de enlace. | DUDA | solo con un código de un uso que da la secretaría a petición del responsable (cada alta pasa por la mesa técnica) | sí, cuando publique algo expuesto | Asamblea de Colectivos | `vista-previa/img/app-tribe-ysn6cdec.png` | [ ] |  |
 
 ### C-S · Salas de voz y texto
 
@@ -201,10 +201,11 @@ El texto completo de cada página está en el bloque D; aquí solo el título y 
 | C-P6 | Oasis para el nodo · manual de bienvenida · 3 de 5 | cualquiera la edita | sí | Personas | `vista-previa/img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-3-de-5-utqxx3xn.jpg` | [ ] |  |
 | C-P7 | Oasis para el nodo · manual de bienvenida · 4 de 5 | cualquiera la edita | sí | Personas | `vista-previa/img/c-c-wiki-oasis-para-el-nodo-manual-de-bienvenida-4-de-5-fojkyiwv.jpg` | [ ] |  |
 | C-P8 | Oasis para el nodo · manual de bienvenida · 5 de 5 | cualquiera la edita | sí | Personas |  | [ ] |  |
-| C-P9 | Guía de reparto de accesos · 1 de 4 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-1-de-4-h13b0bsx.jpg` | [ ] |  |
-| C-P10 | Guía de reparto de accesos · 2 de 4 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-2-de-4-qnbmzkub.jpg` | [ ] |  |
-| C-P11 | Guía de reparto de accesos · 3 de 4 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-3-de-4-utcq6hpi.jpg` | [ ] |  |
-| C-P12 | Guía de reparto de accesos · 4 de 4 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-4-de-4-7g1ozob3.jpg` | [ ] |  |
+| C-P9 | Guía de reparto de accesos · 1 de 5 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-1-de-4-h13b0bsx.jpg` | [ ] |  |
+| C-P10 | Guía de reparto de accesos · 2 de 5 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-2-de-4-qnbmzkub.jpg` | [ ] |  |
+| C-P11 | Guía de reparto de accesos · 3 de 5 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-3-de-4-utcq6hpi.jpg` | [ ] |  |
+| C-P12 | Guía de reparto de accesos · 4 de 5 | solo quien la crea | sí | Todo el colectivo | `vista-previa/img/c-c-wiki-guia-de-reparto-de-accesos-4-de-4-7g1ozob3.jpg` | [ ] |  |
+| C-P13 | Guía de reparto de accesos · 5 de 5 | solo quien la crea | sí | Todo el colectivo |  | [ ] |  |
 
 ### C-M · Mapas
 
@@ -340,7 +341,7 @@ Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo.wiki.md` (5 KB). [ ] revi
 
 ### D5 · Oasis para el nodo · manual de bienvenida · 2 de 5
 
-Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md` (5 KB). [ ] revisada · cambios: ______
+Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-2.wiki.md` (2 KB). [ ] revisada · cambios: ______
 
 ### D6 · Oasis para el nodo · manual de bienvenida · 3 de 5
 
@@ -348,27 +349,31 @@ Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-3.wiki.md` (4 KB). [ ] re
 
 ### D7 · Oasis para el nodo · manual de bienvenida · 4 de 5
 
-Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-4.wiki.md` (3 KB). [ ] revisada · cambios: ______
+Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-4.wiki.md` (4 KB). [ ] revisada · cambios: ______
 
 ### D8 · Oasis para el nodo · manual de bienvenida · 5 de 5
 
-Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-5.wiki.md` (2 KB). [ ] revisada · cambios: ______
+Fichero: `ARCHIVO/DISCO/retro-exporter/onboarding-nodo-5.wiki.md` (4 KB). [ ] revisada · cambios: ______
 
-### D9 · Guía de reparto de accesos · 1 de 4
+### D9 · Guía de reparto de accesos · 1 de 5
 
-Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md` (4 KB). [ ] revisada · cambios: ______
+Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.wiki.md` (5 KB). [ ] revisada · cambios: ______
 
-### D10 · Guía de reparto de accesos · 2 de 4
+### D10 · Guía de reparto de accesos · 2 de 5
 
-Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-2.wiki.md` (4 KB). [ ] revisada · cambios: ______
+Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-2.wiki.md` (5 KB). [ ] revisada · cambios: ______
 
-### D11 · Guía de reparto de accesos · 3 de 4
+### D11 · Guía de reparto de accesos · 3 de 5
 
-Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-3.wiki.md` (5 KB). [ ] revisada · cambios: ______
+Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-3.wiki.md` (4 KB). [ ] revisada · cambios: ______
 
-### D12 · Guía de reparto de accesos · 4 de 4
+### D12 · Guía de reparto de accesos · 4 de 5
 
-Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-4.wiki.md` (3 KB). [ ] revisada · cambios: ______
+Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-4.wiki.md` (5 KB). [ ] revisada · cambios: ______
+
+### D13 · Guía de reparto de accesos · 5 de 5
+
+Fichero: `ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s-5.wiki.md` (4 KB). [ ] revisada · cambios: ______
 
 ## E · Lo que NO vamos a crear todavía
 

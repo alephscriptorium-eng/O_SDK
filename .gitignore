@@ -116,3 +116,6 @@ ARCHIVO/DISCO/26sm-exported/canva/**/*.jpeg
 # vista previa del drill: zip para adjuntar por correo (la fuente es vista-previa/)
 ARCHIVO/DISCO/26sm-exported/vista-previa.zip
 ARCHIVO/DISCO/26sm-exported/vista-previa/.chrome-profile/
+
+# ssb-config de una secretaría concreta (caps.shs del pub de otro colectivo): lo genera secretaria.sh caps
+pub/config/retro-bot/ssb-config.*

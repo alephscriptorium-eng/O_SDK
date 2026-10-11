@@ -2,33 +2,43 @@
 
 Libro del **operador** (la mesa técnica): a qué órgano le toca cada tribu, sala, calendario, lista o mapa, qué tipo de acceso lleva y dónde se obtiene. Generada por `pub/tools/template-seed.js --reparto` desde `acampada26s.json`; no se edita a mano.
 
-> **Aquí no hay ningún código.** Los códigos de invitación viven en la tarjeta de cada objeto, dentro del Oasis de quien lo reparte, y se entregan en mano o por QR impreso. Esta guía dice *quién* y *dónde*, nunca *cuál*.
+> **Aquí no hay ningún código.** Los códigos los tiene la mesa técnica: los abiertos en la **hoja de códigos** que saca de la secretaría (con un QR por tribu, para imprimir); los de un uso, uno a uno, también de la secretaría. Esta guía dice *quién* y *dónde*, nunca *cuál*.
 
 ## 0. Cómo se entrega
 
 - Mesa técnica: <pendiente: quién es la mesa técnica de Acampada26S>
 - Modo de entrega: Cada órgano nombra a quién de los suyos le llega el acceso. Tribus abiertas: QR impreso o botón en la tarjeta. Tribus estrictas y listas cerradas: el autor invita en mano. Nunca por un canal que quede escrito.
 - Quién ejecuta la plantilla: la secretaría del pub (bot de soporte), que crea los objetos y custodia las claves de las tribus privadas. Quién dentro de cada órgano recibe el acceso: <DECISIÓN del colectivo: qué identidad crea cada tribu; solo el autor la borra o reestructura>
+- Dónde vive la secretaría y quién la opera: <DECISIÓN del colectivo: A, en el host junto al pub (mismo compose, perfil retro) | B, en otra máquina de la mesa técnica (secretaria.sh, unida al pub por invite)> · operador: la mesa técnica de Acampada26S clona el repo y ejecuta pub/scripts/secretaria.sh (docs/PUB/TEMPLATE-RUNBOOK.md) · custodia de su secret y de las claves de tribu: <DECISIÓN del colectivo: quién guarda el secret de la secretaría y las claves de tribu (oasis/keys), fuera de git>
 - Lo público se lee sin cuenta en la web abierta del pub (`/c`): los enlaces aparecen al regenerar esta guía con `--ledger` tras la activación.
+
+## 0 bis. Primer acceso: cómo entra la primera persona de cada órgano
+
+La secretaría crea todas las tribus y es su autora; no tiene pantalla. Por eso en la tarjeta de una tribu nadie ve todavía un código ni un botón de unirse: el primer acceso de cada órgano lo reparte la mesa técnica.
+
+- **Tribus abiertas con código multiuso.** La mesa técnica saca de la secretaría la hoja de códigos (`secretaria.sh <id> codigos sheet --out <carpeta>`; con `--brand marca.json` lleva la marca): una tarjeta por tribu con el código y su QR. Se imprime, se reparte donde deba llegar y se destruye la copia. Quien lo recibe: Menú → Tribus → INTRODUCIR INVITACIÓN → pega el código (o escanea el QR y copia el texto). El código es público para quien lo tenga: un QR en la calle abre la tribu a todo el que pase.
+- **Tribus estrictas.** La secretaría da un código de un uso por persona, a petición del órgano (`secretaria.sh <id> codigos one-use <id de la tribu> --yes`: lo muestra una vez y no lo guarda), y la mesa técnica lo entrega en mano. Cada alta pasa por ahí: sin secretaría no entra nadie más. Si el órgano prefiere repartir él mismo, la tribu debe ser abierta: DECISIÓN del colectivo antes de sembrar.
+- **Después del primero.** En una tribu abierta, cualquier miembro genera códigos desde la tarjeta de la tribu (Generar invitación): la mesa técnica deja de ser necesaria. Las salas, calendarios y mapas de una tribu se ven al entrar en ella.
+- **Dónde se pega un código.** Menú → Tribus → INTRODUCIR INVITACIÓN (también en Menú → Invitaciones → Tribus). Un código de un uso se consume al usarse; el multiuso vale hasta que la secretaría lo retire.
 
 ## 1. Asamblea General  `responsable: asamblea_general`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Asamblea General** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Sala · Asamblea General** (rooms) | sala abierta | nadie reparte: es abierta | Entra cualquier miembro de su tribu; sin tribu, cualquiera que la vea en Rooms. | no |
-| **Asamblea General** (calendars) | calendario suelto OPEN | nadie reparte: es abierto | Invitación pública en la tarjeta del calendario (Menú → Calendars). | sí (tras la activación) |
+| **Asamblea General** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Sala · Asamblea General** (rooms) | sala abierta | nadie reparte: es de su tribu | La ven y entran los miembros de su tribu (Menú → Salas); sin tribu, cualquiera que la vea. | no |
+| **Asamblea General** (calendars) | calendario suelto OPEN | nadie reparte: es abierto | Invitación pública en la tarjeta del calendario (Menú → Calendarios). | sí (tras la activación) |
 | **Acuerdos de la Asamblea General** (mailing) | lista abierta | nadie | Quien escribe queda suscrito; nada que repartir. | no |
 | **Puerta del Sol nº 14** (maps) | mapa SINGLE | el autor | El autor invita desde la tarjeta. | no |
-| **Asamblea General · Puerta del Sol** (events) | evento público | nadie | Menú → Events. Los públicos los ve cualquiera. | sí (tras la activación) |
+| **Asamblea General · Puerta del Sol** (events) | evento público | nadie | Menú → Eventos. Los públicos los ve cualquiera. | sí (tras la activación) |
 | **Técnica del semáforo** (wiki) | wiki (author) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
 
 ## 2. Asamblea Internodos  `responsable: asamblea_internodos`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Asamblea Internodos** (tribes) | tribu privada estricta | el autor de la tribu | Solo el autor: Menú → Tribes → la tribu → Generate invite, un código por persona, entregado en mano. | no (privada) |
-| **Sala · Internodos** (rooms) | sala solo por invitación | el autor de la sala | Quien la preside: Menú → Rooms → la sala → Generate invite. | no |
+| **Asamblea Internodos** (tribes) | tribu privada estricta | la secretaría, a petición del órgano | Solo la secretaría (autora) genera un código de un uso por persona, a petición del órgano, entregado en mano; se redime en Menú → Tribus → INTRODUCIR INVITACIÓN. Sin ella nadie más entra: cada alta pasa por la mesa técnica. | no (privada) |
+| **Sala · Internodos** (rooms) | sala solo por invitación | el autor de la sala | Quien la preside: Menú → Salas → la sala → Generar invitación. Si la preside la secretaría, hoy no hay herramienta para ello: DECISIÓN (abrirla a su tribu). | no |
 | **Asamblea Internodos** (calendars) | calendario de tribu | el de la tribu | Lo ven los miembros de la tribu; el acceso es el de la tribu. | no |
 | **Portavocías rotativas** (wiki) | wiki (author) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
 
@@ -36,125 +46,125 @@ Libro del **operador** (la mesa técnica): a qué órgano le toca cada tribu, sa
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Nodo Norte** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Sala · Nodo Norte** (rooms) | sala abierta | nadie reparte: es abierta | Entra cualquier miembro de su tribu; sin tribu, cualquiera que la vea en Rooms. | no |
+| **Nodo Norte** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Sala · Nodo Norte** (rooms) | sala abierta | nadie reparte: es de su tribu | La ven y entran los miembros de su tribu (Menú → Salas); sin tribu, cualquiera que la vea. | no |
 | **Nodo Norte** (calendars) | calendario de tribu | el de la tribu | Lo ven los miembros de la tribu; el acceso es el de la tribu. | no |
 
 ## 4. Nodo Oeste  `responsable: nodo_oeste`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Nodo Oeste** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Sala · Nodo Oeste** (rooms) | sala abierta | nadie reparte: es abierta | Entra cualquier miembro de su tribu; sin tribu, cualquiera que la vea en Rooms. | no |
+| **Nodo Oeste** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Sala · Nodo Oeste** (rooms) | sala abierta | nadie reparte: es de su tribu | La ven y entran los miembros de su tribu (Menú → Salas); sin tribu, cualquiera que la vea. | no |
 | **Nodo Oeste** (calendars) | calendario de tribu | el de la tribu | Lo ven los miembros de la tribu; el acceso es el de la tribu. | no |
 
 ## 5. Nodo Centro  `responsable: nodo_centro`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Nodo Centro** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Sala · Nodo Centro** (rooms) | sala abierta | nadie reparte: es abierta | Entra cualquier miembro de su tribu; sin tribu, cualquiera que la vea en Rooms. | no |
+| **Nodo Centro** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Sala · Nodo Centro** (rooms) | sala abierta | nadie reparte: es de su tribu | La ven y entran los miembros de su tribu (Menú → Salas); sin tribu, cualquiera que la vea. | no |
 | **Nodo Centro** (calendars) | calendario de tribu | el de la tribu | Lo ven los miembros de la tribu; el acceso es el de la tribu. | no |
 
 ## 6. Nodo Este  `responsable: nodo_este`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Nodo Este** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Sala · Nodo Este** (rooms) | sala abierta | nadie reparte: es abierta | Entra cualquier miembro de su tribu; sin tribu, cualquiera que la vea en Rooms. | no |
+| **Nodo Este** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Sala · Nodo Este** (rooms) | sala abierta | nadie reparte: es de su tribu | La ven y entran los miembros de su tribu (Menú → Salas); sin tribu, cualquiera que la vea. | no |
 | **Nodo Este** (calendars) | calendario de tribu | el de la tribu | Lo ven los miembros de la tribu; el acceso es el de la tribu. | no |
 
 ## 7. Nodo Sur  `responsable: nodo_sur`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Nodo Sur** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Sala · Nodo Sur** (rooms) | sala abierta | nadie reparte: es abierta | Entra cualquier miembro de su tribu; sin tribu, cualquiera que la vea en Rooms. | no |
+| **Nodo Sur** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Sala · Nodo Sur** (rooms) | sala abierta | nadie reparte: es de su tribu | La ven y entran los miembros de su tribu (Menú → Salas); sin tribu, cualquiera que la vea. | no |
 | **Nodo Sur** (calendars) | calendario de tribu | el de la tribu | Lo ven los miembros de la tribu; el acceso es el de la tribu. | no |
 
 ## 8. Comunicación  `responsable: comision_comunicacion`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Comisión de Comunicación** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
+| **Comisión de Comunicación** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
 
 ## 9. Urbanismo  `responsable: comision_urbanismo`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Comisión de Urbanismo** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
+| **Comisión de Urbanismo** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
 
 ## 10. Cuidados  `responsable: comision_cuidados`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Comisión de Cuidados** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
+| **Comisión de Cuidados** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
 
 ## 11. Dinamización  `responsable: comision_dinamizacion`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Comisión de Dinamización** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
+| **Comisión de Dinamización** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
 
 ## 12. Mediación  `responsable: comision_mediacion`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Comisión de Mediación** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
+| **Comisión de Mediación** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
 
 ## 13. Limpieza  `responsable: comision_limpieza`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Comisión de Limpieza** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
+| **Comisión de Limpieza** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
 
 ## 14. Abastecimiento  `responsable: comision_abastecimiento`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Comisión de Abastecimiento** (tribes) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
+| **Comisión de Abastecimiento** (tribes) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
 
 ## 15. Comisión de Comunicación  `responsable: comision_de_comunicacion`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Comunicación · General** (sub-tribu) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Comunicación · Redes y contenido digital** (sub-tribu) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Comunicación · Interna** (sub-tribu) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Comunicación · Audiovisual** (sub-tribu) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Comunicación · Diseño y branding** (sub-tribu) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Comunicación · Cultura y eventos** (sub-tribu) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Comunicación · Relaciones públicas (PIAR)** (sub-tribu) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Comunicación · Coordinación y gabinete de crisis** (sub-tribu) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
-| **Comunicación · Corrección de textos** (sub-tribu) | tribu abierta con invitación abierta | cualquier miembro puede invitar | Tarjeta de la tribu → botón «Unirse a la tribu» y código QR (Menú → Tribes → la tribu). Imprimir el QR si es de calle. | cuando tenga contenido expuesto |
+| **Comunicación · General** (sub-tribu) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Comunicación · Redes y contenido digital** (sub-tribu) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Comunicación · Interna** (sub-tribu) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Comunicación · Audiovisual** (sub-tribu) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Comunicación · Diseño y branding** (sub-tribu) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Comunicación · Cultura y eventos** (sub-tribu) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Comunicación · Relaciones públicas (PIAR)** (sub-tribu) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Comunicación · Coordinación y gabinete de crisis** (sub-tribu) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
+| **Comunicación · Corrección de textos** (sub-tribu) | tribu abierta con código multiuso | la mesa técnica, con la hoja de códigos de la secretaría; después, cualquier miembro | Menú → Tribus → INTRODUCIR INVITACIÓN → pegar el código de la hoja de códigos (o escanear su QR impreso). Quien ya está dentro puede dar más desde la tarjeta de la tribu → Generar invitación. | cuando tenga contenido expuesto |
 | **Comunicados** (mailing) | lista abierta | nadie | Quien escribe queda suscrito; nada que repartir. | no |
 
 ## 16. InterCSOs  `responsable: intercsos`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **InterCSOs** (tribes) | tribu pública estricta | el autor de la tribu | Solo el autor: Menú → Tribes → la tribu → Generate invite, un código por persona, entregado en mano. | cuando tenga contenido expuesto |
-| **InterCSOs** (mailing) | lista cerrada (cifrada) | el autor de la lista | El autor añade miembros: Menú → Mailing → la lista → Members. | no |
+| **InterCSOs** (tribes) | tribu pública estricta | la secretaría, a petición del órgano | Solo la secretaría (autora) genera un código de un uso por persona, a petición del órgano, entregado en mano; se redime en Menú → Tribus → INTRODUCIR INVITACIÓN. Sin ella nadie más entra: cada alta pasa por la mesa técnica. | cuando tenga contenido expuesto |
+| **InterCSOs** (mailing) | lista cerrada (cifrada) | el autor de la lista | El autor añade miembros: Menú → Listas de correo → la lista → Miembros. Si la autora es la secretaría, hoy no hay herramienta: DECISIÓN. | no |
 
 ## 17. Asamblea de Colectivos  `responsable: asamblea_de_colectivos`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Asamblea de Colectivos** (tribes) | tribu pública estricta | el autor de la tribu | Solo el autor: Menú → Tribes → la tribu → Generate invite, un código por persona, entregado en mano. | cuando tenga contenido expuesto |
-| **Asamblea de Colectivos** (mailing) | lista cerrada (cifrada) | el autor de la lista | El autor añade miembros: Menú → Mailing → la lista → Members. | no |
+| **Asamblea de Colectivos** (tribes) | tribu pública estricta | la secretaría, a petición del órgano | Solo la secretaría (autora) genera un código de un uso por persona, a petición del órgano, entregado en mano; se redime en Menú → Tribus → INTRODUCIR INVITACIÓN. Sin ella nadie más entra: cada alta pasa por la mesa técnica. | cuando tenga contenido expuesto |
+| **Asamblea de Colectivos** (mailing) | lista cerrada (cifrada) | el autor de la lista | El autor añade miembros: Menú → Listas de correo → la lista → Miembros. Si la autora es la secretaría, hoy no hay herramienta: DECISIÓN. | no |
 
 ## 18. Nodos territoriales  `responsable: nodos_territoriales`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
-| **Nodos territoriales** (maps) | mapa colaborativo | nadie reparte: es abierto | Invitación pública en la tarjeta del mapa (Menú → Maps); cualquiera añade marcadores. | sí (tras la activación) |
+| **Nodos territoriales** (maps) | mapa colaborativo | nadie reparte: es abierto | Invitación pública en la tarjeta del mapa (Menú → Mapas); cualquiera añade marcadores. | sí (tras la activación) |
 
 ## 19. documento  `responsable: documento`
 
 | Objeto | Tipo de acceso | Quién reparte | Dónde se obtiene | Público en /c |
 |---|---|---|---|---|
 | **Organigrama y funcionamiento** (wiki) | wiki (open) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
-| **Guía de reparto de accesos · 1 de 4** (wiki) | wiki (author) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
+| **Guía de reparto de accesos · 1 de 5** (wiki) | wiki (author) | nadie | Menú → Wiki. Edita según la política de la página. | sí (tras la activación) |
 
 ## 20. Personas  `responsable: personas`
 
@@ -165,7 +175,7 @@ Libro del **operador** (la mesa técnica): a qué órgano le toca cada tribu, sa
 ## Reglas que no cambian
 
 - Un acceso entregado no se retira: en una tribu privada, sacar a alguien rota la clave y lo publicado antes ya está leído.
-- Los códigos de un solo uso se consumen al usarse; las invitaciones abiertas valen hasta que el autor las retira.
+- Los códigos de un solo uso se consumen al usarse; los multiuso valen hasta que la secretaría los retira (hoy no hay herramienta para retirarlos: pedirlo a la mesa técnica, que lo anota como pendiente).
 - Nada de esta guía se pega en un canal que deje el código escrito (listas, chats de terceros).
 - El manual del habitante (cómo entrar con el móvil) es otro documento: la mesa técnica reparte los dos juntos.
 

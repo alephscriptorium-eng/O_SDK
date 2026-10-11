@@ -14,6 +14,17 @@
       "mesa_tecnica": "<pendiente: quién es la mesa técnica (la secretaría del pub ejecuta; la mesa entrega)>",
       "entrega": "Cada órgano nombra a quién de los suyos le llega el acceso. Tribus abiertas: QR impreso o botón en la tarjeta. Tribus estrictas y listas cerradas: el autor invita en mano. Nunca por un canal que quede escrito."
     },
+    "activacion": {
+      "operador": "la mesa técnica de Campamento clona el repo y ejecuta pub/scripts/secretaria.sh (docs/PUB/TEMPLATE-RUNBOOK.md)",
+      "secretaria_vive": "<DECISIÓN del colectivo: A, en el host junto al pub (mismo compose, perfil retro) | B, en otra máquina de la mesa técnica (secretaria.sh, unida al pub por invite)>",
+      "pub_desplegado_con": "<pendiente: este repo (o-sdk) o Oasis upstream; cambia el caps.shs y la variante>",
+      "caps_shs": "<pendiente: medir en el ssb-config del pub; sin él la secretaría no puede ni saludar>",
+      "invite_del_pub": "<pendiente: la mesa técnica genera uno (invite.create) y lo pasa por fichero, nunca por chat escrito>",
+      "custodia_claves": "<DECISIÓN del colectivo: quién guarda el secret de la secretaría y las claves de tribu (oasis/keys), fuera de git>",
+      "tribus_estrictas": "<DECISIÓN del colectivo: mantener 3 estrictas (Asamblea Internodos, InterCSOs, Asamblea de Colectivos: cada alta pasa por la secretaría) o abrirlas>",
+      "about_secretaria": "<pendiente: nombre y descripción literales del about de la secretaría (plantilla en docs/PUB/INSTANCIA-PLANTILLA.md §4)>"
+    },
+    "version_oasis_observada": "1.2.5",
     "derivada_de": "pub/templates/acampada26s.json"
   },
   "tribes": [
@@ -944,7 +955,7 @@
     {
       "id": "wiki_reparto",
       "origen": "documento",
-      "title": "Guía de reparto de accesos · 1 de 4",
+      "title": "Guía de reparto de accesos · 1 de 5",
       "file": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.wiki.md",
       "editPolicy": "author",
       "tags": [
@@ -959,7 +970,7 @@
     {
       "id": "wiki_reparto_2",
       "origen": "documento",
-      "title": "Guía de reparto de accesos · 2 de 4",
+      "title": "Guía de reparto de accesos · 2 de 5",
       "file": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento-2.wiki.md",
       "editPolicy": "author",
       "tags": [
@@ -974,7 +985,7 @@
     {
       "id": "wiki_reparto_3",
       "origen": "documento",
-      "title": "Guía de reparto de accesos · 3 de 4",
+      "title": "Guía de reparto de accesos · 3 de 5",
       "file": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento-3.wiki.md",
       "editPolicy": "author",
       "tags": [
@@ -989,7 +1000,7 @@
     {
       "id": "wiki_reparto_4",
       "origen": "documento",
-      "title": "Guía de reparto de accesos · 4 de 4",
+      "title": "Guía de reparto de accesos · 4 de 5",
       "file": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento-4.wiki.md",
       "editPolicy": "author",
       "tags": [
@@ -1000,6 +1011,21 @@
       "clearnetPublic": true,
       "responsable": "documento",
       "nota": "Página 4 de la guía sin tablas (D-O34, ≤ 5600 B por página): libro del operador, sin códigos. El md con tablas (dosier y Sala 02) es ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.md."
+    },
+    {
+      "id": "wiki_reparto_5",
+      "origen": "documento",
+      "title": "Guía de reparto de accesos · 5 de 5",
+      "file": "ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento-5.wiki.md",
+      "editPolicy": "author",
+      "tags": [
+        "manual",
+        "reparto"
+      ],
+      "image": "wiki-wiki_reparto_5.png",
+      "clearnetPublic": true,
+      "responsable": "documento",
+      "nota": "Página 5 de la guía sin tablas (D-O34, ≤ 5600 B por página): libro del operador, sin códigos. El md con tablas (dosier y Sala 02) es ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.md."
     }
   ],
   "maps": [

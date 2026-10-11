@@ -95,6 +95,16 @@ desechable unido y replicando (seq 149); 28 capturas; pub Δ1 (contact del clien
 antes. Hallazgos nuevos: las tribus no salen en `/c` hasta exponer contenido; las salas solo para miembros; el cliente de un drill
 anterior tenía otro `caps.shs`; `/c/blob/<id>` directo con el id codificado entero responde 404 (las páginas sí sirven las imágenes).
 
+## Para quien lo ejecuta (2026-10-11, WP-O137)
+
+La mesa técnica de la 26S clona el repo y activa la plantilla ella misma, con `pub/scripts/secretaria.sh` y el paso a paso de
+`docs/PUB/TEMPLATE-RUNBOOK.md`. Lo que debe decidir o medir antes del GO está en **`OPERADOR.md`** (9 puntos con recomendación);
+sus respuestas van al JSON (`instancia.activacion`, v2.2) y todo se regenera. Lo medido hoy: `acampada26s.net/c` dice **1.2.5**
+(`instancia.oasis_version.observada`). La guía de reparto lleva ahora la sección «Primer acceso» y dice lo que la interfaz hace de
+verdad (sin botón «Unirse» ni QR en la tarjeta: el código llega por la hoja de códigos de la mesa técnica, Menú → Tribus →
+INTRODUCIR INVITACIÓN). Herramienta de códigos probada en seco contra el drill (solo lectura): 22 abiertas con código, 3
+estrictas, hoja de 22 tarjetas con QR y marca, `one-use` en seco; Δ0 en pub, HUB y retro del drill; bot real intacto.
+
 ## Pendientes (2026-10-11)
 
 - [ ] Enviar `FORMULARIO-BRANDING-CONTENIDOS.md` + `vista-previa.zip` a branding y contenidos (con la sección «Guías para validar»); incorporar respuestas al JSON y regenerar.
@@ -103,5 +113,8 @@ anterior tenía otro `caps.shs`; `/c/blob/<id>` directo con el id codificado ent
 - [ ] Canva: conseguir RECURSOS GRÁFICOS y las 2 páginas que faltan del POST; rellenar la columna «Para qué» de los manifiestos.
 - [ ] Decidir si los 96 MB de Canva se versionan o van a `.gitignore` (queda el manifiesto).
 - [ ] GO de branding al kit (formulario A3-A4) y al avatar (A1); si entregan Gill Sans, regenerar con `marca.json → fuentes` apuntando fuera del repo.
-- [ ] Medir `oasisVersion` del pub `acampada26s.net` (`instancia.oasis_version.observada`).
-- [ ] Paquete «congelado» para el operador de la 26S (runbook externo + compose aislado): siguiente micro-tarea.
+- [x] Medido desde fuera: `acampada26s.net/c` dice 1.2.5 (JSON v2.2). El `oasisVersion` del feed del pub se mide al unirse la secretaría.
+- [x] Paquete para la mesa técnica: `docs/PUB/TEMPLATE-RUNBOOK.md` + `pub/scripts/secretaria.sh` + `pub/docker-compose.secretaria.yml` + `OPERADOR.md` (WP-O137).
+- [ ] Respuestas de la mesa técnica a `OPERADOR.md` (despliegue del pub, `caps.shs`, invite, mesa técnica, dónde vive, custodia, tribus estrictas, `about`, GO) → JSON `instancia.activacion` → `regenerar.sh`.
+- [ ] `secretaria.sh join` contra un pub real (depende del `caps.shs` de la 26S); hasta entonces solo está probado el bootstrap del drill.
+- [ ] Retirar un código multiuso ya repartido: no hay herramienta (`removeOpenInvite` como autora); se anota si hace falta.

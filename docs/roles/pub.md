@@ -27,7 +27,7 @@ encargos:
     estado: ejercido
     medido: '2026-10-08'
     prueba: plan/REPORTES/WP-O131-retro-bot-via-caliente.md
-    falta: prueba en frío; la vía fría (WP-O130)
+    falta: prueba en frío con la mesa técnica de otro colectivo (el runbook y el mando quedan listos en WP-O137); la vía fría (WP-O130)
 ---
 
 # Pub Oasis
@@ -95,6 +95,34 @@ Cada pieza es un contenedor más, con identidad propia, que no toca al pub.
 | HUB clearnet | que lo que tus habitantes marcan como público se lea en la web, con caché, mapa del sitio y RSS | [Protocolo del HUB](/PUB/HUB-PROTOCOL) |
 | Teatro | publicar obras como sitios estáticos firmados, con su catálogo | [Protocolo del Teatro](/PUB/TEATRO-PROTOCOL) · [curaduría](/PUB/TEATRO-CURADURIA-PROTOCOL) · [redes](/PUB/RRSS-SIDECAR-PROTOCOL) · [P2P](/PUB/TEATRO-P2P-PROTOCOL) |
 | Banco | cartera del pub y renta básica | puerta [Economía Oasis](/roles/economia) |
+| Plantilla de organización | las tribus, salas, calendarios, listas, wikis y mapas de tu organigrama, sembradas por una secretaría | [Runbook del operador](/PUB/TEMPLATE-RUNBOOK) · [Protocolo de plantilla](/PUB/TEMPLATE-PROTOCOL) |
+
+## Activar la plantilla de mi colectivo
+
+Tu pub ya corre (tuyo o de otro) y quieres darle de una vez la estructura de tu organigrama. Lo ejecuta tu **mesa
+técnica** desde un clon de este repo, en su máquina o en el host del pub, con un solo mando. El paso a paso es el
+[runbook del operador](/PUB/TEMPLATE-RUNBOOK); el método, el [protocolo de plantilla](/PUB/TEMPLATE-PROTOCOL).
+
+```text
+Mi pub ya funciona. Tengo la plantilla de mi colectivo en pub/templates/<id>.json.
+Activa la plantilla con una secretaría, siguiendo docs/PUB/TEMPLATE-RUNBOOK.md.
+Pídeme permiso en cada paso que publica algo.
+```
+
+Qué necesitas tener: Docker y Git; el `caps.shs` de tu pub y un invite de un uso (en un fichero, nunca por chat); la
+plantilla y su kit; el `about` de la secretaría aprobado; y cuatro decisiones escritas: dónde vive la secretaría, quién
+custodia su `secret` y las claves de tribu, quién es la mesa técnica, qué tribus son estrictas.
+
+| Paso | Qué | Salida esperada | |
+|---|---|---|---|
+| 1 | Medir tu pub sin tocarlo: versión, `caps.shs`, puerto 8008 | anotado en tu ficha | **solo lectura** |
+| 2 | `secretaria.sh <id> prep` · `caps` · `config` | un env, la red del pub, un solo servicio en el compose | |
+| 3 | `secretaria.sh <id> up` | nace la secretaría; su feed id va a la ficha; `backup` del `secret` | |
+| 4 | `secretaria.sh <id> join <fichero>` | la secretaría conectada al pub | **PERMISO**: invite redimido, `contact` |
+| 5 | `secretaria.sh <id> about …` | un `about` con avatar | **PERMISO**: no se retira |
+| 6 | `secretaria.sh <id> seed` en seco, luego `--yes <bloque>` uno a uno | cada bloque con el delta previsto | **PERMISO por bloque** |
+| 7 | `secretaria.sh <id> codigos sheet` → imprimir y destruir | la hoja de códigos con un QR por tribu abierta | los de un uso, `one-use`, **PERMISO** cada uno |
+| 8 | Verificar en el pub y cerrar: guía con enlaces, `backup`, ficha, reporte | la mesa técnica tiene todo lo que reparte | |
 
 ## Lo que no tiene vuelta atrás
 
@@ -122,3 +150,4 @@ Si el daño ya está hecho: [recuperación](/PUB/RECOVERY-PROTOCOL).
 - [Protocolo para agentes](/AGENTES): reglas universales, irreversibles y trampas conocidas.
 - [Hazlo tuyo](/roles/tu-pub): la ficha de tu instancia.
 - [Mantener](/roles/mantener): subir de versión y recuperar.
+- [Runbook del operador de plantilla](/PUB/TEMPLATE-RUNBOOK): activar la estructura de tu colectivo con una secretaría.

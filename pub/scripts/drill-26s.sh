@@ -63,35 +63,24 @@ guard() {
   return $bad
 }
 
-PROBE="$ROOT/pub/tools/ssb-probe.js"
+# Ayudantes compartidos con secretaria.sh (probe, conn-fix, join, about): pub/scripts/lib-retro.sh.
+. "$ROOT/pub/scripts/lib-retro.sh"
 pub_key()  { compose exec -T -u oasis -e HOME=/home/oasis oasis-pub sh -lc 'cd /app/src/server && node /app/pub/tools/ssb-admin.js whoami' 2>/dev/null | grep -oE '@[A-Za-z0-9+/]+=\.ed25519' | head -1; }
 ctr_of()   { echo "${PREFIX}-$(echo "$1" | sed 's/^oasis-//;s/^pub-//')"; }   # oasis-pub → drill26s-pub, oasis-retro-bot → drill26s-retro-bot, oasis-hub → drill26s-hub
-probe()    { docker exec -i -u oasis -e HOME=/home/oasis -e SSB_FEED="$2" -e SSB_ACTION="$3" ${4:+-e SSB_INVITE="$4"} "$1" sh -lc 'cd /app/src/server && node -' < "$PROBE" 2>/dev/null; }
+probe()    { retro_probe "$@"; }
 invite_ip() { # invite del pub del drill con el host reescrito a la IP del bridge (ssb-ref exige dominio con punto al crear)
   local ip; ip="$(docker inspect "$(ctr_of oasis-pub)" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
   local inv; inv="$(compose exec -T -u oasis -e HOME=/home/oasis oasis-pub sh -lc "cd /app/src/server && node -e \"const c=require('ssb-client');const cfg=require('./ssb_config');c(cfg.keys,cfg,(e,s)=>{if(e){console.error(e.message);process.exit(1)}s.invite.create({uses:1,external:'pub.local.test'},(e2,inv)=>{if(e2){console.error(e2.message);process.exit(1)}console.log(inv);s.close()})})\"" | tail -1)"
   [ -n "$inv" ] || { echo "sin invite" >&2; return 1; }
   echo "${inv/pub.local.test/$ip}"
 }
-conn_fix() { # conn_fix <contenedor>: quita la entrada con seed y deja net:oasis-pub:8009 con la clave del pub (HUB §3)
-  local k; k="$(pub_key)"; k="${k#@}"; k="${k%.ed25519}"
-  docker exec -i -u oasis -e HOME=/home/oasis "$1" sh -lc 'cat > /tmp/hub-conn-fix.js' < "$ROOT/pub/tools/hub-conn-fix.js"
-  docker exec -u oasis -e HOME=/home/oasis "$1" sh -lc "cd /app/src/server && node /tmp/hub-conn-fix.js 'net:oasis-pub:8009~shs:$k'" 2>&1 | sed -E 's/(shs:[A-Za-z0-9+\/]{6})[A-Za-z0-9+\/=:]+/\1…/g; s/@[A-Za-z0-9+\/]{6}[A-Za-z0-9+\/=]*\.ed25519/@…/g' | tail -4
-}
+pub_addr() { local k; k="$(pub_key)"; k="${k#@}"; k="${k%.ed25519}"; echo "net:oasis-pub:8009~shs:$k"; }   # el pub del drill dentro de su red (HUB §3)
+conn_fix() { retro_conn_fix "$1" "$(pub_addr)"; }
 join() { # join <oasis-retro-bot|oasis-hub>: invite → accept por socket → restart → conn-fix → restart → sonda connected. Nunca imprime el invite.
-  local svc="$1" ctr; ctr="$(ctr_of "$svc")"; local pk; pk="$(pub_key)"
-  local inv; inv="$(invite_ip)" || exit 1
-  local acc; acc="$(probe "$ctr" "$pk" invite-accept "$inv")"
-  echo "$svc accept: $(echo "$acc" | grep -o '"accept": *[a-z]*' | head -1)"
-  docker restart "$ctr" >/dev/null; sleep 8; conn_fix "$ctr"; docker restart "$ctr" >/dev/null; sleep 10
-  for i in 1 2 3 4 5 6; do local p; p="$(probe "$ctr" "$pk" peers)"; if echo "$p" | grep -q '"state": *"connected"'; then echo "$svc: connected al pub (seq $(echo "$p" | grep -o '"seq": *[0-9]*' | grep -o '[0-9]*$') del pub) tras $((i*5)) s"; return 0; fi; sleep 5; done
-  echo "$svc: NO conectado" >&2; return 1
+  local svc="$1" ctr; ctr="$(ctr_of "$svc")"; local inv; inv="$(invite_ip)" || exit 1
+  printf '%s ' "$svc"; retro_join "$ctr" "$(pub_key)" "$inv" "$(pub_addr)"
 }
-about() { # about <png> <desc.txt> [nombre]: avatar y descripción al bot POR STDIN (nunca docker cp), un solo publish-about
-  local ctr; ctr="$(ctr_of oasis-retro-bot)"
-  docker exec -i -u oasis "$ctr" sh -lc 'cat > /tmp/avatar.png' < "$2"; docker exec -i -u oasis "$ctr" sh -lc 'cat > /tmp/desc.txt' < "$3"
-  docker exec -u oasis -e HOME=/home/oasis "$ctr" sh -lc "cd /app/src/server && node /app/pub/tools/ssb-admin.js publish-about \"${4:-Secretaría (drill)}\" \"\$(cat /tmp/desc.txt)\" --image /tmp/avatar.png" 2>&1 | grep -E '"image"|description|rror' | head -3
-}
+about() { retro_about "$(ctr_of oasis-retro-bot)" "$2" "$3" "${4:-Secretaría (drill)}"; }   # about <png> <desc.txt> [nombre]
 seed() { OASIS_RETRO_BOT_CONTAINER="$(ctr_of oasis-retro-bot)" bash "$ROOT/pub/scripts/retro-seed.sh" --env "pub/.env.drill-${DRILL_ID}" --template "$DRILL_TEMPLATE" --pub-id "$(pub_key)" "$@"; }
 gates() { GATE_DATA_ROOT="$DATA" OASIS_PUB_ENV_FILE=".env.drill-${DRILL_ID}" GATE_NODES="pub:$(ctr_of oasis-pub):oasis-pub hub:$(ctr_of oasis-hub):oasis-hub retro:$(ctr_of oasis-retro-bot):oasis-retro-bot" bash "$ROOT/devops/scripts/upgrade-gates.sh" --local "$@"; }
 client_join() { # cliente desechable (client/docker-compose.drill.yml): mismo caps.shs que el pub, red del drill, invite por socket, conn-fix

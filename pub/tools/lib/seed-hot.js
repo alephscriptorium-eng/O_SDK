@@ -66,6 +66,24 @@ async function evidence(sbot, pull, me, types) {
   return { seq, byType };
 }
 
+// Los modelos de src/models sobre un sbot ya abierto (shim de cooler), con el keyring de tribus de disco.
+// Lo usan el seeder y pub/tools/tribe-codes.js (misma criptografía, ningún duplicado).
+function openModels(sbot, ssbConfig) {
+  const mk = (ns) => require(path.join(SRC, 'models/crypto'))(ssbConfig.path, ns);
+  const cooler = { open: async () => sbot, close: () => {} };
+  const tribeCrypto = mk('tribes');
+  const tribes = require(path.join(SRC, 'models/tribes_model'))({ cooler, tribeCrypto });
+  return {
+    tribes,
+    rooms: require(path.join(SRC, 'models/rooms_model'))({ cooler, tribeCrypto, roomCrypto: mk('rooms'), tribesModel: tribes }),
+    calendars: require(path.join(SRC, 'models/calendars_model'))({ cooler, pmModel: null, tribeCrypto, calendarCrypto: mk('calendars'), tribesModel: tribes }),
+    events: require(path.join(SRC, 'models/events_model'))({ cooler, tribeCrypto, eventCrypto: mk('events'), tribesModel: tribes }),
+    mailing: require(path.join(SRC, 'models/mailing_model'))({ cooler, subscriptionsModel: null }),
+    wiki: require(path.join(SRC, 'models/wiki_model'))({ cooler, tribeCrypto, tribesModel: tribes }),
+    maps: require(path.join(SRC, 'models/maps_model'))({ cooler, tribeCrypto, mapCrypto: mk('maps'), tribesModel: tribes })
+  };
+}
+
 function readLedger(file) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { if (e.code === 'ENOENT') return {}; throw e; }
 }
@@ -113,19 +131,7 @@ async function run({ t, args, plan, pending }) {
     const save = () => writeLedger(ledgerFile, ledger);
 
     // Modelos, cableados como en src/backend/backend.js:1922-2065 pero sin backend.
-    const mk = (ns) => require(path.join(SRC, 'models/crypto'))(ssbConfig.path, ns);
-    const cooler = { open: async () => sbot, close: () => {} };
-    const tribeCrypto = mk('tribes');
-    const tribes = require(path.join(SRC, 'models/tribes_model'))({ cooler, tribeCrypto });
-    const M = {
-      tribes,
-      rooms: require(path.join(SRC, 'models/rooms_model'))({ cooler, tribeCrypto, roomCrypto: mk('rooms'), tribesModel: tribes }),
-      calendars: require(path.join(SRC, 'models/calendars_model'))({ cooler, pmModel: null, tribeCrypto, calendarCrypto: mk('calendars'), tribesModel: tribes }),
-      events: require(path.join(SRC, 'models/events_model'))({ cooler, tribeCrypto, eventCrypto: mk('events'), tribesModel: tribes }),
-      mailing: require(path.join(SRC, 'models/mailing_model'))({ cooler, subscriptionsModel: null }),
-      wiki: require(path.join(SRC, 'models/wiki_model'))({ cooler, tribeCrypto, tribesModel: tribes }),
-      maps: require(path.join(SRC, 'models/maps_model'))({ cooler, tribeCrypto, mapCrypto: mk('maps'), tribesModel: tribes })
-    };
+    const M = openModels(sbot, ssbConfig);
 
     const uploadAsset = async (name) => {
       if (ledger.blobs[name]) return ledger.blobs[name];
@@ -247,4 +253,4 @@ async function run({ t, args, plan, pending }) {
   return code;
 }
 
-module.exports = { run };
+module.exports = { run, connect, openModels, readLedger };

@@ -79,6 +79,10 @@ manera. Es lo que lee quien entra, no quien opera: puerta [Habitante](/roles/hab
 | Dónde conseguir la invitación | «la portada del pub, una persona de contacto, un QR…» |
 | Wi-Fi del nodo y mesa técnica | «si es un pub presencial: nombre del Wi-Fi y dónde está la mesa. Si no: no aplica» |
 | Dónde conseguir la app | «quién reparte el APK, o solo las *releases* y la tienda» |
+| Plantilla activa y su secretaría | «id de la plantilla · feed de la secretaría · dónde vive (A: junto al pub / B: otra máquina) · fecha de siembra · ledger» |
+| Mesa técnica (quien reparte los códigos) | «nombres; dos como mínimo; dónde está la hoja de códigos impresa» |
+| Custodia del `secret` y de las claves de tribu de la secretaría | «quién, dónde (cifrado, fuera de git); fecha del último `secretaria.sh … backup`» |
+| `caps.shs` del pub | «el de tu `pub/config/ssb/config`; lo necesita la secretaría si vive en otra máquina (`secretaria.sh … caps`)» |
 
 Y qué ofrece: instantánea para quien entra, llamadas y salas de voz, banco y renta básica, lo que
 tengas encendido. Solo lo que hayas medido.

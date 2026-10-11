@@ -199,8 +199,8 @@ w('## C · Textos y ajustes de cada espacio (contenidos)', '',
 
 def entrada_grupo(x):
     if x['private']: return 'cerrado y cifrado; invita el responsable'
-    if x['inviteMode'] == 'strict': return 'solo por invitación del responsable'
-    return 'cualquiera, con código o QR de la tarjeta'
+    if x['inviteMode'] == 'strict': return 'solo con un código de un uso que da la secretaría a petición del responsable (cada alta pasa por la mesa técnica)'
+    return 'cualquiera que tenga el código del grupo (hoja de códigos o QR impreso que reparte la mesa técnica; después, cualquier miembro puede dar más)'
 
 w('### C-G · Grupos', '')
 filas = []

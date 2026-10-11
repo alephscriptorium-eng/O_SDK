@@ -20,7 +20,8 @@
     "visor_publico": "https://acampada26s.net/c",
     "oasis_version": {
       "declarada": "1.2.3",
-      "observada": "<pendiente: medir en el pub (oasisVersion del feed del pub) antes de activar>"
+      "observada": "1.2.5",
+      "observada_como": "pie de https://acampada26s.net/c el 2026-10-11 (curl, [ 1.2.5 ]); el oasisVersion del feed del pub se mide al unirse la secretaría"
     },
     "idioma": "es",
     "workflow": "activists",
@@ -28,6 +29,16 @@
     "reparto": {
       "mesa_tecnica": "<pendiente: quién es la mesa técnica de Acampada26S>",
       "entrega": "Cada órgano nombra a quién de los suyos le llega el acceso. Tribus abiertas: QR impreso o botón en la tarjeta. Tribus estrictas y listas cerradas: el autor invita en mano. Nunca por un canal que quede escrito."
+    },
+    "activacion": {
+      "operador": "la mesa técnica de Acampada26S clona el repo y ejecuta pub/scripts/secretaria.sh (docs/PUB/TEMPLATE-RUNBOOK.md)",
+      "secretaria_vive": "<DECISIÓN del colectivo: A, en el host junto al pub (mismo compose, perfil retro) | B, en otra máquina de la mesa técnica (secretaria.sh, unida al pub por invite)>",
+      "pub_desplegado_con": "<pendiente: este repo (o-sdk) o Oasis upstream; cambia el caps.shs y la variante>",
+      "caps_shs": "<pendiente: medir en el ssb-config del pub; sin él la secretaría no puede ni saludar>",
+      "invite_del_pub": "<pendiente: la mesa técnica genera uno (invite.create) y lo pasa por fichero, nunca por chat escrito>",
+      "custodia_claves": "<DECISIÓN del colectivo: quién guarda el secret de la secretaría y las claves de tribu (oasis/keys), fuera de git>",
+      "tribus_estrictas": "<DECISIÓN del colectivo: mantener 3 estrictas (Asamblea Internodos, InterCSOs, Asamblea de Colectivos: cada alta pasa por la secretaría) o abrirlas>",
+      "about_secretaria": "<pendiente: nombre y descripción literales del about de la secretaría (plantilla en docs/PUB/INSTANCIA-PLANTILLA.md §4)>"
     },
     "invite_asamblea": "./oasis.sh invite 500",
     "marca": {
@@ -1105,7 +1116,7 @@
     }
   ],
   "metadatos": {
-    "version": 2.1,
+    "version": 2.2,
     "notas_de_transcripcion": [
       "En la imagen original aparece 'Espocición de nodos y comisiones'; se ha normalizado a 'Exposición'.",
       "Las flechas sin texto en la imagen tienen 'etiqueta': null."
@@ -1114,7 +1125,8 @@
       "v2 (2026-10-11) es aditiva: ningún id de la v1 cambia; se añaden hechos de instancia y lo que la plantilla necesita.",
       "Campos nuevos: documento.{ciudad,titulo_publicado,fuente} · instancia · lugares[] · por órgano: apertura, reunion, responsable_reparto · subgrupos con id · metodos.wiki.",
       "apertura ∈ abierto | portavocias | externo | base: es lo que la imagen dice de cada órgano («abiertas a toda la población», «sin poder de decisión», espacios con otros colectivos). La regla pública/privada vive en el derivador (MAPEO R1), no aquí.",
-      "Lo marcado <pendiente> o <DECISIÓN> lo contesta el colectivo (formulario del dosier); nada se inventa."
+      "Lo marcado <pendiente> o <DECISIÓN> lo contesta el colectivo (formulario del dosier); nada se inventa.",
+      "v2.2 (2026-10-11, WP-O137) es aditiva: instancia.oasis_version.observada medida (1.2.5) e instancia.activacion con lo que la mesa técnica debe decidir o medir antes del GO (quién opera, dónde vive la secretaría, caps.shs, invite, custodia, tribus estrictas, about)."
     ],
     "derivado_a": "pub/templates/acampada26s.json",
     "como": "ARCHIVO/DISCO/26sm-exported/entrada/derivar-acampada26s.py",

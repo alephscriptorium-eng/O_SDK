@@ -1,5 +1,64 @@
 *Parte 3 de 5.*
 
+## Tribus — cómo se organiza el nodo (comisiones, grupos de trabajo)
+
+Las comisiones, los grupos de trabajo, la cocina, el equipo legal… en Oasis
+son **Tribus**: grupos con su propio espacio — feed, foro, encuestas,
+tareas, calendario, tesorería y votaciones internas — **cifrados con una
+clave que solo tienen los miembros** (es lo habitual; una tribu también
+puede ser pública).
+
+**Sí: cualquiera puede crear una tribu.** Nadie lo aprueba ni lo autoriza;
+para eso es. Menú → **Tribus** → **Crear Tribu**, y rellena:
+
+- **Título** y **Descripción** (obligatorios). Ubicación, etiquetas e imagen
+  son opcionales.
+- **Estado**: *Privada* (por defecto — la tribu y todo lo que hay dentro va
+  cifrado) o *Pública*.
+- **Modo**: *Estricto* — solo tú generas códigos de invitación; o *Abierta*
+  — cualquier miembro puede invitar, y la tribu puede mantener además un
+  código multiuso permanente (el que va en la hoja de códigos y en el QR
+  impreso de la mesa técnica).
+
+Al crearla eres el primer miembro y el **autor** de la tribu: solo el autor
+puede borrarla o cambiar su estructura. **Grupos de trabajo dentro de una
+comisión:** abre la tribu de la comisión y crea una **sub-tribu** desde
+dentro — las sub-tribus heredan su privacidad.
+
+**Cómo unirse a una tribu** (una comisión, un grupo de trabajo…). Siempre
+es lo mismo: un código, pegado en menú → **Tribus** → **INTRODUCIR
+INVITACIÓN** (también en menú → **Invitaciones** → sección **Tribus**). Lo
+que cambia es de dónde sale el código:
+
+1. **De la hoja de códigos o del QR impreso.** Los grupos abiertos tienen
+   un código multiuso que la mesa técnica reparte en una hoja o pegado como
+   QR por comisión. Escanea el QR con la cámara (es el código en texto:
+   cópialo) o teclea el código, pégalo en INTRODUCIR INVITACIÓN y estás
+   dentro. En esta versión de Oasis la tarjeta de la tribu **no** muestra
+   ese código ni un botón de unirse: el código llega por la mesa técnica.
+2. **De un miembro.** En un grupo abierto, cualquiera que ya esté dentro
+   abre la tarjeta de la tribu → **Generar invitación** y te pasa el código
+   (un código por persona).
+3. **De la mesa técnica, para los grupos estrictos.** Solo la secretaría
+   que creó el grupo puede dar códigos; la mesa técnica te lo entrega en
+   mano. Un código de un solo uso se consume al usarlo.
+
+Tras unirse, todo ocurre solo: tu Oasis importa la clave de la tribu, te
+añade a la lista de miembros y sigue a los demás para que empecéis a
+sincronizar.
+
+**Salir o ser expulsado:** cualquier miembro puede irse (botón Leave; el
+autor no puede abandonar su propia tribu mientras exista). Cada salida rota
+la clave de la tribu, así que quien queda fuera ya no puede leer lo
+*nuevo*. Lo que alguien ya leyó, leído está.
+
+**Para el nodo:** una tribu por comisión, una sub-tribu por grupo de
+trabajo. *Estricto* para grupos cerrados (legal, prensa: cada alta pasa por
+la mesa técnica); *Abierta* más el código multiuso en un QR impreso para los
+abiertos (punto de información, cocina, turnos).
+
+---
+
 ## Uso diario — los módulos que importan en la plaza
 
 Todo está en el menú. Los que usarás a diario:
@@ -17,66 +76,6 @@ Todo está en el menú. Los que usarás a diario:
 - **Market** · Dar, pedir, intercambiar bienes y servicios (ECOin, la moneda de el nodo).
 - **Cipher** · Cifrar cualquier texto con una contraseña compartida — para mensajes que tengan que viajar fuera de Oasis.
 - **Backup** · Protege tu identidad. Ver §9 — hazlo hoy, no algún día.
-
----
-
-## Mantente a salvo
-
-Oasis es fuerte, pero ten claro qué hace y qué no hace:
-
-- **Los mensajes públicos van firmados, no cifrados.** Cualquiera que te
-  replique puede leerlos, guardarlos, capturarlos. Público es público — di
-  en público solo lo que pondrías en una pancarta.
-- **Los mensajes privados van sellados** para sus destinatarios — ni
-  siquiera el PUB que los transporta puede abrirlos. Las **Tribes** (grupos
-  privados) añaden su propia clave, compartida solo entre miembros.
-- **Tu dirección IP la ven los pares con los que conectas directamente.**
-  En el Wi-Fi de el nodo, es el nodo; en internet, quien conecte
-  contigo.
-- **No confíes en tu smartphone.** Si te quitan o desbloquean el móvil, se
-  van con él tu identidad, tus mensajes privados y tus claves. Usa un
-  bloqueo de pantalla fuerte; lleva el móvil encima; valora un aparato
-  dedicado para lo sensible.
-- **Borrado de emergencia.** La app tiene una opción **Panic** que borra
-  todo lo que Oasis guarda en el dispositivo — identidad, mensajes, ajustes.
-  Aprende dónde está antes del día que la necesites. No se puede deshacer:
-  mantén al día tus copias del §9.
-- Las fotos se limpian de GPS automáticamente — pero una cara o una
-  pancarta reconocible sigue siendo reconocible.
-- Oasis es **software experimental**. En palabras del propio proyecto:
-  *por favor, no le confíes tu vida.* Para lo que pueda poner a alguien en
-  peligro, piensa dos veces dónde va a vivir, para siempre.
-
----
-
-## Copia de seguridad de tu identidad (hoy)
-
-Tu identidad es una clave secreta que la app guarda en su almacenamiento
-privado de tu móvil. **Si la pierdes, nadie en la Tierra puede recuperarla**
-— ni la mesa técnica, ni el PUB, nadie. Tu nombre desaparecería y tendrías
-que entrar de nuevo como alguien nuevo.
-
-Abre **Tools → Backup** y haz estas dos cosas **ya**:
-
-1. **RECOVERY** — muestra tu clave secreta como texto y como código QR.
-   Imprímela o guarda el PDF en un sitio offline y seguro. Quien la lea
-   puede ser tú: trátala como si fuera efectivo.
-2. **EXPORT KEYS** — descarga la clave cifrada con una contraseña de al
-   menos 32 caracteres (la página propone una aleatoria). Guarda el archivo
-   y la contraseña en sitios *distintos* (p. ej. el archivo en un USB, la
-   contraseña apuntada en tu libreta).
-
-Y cada semana, o antes de un día grande: **FULL BACKUP → alcance ONLY MY
-CONTENT** — un archivo cifrado pequeño con tus propias publicaciones, del
-tamaño justo para un móvil. Sácalo del teléfono (cable, SD; la mesa técnica
-ayuda).
-
-**Cambiar a un móvil nuevo — el orden importa:** instala Oasis y ábrela una
-vez → restaura **primero el archivo de la copia** → **después** importa la
-clave → reinicia. La copia entra *antes* que la clave, nunca después, o tu
-feed se bifurca y el historial ya no se puede fusionar. Tras cualquier
-restauración, comprueba **Settings → Verification**: sin huecos, sin
-bifurcaciones, sin enlaces rotos.
 
 ---
 
