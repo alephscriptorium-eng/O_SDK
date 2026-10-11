@@ -261,11 +261,25 @@ pub:oasisVersion=+1 hub:oasisVersion=+1,karmaScore=+0..1 bot:oasisVersion=+1,pub
 ```
 
 Después del ciclo, HUB y bot podrán publicar un `karmaScore` propio como mucho una vez al día y solo si el valor
-cambia: deja de ser una desviación en los `check` posteriores. Medido en el host: pendiente (§8).
+cambia: deja de ser una desviación en los `check` posteriores.
+
+**Medido en el host** (`upgrade-gates.sh --remote check pre128 --expect '…'`, foto base 23:11:50Z, `post128`):
+
+```
+pub  v1.2.5 → v1.2.8 · Δseq=1 · oasisVersion+1 → ok                          (seq 24 → 25)
+hub  v1.2.5 → v1.2.8 · Δseq=2 · karmaScore+1 oasisVersion+1 → ok             (seq 17 → 19)
+bot  v1.2.5 → v1.2.8 · Δseq=3 · karmaScore+1 oasisVersion+1 about+1 → ok     (seq 75 → 78)
+GATE OK
+```
+
+Mismo delta que en local para pub y HUB. En el bot real salieron además el `karmaScore` (su valor había cambiado
+desde el 2026-10-05) y el `about` de `clearnetSince` que 1.2.3 intentaba en cada arranque (UPGRADE §0.4): los dos
+declarados como `+0..1`. `wallet` = 1, dirección `EYdruX…`, `pubAvailability` = 44 y `ubiAllocation` = 16 sin
+moverse, también tras encender el motor.
 
 ## 7. Correcciones al protocolo
 
-Pendiente de cerrar. Hasta ahora:
+Hechas en esta rama salvo donde dice «pendiente»:
 
 - **`.dockerignore` no excluía `volumes-real/`** (`b3ff2d9e`). La carpeta nació en WP-O135 (D-O33) y el
   primer build local posterior metió en la imagen la identidad real del bot retro. Lo cazó el humo de U2
@@ -284,6 +298,48 @@ Pendiente de cerrar. Hasta ahora:
 
 - `docs/roles/mantener.md`, tabla «Qué hará el agente», paso 3: dice «las cinco diferencias» y
   «exactamente seis ficheros»; son 7 guards y 7 ficheros desde WP-O135.
-- `docs/PUB/INSTANCIA-SCRIPTORIUM.md` §3: el párrafo de versión dice 1.2.3; el host está en 1.2.5.
+- `docs/PUB/INSTANCIA-SCRIPTORIUM.md` §3: el párrafo de versión decía 1.2.3 con el host en 1.2.5 (el cierre de
+  WP-O135 no lo actualizó): corregido a 1.2.8.
 - En Windows el overlay (`git rm -r src && git checkout`) tarda más de 5 minutos y
-  `upgrade-behaviour-diff.sh` otro tanto: no es una desviación, pero conviene decirlo en UPGRADE §2.
+  `upgrade-behaviour-diff.sh` otro tanto: no es una desviación; anotado en la fila del ciclo (UPGRADE §7).
+- El `check` de cierre «al menos 5 minutos después de recrear el último nodo»: el primero de esta sesión se
+  hizo a los 3 minutos por un error de cuenta del operador; se repitió pasado el plazo (§8, paso 10).
+
+## 8. Aplicación en el host (2026-10-11 UTC, GO-1 … GO-4b)
+
+Una orden por paso (UPGRADE §4). Estado de partida: §1 y foto `pre128` (remote, 23:11:50Z): pub 24 · HUB 17 ·
+bot 75 (`motor:pub=true`, épocas `2026-09,2026-10`); los tres `seq = registros = sbot`. El compose del host es el
+de la rama (`git diff d21fc7b8 HEAD -- pub/docker-compose.pub.yml` vacío: el «DISTINTO» es fin de línea).
+
+| # | Paso | Hecho | Puerta |
+|---|---|---|---|
+| 1 | Backups | pub → `devops/backups/oasis-pub/20261011T231341Z`; `wallet.dat` → `devops/backups/ecoin/20261011T231544Z` (86 016 B, `e4135803…`) y tras encender `…/20261011T233445Z` (`7353874f…`); en el host `oasis-hub.bak-o138-2026-10-11.tgz` (857 MB) y `oasis-wallet-bot.bak-o138-2026-10-11.tgz` (98 MB), 600, solo `ssb-data` | **GO-1** |
+| 2 | Disco | los tres nodos corrían `:latest` (`ca6c85a7bd14`): retirados los tags `:1.2.3` y `:pre-o132`, `src.old-1.2.3` y `src-1.2.3.tgz`; `image prune` 0 B, `builder prune` 840,5 MB; `/` 41 % → 35 % | |
+| 3 | Rollback | `oasis-pub-scriptorium:1.2.5` = `ca6c85a7bd14` · `/srv/oasis/src-1.2.5.tgz` (94 MB, 600) | |
+| 4 | `src/` | `git archive` LF de `upgrade/oasis-1.2.8` (`bf5df0eb`) → `src.new` (24 138 ficheros, 287 MB). Antes del `mv`: 1.2.8, 0 CR en `backend.js` e `is-map`, enlace a `src/base` + `ssb-db2` vendorizado (con `lastFlushAt`), `url` del 5.º guard, guard 6 (4 + 2), guard 7 (1), `blobs.max 50`, solo 4 JSON en `configs/`; `.dockerignore` del host con `src.old*`, `src.new*` y `OASIS_PUB/.env.*`. `mv src src.old-1.2.5` | |
+| 5 | Lo demás que viaja | nada (§4) | |
+| 6 | Build y humo | `compose build oasis-pub` → `28b8db7aaaa5` (1,06 GB); `/` 39 %. Humo sin red: 1.2.8, `node --check` de `backend.js` y `clearnet_view.js`, enlace, guard 7, **0 `secret`**, 0 `.env.prod`, sin `src.old`; `server` y `backend` efímeros `running`, sin errores, `Blob size limit: 50 MB`, `GET /c` 200. Los tres nodos seguían `healthy` en `ca6c85a7bd14` | |
+| 7 | Pub (23:23:39Z) | `up -d --no-deps --no-build oasis-pub` → `healthy` a los 30 s. `check pre128 --expect 'pub:oasisVersion=+1'` → **`GATE OK`** (HUB y bot Δ0). Tres parches, 0 errores, `ssb-data` a 700, `db2/indexes/oasisActivity` construido. `/public/status` → 1.2.8, `healthy`, invite público presente (121 caracteres, no copiado). El HUB reconectó por la IP del bridge y recibió el seq 25 | **GO-2** |
+| 8 | HUB (23:25:38Z) | `up -d --no-deps --no-build oasis-hub` → `healthy` a los 61 s. Config del bind = repo (`f16cc0ce…`), `Media cache limit: 2048 MB`, «Admin access» en el log (no copiado), 0 errores, 197 MiB / 768. `check`: pub `+1`, **HUB `oasisVersion+1 karmaScore+1`**, bot Δ0 → `GATE OK`. `hub-disk.sh prune-cache` (592 MB → 0) · `hub --strict` contra `https://pub.escrivivir.co` → **`GATE OK`** (16 comprobaciones; 157 enlaces con `lang`, 166 con `theme`; sitemap 191 URLs https; RSS 35 + 4) | **GO-3** |
+| 9 | Bot (23:29:39Z / 23:32:44Z) | `hub-wallet.sh pause` → 1.2.8 con `pub=false`, `healthy`; config del bind = render del host (`15eec31d…`), «Admin access» presente, 0 errores, 173 MiB / 768. `check`: **`oasisVersion+1 karmaScore+1 about+1`**, `wallet` = 1, dirección `EYdruX…`, `(cifrado)` quieto → `GATE OK`. `hub-wallet.sh on --yes` (`ready` en verde; aviso de saldo 0, época `2026-10` ya abierta) → `pub=true`, «PUB engine on»; `check` con `pubAvailability=+0..1`: **no republicó**, `ubiAllocation` = 16 → `GATE OK`. `backup-ecoin.sh` después | **GO-4a · GO-4b** |
+| 10 | Cierre | `snapshot post128`: pub 25 · HUB 19 · bot 78, cuadran · `deploy-status.sh`: tres nodos 1.2.8 `healthy` «imagen al día», `src/` 1.2.8, pub VERDE en el directorio (ciclo 6), `/` 39 %, `/srv/oasis` 31 %, `capacity` 0 avisos · journal | |
+
+Pub sin sbot ≈ 30 s; HUB ≈ 61 s; bot ≈ 2 × 90 s. **Nada publicado con identidad real fuera de lo declarado.**
+El bot retro (máquina operadora) y el cliente no se han tocado: siguen en 1.2.5 y 1.2.2.
+
+## 9. No medido / pendiente
+
+1. **H2 (reequilibrio de RBU sin tope por época): DECISIÓN del custodio antes de la dote.** Leído en el código,
+   no medido con fondos. Con saldo 0 no hace nada.
+2. Bot retro (nodo real local, 1.2.5): subirlo publica su `oasisVersion` y, por H4, un `karmaScore`. PERMISO
+   aparte. Mientras no se decida, **no hacer `compose up` de ese servicio**: la imagen local `:latest` ya es 1.2.8
+   y lo recrearía (un `docker start` del contenedor existente sigue en 1.2.5).
+3. Cliente dockerizado: sigue en 1.2.2 (D-O32).
+4. Rollback de este ciclo en el host (`:1.2.5`, `src.old-1.2.5`, `src-1.2.5.tgz`): se retira en el siguiente
+   (UPGRADE §4 paso 2). En `/srv/oasis` quedan además tgz de datos de ciclos anteriores (`*.bak-o128`,
+   `*.bak-o135`, `oasis-pub.cold-o123`, ~2,4 GB) que nadie ha pedido retirar.
+5. Los backups de esta sesión (`devops/backups/oasis-pub/20261011T231341Z`, `…/ecoin/20261011T231544Z` y
+   `…/20261011T233445Z`) son material de claves sin cifrar en el portátil: a la cripta.
+6. Caché de build local: la capa `COPY . .` del primer build (con `volumes-real/`) puede seguir en la caché de
+   BuildKit de la máquina operadora, que es donde ya vive ese `secret`. `docker builder prune` la retira.
+7. `upgrade-behaviour-diff.sh` no ve una llamada que se muda a un temporizador (§7): mejora pendiente.

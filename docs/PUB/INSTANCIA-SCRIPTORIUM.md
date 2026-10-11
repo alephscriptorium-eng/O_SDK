@@ -46,7 +46,11 @@ nombre puede cambiar.
 | 3 | `retro.escrivivir.co` | retro (secretaría de plantillas) · scriptorium · **mudado a la máquina operadora el 2026-10-10** (D-O33): contenedor local `oasis-pub-retro-bot`, estado `volumes-real/oasis-retro-bot`, Oasis 1.2.5, conectado al pub real; Campamento **deshecha** ese día (feed en 266) | activa plantillas de organización (`TEMPLATE-PROTOCOL.md` §4.5): tribus, salas, calendarios, listas, wikis, mapas, bloque a bloque y con permiso; custodia las claves de las tribus que crea; **modo `server`, sin ruta pública**. Avatar: logo «Scriptorium Skins» 512×512 (blob previsto `&q4Mkl/fcUGNELIrsmVyMBBdZsCXxyh5LmGN/XovlHDg=.sha256`) | `oasis-pub-retro-bot` · `/srv/oasis/oasis-retro-bot` | `@fJG3E7UKNlYVh0Aoc89LKPAAQsKNfy4iMaJtdVH0I8I=.ed25519` | 2026-10-08 (WP-O131) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
-Oasis **1.2.3** en pub, HUB y bot-2 desde el 2026-10-07 (WP-O128; antes 1.2.2, WP-O124, 2026-10-05). El pub
+Oasis **1.2.8** en pub, HUB y bot-2 desde el 2026-10-11 (WP-O138; antes 1.2.5, WP-O135, 2026-10-10; 1.2.3,
+WP-O128, 2026-10-07). Al subir a 1.2.8 el pub publicó su `oasisVersion`; el HUB, `oasisVersion` y su primer
+`karmaScore`; el bot-2, `oasisVersion`, un `karmaScore` y el `about` de `clearnetSince` pendiente desde 1.2.3.
+Desde 1.2.6 HUB y bots publican solos su `karmaScore` cuando cambia, como mucho uno al día (aceptado por el
+custodio, UPGRADE §3.4). El bot nº 3 (máquina operadora) sigue en 1.2.5. El pub
 hace de centralita de Phone y Rooms, acotada (`phone` en su ssb-config: relé solo para feeds que sigue,
 aforo de sala 12; `HUB-PROTOCOL.md` §14); HUB y bot-2, no. Nombre del pub (su `about`):
 **`pub.escrivivir.co`**, publicado el 2026-10-05 (cuarto `about` del feed, solo `name`; la descripción

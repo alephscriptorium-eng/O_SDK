@@ -10,7 +10,7 @@ nada que no esté previsto y sin romper las piezas que el fork ha puesto alreded
 su anexo (`HUB-PROTOCOL.md` §5, `ECOIN-PROTOCOL.md` §5, `../CLIENT-PROTOCOL.md` §4).
 
 Deriva de los ciclos 0.8.3→0.8.8, 0.8.8→0.9.6, 0.9.6→1.0.8, 1.0.8→1.1.2, 1.1.2→1.1.4,
-1.1.4→1.1.10, 1.1.10→1.2.1, 1.2.1→1.2.2 y 1.2.2→1.2.3. Se reescribió en el ciclo 1.1.4→1.1.10 (WP-O112) porque el protocolo anterior comprobaba bien
+1.1.4→1.1.10, 1.1.10→1.2.1, 1.2.1→1.2.2, 1.2.2→1.2.3, 1.2.3→1.2.5 y 1.2.5→1.2.8. Se reescribió en el ciclo 1.1.4→1.1.10 (WP-O112) porque el protocolo anterior comprobaba bien
 lo barato —que los guards de `src/` siguen puestos— y no comprobaba lo caro: que Oasis **se
 comporta** igual. Sus greps decían «esto sigue existiendo», no «esto sigue haciendo lo mismo».
 
@@ -331,7 +331,7 @@ G="bash devops/scripts/upgrade-gates.sh --local"
 |---|---|---|---|
 | **U0** | Línea base **como el host**: stack local en la versión vieja, con cada pieza en el mismo modo que en §0.3 (motor encendido si allí lo está, época del mes abierta). Copia del estado. **Si el ciclo cambia el compose** (§3.2), U0 se levanta con el compose **desplegado** (`git show main:pub/docker-compose.pub.yml > pub/docker-compose.pub.<vieja>.yml`, sin trackear): en 1.2.5 el compose nuevo con la imagen vieja habría leído la config por defecto de la imagen | parar nodos · `$G backup pre` · arrancar · `$G snapshot pre` | todos los nodos healthy en la versión vieja; `seq` = `registros` = `sbot` en todos |
 | **U1** | Árbol | verificación de §2 · `annex` · `--check` del reporte | 7 ficheros · ningún `!` · 0 IDs sin disponer |
-| **U2** | Imagen nueva | etiquetar la vieja (`docker tag …:latest …:X.Y.Z-vieja`) · `npm run build` (o el build del compose del pub) | build limpio; `node --check` dentro de la imagen |
+| **U2** | Imagen nueva | etiquetar la vieja (`docker tag …:latest …:X.Y.Z-vieja`) · `npm run build` (o el build del compose del pub) · humo sin red: `ls /app` y `find / -xdev -name secret` | build limpio; `node --check` dentro de la imagen; **0 ficheros `secret`**, sin `volumes-*` ni `.env*` (en 1.2.8 el primer build local se llevó `volumes-real/`, la identidad real del bot retro: `.dockerignore` no la excluía) |
 | **U3** | Recrear en orden pub → HUB → bot y medir **qué publica cada uno** | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre --expect '…'` | `GATE OK` con el delta declarado (abajo) |
 | **U4** | Visor por delante de la caché | recrear `hub-cache` si cambió la plantilla · `$G hub --strict` | `GATE OK`: MISS→HIT, idioma independiente del visitante, sin cruce, rutas nuevas |
 | **U5** | Peor caso del bot: las páginas donde el backend refresca la cartera por su cuenta (`/banking`, `/transfers`, `/shops`, `/market`, `/school`) | `$G snapshot u5` · `$G worst` · `$G check u5 --expect 'bot:karmaScore=+0..1'` | `wallet` y `(cifrado)` no se mueven; misma dirección. **`/wallet` queda fuera a propósito**: en cualquier versión, con el motor encendido, republica la dirección (`../AGENTES.md` §4) |
@@ -359,6 +359,12 @@ G="bash devops/scripts/upgrade-gates.sh --local"
   `about=+0..1` en ese `check` y como `about=+1` en el de cierre (`HUB-PROTOCOL.md` §14).
 - **Desde 1.2.3, `about=+0..1` en el bot** (y en el cliente) en cada recreación, también en la
   misma versión (§0.4, `clearnetSince`). En el HUB no: es público y no corre esa sincronización.
+- **Desde 1.2.6, `karmaScore=+0..1` en HUB y en cada bot**, al subir y en cualquier `check`
+  separado más de 24 h del anterior. Upstream movió `getUserEngagementScore` de `GET /activity` al
+  refresco de fondo, que además arranca solo a los 5 s: todo backend publica su `karmaScore` si el
+  valor cambió (o nunca lo publicó) y han pasado 24 h del último. Un nodo que nunca publicó uno lo
+  publica al subir (`+1`). Aceptado por el custodio en el ciclo 1.2.8 (WP-O138, H4); el pub en
+  modo `server` no carga el backend y no lo publica.
 - `ubiAllocation` no se nombra: debe ser 0. Solo es 0 si la **época del mes ya está abierta** antes
   de subir (`épocas=` en la foto). Si no lo está, la abriría la versión nueva con sus reglas:
   irreversible y distinto; decídelo con el custodio antes.
@@ -584,6 +590,7 @@ Ciclos registrados (lo que cada uno cambió en el protocolo):
 
 | Ciclo | Reporte | Lo que enseñó |
 |---|---|---|
+| 1.2.5 → 1.2.8 | `plan/REPORTES/WP-O138-upgrade-oasis-1.2.8.md` (local y host: mismo delta) | Una llamada que **cambia de sitio** no es una línea del diff: upstream movió la publicación del `karmaScore` de una página de GUI al refresco de fondo y U3 lo destapó en el HUB (`karmaScore=+0..1` desde 1.2.6). El humo de U2 cazó la identidad real del bot retro dentro de la imagen local (`volumes-real/` sin excluir): el humo comprueba 0 `secret`. Índice nuevo de db2 (`oasisActivity`) que no es migración. El reequilibrio de RBU entre pubs pierde su tope por época (leído; decisión antes de la dote). En Windows el overlay y el diff tardan más de 5 minutos cada uno |
 | 1.2.3 (mismo ciclo) | `plan/REPORTES/WP-O132-visor-idioma-tema.md` | Sexto guard, el primero en una vista: idioma y tema del visor `/c` por petición (scope), selector de tema por `?theme=`. Se midió un cruce de idiomas real en el host (6 de 18 páginas) que el gate antiguo (2 idiomas) no veía; el gate pasa a 6 idiomas. Recrear solo el HUB en la misma versión no publica nada |
 | 1.2.2 → 1.2.3 | `plan/REPORTES/WP-O127` (mejoras previas) · `WP-O128-upgrade-oasis-1.2.3.md` (local) | Lo que se afirmaba de memoria se mide: `NEW_REF` por commit «release», audit de parches en seco (la copia del fork del parcheador era la de 1.2.1), instancia de `host.env`, seis cabeceras. Una disposición leída («el bot publica un `about` al subir») salió falsa en U3: `syncClearnetSince` falla a los 3 s y lo reintenta en cada arranque (`about=+0..1` también en la misma versión). U6 completo en local con nodo desechable. El diff colapsa activos (10 922 teselas no son 10 922 disposiciones) |
 | 1.0.8 → 1.1.2 | `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md` · `HUB-PROTOCOL.md` §5.5 | primer ciclo con el HUB activo: `/c/assets`, rutas de detalle nuevas |

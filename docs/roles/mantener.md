@@ -7,8 +7,8 @@ encargos:
   - id: subir-version
     titulo: Subir mi pub a la versión nueva de Oasis
     estado: ejercido
-    medido: '2026-10-07'
-    prueba: plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md
+    medido: '2026-10-11'
+    prueba: plan/REPORTES/WP-O138-upgrade-oasis-1.2.8.md
     falta: prueba en frío (WP-O118)
   - id: recuperar
     titulo: Algo se ha roto, recupéralo
@@ -28,11 +28,11 @@ puerta es para quien ya tiene algo corriendo.
 - Subir de versión: <Sello rol="mantener" id="subir-version" />
 - Recuperar: <Sello rol="mantener" id="recuperar" />
 
-La última subida del pub de demostración, de 1.2.2 a 1.2.3, se hizo con este
-protocolo: tres nodos, cada uno publicó su anuncio de versión y nada más, el mismo
-día de la release y tras ensayarlo en local, donde una suposición leída del código
-resultó falsa y se corrigió antes de tocar el servidor. La de 1.1.10 a 1.2.1 fue un
-cambio de motor de base de datos, de los que no tienen vuelta atrás.
+La última subida del pub de demostración, de 1.2.5 a 1.2.8, se hizo con este
+protocolo: tres nodos, cada uno publicó lo que se había declarado antes de tocar el
+servidor. El ensayo en local destapó que desde 1.2.6 un nodo publica solo su
+puntuación de karma; se paró, se decidió con el custodio y se declaró. La de 1.1.10
+a 1.2.1 fue un cambio de motor de base de datos, de los que no tienen vuelta atrás.
 
 ## Qué le dices a tu agente
 
@@ -64,7 +64,7 @@ Lee el protocolo de recuperación, haz el triaje y dime qué hay.
 |---|---|---|---|
 | 1 | Medir qué hay desplegado | versión de cada nodo, deriva del servidor frente al repo | solo lectura |
 | 2 | De qué versión a cuál, y qué código cambia para cada rol | dos commits de upstream | |
-| 3 | Traer el código nuevo y reponer las cinco diferencias del fork | exactamente seis ficheros distintos de upstream | |
+| 3 | Traer el código nuevo y reponer las siete diferencias del fork | exactamente siete ficheros distintos de upstream | |
 | 4 | Sacar **qué cambia de comportamiento** y disponer cada línea por escrito | ninguna línea sin leer | |
 | 5 | Ensayo en local con identidades desechables: recrear cada nodo y medir **qué publica** | un anuncio de versión por nodo y nada más | si aparece otra cosa: **parar** |
 | 5b | Si la versión cambia el motor de base de datos: ensayar la migración sobre una copia | los mismos registros antes y después | **DECISIÓN**: tras migrar no hay vuelta atrás |
