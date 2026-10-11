@@ -77,7 +77,18 @@ Decisiones que sí os pedimos:
 
 ### A4 · Prueba visual
 
-Las tarjetas de muestra se generan en `ARCHIVO/DISCO/26sm-exported/pruebas/` en la siguiente ronda; esta fila se rellenará sola.
+Hemos hecho estas de muestra con vuestras reglas. Abridlas y decidnos:
+
+| # | Fichero | Qué es | Nos gusta | Cambios |
+|---|---|---|---|---|
+| A4.1 | `ARCHIVO/DISCO/26sm-exported/pruebas/_contacto.png` | Hoja de contacto: todas juntas + cómo se ve recortada en la lista de grupos | [ ] |  |
+| A4.2 | `ARCHIVO/DISCO/26sm-exported/pruebas/avatar-secretaria-512.png` | Avatar de la cuenta de secretaría (patrón de la guía, pág. 18) | [ ] |  |
+| A4.3 | `ARCHIVO/DISCO/26sm-exported/pruebas/sala-sala_internodos.png` | Sala «Sala · Internodos» | [ ] |  |
+| A4.4 | `ARCHIVO/DISCO/26sm-exported/pruebas/tribu-asamblea_general.png` | Grupo «Asamblea General» | [ ] |  |
+| A4.5 | `ARCHIVO/DISCO/26sm-exported/pruebas/tribu-com_crisis.png` | Grupo «Comunicación · Coordinación y gabinete de crisis» | [ ] |  |
+| A4.6 | `ARCHIVO/DISCO/26sm-exported/pruebas/tribu-nodo_sur.png` | Grupo «Nodo Sur» | [ ] |  |
+| A4.7 | `ARCHIVO/DISCO/26sm-exported/pruebas/wiki-wiki_organigrama.png` | Página «Organigrama y funcionamiento» | [ ] |  |
+| A4.8 | `ARCHIVO/DISCO/26sm-exported/pruebas/wiki-wiki_semaforo.png` | Página «Técnica del semáforo» | [ ] |  |
 
 ## B · Datos que solo vosotros sabéis (contenidos)
 

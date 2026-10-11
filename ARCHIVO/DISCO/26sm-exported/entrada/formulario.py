@@ -123,8 +123,15 @@ w('### A4 · Prueba visual', '')
 pruebas = sorted(PRUEBAS.glob('*.png')) if PRUEBAS.exists() else []
 if pruebas:
     w('Hemos hecho estas de muestra con vuestras reglas. Abridlas y decidnos:', '')
+    TITULO = {x['id']: (sec, x['title']) for sec in ('tribes', 'rooms', 'maps', 'events', 'wiki') for x in T[sec]}
+    TIPO = {'tribes': 'Grupo', 'rooms': 'Sala', 'maps': 'Mapa', 'events': 'Evento', 'wiki': 'Página'}
+    def que_es(p):
+        if p.name == '_contacto.png': return 'Hoja de contacto: todas juntas + cómo se ve recortada en la lista de grupos'
+        if p.name.startswith('avatar'): return 'Avatar de la cuenta de secretaría (patrón de la guía, pág. 18)'
+        oid = p.stem.split('-', 1)[1] if '-' in p.stem else p.stem
+        sec, t = TITULO.get(oid, (None, oid)); return f'{TIPO.get(sec, "")} «{t}»'.strip()
     tabla(('#', 'Fichero', 'Qué es', 'Nos gusta', 'Cambios'),
-          [(f'A4.{i}', f'`{DOSIER}/pruebas/{p.name}`', p.stem.replace('-', ' '), CHK, '') for i, p in enumerate(pruebas, 1)])
+          [(f'A4.{i}', f'`{DOSIER}/pruebas/{p.name}`', que_es(p), CHK, '') for i, p in enumerate(pruebas, 1)])
 else:
     w(f'Las tarjetas de muestra se generan en `{DOSIER}/pruebas/` en la siguiente ronda; esta fila se rellenará sola.', '')
 

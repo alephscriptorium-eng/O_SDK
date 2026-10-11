@@ -343,6 +343,7 @@ if mk.get('paleta'):
         'etiquetas': {'tribu': 'GRUPO', 'subtribu': 'SUBGRUPO', 'sala': 'SALA', 'mapa': 'MAPA', 'evento': 'EVENTO', 'wiki': 'PÁGINA', 'privado': 'CERRADO'},
         'avatar': {'patron': mk['avatar']['patron'], 'texto': '26S'},
         'composicion': mk['composicion']['orden'],
+        'portadas': {'wiki_organigrama': {'subtitulo': doc['descripcion'], 'referencia': f'kit pág. {mk["organigrama_maquetado"]["pagina"]}'}},
     }
     MARCA.write_text(json.dumps(marca_json, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 

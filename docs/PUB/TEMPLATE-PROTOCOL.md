@@ -193,6 +193,10 @@ contrato del directorio en `pub/templates/assets/README.md`. Medido en 1.2.3:
   `clearnetPublic: true` (y uno por repetición de un evento recurrente), y es una unidad de permiso como las
   demás (hace público en la web abierta lo que antes solo veían los habitantes). Las tribus públicas salen en
   `/c/tribe/:id` (medido: 24 de 24 con contenido).
+- **Kit con la marca del colectivo** (2026-10-11): `template-kit.py --brand <marca.json>`, donde `marca.json` sale del organigrama
+  (`instancia.marca`, escrito por el derivador del dosier): foto de lona de fondo, caja de color con el nombre, etiqueta por tipo, logo;
+  fuentes y fondos por ruta con sha256 en el `manifest.json` (`brand`). Las fuentes propietarias no se vendorizan. Sin `--brand`, el
+  generador no cambia (bytes idénticos). Contrato en `pub/templates/assets/README.md`.
 
 ### 4.5 Secretaría: el bot de soporte que siembra
 

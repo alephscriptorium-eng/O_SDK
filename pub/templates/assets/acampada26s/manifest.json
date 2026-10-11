@@ -1,0 +1,407 @@
+{
+  "template": "acampada26s",
+  "font_sha256": null,
+  "items": [
+    {
+      "id": "asamblea_general",
+      "section": "tribes",
+      "file": "tribu-asamblea_general.png",
+      "lona": "lona-128.jpg",
+      "bytes": 316349,
+      "sha256": "d65538b5e2fd28f70f2126906aafdcdd94133aa649ee59000355ce2c15892e68",
+      "blobId": "&1lU4teL9KPcPISaQaq/c3ZQTOqZJ7lkAA1XOLBWJLmg=.sha256"
+    },
+    {
+      "id": "asamblea_internodos",
+      "section": "tribes",
+      "file": "tribu-asamblea_internodos.png",
+      "lona": "lona-063.jpg",
+      "bytes": 347869,
+      "sha256": "71bb9067925edcbab07aeaf3e0d68e5c3cc868ebd772b5c6b48466492455cf69",
+      "blobId": "&cbuQZ5Je3Lqweurz4NaOXDzIaOvXcrXGtIRmSSRVz2k=.sha256"
+    },
+    {
+      "id": "nodo_norte",
+      "section": "tribes",
+      "file": "tribu-nodo_norte.png",
+      "lona": "lona-120.jpg",
+      "bytes": 410066,
+      "sha256": "cf015bade6c167ac3d9d8623a8e35b3e5f830b82d671cb7f3c441582633d89aa",
+      "blobId": "&zwFbrebBZ6w9nYYjqONbPl+DC4LWcct/PEQVgmM9iao=.sha256"
+    },
+    {
+      "id": "nodo_oeste",
+      "section": "tribes",
+      "file": "tribu-nodo_oeste.png",
+      "lona": "lona-122.jpg",
+      "bytes": 329844,
+      "sha256": "1720c00ab1edbf079ef21ac9d69e814e58361662adb4c0124d26522f44160562",
+      "blobId": "&FyDACrHtvwee8hrJ1p6BTlg2FmKttMASTSZSL0QWBWI=.sha256"
+    },
+    {
+      "id": "nodo_centro",
+      "section": "tribes",
+      "file": "tribu-nodo_centro.png",
+      "lona": "lona-066.jpg",
+      "bytes": 354291,
+      "sha256": "76bcb99a18b597f8f10ed449f21f919bdf8bd86c26c3ef3ff5cfd5041054a2ef",
+      "blobId": "&dry5mhi1l/jxDtRJ8h+Rm9+L2Gwmw+8/9c/VBBBUou8=.sha256"
+    },
+    {
+      "id": "nodo_este",
+      "section": "tribes",
+      "file": "tribu-nodo_este.png",
+      "lona": "lona-177.jpg",
+      "bytes": 348542,
+      "sha256": "945a3bffb4ec601f92d9b2aed9596e0491ae4788debf191ca5bb7a875d9aa425",
+      "blobId": "&lFo7/7TsYB+S2bKu2VluBJGuR4jevxkcpbt6h12apCU=.sha256"
+    },
+    {
+      "id": "nodo_sur",
+      "section": "tribes",
+      "file": "tribu-nodo_sur.png",
+      "lona": "lona-119.jpg",
+      "bytes": 204257,
+      "sha256": "09718f3fff82a9dfbfdc57068a3ec72f8c855264d7896c357678f76644aca16d",
+      "blobId": "&CXGPP/+Cqd+/3FcGij7HL4yFUmTXiWw1dnj3ZkSsoW0=.sha256"
+    },
+    {
+      "id": "comision_comunicacion",
+      "section": "tribes",
+      "file": "tribu-comision_comunicacion.png",
+      "lona": "lona-177.jpg",
+      "bytes": 356784,
+      "sha256": "b740a982f9b8fc0d8034e8e721103fcefa2cc5966909a3a1f2e651f651747bc2",
+      "blobId": "&t0Cpgvm4/A2ANOjnIRA/zvosxZZpCaOh8uZR9lF0e8I=.sha256"
+    },
+    {
+      "id": "comision_urbanismo",
+      "section": "tribes",
+      "file": "tribu-comision_urbanismo.png",
+      "lona": "lona-119.jpg",
+      "bytes": 214281,
+      "sha256": "0b56012659c3f1f9cdb8505a682f0868a902f3886931d6d1e0b7805b059bec7d",
+      "blobId": "&C1YBJlnD8fnNuFBaaC8IaKkC84hpMdbR4LeAWwWb7H0=.sha256"
+    },
+    {
+      "id": "comision_cuidados",
+      "section": "tribes",
+      "file": "tribu-comision_cuidados.png",
+      "lona": "lona-123.jpg",
+      "bytes": 321570,
+      "sha256": "a5dd4efd083fad78ef6714e9a285d6bec0d676e65159013687dd830eb6fe307f",
+      "blobId": "&pd1O/Qg/rXjvZxTpooXWvsDWduZRWQE2h92DDrb+MH8=.sha256"
+    },
+    {
+      "id": "comision_dinamizacion",
+      "section": "tribes",
+      "file": "tribu-comision_dinamizacion.png",
+      "lona": "lona-036.jpg",
+      "bytes": 337409,
+      "sha256": "2c0b3ff8bb4416bd42611a5101587c0890f6d9808920d344a385a3aa20f23e19",
+      "blobId": "&LAs/+LtEFr1CYRpRAVh8CJD22YCJINNEo4WjqiDyPhk=.sha256"
+    },
+    {
+      "id": "comision_mediacion",
+      "section": "tribes",
+      "file": "tribu-comision_mediacion.png",
+      "lona": "lona-120.jpg",
+      "bytes": 420244,
+      "sha256": "9dce2ca2c34ab9cb82adc782a8c6acc6a24a931c599301b2e95e89d54d29e4e5",
+      "blobId": "&nc4sosNKucuCrceCqMasxqJKkxxZkwGy6V6J1U0p5OU=.sha256"
+    },
+    {
+      "id": "comision_limpieza",
+      "section": "tribes",
+      "file": "tribu-comision_limpieza.png",
+      "lona": "lona-118.jpg",
+      "bytes": 399511,
+      "sha256": "78c1063778782675e5099e5a1a98e9a11391aaffe11e395d2ea3ee5bbf32f576",
+      "blobId": "&eMEGN3h4JnXlCZ5aGpjpoRORqv/hHjldLqPuW78y9XY=.sha256"
+    },
+    {
+      "id": "comision_abastecimiento",
+      "section": "tribes",
+      "file": "tribu-comision_abastecimiento.png",
+      "lona": "lona-066.jpg",
+      "bytes": 358845,
+      "sha256": "ef00121ff29b53ccabae398ea7a3354a31f9916ae3d2637c22dbdc960f46bd2c",
+      "blobId": "&7wASH/KbU8yrrjmOp6M1SjH5kWrj0mN8Itvclg9GvSw=.sha256"
+    },
+    {
+      "id": "com_general",
+      "section": "tribes",
+      "file": "tribu-com_general.png",
+      "lona": "lona-123.jpg",
+      "bytes": 315274,
+      "sha256": "354d060e120e3e52c7926685cd4718a1fc030a5e69dc70dba382d0434b8b2e9f",
+      "blobId": "&NU0GDhIOPlLHkmaFzUcYofwDCl5p3HDbo4LQQ0uLLp8=.sha256"
+    },
+    {
+      "id": "com_redes",
+      "section": "tribes",
+      "file": "tribu-com_redes.png",
+      "lona": "lona-123.jpg",
+      "bytes": 318227,
+      "sha256": "8bdb3721221893110f221f50ad3824c205c4def94e06b1137a5fec849a32e8ba",
+      "blobId": "&i9s3ISIYkxEPIh9QrTgkwgXE3vlOBrETel/shJoy6Lo=.sha256"
+    },
+    {
+      "id": "com_interna",
+      "section": "tribes",
+      "file": "tribu-com_interna.png",
+      "lona": "lona-128.jpg",
+      "bytes": 314453,
+      "sha256": "67f3fbdf960ef556ba8eb838625812307998a5a7a305b01e2b22aaf00dc1bc4d",
+      "blobId": "&Z/P735YO9Va6jrg4YlgSMHmYpaejBbAeKyKq8A3BvE0=.sha256"
+    },
+    {
+      "id": "com_audiovisual",
+      "section": "tribes",
+      "file": "tribu-com_audiovisual.png",
+      "lona": "lona-119.jpg",
+      "bytes": 209537,
+      "sha256": "e2b050d788a8c6d59ef100534dc0f98791a506ecb7925d6f2e88d0460fba273a",
+      "blobId": "&4rBQ14ioxtWe8QBTTcD5h5GlBuy3kl1vLojQRg+6Jzo=.sha256"
+    },
+    {
+      "id": "com_diseno",
+      "section": "tribes",
+      "file": "tribu-com_diseno.png",
+      "lona": "lona-036.jpg",
+      "bytes": 335311,
+      "sha256": "34ce422744a9af88bf3c3774c4fd1d2545ebe82e637e7a34baf9aa6facbdf200",
+      "blobId": "&NM5CJ0Spr4i/PDd0xP0dJUXr6C5jfno0uvmqb6y98gA=.sha256"
+    },
+    {
+      "id": "com_cultura",
+      "section": "tribes",
+      "file": "tribu-com_cultura.png",
+      "lona": "lona-036.jpg",
+      "bytes": 334291,
+      "sha256": "c3510e86b29308f6b033bb085acd9cb62729c3ef5a1f46f886d96df947532f51",
+      "blobId": "&w1EOhrKTCPawM7sIWs2cticpw+9aH0b4htlt+UdTL1E=.sha256"
+    },
+    {
+      "id": "com_piar",
+      "section": "tribes",
+      "file": "tribu-com_piar.png",
+      "lona": "lona-119.jpg",
+      "bytes": 214890,
+      "sha256": "836e68a69afd49324edbb3027c54308f4675a8cabfea4cee53f64514200fa5ca",
+      "blobId": "&g25oppr9STJO27MCfFQwj0Z1qMq/6kzuU/ZFFCAPpco=.sha256"
+    },
+    {
+      "id": "com_crisis",
+      "section": "tribes",
+      "file": "tribu-com_crisis.png",
+      "lona": "lona-128.jpg",
+      "bytes": 322382,
+      "sha256": "6686770a5f94a6fd5d5643c1cc2daf78d3d5e251f293edfdb864ec4815b098db",
+      "blobId": "&ZoZ3Cl+Upv1dVkPBzC2veNPV4lHyk+39uGTsSBWwmNs=.sha256"
+    },
+    {
+      "id": "com_correccion",
+      "section": "tribes",
+      "file": "tribu-com_correccion.png",
+      "lona": "lona-116.jpg",
+      "bytes": 357763,
+      "sha256": "44f16a055fe71effa313375c008179620e56f30d520ce6aec2796e9c97e048ac",
+      "blobId": "&RPFqBV/nHv+jEzdcAIF5Yg5W8w1SDOauwnlunJfgSKw=.sha256"
+    },
+    {
+      "id": "intercsos",
+      "section": "tribes",
+      "file": "tribu-intercsos.png",
+      "lona": "lona-071.jpg",
+      "bytes": 350005,
+      "sha256": "5f27b30cdd5e56e9ef0ca61e09dcfbca20bc9c8b1c647faa99e395b6eeed45d1",
+      "blobId": "&XyezDN1eVunvDKYeCdz7yiC8nIscZH+qmeOVtu7tRdE=.sha256"
+    },
+    {
+      "id": "asamblea_colectivos",
+      "section": "tribes",
+      "file": "tribu-asamblea_colectivos.png",
+      "lona": "lona-122.jpg",
+      "bytes": 336851,
+      "sha256": "16f05b68ee8f41f2abd92ccf53261eb0eafcb1959329297127a3fefeadae236d",
+      "blobId": "&FvBbaO6PQfKr2SzPUyYesOr8sZWTKSlxJ6P+/q2uI20=.sha256"
+    },
+    {
+      "id": "sala_asamblea_general",
+      "section": "rooms",
+      "file": "sala-sala_asamblea_general.png",
+      "lona": "lona-128.jpg",
+      "bytes": 315484,
+      "sha256": "432206f5259afb0e9f37cc16731d5a253942e92b61e25a2d96ba8cc0c87aa7e5",
+      "blobId": "&QyIG9SWa+w6fN8wWcx1aJTlC6Sth4lotlrqMwMh6p+U=.sha256"
+    },
+    {
+      "id": "sala_internodos",
+      "section": "rooms",
+      "file": "sala-sala_internodos.png",
+      "lona": "lona-063.jpg",
+      "bytes": 347218,
+      "sha256": "cb4151d025ab8b756c8164962f3c13ba3c981dcbbb74da850c0dc107a30040c3",
+      "blobId": "&y0FR0CWri3VsgWSWLzwTujyYHcu7dNqFDA3BB6MAQMM=.sha256"
+    },
+    {
+      "id": "sala_nodo_norte",
+      "section": "rooms",
+      "file": "sala-sala_nodo_norte.png",
+      "lona": "lona-118.jpg",
+      "bytes": 398671,
+      "sha256": "e1dae1a3734339191d46a7d7bbbc989e684dd396739a274c7f73fd1f0cd73716",
+      "blobId": "&4drho3NDORkdRqfXu7yYnmhN05ZzmidMf3P9HwzXNxY=.sha256"
+    },
+    {
+      "id": "sala_nodo_oeste",
+      "section": "rooms",
+      "file": "sala-sala_nodo_oeste.png",
+      "lona": "lona-071.jpg",
+      "bytes": 354217,
+      "sha256": "d657f284841ee412899f07c6fdfaf2bfc2ef1989776c88599a8d8b282290b327",
+      "blobId": "&1lfyhIQe5BKJnwfG/fryv8LvGYl3bIhZmo2LKCKQsyc=.sha256"
+    },
+    {
+      "id": "sala_nodo_centro",
+      "section": "rooms",
+      "file": "sala-sala_nodo_centro.png",
+      "lona": "lona-119.jpg",
+      "bytes": 209241,
+      "sha256": "4022483377c221fe67fe874d20373dd9a6e643d121b0398604833d8452e7f966",
+      "blobId": "&QCJIM3fCIf5n/odNIDc92abmQ9EhsDmGBIM9hFLn+WY=.sha256"
+    },
+    {
+      "id": "sala_nodo_este",
+      "section": "rooms",
+      "file": "sala-sala_nodo_este.png",
+      "lona": "lona-128.jpg",
+      "bytes": 315492,
+      "sha256": "139c19ea47cbd1a612f670e4603dcb215620f2ec22d429d0d40153dcb63cd351",
+      "blobId": "&E5wZ6kfL0aYS9nDkYD3LIVYg8uwi1CnQ1AFT3LY801E=.sha256"
+    },
+    {
+      "id": "sala_nodo_sur",
+      "section": "rooms",
+      "file": "sala-sala_nodo_sur.png",
+      "lona": "lona-177.jpg",
+      "bytes": 353803,
+      "sha256": "d1c1a2b108fe444bf0aa4acee80cb4f0abf53096faedc670dbdddac0a050d432",
+      "blobId": "&0cGisQj+REvwqkrO6Ay08Kv1MJb67cZw293awKBQ1DI=.sha256"
+    },
+    {
+      "id": "mapa_sol",
+      "section": "maps",
+      "file": "mapa-mapa_sol.png",
+      "lona": "lona-177.jpg",
+      "bytes": 353749,
+      "sha256": "444610de59e2d10fb392e198f1be5a54d4c0a7a324fccb98acd74f2d51b35162",
+      "blobId": "&REYQ3lni0Q+zkuGY8b5aVNTAp6Mk/MuYrNdPLVGzUWI=.sha256"
+    },
+    {
+      "id": "mapa_nodos",
+      "section": "maps",
+      "file": "mapa-mapa_nodos.png",
+      "lona": "lona-122.jpg",
+      "bytes": 335037,
+      "sha256": "94ba65f757d30ccd318c69c9d874c39151c954314202f4274fe5894fea308053",
+      "blobId": "&lLpl91fTDM0xjGnJ2HTDkVHJVDFCAvQnT+WJT+owgFM=.sha256"
+    },
+    {
+      "id": "evento_asamblea_general",
+      "section": "events",
+      "file": "evento-evento_asamblea_general.png",
+      "lona": "lona-036.jpg",
+      "bytes": 333381,
+      "sha256": "52453bbd98e5979a5cca4fe6fdff63307baa5a949c0ca93bca0902e83c48c055",
+      "blobId": "&UkU7vZjll5pcyk/m/f9jMHuqWpScDKk7ygkC6DxIwFU=.sha256"
+    },
+    {
+      "id": "wiki_organigrama",
+      "section": "wiki",
+      "file": "wiki-wiki_organigrama.png",
+      "lona": "lona-063.jpg",
+      "bytes": 359423,
+      "sha256": "f284bdddfe5ab7e89e4207317b309b35ad999ef7ac4329b26342c2c0d7ce9f22",
+      "blobId": "&8oS93f5at+ieQgcxezCbNa2ZnvesQymyY0LCwNfOnyI=.sha256"
+    },
+    {
+      "id": "wiki_semaforo",
+      "section": "wiki",
+      "file": "wiki-wiki_semaforo.png",
+      "lona": "lona-128.jpg",
+      "bytes": 317882,
+      "sha256": "5b28758ce90bc1c62a998f37d650f167393049f97d8a00b4971bb73c830e3642",
+      "blobId": "&Wyh1jOkLwcYqmY831lDxZzkwSfl9igC0lxu3PIMONkI=.sha256"
+    },
+    {
+      "id": "wiki_portavocias",
+      "section": "wiki",
+      "file": "wiki-wiki_portavocias.png",
+      "lona": "lona-063.jpg",
+      "bytes": 357663,
+      "sha256": "d15ad00d35328dc5b086f32060a1955c4a6eec6ffa861c0efe3ac43afe262ea5",
+      "blobId": "&0VrQDTUyjcWwhvMgYKGVXEpu7G/6hhwO/jrEOv4mLqU=.sha256"
+    },
+    {
+      "id": "wiki_onboarding",
+      "section": "wiki",
+      "file": "wiki-wiki_onboarding.png",
+      "lona": "lona-036.jpg",
+      "bytes": 336291,
+      "sha256": "0b4e075326dc5f2c97c7edcf448f676d88f892d766252ddf0a41e29962db9acf",
+      "blobId": "&C04HUybcXyyXx+3PRI9nbYj4ktdmJS3fCkHimWLbms8=.sha256"
+    },
+    {
+      "id": "wiki_reparto",
+      "section": "wiki",
+      "file": "wiki-wiki_reparto.png",
+      "lona": "lona-036.jpg",
+      "bytes": 333230,
+      "sha256": "30594b52304927e5a1b14e3e69927e1957cb653936dc7a0041a1941a640bc4f4",
+      "blobId": "&MFlLUjBJJ+WhsU4+aZJ+GVfLZTk23HoAQaGUGmQLxPQ=.sha256"
+    },
+    {
+      "id": "wiki_onboarding",
+      "section": "wiki-file",
+      "file": "wiki/wiki_onboarding.md",
+      "from": "ARCHIVO/DISCO/retro-exporter/onboarding-nodo.md",
+      "bytes": 20555,
+      "sha256": "081193f11b13b20fc9727a53a14df0d731ae1a66e07128f9b3f0e5b596232f91"
+    },
+    {
+      "id": "wiki_reparto",
+      "section": "wiki-file",
+      "file": "wiki/wiki_reparto.md",
+      "from": "ARCHIVO/DISCO/26sm-exported/guia-reparto-acampada26s.md",
+      "bytes": 16696,
+      "sha256": "73dfb461dfbe41664f9d9d2dde1ec435a3a3ebae5839d52a15d8d1364fff773a"
+    }
+  ],
+  "brand": {
+    "marca_sha256": "e7a97365124aa8399b1aa0dc0af702ff791d3218822789d28f7964c95cab701f",
+    "fonts": {
+      "CabinCondensed-Bold.ttf": "55c7759cde62445fe60d36df812f83ad2f720929628040f2a036e1e8c6e48671",
+      "CabinCondensed-Regular.ttf": "d3ad2ca1872bc3a8664ba913314b2f85fef015d0a7cb3007a7ca6420b84e574d"
+    },
+    "logo": {
+      "LOGO-A26S-BLANCO.png": "c12600927536a9f8a312e81e2e2b92e9e1d632dfd283fb96dbfa86df0f199f04"
+    },
+    "fondos": {
+      "lona-036.jpg": "8c8dbfcb5017212dc6bfcfa854a8f9c17fa5aacda576241cfbc4beebdecb5314",
+      "lona-063.jpg": "c5010e7855cb498eecc2c7ec50b1b763408a7fbf0a437137ce43506ac63858a1",
+      "lona-066.jpg": "38a7c8216b6b4a1f23638cc60e37c12454e0ef05d99b7a6c2d7fd822974ab579",
+      "lona-071.jpg": "c5010e7855cb498eecc2c7ec50b1b763408a7fbf0a437137ce43506ac63858a1",
+      "lona-115.jpg": "c378cf94ebabd9bbcce6e916c9a3fdae2b4d0a6c4a2246470ba0fb4ddf152bb0",
+      "lona-116.jpg": "38a7c8216b6b4a1f23638cc60e37c12454e0ef05d99b7a6c2d7fd822974ab579",
+      "lona-118.jpg": "c8eb4f5c96156d4898ff734c164739f430a9bc043c39e9507d1d850ef7651d87",
+      "lona-119.jpg": "50d1e4fbfde263139b8510b1229280ed0cb1dfcec4661194d08be06b4b63529a",
+      "lona-120.jpg": "a5f736bf22a23add343254c3c7d6216a05eaebe8bbae8e4b279a3a11d93657ef",
+      "lona-122.jpg": "8963f739be2f25aa3c5ea6369cebf652ed33ef727060ab005d0c5a8fba65e121",
+      "lona-123.jpg": "4a896b7560ff78096597cea7a9486b75f444f8e17d5ae09b23582d41096e0b74",
+      "lona-128.jpg": "4a896b7560ff78096597cea7a9486b75f444f8e17d5ae09b23582d41096e0b74",
+      "lona-177.jpg": "edd059625d0fc551cd8db691bcdb5af3e9b1e8f7f4fed7f2d4b5bf9b64a6e0d8"
+    }
+  }
+}

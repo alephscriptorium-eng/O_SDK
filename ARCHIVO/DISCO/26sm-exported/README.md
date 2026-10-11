@@ -18,7 +18,7 @@ nada: los nombres propios son los del colectivo. Lo que se mantiene en el tiempo
 | Mapeo organigrama → Oasis (trazable por `id`) | `../retro-exporter/MAPEO.md` | cerrado 2026-10-07 |
 | **Logos** del colectivo (6 variantes, 1021×1134 PNG) | `assets/` · inventario `assets/MANIFEST.md` | recibidos 2026-10-11; oficial sin elegir (formulario A1) |
 | **Canva**: kit visual, post, recursos gráficos | `canva/` · índice `canva/README.md` · manifiestos por pieza · **`canva/kit-visual/BRANDKIT.md`** (resumen citado por página) · `canva/kit-visual/extraido/` (40 imágenes embebidas del PDF: 17 lonas, logos con alfa, avatar, banner; `entrada/extraer-brandkit.py`) | ✓ kit visual (PDF 19 págs) y post (32 PNG 1080×1350) recibidos 2026-10-11 · ⬜ recursos gráficos y 2 páginas del post |
-| Kit visual 512×512 para la plantilla, con la marca | `pub/templates/assets/acampada26s/` (generador `pub/tools/template-kit.py --brand entrada/marca.json`) | ⬜ fase 2 de la ronda «marca real» (Pillow 12.3 disponible en `C:\Python314`; el fallo anterior fue el flag `-I`) |
+| **Kit visual 512×512 con la marca** (lona, caja azul, etiqueta naranja, logo; Cabin Condensed como sustituto libre de Gill Sans) | `pub/templates/assets/acampada26s/` (`npm run pub:template:kit:26s`; generador `pub/tools/template-kit.py --brand entrada/marca.json`) · fuentes `assets/fonts/` (OFL) · avatar candidato `assets/avatar-secretaria-512.png` · muestras `pruebas/` | ✓ generado 2026-10-11: 40 PNG (200-410 KB), determinista; pendiente del GO de branding (formulario A3-A4) |
 
 ## Cómo se trabaja esta carpeta
 
@@ -73,11 +73,22 @@ python -X utf8 ARCHIVO/DISCO/26sm-exported/canva/manifest.py                    
 | Formulario | `formulario.py` + `grep` lista negra + hex ⊂ JSON | 85 filas, 4 candidatos, 0 jerga, 4 hex todos en el JSON |
 | No regresión Campamento | `template-seed.js --guion` sobre `campamento.json` | `24 ids` · exit 0 |
 
+## Evidencia de la ronda «marca real», fase 2 (2026-10-11)
+
+| Comprobación | Comando | Salida |
+|---|---|---|
+| Fuentes libres | `curl` a `github.com/google/fonts/ofl/cabincondensed` (ok del custodio) · `sha256sum` | `CabinCondensed-Bold.ttf` 97876 B, `-Regular.ttf` 99468 B, `OFL.txt`; sha en `assets/MANIFEST.md` |
+| No regresión del generador | `template-kit.py` sin `--brand` sobre Campamento, sha de los 40 PNG vs `pub/templates/assets/campamento/manifest.json` | 40/40 iguales (solo cambian las copias `wiki/*.md`, cuyas fuentes cambiaron en commits posteriores) |
+| Kit 26S | `npm run pub:template:kit:26s` ×2 | 40 PNG 512×512 RGB, máx 410 KB, media 321 KB; `manifest.json` idéntico en las dos ejecuciones; 12 lonas distintas usadas |
+| Paleta exacta | muestreo de píxeles en `tribu-asamblea_general.png` | caja `#0452c5` · etiqueta `#ff981f` · texto `#ffffff` |
+| Revisión visual | `pruebas/_contacto.png` (hoja de contacto + simulación del recorte 280×140 del hub) | nombre legible en la banda central; logo con aire; sin sombras ni iconos |
+| Formulario | `formulario.py` | A4 con las muestras; lista negra 0 |
+
 ## Pendientes (2026-10-11)
 
 - [ ] Enviar `FORMULARIO-BRANDING-CONTENIDOS.md` a branding y contenidos; incorporar respuestas al JSON v2 y regenerar.
 - [ ] Canva: conseguir RECURSOS GRÁFICOS y las 2 páginas que faltan del POST; rellenar la columna «Para qué» de los manifiestos.
 - [ ] Decidir si los 96 MB de Canva se versionan o van a `.gitignore` (queda el manifiesto).
-- [ ] Fase 2 «marca real»: fuentes libres (Cabin Condensed, OFL), `template-kit.py --brand`, prueba de tarjetas, kit 512×512, avatar y portada.
+- [ ] GO de branding al kit (formulario A3-A4) y al avatar (A1); si entregan Gill Sans, regenerar con `marca.json → fuentes` apuntando fuera del repo.
 - [ ] Medir `oasisVersion` del pub `acampada26s.net` (`instancia.oasis_version.observada`).
 - [ ] Paquete «congelado» para el operador de la 26S (runbook externo + compose aislado): siguiente micro-tarea.

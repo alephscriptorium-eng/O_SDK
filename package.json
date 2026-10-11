@@ -84,6 +84,7 @@
     "pub:template:reparto": "node ./pub/tools/template-seed.js --template pub/templates/campamento.json --organigrama ARCHIVO/DISCO/scriptorium-exported/entrada/campamento_organigrama.json --reparto --out ARCHIVO/DISCO/scriptorium-exported/guia-reparto-campamento.md",
     "pub:template:reparto:html": "node ./pub/tools/template-seed.js --template pub/templates/campamento.json --organigrama ARCHIVO/DISCO/scriptorium-exported/entrada/campamento_organigrama.json --reparto --html pub/site-templates/poster/guia.html --out pub/site/parlament/campamento/index.html",
     "pub:template:kit": "python -X utf8 ./pub/tools/template-kit.py --template pub/templates/campamento.json --font ARCHIVO/DISCO/scriptorium-exported/assets/fonts/DejaVuSans-Bold.ttf --out pub/templates/assets/campamento",
+    "pub:template:kit:26s": "python -X utf8 ./pub/tools/template-kit.py --template pub/templates/acampada26s.json --brand ARCHIVO/DISCO/26sm-exported/entrada/marca.json --out pub/templates/assets/acampada26s",
     "devops:status": "bash ./devops/scripts/deploy-status.sh",
     "devops:preflight": "bash ./devops/scripts/upgrade-preflight.sh",
     "devops:upgrade:diff": "bash ./devops/scripts/upgrade-behaviour-diff.sh",

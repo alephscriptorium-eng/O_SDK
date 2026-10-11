@@ -15,3 +15,14 @@ campo `image` de cada entrada (`pub/templates/SCHEMA.md`, «Imágenes»).
   el contenedor. La fuente sigue siendo el fichero original.
 
 Regenerar: `npm run pub:template:kit` (plantilla Campamento). Dos ejecuciones dan los mismos bytes.
+
+## Con la marca del colectivo (`--brand <marca.json>`, desde 2026-10-11)
+
+`marca.json` lo escribe el derivador del dosier desde el organigrama (`instancia.marca`): paleta, fuentes (rutas), fondos (fotos de lona con
+sha256), logo por versión, etiquetas por tipo y patrón de avatar. Con él, `template-kit.py` pinta foto de lona de fondo, caja de color con el
+nombre en mayúsculas (tamaño ajustado, ≤ 3 líneas, en la banda central que sobrevive al recorte 280×140 del hub), etiqueta por tipo, logo con
+aire; sin iconos ni sombras. `--avatar-brand` hace el avatar según el patrón del kit. El `manifest.json` añade `brand` con los sha256 de
+`marca.json`, fuentes, logo y fondos. **Sin `--brand` el generador es byte a byte el de antes** (medido: 40/40 PNG de Campamento iguales).
+
+**Fuentes**: solo se vendorizan fuentes libres (OFL, DejaVu); una tipografía propietaria (p. ej. Gill Sans) se pasa por ruta externa al repo
+y nunca se commitea. Demo: `pub/templates/assets/acampada26s/` (`npm run pub:template:kit:26s`), 40 PNG de 200-410 KB.

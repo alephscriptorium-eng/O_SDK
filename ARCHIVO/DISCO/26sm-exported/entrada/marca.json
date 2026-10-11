@@ -79,5 +79,11 @@
     "Fecha, hora o lugar",
     "Llamada a la acción",
     "Logo"
-  ]
+  ],
+  "portadas": {
+    "wiki_organigrama": {
+      "subtitulo": "Estructura asamblearia, horizontal y en red",
+      "referencia": "kit pág. 17"
+    }
+  }
 }
