@@ -109,6 +109,7 @@ const renderAudioList = exports.renderAudioList = (audios, filter, params = {}) 
           : audioObj.tribeOrigin
             ? renderContentActions(null, audioObj.tribeOrigin.href)
             : renderContentActions(audioObj.key, `/audios/${encodeURIComponent(audioObj.key)}`, { spread: (params.spreadMap && params.spreadMap.get(audioObj.key)) || params.spreads || null, author: audioObj.author, favKind: 'audios', torrentFrom: { blobId: audioObj.url, name: audioObj.title }, isFavorite: audioObj.isFavorite, reportTitle: audioObj.title, deleteAction: isOwn ? contentDeleteAction('audio', audioObj.key) : undefined, returnTo });
+        const titleHref = typeof params.headerActions === "function" ? null : audioObj.tribeOrigin ? audioObj.tribeOrigin.href : `/audios/${encodeURIComponent(audioObj.key)}`;
         const engagement = typeof params.engagement === "function"
           ? params.engagement(audioObj)
           : audioObj.tribeOrigin ? null : renderEngagement(audioObj.key,
@@ -124,7 +125,7 @@ const renderAudioList = exports.renderAudioList = (audios, filter, params = {}) 
           ),
           div(
             { class: "card-section audio-card-body" },
-            div({ class: "shop-title-row" }, title ? h2(title) : null, audioObj.tribeOrigin ? renderTribeOriginChip(audioObj.tribeOrigin) : audioObj.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('audios', audioObj.title, audioObj.key)) : null, renderLicenseChip(audioObj.license), ...(typeof params.titleChips === "function" ? params.titleChips(audioObj) : [])),
+            div({ class: "shop-title-row" }, title ? h2(titleHref ? a({ href: titleHref, class: "card-title-link" }, title) : title) : null, audioObj.tribeOrigin ? renderTribeOriginChip(audioObj.tribeOrigin) : audioObj.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('audios', audioObj.title, audioObj.key)) : null, renderLicenseChip(audioObj.license), ...(typeof params.titleChips === "function" ? params.titleChips(audioObj) : [])),
             audioObj.lifetime ? div({ class: "card-chips-row" }, renderLifespanChip(audioObj.lifetime, i18n)) : null,
             renderAudioPlayer(audioObj),
             ...(typeof params.bodyExtra === "function" ? params.bodyExtra(audioObj) : []),
@@ -238,9 +239,9 @@ exports.audioView = async (audios, filter = "all", audioId = null, params = {}) 
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
           ...(emptyMod ? [] : [
+          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterAll).toUpperCase()),
           ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterRecent).toUpperCase())] : []),
           ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterMine).toUpperCase())] : []),
-          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterAll).toUpperCase()),
           ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.audioFilterFavorites).toUpperCase()
@@ -381,9 +382,9 @@ exports.singleAudioView = async (audioObj, filter = "all", comments = [], params
           { method: "GET", action: "/audios", class: "ui-toolbar ui-toolbar--filters" },
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
+          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterAll).toUpperCase()),
           ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterRecent).toUpperCase())] : []),
           ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterMine).toUpperCase())] : []),
-          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.audioFilterAll).toUpperCase()),
           ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.audioFilterFavorites).toUpperCase()

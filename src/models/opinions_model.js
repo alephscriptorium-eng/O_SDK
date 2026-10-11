@@ -2,8 +2,9 @@ const pull = require('../server/node_modules/pull-stream');
 const { getConfig } = require('../configs/config-manager.js');
 const categories = require('../backend/opinion_categories');
 const { buildValidatedTombstoneSet } = require('./tombstone_validator');
-const { readTyped, CONTENT_TYPES } = require('./typed_log');
+const { readTyped, CONTENT_TYPES, requestScope } = require('./typed_log');
 const { buildVoteTally } = require('../backend/vote_tally');
+const { versionGroups, versionEntry } = require('../backend/dedupe');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 
 module.exports = ({ cooler }) => {
@@ -33,31 +34,7 @@ module.exports = ({ cooler }) => {
     return c.text || c.description || c.title || c.name || '';
   };
 
-  const OPINION_MSG_TYPE = {
-    bookmark: 'bookmarkOpinion',
-    votes: 'votesOpinion',
-    transfer: 'transferOpinion',
-    feed: 'feedOpinion',
-    image: 'imageOpinion',
-    audio: 'audioOpinion',
-    video: 'videoOpinion',
-    document: 'documentOpinion',
-    torrent: 'torrentOpinion',
-    file: 'fileOpinion',
-    industry: 'industryOpinion',
-    project: 'projectOpinion',
-    report: 'reportOpinion',
-    task: 'taskOpinion',
-    event: 'eventOpinion',
-    shopProduct: 'shopOpinion',
-    housing: 'housingOpinion',
-    market: 'marketOpinion',
-    schoolCourse: 'schoolOpinion',
-    podcast: 'podcastOpinion',
-    podcastEpisode: 'podcastOpinion',
-    campaign: 'campaignOpinion',
-    logisticsRoute: 'logisticsOpinion'
-  };
+  const OPINION_MSG_TYPE = categories.messageTypes;
 
   const createVote = async (contentId, category) => {
     const ssbClient = await openSsb();
@@ -77,31 +54,23 @@ module.exports = ({ cooler }) => {
     );
   };
 
-  const listOpinions = async (filter = 'ALL', category = '') => {
+  const computeBase = async () => {
     const ssbClient = await openSsb();
-    const userId = ssbClient.id;
     const messages = await readTyped(ssbClient, CONTENT_TYPES, { limit: logLimit, withWindow: true });
     const tombstoned = buildValidatedTombstoneSet(messages);
-    const replaces = new Map();
     const byId = new Map();
-    const authorOf = new Map();
     const opinionMsgs = [];
 
     for (const msg of messages) {
       const key = msg.key;
       const c = msg.value?.content;
       if (!c) continue;
-      if (c.type === 'tombstone') {
-        if (tombstoned.has(c.target)) byId.delete(c.target);
-        continue;
-      }
-      if (key) authorOf.set(key, msg.value.author);
+      if (c.type === 'tombstone') continue;
       if (typeof c.type === 'string' && c.type.endsWith('Opinion') && c.target) {
         opinionMsgs.push({ target: c.target, author: msg.value.author, category: c.category });
         continue;
       }
-      if (c.opinions && !tombstoned.has(key) && !['task', 'event', 'report'].includes(c.type)) {
-        if (c.replaces) replaces.set(c.replaces, key);
+      if (c.opinions && !['task', 'event', 'report'].includes(c.type)) {
         byId.set(key, {
           key,
           value: {
@@ -111,38 +80,19 @@ module.exports = ({ cooler }) => {
           }
         });
       }
-      if (c.type === 'feed' && !tombstoned.has(key) && !byId.has(key)) {
-        if (c.replaces) replaces.set(c.replaces, key);
+      if (c.type === 'feed' && !byId.has(key)) {
         byId.set(key, { key, value: { ...msg.value, content: c, preview: getPreview(c) } });
       }
     }
 
-    for (const [oldId, newId] of Array.from(replaces.entries())) {
-      const oldAuthor = authorOf.get(oldId);
-      const newM = byId.get(newId);
-      if (oldAuthor === undefined) { replaces.delete(oldId); continue; }
-      if (!newM || String(newM.value.author) !== String(oldAuthor)) {
-        replaces.delete(oldId);
-        byId.delete(newId);
-      }
+    const vg = versionGroups(Array.from(byId.values()).map(versionEntry));
+    for (const key of Array.from(byId.keys())) {
+      if (!vg.roots.has(vg.rootOf(key)) || vg.tipOf(key) !== key || tombstoned.has(key)) byId.delete(key);
     }
 
-    for (const replacedId of replaces.keys()) {
-      byId.delete(replacedId);
-    }
-
-    const tipToChain = new Map();
-    for (const [oldId, newId] of replaces.entries()) {
-      let tip = newId; let g = 0;
-      while (replaces.has(tip) && g++ < 100000) tip = replaces.get(tip);
-      if (!tipToChain.has(tip)) tipToChain.set(tip, new Set([tip]));
-      tipToChain.get(tip).add(oldId); tipToChain.get(tip).add(newId);
-    }
-    const idToTip = new Map();
-    for (const [tip, chain] of tipToChain.entries()) for (const id of chain) idToTip.set(id, tip);
     const opinionByTip = new Map();
     for (const op of opinionMsgs) {
-      const tip = idToTip.get(op.target) || op.target;
+      const tip = vg.tipOf(op.target);
       if (!opinionByTip.has(tip)) opinionByTip.set(tip, { opinions: {}, voters: new Set() });
       const agg = opinionByTip.get(tip);
       if (agg.voters.has(op.author)) continue;
@@ -246,10 +196,24 @@ module.exports = ({ cooler }) => {
     }
     filtered = Array.from(bySig.values());
 
-    filtered = filtered.filter(m => {
+    return filtered.filter(m => {
       const ops = m.value?.content?.opinions || {};
       return Object.values(ops).reduce((acc, x) => acc + (Number(x) || 0), 0) > 0;
     });
+  };
+
+  const baseItems = () => {
+    const store = requestScope.getStore();
+    if (store && store.opinionsBase) return store.opinionsBase;
+    const pending = computeBase();
+    if (store) store.opinionsBase = pending;
+    return pending;
+  };
+
+  const listOpinions = async (filter = 'ALL', category = '') => {
+    const ssbClient = await openSsb();
+    const userId = ssbClient.id;
+    let filtered = (await baseItems()).slice();
 
     if (filter === 'MINE') {
       filtered = filtered.filter(m => m.value.author === userId);

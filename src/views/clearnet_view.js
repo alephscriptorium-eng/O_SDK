@@ -4,30 +4,15 @@ const sharedState = require('../configs/shared-state');
 const cnPkg = (() => { try { return require('../server/package.json'); } catch (_) { return {}; } })();
 const mv = () => require('./main_views');
 const cnScope = () => { try { return require('../models/typed_log').requestScope.getStore() || {}; } catch (_) { return {}; } };
-// guard o-sdk (WP-O132, D-O30): lo que elige el visitante (idioma y tema) viaja en la URL, nunca en cookies ni
-// cabeceras (D-O25). `cnWithQuery`/`propagateQuery` llevan `lang` y `theme` a todos los href="/c…" y formularios.
-const CN_VISITOR_PARAMS = ['lang', 'theme'];
-const cnWithQuery = (href, params) => {
-  const wanted = CN_VISITOR_PARAMS.filter(k => params && params[k]);
-  if (!wanted.length || !/^\/c(?:[/?#]|$)/.test(href)) return href;
+const cnWithLang = (href, lang) => {
+  if (!lang || !/^\/c(?:[/?#]|$)/.test(href) || /[?&]lang=/.test(href)) return href;
   const [pathAndQuery, hash] = href.split('#');
-  let joined = pathAndQuery;
-  for (const k of wanted) {
-    if (new RegExp(`[?&]${k}=`).test(joined)) continue;
-    joined = `${joined}${joined.includes('?') ? '&' : '?'}${k}=${encodeURIComponent(params[k])}`;
-  }
+  const joined = `${pathAndQuery}${pathAndQuery.includes('?') ? '&' : '?'}lang=${lang}`;
   return hash != null ? `${joined}#${hash}` : joined;
 };
-const propagateQuery = (html, params) => {
-  const wanted = CN_VISITOR_PARAMS.filter(k => params && params[k]);
-  if (!wanted.length) return html;
-  const hidden = wanted.map(k => `<input type="hidden" name="${k}" value="${escapeHtml(String(params[k]))}"/>`).join('');
-  return String(html)
-    .replace(/href="(\/c(?:[/?#][^"]*)?)"/g, (m, href) => `href="${cnWithQuery(href, params)}"`)
-    .replace(/(<form[^>]*action="\/c(?:\/[^"]*)?"[^>]*>)/g, (m) => `${m}${hidden}`);
-};
-const cnWithLang = (href, lang) => cnWithQuery(href, { lang });
-const propagateLang = (html, lang) => propagateQuery(html, { lang });
+const propagateLang = (html, lang) => !lang ? html : String(html)
+  .replace(/href="(\/c(?:[/?#][^"]*)?)"/g, (m, href) => `href="${cnWithLang(href, lang)}"`)
+  .replace(/(<form[^>]*action="\/c(?:\/[^"]*)?"[^>]*>)/g, (m) => `${m}<input type="hidden" name="lang" value="${lang}"/>`);
 const renderLangSelector = (current) => {
   const langs = Object.keys(require('../client/assets/translations/i18n'));
   const scope = cnScope();
@@ -39,21 +24,6 @@ const renderLangSelector = (current) => {
     return `<a href="${escapeHtml(`${base}?${q.toString()}`)}" lang="${l}">${l.toUpperCase()}</a>`;
   }).join('');
   return `<div class="cn-lang" tabindex="0"><span class="cn-lang-current">${escapeHtml(String(current).toUpperCase())}</span><div class="cn-lang-list">${others}</div></div>`;
-};
-// guard o-sdk (WP-O132, D-O30): selector de tema del visor, gemelo del de idioma. Los temas son los de
-// THEME_PALETTES menos OasisMobile (misma paleta que Dark-SNH). El elegido viaja en `?theme=`.
-const THEMES = ['Dark-SNH', 'Clear-SNH', 'Matrix-SNH', 'Purple-SNH'];
-const renderThemeSelector = (current) => {
-  const scope = cnScope();
-  const base = String(scope.path || '/c');
-  const params = new URLSearchParams(String(scope.query || ''));
-  params.delete('theme');
-  const label = (t) => String(t).replace(/-SNH$/, '');
-  const others = THEMES.filter(t => t !== current).map(t => {
-    const q = new URLSearchParams(params); q.set('theme', t);
-    return `<a href="${escapeHtml(`${base}?${q.toString()}`)}" data-theme="${escapeHtml(t)}">${escapeHtml(label(t))}</a>`;
-  }).join('');
-  return `<div class="cn-lang cn-theme" tabindex="0"><span class="cn-lang-current cn-theme-current">${escapeHtml(label(current))}</span><div class="cn-lang-list">${others}</div></div>`;
 };
 const cnText = (key, fallback) => { const v = mv().i18n[key]; return typeof v === 'string' && v ? v : fallback; };
 
@@ -341,20 +311,15 @@ const THEME_PALETTES = {
   }
 };
 
-// guard o-sdk (WP-O132, D-O30): el tema por defecto lo fija la config del HUB; el visitante lo cambia con
-// `?theme=` (validado en backend.js, `clearnetTheme`, y guardado en el scope de SU petición, nunca global).
-const getCurrentTheme = () => {
-  const chosen = cnScope().cnTheme;
-  if (chosen && THEME_PALETTES[chosen]) return chosen;
+const getCurrentPalette = () => {
   try {
     const { getConfig } = require('../configs/config-manager.js');
     const theme = getConfig()?.themes?.current || 'Dark-SNH';
-    return THEME_PALETTES[theme] ? theme : 'Dark-SNH';
+    return THEME_PALETTES[theme] || THEME_PALETTES['Dark-SNH'];
   } catch (_) {
-    return 'Dark-SNH';
+    return THEME_PALETTES['Dark-SNH'];
   }
 };
-const getCurrentPalette = () => THEME_PALETTES[getCurrentTheme()] || THEME_PALETTES['Dark-SNH'];
 
 const buildBaseCss = (p) => `
 :root{
@@ -385,18 +350,12 @@ const renderClearnetPage = ({ title, ogTitle, ogDescription = '', ogImage = null
   const safeTitle = escapeHtml(title || 'Oasis');
   const safeOgTitle = escapeHtml(ogTitle || title || 'Oasis');
   const safeOgDesc = escapeHtml(ogDescription || '');
-  // guard o-sdk (WP-O132, D-O30): el idioma es una variable global del proceso (main_views.js) y la ruta
-  // esperó (await) entre fijarlo y llegar aquí: otra petición pudo cambiarlo. Se re-afirma el de ESTA petición
-  // (lo dejó el middleware en el scope) justo antes del render, que es síncrono.
-  const scopeLang = cnScope().lang;
-  if (scopeLang && mv().setLanguage && mv().getLanguage && mv().getLanguage() !== scopeLang) mv().setLanguage(scopeLang);
   const palette = getCurrentPalette();
   const baseCss = buildBaseCss(palette);
   const brandInner = `<div class="cn-brand">⛱ Oasis HUB</div><div class="cn-brand-sub">${escapeHtml(cnText('cnBrandSub', 'Libre · P2P · Federated'))}</div>`;
   const lang = escapeHtml(mv().getLanguage ? mv().getLanguage() : 'en');
   const langOverride = cnScope().cnLang || '';
-  const visitor = { lang: langOverride, theme: cnScope().cnTheme || '' };
-  const brandBlock = `<a class="cn-brand-block cn-brand-link" href="${cnWithQuery('/c', visitor)}">${brandInner}</a>`;
+  const brandBlock = `<a class="cn-brand-block cn-brand-link" href="${cnWithLang('/c', langOverride)}">${brandInner}</a>`;
   return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
@@ -427,9 +386,9 @@ const renderClearnetPage = ({ title, ogTitle, ogDescription = '', ogImage = null
 <body>
   <header class="cn-header">
     ${brandBlock}
-    <div class="cn-header-extra">${renderLangSelector(lang)}${renderThemeSelector(getCurrentTheme())}${propagateQuery(headerExtra || '', visitor)}</div>
+    <div class="cn-header-extra">${renderLangSelector(lang)}${propagateLang(headerExtra || '', langOverride)}</div>
   </header>
-  ${propagateQuery(stripInternalAnchors(body), visitor)}
+  ${propagateLang(stripInternalAnchors(body), langOverride)}
   <footer class="cn-footer">
     <a href="https://wiki.solarnethub.com" target="_blank" rel="noopener"><img class="cn-footer-logo" src="/c/assets/images/snh-oasis.jpg" alt="Oasis"/></a>
     <div class="cn-footer-line">${escapeHtml(cnText('cnSyncedPeers', 'Synced-peers'))}: [ <strong>${Number(sharedState.getSyncedPeerCount ? sharedState.getSyncedPeerCount() : 0) || 0}</strong> ]</div>
@@ -493,9 +452,9 @@ const renderClearnetMediaView = ({ kind, item }) => {
 .cn-media-frame{margin:16px 0}
 .cn-media-frame img{max-width:100%;height:auto;border-radius:6px;border:1px solid var(--border);display:block}
 .cn-media-frame audio,.cn-media-frame video{width:100%;max-width:100%;display:block;border-radius:6px;background:#000}
-.cn-media-frame .cn-media-doc{display:inline-block;background:var(--bg-elev);border:1px solid var(--border);border-radius:6px;padding:10px 18px;color:var(--fg);text-decoration:none}
+.cn-media-frame .cn-media-doc{display:inline-block;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere;background:var(--bg-elev);border:1px solid var(--border);border-radius:6px;padding:10px 18px;color:var(--fg);text-decoration:none}
 .cn-media-frame .cn-media-doc:hover{border-color:var(--fg)}
-.cn-media-frame .cn-media-doc + .cn-media-doc{margin-left:10px}
+.cn-media-frame .cn-media-docs{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
 `;
   const fileKind = kind === 'document' || kind === 'torrent' || kind === 'file';
   let mediaHtml = '';
@@ -513,7 +472,7 @@ const renderClearnetMediaView = ({ kind, item }) => {
       const originalName = dlName(kind === 'file' ? item.fileName : item.sourceName) || dlName(item.title) || 'file';
       const torrentBlob = kind === 'file' ? blobUrl(item.torrentUrl) : blob;
       const torrentName = `${kind === 'file' ? originalName : (dlName(item.title) || 'download').replace(/\.torrent$/i, '')}.torrent`;
-      mediaHtml = [original ? dlLink(original, originalName) : '', torrentBlob ? dlLink(torrentBlob, torrentName) : ''].filter(Boolean).join('');
+      mediaHtml = `<div class="cn-media-docs">${[original ? dlLink(original, originalName) : '', torrentBlob ? dlLink(torrentBlob, torrentName) : ''].filter(Boolean).join('')}</div>`;
     } else if (kind === 'document') {
       mediaHtml = `<a class="cn-media-doc" href="${blob}" target="_blank" rel="noopener">⇩ ${title}</a>`;
     } else {
@@ -591,7 +550,6 @@ const renderClearnetPodcastView = ({ channel }) => {
 };
 
 module.exports = {
-  THEMES,
   kindLabel,
   renderTagChips,
   renderClearnetPodcastView,

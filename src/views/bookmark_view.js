@@ -73,6 +73,7 @@ const renderBookmarkList = exports.renderBookmarkList = (filteredBookmarks, filt
           : bookmark.tribeOrigin
             ? renderContentActions(null, bookmark.tribeOrigin.href)
             : renderContentActions(bookmark.id, `/bookmarks/${encodeURIComponent(bookmark.id)}`, { spread: (params.spreadMap && params.spreadMap.get(bookmark.id)) || params.spreads || null, author: bookmark.author, favKind: 'bookmarks', isFavorite: bookmark.isFavorite, reportTitle: bookmark.title, deleteAction: isOwn ? contentDeleteAction('bookmark', bookmark.id) : undefined, returnTo });
+        const titleHref = typeof params.headerActions === "function" ? null : bookmark.tribeOrigin ? bookmark.tribeOrigin.href : `/bookmarks/${encodeURIComponent(bookmark.id)}`;
         const engagement = typeof params.engagement === "function"
           ? params.engagement(bookmark)
           : bookmark.tribeOrigin ? null : renderEngagement(bookmark.id,
@@ -88,9 +89,9 @@ const renderBookmarkList = exports.renderBookmarkList = (filteredBookmarks, filt
           ),
           div(
             { class: "card-section bookmark-card-body" },
-            h2({ class: "bookmark-title" }, bookmark.url ? urlLink : (bookmark.title || "")),
+            h2({ class: "bookmark-title" }, titleHref ? a({ href: titleHref, class: "card-title-link" }, bookmark.title || bookmark.url || "") : (bookmark.url ? urlLink : (bookmark.title || ""))),
             bookmark.lifetime || reachChip || extraChips.length ? div({ class: "card-chips-row" }, renderLifespanChip(bookmark.lifetime, i18n), reachChip, ...extraChips) : null,
-            bookmark.title && bookmark.url ? p({ class: "bookmark-subtitle" }, bookmark.title) : null,
+            titleHref ? (bookmark.title && bookmark.url ? p({ class: "bookmark-subtitle" }, urlLink) : null) : (bookmark.title && bookmark.url ? p({ class: "bookmark-subtitle" }, bookmark.title) : null),
             params.hideLastVisit ? null : renderCardField(i18n.bookmarkLastVisitLabel + ":", lastVisitTxt),
             ...(typeof params.bodyExtra === "function" ? params.bodyExtra(bookmark) : []),
             br,
@@ -217,9 +218,9 @@ exports.bookmarkView = async (bookmarks, filter = "all", bookmarkId = null, para
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
           ...(emptyMod ? [] : [
+          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterAll).toUpperCase()),
           ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterRecent).toUpperCase())] : []),
           ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterMine).toUpperCase())] : []),
-          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterAll).toUpperCase()),
           ...(mediaChip("favorites") ? [button({ type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterFavorites).toUpperCase())] : []),
           ...(mediaChip("top") ? [button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterTop).toUpperCase())] : []),
           ]),
@@ -357,9 +358,9 @@ exports.singleBookmarkView = async (bookmark, filter = "all", comments = [], par
           { method: "GET", action: "/bookmarks", class: "ui-toolbar ui-toolbar--filters" },
           input({ type: "hidden", name: "q", value: q }),
           input({ type: "hidden", name: "sort", value: sort }),
+          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterAll).toUpperCase()),
           ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterRecent).toUpperCase())] : []),
           ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterMine).toUpperCase())] : []),
-          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterAll).toUpperCase()),
           ...(mediaChip("favorites") ? [button({ type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterFavorites).toUpperCase())] : []),
           button({ type: "submit", name: "filter", value: "top", class: filter === "top" ? "filter-btn active" : "filter-btn" }, String(i18n.bookmarkFilterTop).toUpperCase()),
           button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.bookmarkCreateButton)

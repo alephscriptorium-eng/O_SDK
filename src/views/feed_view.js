@@ -67,7 +67,16 @@ const renderFeedCommentsSection = (feedKey, comments = []) => {
 
 
 const FEED_MEDIA_RE = /^\n?!?\[[^\]\n]{0,200}\]\(&[A-Za-z0-9+/=]{44}\.sha256\)$/;
-const renderFeedComposer = ({ text = "", media = "", rows = 5, clearnet = false } = {}) => {
+const renderMastodonToggle = (on = false) =>
+  div({ class: "clearnet-choice" },
+    div({ class: "clearnet-choice-options" },
+      label({ class: "clearnet-choice-option" }, input({ type: "checkbox", name: "mastodon", value: "1", ...(on ? { checked: true } : {}) }),
+        span({ class: "pm-exposition-chip pm-exposition-whole" }, span({ class: "pm-exposition-icon" }, "⌬"), span({ class: "pm-exposition-text" }, "Mastodon"))
+      )
+    )
+  );
+
+const renderFeedComposer = ({ text = "", media = "", rows = 5, clearnet = false, mastodon = false, mastodonOn = false } = {}) => {
   const cleanMedia = FEED_MEDIA_RE.test(String(media || "")) ? String(media).trim() : "";
   const draft = String(text || "");
   const hasPreview = !!(draft.trim() || cleanMedia);
@@ -92,6 +101,7 @@ const renderFeedComposer = ({ text = "", media = "", rows = 5, clearnet = false 
         )
       : null,
     renderClearnetSelector(clearnet, i18n),
+    mastodon ? renderMastodonToggle(mastodonOn) : null,
     div({ class: "feed-compose-actions" },
       button({ type: "submit", class: "filter-btn", formaction: "/feed/preview" }, i18n.preview || "Preview"),
       button({ type: "submit", class: "create-button" }, i18n.createFeedButton || "Send Feed!")
@@ -156,7 +166,7 @@ const renderFeedCard = exports.renderFeedCard = (feed, spreadMap = null, opts = 
                 canRefeed
                     ? form(
                         { method: "POST", action: refeedAction },
-                        button({ class: alreadyRefeeded ? "refeed-btn active" : "refeed-btn", type: "submit", title: i18n.refeedButton, "aria-label": i18n.refeedButton, ...(alreadyRefeeded ? { disabled: true } : {}) }, "ꕿ")
+                        button({ class: alreadyRefeeded ? "refeed-btn active" : "refeed-btn", type: "submit", title: i18n.refeedButton, "aria-label": i18n.refeedButton, ...(alreadyRefeeded ? { disabled: true } : {}) }, "▲")
                     )
                     : null,
             ),
@@ -247,7 +257,7 @@ exports.feedView = (feeds, opts = "ALL") => {
     successBanner,
     div(
       { class: "mode-buttons-row" },
-      ...(emptyMod ? [] : generateFilterButtons(["RECENT", "MINE", "ALL", "TOP"].filter(feedChip), filter, "/feed", extra)),
+      ...(emptyMod ? [] : generateFilterButtons(["ALL", "RECENT", "MINE", "TOP"].filter(feedChip), filter, "/feed", extra)),
       form({ method: "GET", action: "/feed/create" }, button({ type: "submit", class: "create-button filter-btn" }, i18n.createFeedTitle || "Create Feed"))
     ),
     emptyMod ? null : div(
@@ -265,7 +275,7 @@ exports.feedView = (feeds, opts = "ALL") => {
     ),
     section(
       filter === "CREATE"
-        ? renderFeedComposer({ rows: 4 })
+        ? renderFeedComposer({ rows: 4, mastodon: opts.mastodon === true })
         : feeds && feeds.length > 0
           ? div({ class: "feed-container" }, paged(feeds.filter((feed) => String((feed.value.content || {}).text || "").trim())).map((feed) => renderFeedCard(feed, spreadMap)).filter(Boolean))
           : div({ class: "no-results" }, p(i18n.noFeedsFound))
@@ -294,7 +304,7 @@ exports.feedCreateView = (opts = {}) => {
     section(
       div({ class: "tags-header module-header-line" }, h2(i18n.createFeedTitle), p(i18n.FeedshareYourOpinions)),
       div({ class: "mode-buttons-row" }, ...generateFilterButtons(["ALL"], "CREATE", "/feed", { q, tag })),
-      renderFeedComposer({ text: opts.text, media: opts.media, clearnet: opts.clearnet === true })
+      renderFeedComposer({ text: opts.text, media: opts.media, clearnet: opts.clearnet === true, mastodon: opts.mastodon === true, mastodonOn: opts.mastodonOn === true })
     )
   );
 };
@@ -322,9 +332,9 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
         { class: "filters" },
         form(
           { method: "GET", action: "/feed", class: "ui-toolbar ui-toolbar--filters" },
+          button({ type: "submit", name: "filter", value: "ALL", class: "filter-btn" }, i18n.ALLButton || "ALL"),
           ...(feedChip("RECENT") ? [button({ type: "submit", name: "filter", value: "RECENT", class: "filter-btn" }, i18n.RECENTButton || "RECENT")] : []),
           ...(feedChip("MINE") ? [button({ type: "submit", name: "filter", value: "MINE", class: "filter-btn" }, i18n.MINEButton || "MINE")] : []),
-          button({ type: "submit", name: "filter", value: "ALL", class: "filter-btn" }, i18n.ALLButton || "ALL"),
           button({ type: "submit", name: "filter", value: "TOP", class: "filter-btn" }, i18n.TOPButton || "TOP"),
           form({ method: "GET", action: "/feed/create" }, button({ type: "submit", class: "create-button" }, i18n.createFeedTitle || "Create Feed"))
         )
@@ -350,7 +360,7 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
               ? null
               : form(
                   { method: "POST", action: `/feed/refeed/${encodeURIComponent(feed.key)}` },
-                  button({ class: alreadyRefeeded ? "refeed-btn active" : "refeed-btn", type: "submit", title: i18n.refeedButton, "aria-label": i18n.refeedButton, ...(alreadyRefeeded ? { disabled: true } : {}) }, "ꕿ")
+                  button({ class: alreadyRefeeded ? "refeed-btn active" : "refeed-btn", type: "submit", title: i18n.refeedButton, "aria-label": i18n.refeedButton, ...(alreadyRefeeded ? { disabled: true } : {}) }, "▲")
               ),
           ),
           div(
