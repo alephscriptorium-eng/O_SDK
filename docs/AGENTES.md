@@ -78,10 +78,12 @@ son como son: `plan/DECISIONES.md`.
    copian a reportes, no se pasan por línea de comandos (quedan en `ps` y en el historial).
 8. **Evidencia.** Reporte en `plan/REPORTES/` con comando + salida. Lo que no mediste, no lo afirmes.
 9. **Gates locales antes del VPS.** Todo cambio se ensaya en Docker local; la identidad de prueba es
-   desechable. La identidad real de nadie se usa para ensayar. **Excepción (D-O33):** el bot retro de la
-   casa es un nodo **real** alojado en la máquina operadora, en `volumes-real/` (no en `volumes-dev/`):
-   ningún gate lo copia, repone ni recrea (`upgrade-gates.sh` lo excluye de `backup`/`restore`/`up` y del
-   `GATE_NODES` por defecto); se mide aparte con `GATE_NODES='retro:…'` y solo `snapshot`/`check`.
+   desechable. La identidad real de nadie se usa para ensayar. **En la máquina operadora hay una identidad
+   real apagada (D-O33, D-O36):** el bot retro de la casa (bot nº 3) está **DEPRECATED**. Sus datos siguen
+   en `volumes-real/` (no en `volumes-dev/`) y **no se arranca, no se recrea, no se sube de versión y no
+   se ofrece como pendiente**: ni `docker start`, ni `compose up`, ni `npm run pub:local:retro-bot:up`
+   (§3). Ningún gate lo copia, repone ni recrea (`upgrade-gates.sh` lo excluye de `backup`/`restore`/`up`
+   y del `GATE_NODES` por defecto) y **no se mide**: medirlo exigiría arrancarlo. Tampoco se borra.
    `volumes-real/` va en `.dockerignore`: un build local no se lleva esa identidad a la imagen (§4).
 
 ## 3. Acciones irreversibles y su puerta
@@ -103,6 +105,7 @@ expreso del custodio en el momento**, aunque el plan general ya esté aprobado.
 | Arrancar un nodo con el `secret` y un log más corto que el de la red | bifurca el feed | RECOVERY §4 |
 | `docker compose down -v`, borrar volúmenes | se lleva estado no derivable | `client/scripts/guard-destroy.sh`; backup < 24 h |
 | **Mudar un nodo de máquina** (su `secret` y su log a otro host) | dos instancias vivas, o arrancar el destino con un log más corto, bifurcan el feed; el destino publica un `oasisVersion` si cambia de versión | HUB §11 «mudanza o baja»: parar el origen → copiar con sha256 → leer el log en frío (`S` = seq del pub) → arrancar el destino → el origen no vuelve a arrancar (`rm -sf`) |
+| Arrancar o recrear un nodo **deprecated** cuya identidad se conserva (en la casa: el bot nº 3, `volumes-real/oasis-retro-bot/`) | publicaría con una identidad real retirada: un `oasisVersion` si la imagen cambió y, desde Oasis 1.2.6, un `karmaScore`; reconectaría al pub real | **no se hace** (D-O36). Si el custodio lo revierte, es otra decisión escrita, no un paso de un ciclo |
 | **Tombstone** (borrado lógico de un objeto propio) | es otro mensaje, append-only; solo esconde, lo original sigue en todos los logs | TEMPLATE §9: dry-run, lista cerrada, PERMISO por bloque, conteo antes/después |
 | Reload del edge | tumba todos los vhosts si la config es inválida | `validate` antes |
 
@@ -196,5 +199,5 @@ pub de Banking**, junto a los de otros pubs. La regla:
    El feed id no cambia nunca; lo que identifica al bot es el id, el nombre es cortesía.
 
 Ejemplo (instancia Scriptorium): `clearnet.escrivivir.co`, `ecoin.escrivivir.co` y `retro.escrivivir.co`
-(secretaría de plantillas, modo `server`: TEMPLATE-PROTOCOL §4.5; desde el 2026-10-10 vive en la máquina
-operadora, no en el VPS: D-O33). Sus descripciones literales, en la ficha de instancia. Un `about` puede llevar avatar (`image`): se publica en el mismo mensaje, una sola vez (HUB §12).
+(secretaría de plantillas, modo `server`: TEMPLATE-PROTOCOL §4.5; salió del VPS el 2026-10-10, D-O33, y
+está **deprecated** desde el 2026-10-12, D-O36: identidad conservada y apagada, §2.9). Sus descripciones literales, en la ficha de instancia. Un `about` puede llevar avatar (`image`): se publica en el mismo mensaje, una sola vez (HUB §12).

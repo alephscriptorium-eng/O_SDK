@@ -200,6 +200,12 @@ Un bot más de la serie del pub (HUB §11): cuenta SSB propia, contenedor propio
 - Los scripts que enumeran nodos lo conocen: `upgrade-gates.sh`, `capacity.sh`, `lib-node.sh`
   (`*retro-bot*` antes del comodín, o se mediría contra el `.ssb` del pub), `deploy-status.sh`. Desde D-O33 el
   retro **no** va en el `GATE_NODES` por defecto: se mide con `GATE_NODES='retro:oasis-pub-retro-bot:oasis-retro-bot'`.
+- **En la casa, la secretaría está DEPRECATED (D-O36, 2026-10-12).** El bot nº 3 no se arranca, no se
+  recrea, no se sube de versión y no siembra ni retira nada; su identidad queda conservada y apagada en
+  `volumes-real/oasis-retro-bot/`. Lo que sigue en este apartado y en §9 es **método** (otra instancia,
+  o un drill con bot desechable): en la máquina operadora de la casa `npm run pub:local:retro-bot:up`,
+  `retro-seed.sh` y `retro-tombstone.sh` **no se ejecutan** mientras `.env.local` apunte
+  `OASIS_RETRO_BOT_*` a `volumes-real/`.
 - **Dónde vive la secretaría.** En el host junto al pub (como nació en la demo, 2026-10-08) o en la **máquina
   operadora** (la casa desde el 2026-10-10, D-O33): mismo servicio del compose, `.env.local` con
   `OASIS_RETRO_BOT_*` apuntando a `volumes-real/oasis-retro-bot/` (fuera de `volumes-dev/`: ningún drill lo copia

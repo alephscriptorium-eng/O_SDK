@@ -482,6 +482,33 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   `INSTANCIA-SCRIPTORIUM.md` §1-§5, `ARCHIVO/DISCO/scriptorium-exported/` (runbooks de mudanza y de
   deshacer, evidencia `vps/tombstone-*.jsonl`, `vps/ledger-tombstones.json`).
 
+- **D-O36 · 2026-10-12 · El bot nº 3 (`retro.escrivivir.co`) está DEPRECATED: no se arranca, no se
+  recrea, no se sube de versión y no siembra; su identidad se conserva y no se borra.** Dicho por el
+  custodio al cierre de WP-O138, en sus palabras: «El bot retro ha sido deprecated (se supone que
+  estaba marcado). Confío que no lo has revivido.» La marca **no constaba** en ningún documento,
+  backlog, runbook ni commit de ninguna rama (buscado el 2026-10-12): D-O33 lo dejaba «mudado» y vivo,
+  y el agente del ciclo 1.2.8 llegó a ofrecer «subirlo» como decisión pendiente. Este asiento es la
+  marca. Estado medido ese día: contenedor local `oasis-pub-retro-bot` `exited` desde el
+  2026-10-10T04:26:49Z, sobre la imagen 1.2.5 (`5cfdf8ddca7f`); última escritura de su log el mismo
+  día; feed en seq 266. Reglas (las tres primeras son la decisión; la cuarta es la ley 3 de siempre):
+  (1) nadie hace `docker start`, `compose up` ni `npm run pub:local:retro-bot:up` contra
+  `volumes-real/oasis-retro-bot/`: arrancarlo en otra versión publicaría un `oasisVersion` y, desde
+  Oasis 1.2.6, un `karmaScore`, con una identidad real y sin vuelta; (2) no entra en ningún ciclo de
+  upgrade ni en `GATE_NODES`, ni como nodo ni como pendiente; (3) ninguna siembra ni retirada sale de
+  esa identidad; (4) `volumes-real/oasis-retro-bot/` y sus copias (`devops/backups/oasis-retro-bot/`,
+  cripta) **no se borran ni se pisan**: se conservan apagadas. Lo que **sigue vigente** de D-O33: el
+  servicio `oasis-retro-bot` del compose, `retro-seed.sh`, `retro-tombstone.sh` y la vía caliente son
+  **método** para otra instancia y para los drills (que usan un bot desechable en su propio entorno,
+  `pub/scripts/drill-26s.sh`, con guard contra `volumes-real/`). Interpretación del agente, a confirmar
+  por el custodio: «deprecated» se lee como retirado de la operación, no como identidad destruida; y
+  queda **abierto** lo que D-O33 daba como motivo para mantenerlo vivo (en Oasis el gobierno de una
+  tribu es la identidad de su autor y no hay traspaso): Campamento está deshecha con tombstones, pero
+  dos listas CLOSED privadas del bot siguen sin retirar y solo esa identidad podría hacerlo. Supera a
+  **D-O33** en «cómo vive» (nodo real vivo en la máquina operadora → identidad apagada y conservada);
+  conserva D-O28 (la vía caliente como método). Aplicación: `AGENTES.md` §2.9, §3 y §5,
+  `INSTANCIA-SCRIPTORIUM.md` §1, §3 y §5, `TEMPLATE-PROTOCOL.md` §4.5, `UPGRADE-PROTOCOL.md` §0.2,
+  `pub/docker-compose.pub.yml`, `devops/hosts/scriptorium/host.env`, WP-O138 §9.
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |

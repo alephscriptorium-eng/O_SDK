@@ -56,6 +56,7 @@ fila**: una pieza sin fila es una pieza que nadie mira al subir.
 | edge | Caddy (compartido con otros vhosts) | qué prefijos enruta al HUB | sin tocar salvo ruta nueva fuera de `/c/*` | `HUB-PROTOCOL.md` §2 | — |
 | panel-api y landing | `docker exec` al pub | ruta de `ssb-admin.js` y de `package.json` **dentro de la imagen** | `/public/status` da la versión nueva | — | — |
 | `pub/tools/*.js` | dentro de la imagen o por stdin | `ssb-client`, `ssb_config`, API de `ssb-conn` e `ssb-invite` | gate del invite si cambian `ssb-*` (§3.4 U6) | `HUB-PROTOCOL.md` §3 | `invite-accept` (solo si se usa) |
+| nodo deprecated con identidad conservada (en la casa: bot nº 3 retro, `volumes-real/`, D-O36) | no corre | — | **fuera del ciclo**: no se recrea, no se mide, no se ofrece como pendiente. La imagen local `:latest` cambia en U2: un `compose up` de su servicio lo recrearía en la versión nueva | `../AGENTES.md` §2.9 y §3 | nada, si nadie lo arranca |
 | maint-ui | backend sobre el `.ssb` **del pub** | — | **prohibida durante el ciclo**: todo lo que un backend publica solo lo publicaría con la identidad del pub | — | lo que publique un backend |
 | ecoind | imagen propia | RPC | no se recrea en un upgrade de Oasis | `ECOIN-PROTOCOL.md` | — |
 | cliente | `full` + entrypoint (`persist_client_state`, `wire_wallet_config`, `setup_oasis_config`) | forma de `oasis-config.json`, loopback, contrato de IA | drill del cliente | `../CLIENT-PROTOCOL.md` §4-§5 | `oasisVersion` +1; `wallet` si hay cartera cableada sin publicar |

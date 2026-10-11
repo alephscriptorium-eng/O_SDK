@@ -46,6 +46,7 @@
 #   El bot retro de la casa es desde WP-O135 (D-O33) un nodo REAL en la máquina operadora (volumes-real/):
 #   se mide aparte con GATE_NODES='retro:oasis-pub-retro-bot:oasis-retro-bot' y SOLO con snapshot/check;
 #   backup/restore/up no lo tocan (repondrían o recrearían una identidad real sobre un drill).
+#   Desde D-O36 (2026-10-12) ese bot está DEPRECATED: parado, no se arranca y por tanto no se mide.
 # =============================================================================
 set -uo pipefail
 

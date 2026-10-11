@@ -19,6 +19,13 @@ repuestos sin conflictos (`git diff 28fc1a68 --stat -- src/`: 7 ficheros, el mis
 - El reequilibrio de RBU entre pubs pierde el tope de 200 ECO por época y reparte hacia la media: sin efecto con
   el pool a 0, **decisión pendiente antes de la dote** (reporte, H2).
 
+### Changed — El bot nº 3 (`retro.escrivivir.co`) queda DEPRECATED (D-O36, 2026-10-12)
+
+No se arranca, no se recrea, no se sube de versión y no siembra; su identidad se conserva apagada en
+`volumes-real/` y no se borra. La baja no constaba en ningún documento (D-O33 lo dejaba «mudado» y vivo): queda
+asentada en `plan/DECISIONES.md` y marcada en AGENTES §2.9/§3/§5, la ficha de instancia, TEMPLATE §4.5 y
+UPGRADE §0.2. La vía caliente y el servicio `oasis-retro-bot` siguen como método (otra instancia, drills).
+
 ### Fixed — `volumes-real/` fuera del contexto de build (WP-O138)
 
 `.dockerignore` no excluía la carpeta del nodo real de la máquina operadora (D-O33): el primer build local posterior

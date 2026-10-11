@@ -7,8 +7,9 @@ publicó 1.2.6 (96cab3b6, 2026-10-10), 1.2.7 (be4a160c) y 1.2.8 (2026-10-11). De
 puede medir en solo lectura durante la preparación; rama desde `main`. **Sin cambio de motor**
 (`annex` db2 íntegro): UM y UR no aplican.
 
-**Alcance.** Pub, HUB y bot de cartera de la instancia Scriptorium. Fuera: el bot retro (nodo real en
-la máquina operadora, D-O33: ningún gate lo recrea; subirlo pide PERMISO propio), el cliente (1.2.2,
+**Alcance.** Pub, HUB y bot de cartera de la instancia Scriptorium. Fuera: el bot retro (**deprecated**,
+D-O36: no se arranca ni se sube; este párrafo decía «subirlo pide PERMISO propio» hasta que el custodio
+lo aclaró al cierre, §9), el cliente (1.2.2,
 D-O32), `ecoind`, la maint-ui (prohibida durante el ciclo) y `caps.shs` (ciclo 6: «mantener»).
 
 ## 1. Estado de partida
@@ -302,6 +303,10 @@ Hechas en esta rama salvo donde dice «pendiente»:
   WP-O135 no lo actualizó): corregido a 1.2.8.
 - En Windows el overlay (`git rm -r src && git checkout`) tarda más de 5 minutos y
   `upgrade-behaviour-diff.sh` otro tanto: no es una desviación; anotado en la fila del ciclo (UPGRADE §7).
+- **La baja del bot retro no estaba escrita en ningún sitio** y el agente lo trató como nodo vivo con una
+  decisión pendiente. Asiento D-O36 y marca en cada punto donde un agente lo encuentra (lista en §9.2). Un
+  nodo que deja de operarse necesita su fila en el inventario de UPGRADE §0.2 («fuera del ciclo»), igual que
+  uno que entra.
 - El `check` de cierre «al menos 5 minutos después de recrear el último nodo»: el primero de esta sesión se
   hizo a los 3 minutos por un error de cuenta del operador; se repitió pasado el plazo (§8, paso 10).
 
@@ -325,15 +330,21 @@ de la rama (`git diff d21fc7b8 HEAD -- pub/docker-compose.pub.yml` vacío: el «
 | 10 | Cierre | `snapshot post128`: pub 25 · HUB 19 · bot 78, cuadran · `deploy-status.sh`: tres nodos 1.2.8 `healthy` «imagen al día», `src/` 1.2.8, pub VERDE en el directorio (ciclo 6), `/` 39 %, `/srv/oasis` 31 %, `capacity` 0 avisos · journal | |
 
 Pub sin sbot ≈ 30 s; HUB ≈ 61 s; bot ≈ 2 × 90 s. **Nada publicado con identidad real fuera de lo declarado.**
-El bot retro (máquina operadora) y el cliente no se han tocado: siguen en 1.2.5 y 1.2.2.
+El bot retro (deprecated, D-O36) y el cliente no se han tocado: el primero quedó parado en 1.2.5 desde el
+2026-10-10T04:26Z (`docker inspect`: `exited`, imagen `5cfdf8ddca7f`, sin arranques posteriores); el cliente, en 1.2.2.
 
 ## 9. No medido / pendiente
 
 1. **H2 (reequilibrio de RBU sin tope por época): DECISIÓN del custodio antes de la dote.** Leído en el código,
    no medido con fondos. Con saldo 0 no hace nada.
-2. Bot retro (nodo real local, 1.2.5): subirlo publica su `oasisVersion` y, por H4, un `karmaScore`. PERMISO
-   aparte. Mientras no se decida, **no hacer `compose up` de ese servicio**: la imagen local `:latest` ya es 1.2.8
-   y lo recrearía (un `docker start` del contenedor existente sigue en 1.2.5).
+2. **Bot retro: DEPRECATED (D-O36, 2026-10-12). No es un pendiente.** La primera versión de este punto lo
+   ofrecía como «subirlo con PERMISO aparte»: el custodio aclaró al cierre que el bot está dado de baja. La marca
+   no constaba en ningún documento, backlog ni commit (D-O33 lo dejaba «mudado» y vivo); queda escrita en D-O36,
+   AGENTES §2.9/§3/§5, la ficha §1/§3/§5, TEMPLATE §4.5 y UPGRADE §0.2. No se arranca: la imagen local `:latest`
+   ya es 1.2.8 y un `compose up` de su servicio lo recrearía publicando `oasisVersion` y `karmaScore`. Riesgo
+   que queda: `pub/.env.local` (sin seguimiento) sigue apuntando `OASIS_RETRO_BOT_*` a `volumes-real/`, así que
+   `npm run pub:local:retro-bot:up` lo reviviría; desarmarlo (repuntar esas variables o un guard en el script)
+   es decisión del custodio.
 3. Cliente dockerizado: sigue en 1.2.2 (D-O32).
 4. Rollback de este ciclo en el host (`:1.2.5`, `src.old-1.2.5`, `src-1.2.5.tgz`): se retira en el siguiente
    (UPGRADE §4 paso 2). En `/srv/oasis` quedan además tgz de datos de ciclos anteriores (`*.bak-o128`,
