@@ -26,9 +26,9 @@ const SECTORS = ["software", "hardware", "agriculture", "textile", "energy", "fo
 const POLICIES = ["open", "vote", "invite"]
 
 const FILTERS = [
+  { key: "ALL", i18n: "industryFilterAll", title: "industryAllTitle" },
   { key: "RECENT", i18n: "industryFilterRecent", title: "industryRecentTitle" },
   { key: "MINE", i18n: "industryFilterMine", title: "industryMineTitle" },
-  { key: "ALL", i18n: "industryFilterAll", title: "industryAllTitle" },
   { key: "ACTIVE", i18n: "industryFilterActive", title: "industryActiveTitle" },
   { key: "PAUSED", i18n: "industryFilterPaused", title: "industryPausedTitle" },
   { key: "DISSOLVED", i18n: "industryFilterDissolved", title: "industryDissolvedTitle" },
@@ -353,9 +353,9 @@ exports.industryView = async (facilitiesOrForm, filter, params = {}) => {
         : isForm
         ? renderFacilityForm(f === "EDIT" ? (safeArr(facilitiesOrForm)[0] || {}) : {}, f === "EDIT" ? "edit" : "create", facilityEditWarning)
         : f === "BLUEPRINTS"
-        ? div({ class: "industry-list" }, renderGlobalBlueprints(facilitiesOrForm, params.spreadMap || new Map()))
+        ? div({ class: "industry-list" }, renderGlobalBlueprints(paged(facilitiesOrForm), params.spreadMap || new Map()))
         : f === "BUILDS"
-        ? div({ class: "industry-list" }, renderGlobalBuilds(facilitiesOrForm, params.spreadMap || new Map()))
+        ? div({ class: "industry-list" }, renderGlobalBuilds(paged(facilitiesOrForm), params.spreadMap || new Map()))
         : section(
             emptyMod ? null : div({ class: "industry-search activity-filter-chips activity-toolbar-row" },
               renderModuleStatsBy(facilitiesOrForm, fc => String(fc.status || 'ACTIVE').toUpperCase(), [{ value: 'ACTIVE', label: i18n.industryStatusActive }, { value: 'PAUSED', label: i18n.industryStatusPaused }, { value: 'DISSOLVED', label: i18n.industryStatusDissolved }]),

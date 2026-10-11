@@ -5,6 +5,33 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Oasis 1.2.8 en pub, HUB y bot de cartera (WP-O138, 2026-10-11)
+
+Salto 1.2.5 → 1.2.8 (1.2.6 y 1.2.7 dentro), sin cambio de motor. Overlay limpio desde `28fc1a68` y los 7 guards
+repuestos sin conflictos (`git diff 28fc1a68 --stat -- src/`: 7 ficheros, el mismo diff que en 1.2.5). Solo viaja
+`src/`. Gates locales U0-U7 y US en verde; en el host, GO por nodo: pub `oasisVersion+1`; HUB `oasisVersion+1` y
+`karmaScore+1`; bot `oasisVersion+1`, `karmaScore+1` y `about+1`, todo declarado antes de tocar el servidor.
+
+- **Desde 1.2.6 un backend publica solo su `karmaScore`** (upstream mueve la llamada de `GET /activity` al
+  refresco de fondo, que arranca a los 5 s): lo destapó el gate U3 en el HUB. Aceptado por el custodio y declarado
+  `karmaScore=+0..1` en HUB y bots (UPGRADE §3.4, AGENTES §4).
+- Índice nuevo de db2 en todo sbot (`oasisActivity`); no migra el log.
+- El reequilibrio de RBU entre pubs pierde el tope de 200 ECO por época y reparte hacia la media: sin efecto con
+  el pool a 0, **decisión pendiente antes de la dote** (reporte, H2).
+
+### Changed — El bot nº 3 (`retro.escrivivir.co`) queda DEPRECATED (D-O36, 2026-10-12)
+
+No se arranca, no se recrea, no se sube de versión y no siembra; su identidad se conserva apagada en
+`volumes-real/` y no se borra. La baja no constaba en ningún documento (D-O33 lo dejaba «mudado» y vivo): queda
+asentada en `plan/DECISIONES.md` y marcada en AGENTES §2.9/§3/§5, la ficha de instancia, TEMPLATE §4.5 y
+UPGRADE §0.2. La vía caliente y el servicio `oasis-retro-bot` siguen como método (otra instancia, drills).
+
+### Fixed — `volumes-real/` fuera del contexto de build (WP-O138)
+
+`.dockerignore` no excluía la carpeta del nodo real de la máquina operadora (D-O33): el primer build local posterior
+metió en la imagen el `ssb-data` del bot retro, `secret` incluido. Lo cazó el humo de U2 antes de arrancar ningún
+contenedor; la imagen no salió de la máquina y se reconstruyó limpia. El humo de U2 comprueba ahora 0 `secret`.
+
 ### Changed — Bot retro: mudado del VPS a la máquina operadora; Campamento deshecha; deshacer de siembras (WP-O135, D-O33, 2026-10-10)
 
 En lugar de subir el bot nº 3 a 1.2.5 en el host, el custodio decide **mudarlo**: su identidad íntegra (`secret`,

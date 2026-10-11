@@ -49,21 +49,27 @@ module.exports = ({ cooler, subscriptionsModel = null }) => {
     return out;
   };
 
+  const privateState = new WeakMap();
   const readPrivate = async (ssbClient) => {
     const me = ssbClient.id;
+    let st = privateState.get(ssbClient);
+    if (!st || st.me !== me) {
+      st = { me, lastTs: 0, seen: new Set(), lists: [], leaves: [], posts: [], chunks: new Map(), tombClaims: new Map(), authorByKey: new Map() };
+      privateState.set(ssbClient, st);
+    }
     const raw = await new Promise((resolve, reject) => {
-      pull(ssbClient.createLogStream({ reverse: false }), pull.collect((err, arr) => err ? reject(err) : resolve(arr)));
+      pull(ssbClient.createLogStream(st.lastTs > 0 ? { reverse: false, gte: st.lastTs } : { reverse: false }), pull.collect((err, arr) => err ? reject(err) : resolve(arr)));
     });
-    const lists = [];
-    const leaves = [];
-    const posts = [];
-    const chunks = new Map();
-    const tombClaims = new Map();
-    const authorByKey = new Map();
     for (const m of raw) {
       if (!m || !m.value) continue;
+      const recv = Number(m.timestamp) || 0;
+      if (recv > st.lastTs) st.lastTs = recv;
       const content = m.value.content;
       if (typeof content !== 'string') continue;
+      if (m.key) {
+        if (st.seen.has(m.key)) continue;
+        st.seen.add(m.key);
+      }
       let dec;
       try { dec = ssbClient.private.unbox({ key: m.key, value: m.value, timestamp: m.timestamp || m.value.timestamp }); } catch (_) { continue; }
       const v = (dec && dec.value) || {};
@@ -72,30 +78,30 @@ module.exports = ({ cooler, subscriptionsModel = null }) => {
       if (!c || typeof c !== 'object' || !k) continue;
       const ts = v.timestamp || m.timestamp || 0;
       if (c.type === 'tombstone' && c.target) {
-        const set = tombClaims.get(c.target) || new Set();
+        const set = st.tombClaims.get(c.target) || new Set();
         set.add(v.author);
-        tombClaims.set(c.target, set);
+        st.tombClaims.set(c.target, set);
         continue;
       }
       if (c.type === longText.CHUNK_TYPE) {
         const ch = longText.chunkOf(v.author, c);
-        if (ch) chunks.set(k, ch);
+        if (ch) st.chunks.set(k, ch);
         continue;
       }
-      authorByKey.set(k, v.author);
-      if (c.type === LIST_TYPE) lists.push({ key: k, author: v.author, ts, c });
-      else if (c.type === LEAVE_TYPE && c.list) leaves.push({ key: k, author: v.author, ts, list: String(c.list) });
+      st.authorByKey.set(k, v.author);
+      if (c.type === LIST_TYPE) st.lists.push({ key: k, author: v.author, ts, seq: v.sequence || 0, arrival: st.lists.length, c });
+      else if (c.type === LEAVE_TYPE && c.list) st.leaves.push({ key: k, author: v.author, ts, list: String(c.list) });
       else if (c.type === 'post' && c.list) {
         const to = Array.isArray(c.to) ? c.to : [];
-        if (v.author === me || to.includes(me)) posts.push({ key: k, author: v.author, ts, c });
+        if (v.author === me || to.includes(me)) st.posts.push({ key: k, author: v.author, ts, c });
       }
     }
     const tombed = new Set();
-    for (const [target, authors] of tombClaims.entries()) {
-      const orig = authorByKey.get(target);
+    for (const [target, authors] of st.tombClaims.entries()) {
+      const orig = st.authorByKey.get(target);
       for (const a of authors) if (a === orig || a === me) { tombed.add(target); break; }
     }
-    return { lists, leaves, posts: posts.filter(p => !tombed.has(p.key)), tombed, chunks };
+    return { lists: st.lists.slice(), leaves: st.leaves.slice(), posts: st.posts.filter(p => !tombed.has(p.key)), tombed, chunks: st.chunks };
   };
 
   const buildIndex = (publicMsgs, priv) => {
@@ -106,7 +112,7 @@ module.exports = ({ cooler, subscriptionsModel = null }) => {
       const v = m.value || {};
       const c = v.content;
       if (!c || typeof c !== 'object' || c.type !== LIST_TYPE) continue;
-      nodes.set(m.key, { key: m.key, author: v.author, ts: v.timestamp || m.timestamp || 0, c, closed: false });
+      nodes.set(m.key, { key: m.key, author: v.author, ts: v.timestamp || m.timestamp || 0, seq: v.sequence || 0, arrival: Number(m.timestamp) || 0, c, closed: false });
       if (typeof c.replaces === 'string') parentOf.set(m.key, c.replaces);
     }
     const rootOf = (key) => {
@@ -122,36 +128,41 @@ module.exports = ({ cooler, subscriptionsModel = null }) => {
       if (!versionsById.has(root)) versionsById.set(root, []);
       versionsById.get(root).push(node);
     }
-    const closedTomb = new Set();
-    for (const n of priv.lists) {
-      if (!n.c.listId) continue;
-      if (normU(n.c.status) === 'DELETED') closedTomb.add(String(n.c.listId));
-    }
+    const privateById = new Map();
     for (const n of priv.lists) {
       const id = n.c.listId ? String(n.c.listId) : null;
-      if (!id || closedTomb.has(id)) continue;
-      if (!versionsById.has(id)) versionsById.set(id, []);
-      versionsById.get(id).push({ ...n, closed: true });
+      if (!id || nodes.has(id)) continue;
+      if (!privateById.has(id)) privateById.set(id, []);
+      privateById.get(id).push({ ...n, closed: true });
     }
+    for (const [id, versions] of privateById) versionsById.set(id, versions);
+    const ownerOf = (id, versions) => {
+      if (nodes.has(id)) return nodes.get(id).author;
+      const keys = new Set(versions.map(n => n.key));
+      const heads = versions.filter(n => !(typeof n.c.replaces === 'string' && keys.has(n.c.replaces)) && (typeof n.c.author !== 'string' || n.c.author === n.author));
+      heads.sort((a, b) => a.arrival - b.arrival);
+      return heads.length ? heads[0].author : null;
+    };
     const lists = new Map();
     for (const [id, versions] of versionsById) {
-      versions.sort((a, b) => a.ts - b.ts);
-      const first = versions[0];
-      const own = versions.filter(v => v.author === first.author);
+      const owner = ownerOf(id, versions);
+      const own = versions.filter(v => v.author === owner).sort((a, b) => (a.seq - b.seq) || (a.ts - b.ts));
+      if (!own.length || own.some(v => v.closed && normU(v.c.status) === 'DELETED')) continue;
+      const first = own[0];
       const tip = own[own.length - 1];
       const c = tip.c;
       const listType = first.closed ? 'CLOSED' : normalizeListType(c.listType);
       const updatedAt = c.updatedAt || new Date(tip.ts).toISOString();
-      let members = first.closed ? uniq([first.author, ...normalizeMembers(c.members)]) : [];
+      let members = first.closed ? uniq([owner, ...normalizeMembers(c.members)]) : [];
       if (first.closed) {
         const left = new Set(priv.leaves.filter(l => l.list === id && l.ts >= tip.ts).map(l => l.author));
-        members = members.filter(m => m === first.author || !left.has(m));
+        members = members.filter(m => m === owner || !left.has(m));
       }
       lists.set(id, {
         id, rootId: id, tipId: tip.key,
         title: safeText(c.title), description: safeText(c.description),
         listType, closed: listType === 'CLOSED', status: normalizeStatus(c.status), tags: normalizeTags(c.tags),
-        members, author: first.author,
+        members, author: owner,
         createdAt: first.c.createdAt || new Date(first.ts).toISOString(),
         updatedAt, ts: tip.ts
       });

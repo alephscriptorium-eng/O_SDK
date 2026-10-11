@@ -1411,6 +1411,15 @@ button.create-button:hover {
   width: 300px;
   flex: 0 0 300px;
 }
+.inhabitants-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+@media (max-width: 900px){.inhabitants-grid{grid-template-columns:1fr}}
+.tribe-main .inhabitants-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}
+.inhabitants-grid > .inhabitants-card{margin:0;min-width:0}
+.inhabitants-grid .inhabitants-card-body,.inhabitants-grid .inhabitant-card{padding:0 !important;margin:0 !important;border:0 !important;background:transparent !important;box-shadow:none !important}
+.inhabitants-grid .inhabitant-card{flex-direction:column;align-items:stretch}
+.inhabitants-grid .inhabitant-left{width:auto;flex:1 1 auto;min-width:0}
+.inhabitants-grid .inhabitant-left > a:first-of-type{width:160px;height:160px}
+.inhabitants-grid .inhabitant-photo-details{width:160px !important;height:160px !important}
 .inhabitant-left > a:first-of-type { margin-bottom: 0 !important; }
 .inhabitant-left > .status.you { margin: 0; }
 .inhabitant-left .profile-sensors-box { margin: 0; }
@@ -3969,7 +3978,6 @@ a.pm-btn:hover { text-decoration: none }
 .carbon-section-title{font-size:18px;color:#555;margin:8px 0;font-weight:600}
 #carbon{scroll-margin-top:16px}
 #wallet,#language,#ux,#theme,#wish,#workflows,#home-page,#ai,#logstream,#replication,#lan,#pm-visibility,#multiverse,#verification,#indexes,#export,#panic{scroll-margin-top:16px}
-.settings-anchor-space{min-height:70vh;margin:0;padding:0;background:none;border:0;box-shadow:none}
 .carbon-chart{margin:12px 0;background:transparent !important;border:none !important}
 .carbon-bar-label{display:flex;justify-content:space-between;font-size:14px;margin:4px 0 2px;background:transparent !important;border:none !important}
 .carbon-bar-track{background:#3a3a3a !important;border-radius:6px;height:22px;overflow:hidden;border:none !important}
@@ -6781,6 +6789,7 @@ a.chip-link:hover .pm-exposition-chip{filter:brightness(1.2)}
 .welcome-skip{text-align:center;margin-top:6px}
 .welcome-skip-link{color:#666;font-size:12px}
 .indexing-progress-block{max-width:640px;margin:24px auto;text-align:center}
+.indexing-message{margin:0 0 14px;font-size:16px;line-height:1.4;color:#ffd700}
 .indexing-progress{width:100%;height:18px}
 .indexing-percent{margin:8px 0 4px;font-size:22px;color:#ffd700}
 .indexing-note{color:#888;font-size:12px;margin:0}
@@ -7227,7 +7236,7 @@ a.chip-link:hover .pm-exposition-chip{filter:brightness(1.2)}
 .content-actions{display:flex;justify-content:right;align-items:center;gap:12px;flex-wrap:wrap;border:none;background:transparent;padding:0}
 .tribe-side .content-actions{flex-wrap:wrap;gap:6px}
 .tribe-side .content-actions .btn-singleview{padding:6px 9px;font-size:1em}
-.trending-card.own-content{box-shadow:inset 3px 0 0 #ffa300}
+.trending-card.own-content,.addr-card.ubi-pub-card.own-content{box-shadow:inset 3px 0 0 #ffa300}
 .trending-dominant-sep{margin:0 8px;opacity:0.5}
 .trending-dominant-text,.trending-total-count{font-weight:700}
 .comment-file-upload{display:flex;flex-direction:column;align-items:flex-start;gap:6px;background:transparent !important;border:0 !important;padding:0 !important;margin:8px 0}
@@ -8842,3 +8851,10 @@ label.wallet-create-transfer input[type="checkbox"]{width:auto !important;flex:0
 .oasis-pager-sizes{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-right:auto;padding:0}
 .oasis-pager-btn{display:inline-block;padding:6px 14px;background:#1C1C1C;color:#E6C200;border:1px solid #333;border-radius:14px;font-size:13px;text-decoration:none;transition:border-color .15s ease,color .15s ease,background .15s ease}
 .oasis-pager-btn:hover,.oasis-pager-btn.active{border-color:#FFD700;color:#FFD700;text-decoration:none}
+.card-title-link{color:inherit;text-decoration:none}
+.card-title-link:hover{text-decoration:underline}
+.graphos-zoom-row{display:flex;justify-content:center;margin:8px 0 0;padding:0;border:0;background:none;box-shadow:none}
+.graphos-lightbox .graphos-canvas-zoom{width:96vw;height:92vh;overflow:auto;background:#111;border:1px solid #2a2a2a;border-radius:8px;box-sizing:border-box;padding:0;margin:0}
+.graphos-lightbox .graphos-zoom-stage,.graphos-lightbox .graphos-zoom-svg{padding:0;margin:0;border:0;border-radius:0;background:none;box-shadow:none}
+.graphos-lightbox .graphos-svg{width:100%;height:auto;max-height:calc(92vh - 4px);min-height:0;display:block}
+.graphos-lightbox .lightbox-close{position:fixed;top:14px;right:22px;z-index:10002;font-size:28px;text-decoration:none}

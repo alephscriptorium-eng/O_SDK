@@ -25,6 +25,8 @@ src/AI/models
 src/AI/models/**
 volumes-dev
 volumes-dev/**
+volumes-real
+volumes-real/**
 backups
 backups/**
 .env

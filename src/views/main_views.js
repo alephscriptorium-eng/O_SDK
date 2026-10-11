@@ -294,7 +294,9 @@ const renderContentActions = (msgId, viewHref, opts = {}) => {
     ? a({ href: `/blockexplorer/block/${encodeURIComponent(blockId)}`, class: 'btn-singleview', title: i18n.blockchainViewBlockexplorer }, '⦿')
     : null;
 
-  const contentBtn = viewHref
+  const herePath = (listScope() || {}).path;
+  const onItself = (() => { try { return !!herePath && decodeURIComponent(String(viewHref || '').split(/[?#]/)[0]) === decodeURIComponent(String(herePath)); } catch (_) { return false; } })();
+  const contentBtn = viewHref && !onItself
     ? a({ href: viewHref, class: 'btn-singleview btn-content', title: i18n.visitContent }, '↗')
     : null;
 
@@ -515,7 +517,7 @@ const paged = (list) => {
   const store = listScope();
   const query = store ? store.query : '';
   const { items, ...pager } = slicePage(list, new URLSearchParams(String(query || '')).get('page'), listPerPage(query));
-  if (store) store.pager = pager;
+  if (store) { store.pager = pager; store.pageItems = items; }
   return items;
 };
 exports.paged = paged;
@@ -608,7 +610,7 @@ const confirmView = ({ title, message, action, hidden = [], backHref = null }) =
     div({ class: 'tags-header' },
       h2(title || i18n.confirmActionTitle),
       message ? p({ class: 'error-page-message' }, String(message)) : null,
-      form({ method: 'POST', action },
+      form({ method: 'POST', action, class: 'confirm-actions' },
         ...hidden.map(h => input({ type: 'hidden', name: h.name, value: String(h.value == null ? '' : h.value) })),
         button({ type: 'submit', class: 'create-button' }, i18n.confirmActionButton),
         ' ',
@@ -705,10 +707,13 @@ let i18n = {};
 Object.assign(i18n, i18nBase[selectedLanguage]);
 exports.getLanguage = () => (i18nBase[selectedLanguage] ? selectedLanguage : 'en');
 exports.setLanguage = (language) => {
+  if (language === selectedLanguage) return;
   selectedLanguage = language;
   const newLang = i18nBase[selectedLanguage] || i18nBase['en'];
   Object.keys(i18n).forEach(k => delete i18n[k]);
   Object.assign(i18n, newLang);
+  const momentLocale = moment.locale(selectedLanguage === 'zh' ? 'zh-cn' : (i18nBase[selectedLanguage] ? selectedLanguage : 'en'));
+  if (moment.localeData(momentLocale).postformat('1') !== '1') moment.updateLocale(momentLocale, { preparse: (str) => str, postformat: (str) => str });
 };
 exports.i18n = i18n;
 Object.defineProperty(exports, 'selectedLanguage', { get: () => selectedLanguage });
@@ -820,7 +825,17 @@ const nbsp = "\xa0";
 
 const { getConfig } = require('../configs/config-manager.js');
 
-const assetVersion = () => {
+const shortCache = (ttl, fn) => {
+  let at = 0;
+  let value;
+  return () => {
+    const now = Date.now();
+    if (!at || now - at > ttl) { value = fn(); at = now; }
+    return value;
+  };
+};
+
+const computeAssetVersion = () => {
   try {
     const base = path.resolve(__dirname, "..", "client", "assets");
     let latest = 0;
@@ -838,7 +853,9 @@ const assetVersion = () => {
   }
 };
 
-const readPkg = () => {
+const assetVersion = shortCache(5000, () => computeAssetVersion());
+
+const readPkgFile = () => {
   const file = path.resolve(__dirname, "..", "server", "package.json");
   try {
     const txt = fs.readFileSync(file, "utf8");
@@ -848,6 +865,7 @@ const readPkg = () => {
     return {};
   }
 };
+const readPkg = shortCache(30000, readPkgFile);
 
 const renderFooter = () => {
   const pkg = readPkg();
@@ -938,12 +956,21 @@ const currentNavPath = () => {
   return store && typeof store.path === 'string' ? store.path : '';
 };
 
+const firstHref = (node) => {
+  if (!node || typeof node !== 'object') return '';
+  const own = typeof node.href === 'string' && node.href ? node.href : (typeof node.getAttribute === 'function' ? node.getAttribute('href') : null);
+  if (own) return String(own);
+  for (const child of node.childNodes || []) {
+    const found = firstHref(child);
+    if (found) return found;
+  }
+  return '';
+};
+
 const navGroupHasPath = (items, path) => {
   if (!path) return false;
   return items.flat(Infinity).some(item => {
-    const html = item && item.outerHTML ? item.outerHTML : '';
-    const m = html.match(/href="([^"?#]*)/);
-    const href = m ? m[1] : '';
+    const href = firstHref(item).split(/[?#]/)[0];
     if (!href || href === '/') return false;
     return path === href || path.startsWith(href + '/');
   });
@@ -1105,7 +1132,7 @@ const renderImagesLink = () => {
     return [
       navLink({
         href: "/images",
-        emoji: "ꕥ",
+        emoji: "▦",
         text: i18n.imagesLabel,
         class: "images-link enabled"
       })
@@ -1363,7 +1390,7 @@ const renderLarpLink = () => {
     ? [
         navLink({
           href: "/larp",
-          emoji: "✦",
+          emoji: "♜",
           text: i18n.larpTitle || "L.A.R.P.",
           class: "larp-link enabled"
         })
@@ -1515,7 +1542,7 @@ const renderReportsLink = () => {
     ? [
         navLink({
           href: "/reports",
-          emoji: "ꕥ",
+          emoji: "⚐",
           text: i18n.reportsTitle,
           class: "reports-link enabled"
         })
@@ -1557,7 +1584,7 @@ const renderWikiLink = () => {
     ? [
         navLink({
           href: "/wiki",
-          emoji: "ꔮ",
+          emoji: "¶",
           text: i18n.wikiTitle,
           class: "wiki-link enabled"
         })
@@ -1757,6 +1784,8 @@ const renderEmergencyBanner = (featured, opts = {}) => {
 };
 
 const template = (titlePrefix, ...elements) => {
+  const scope = listScope();
+  if (scope && scope.dryRun) return '';
   const currentConfig = getConfig();
   const theme = currentConfig.themes.current || "Dark-SNH";
   const buildAiSuggestion = (compact) => {
@@ -1970,7 +1999,7 @@ const template = (titlePrefix, ...elements) => {
             ul(
               navLink({ href: "/activity", emoji: "ꔙ", text: i18n.activityTitle }),
               renderTrendingLink(),
-              navLink({ href: "/search", emoji: "ꔅ", text: i18n.searchTitle })
+              navLink({ href: "/search", emoji: "⌕", text: i18n.searchTitle })
             )
           )
         ) : div(
@@ -1980,7 +2009,7 @@ const template = (titlePrefix, ...elements) => {
               ...((getConfig().modules.aiNavMod === 'on' || uxMode === 'ainav') ? [] : (renderAILink() || [])),
               navLink({ href: "/data", emoji: "⚯", text: i18n.dataTitle }),
               renderTagsLink(),
-              navLink({ href: "/search", emoji: "ꔅ", text: i18n.searchTitle })
+              navLink({ href: "/search", emoji: "⌕", text: i18n.searchTitle })
             )
           )
         )
@@ -3399,13 +3428,14 @@ const renderUserSensors = (u, opts = {}) => {
         ? span({ class: 'wallet-address phone-number-value', title: isMe ? i18n.profileVisibilityPhone : i18n.phoneRecipientRefuses }, number)
         : renderPhoneCallForm(u.id, span({ class: 'wallet-address phone-number-value' }, number), i18n.phoneCallButton),
       renderStateChip(dnd ? 'hidden' : 'mutuals', null, String(dnd ? i18n.phoneDnd : i18n.phoneOpen).toUpperCase()),
-      isMe ? form({ method: 'POST', action: '/phone/dnd', class: 'phone-dnd-form' },
+      isMe && opts.dndToggle !== false ? form({ method: 'POST', action: '/phone/dnd', class: 'phone-dnd-form' },
         input({ type: 'hidden', name: 'dnd', value: dnd ? '0' : '1' }),
         button({ type: 'submit', class: 'tribe-action-btn' }, String(dnd ? i18n.phoneOpen : i18n.phoneDnd).toUpperCase())
       ) : null
     ));
   }
   const sensorsBox = items.length ? div({ class: 'profile-sensors-box' }, ...items) : null;
+  if (opts.sensorsOnly) return sensorsBox ? [sensorsBox] : [];
   const larpNode = (show('larpSign') && u.larpHouse && u.larpHouse.key)
     ? a({ href: `/larp/${u.larpHouse.key}`, class: 'larp-sign-block', title: u.larpHouse.name }, img({ src: u.larpHouse.image || '/assets/larp/images/default.jpg', alt: u.larpHouse.name, class: 'larp-sign-large' }))
     : null;
