@@ -1,0 +1,8 @@
+# Invariantes del snapshot del pub (D-O27; docs/PUB/UPGRADE-PROTOCOL.md §0.4, pub/tools/snapshot-build.js). Columnas separadas por TAB:
+# mínimo	fichero	cadena literal (grep -F)	de qué depende la pieza
+# El pub construye el snapshot (OASISSN1) y lo sirve desde el sbot; HUB y bots lo apagan con OASIS_SNAPSHOT=off (interruptor del fork).
+# Las RPC con las que se lee el log (createLogStream, createUserStream) siguen en db2.tsv: son del motor, no del snapshot.
+1	src/backend/backend.js	process.env.OASIS_SNAPSHOT === 'off'	interruptor del fork (0 en upstream: es nuestro): HUB y bots ni construyen snapshot ni arrancan desde el del pub
+1	src/server/snapshot_plugin.js	path.join(config.path, 'oasis', 'content'	de dónde sirve el sbot el snapshot: ahí lo deja el pub
+1	src/models/backup_model.js	const SNAPSHOT_MAGIC = Buffer.from('OASISSN1')	cabecera del formato de snapshot que escribe snapshot-build.js
+1	src/models/backup_model.js	const REC_MSG = 2	código de registro de mensaje del snapshot (el pub solo escribe META=1 y MSG=2)

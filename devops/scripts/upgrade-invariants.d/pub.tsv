@@ -1,0 +1,20 @@
+# Invariantes de los guards del pub (docs/PUB/UPGRADE-PROTOCOL.md §2, tabla de guards). Columnas separadas por TAB:
+# mínimo	fichero	cadena literal (grep -F)	de qué depende la pieza
+# Dos clases de fila: lo que el fork AÑADE (líneas `+` de `git diff $NEW_REF -- src/`: si falta, el overlay se
+# comió un guard) y lo de UPSTREAM de lo que ese guard cuelga (si falta, el guard hay que reescribirlo, no reaplicarlo).
+# Los guards del visor clearnet (sexto y séptimo) y OASIS_SERVER_CONFIG_OVERRIDE están en hub.tsv; el interruptor
+# OASIS_SNAPSHOT, en snapshot.tsv. Cada literal se contrasta con el diff antes de darlo por invariante.
+1	src/backend/backend.js	.post("/update"	upstream: la ruta en la que vive el primer guard (si se renombra o se mueve, el guard hay que ponerlo en otro sitio)
+1	src/backend/backend.js	console.warn("oasis@version: in-app auto-update is disabled for this Dockerized deployment. Update from the host repository and rebuild the container.");	primer guard: /update es un no-op (sin git pull ni install.sh dentro del contenedor)
+1	src/backend/backend.js	if (!config.public || snapshotsOff) return null;	interruptor de snapshots (D-O27) en runSnapshotBuild: con OASIS_SNAPSHOT=off el nodo no construye
+1	src/backend/backend.js	if (config.public || snapshotsOff) return null;	interruptor de snapshots (D-O27) en bootstrapFromPub: con OASIS_SNAPSHOT=off el nodo no arranca desde el snapshot del pub
+2	src/backend/updater.js	This Dockerized deployment should be updated from the host repository and rebuilt. In-app auto-update is disabled.	guard del updater: las dos ramas del aviso apuntan al repo del host, ninguna descarga nada
+1	src/views/settings_view.js	p("Upstream Oasis updates are available. For this Dockerized deployment, update from the host repository and rebuild the container. In-app auto-update is disabled.")	guard de la GUI: el aviso de /settings es informativo, sin botón que dispare el updater
+1	src/server/ssb_config.js	function mergeDeep	guard de ssb_config: la config del pub (pub/config/ssb/config) se funde en profundidad con la de la imagen
+1	src/server/ssb_config.js	config = mergeDeep(config, configData);	guard de ssb_config: la fusión en profundidad sustituye el spread plano de upstream (sin ella `connections` del pub pisaría a la imagen entera)
+1	src/server/ssb_config.js	config = mergeDeep(config, overrideData);	guard de ssb_config: el fichero de OASIS_SERVER_CONFIG_OVERRIDE (HUB, bots) se aplica después de la config leída
+1	src/server/ssb_config.js	const configData = require('../configs/config-manager').readServerConfig();	upstream: de dónde sale la config que el guard funde (config-manager); si cambia, mergeDeep funde otra cosa
+1	src/server/ssb_config.js	const megabyte = Math.pow(2, 20);	upstream: unidad con la que el guard fija el tope de blobs
+1	src/server/ssb_config.js	config.blobs.max = 50 * megabyte;	guard de ssb_config: tope de blobs a 50 MiB (upstream fija 75 * megabyte en la misma línea)
+1	src/configs/snh-invite-code.json	"url":	base del visor y del invite: upstream trae la clave, el fork solo cambia el valor (dato de instancia; no se mide aquí)
+1	src/configs/blockchain-cycle.json	"cycle":	fichero del fork (upstream no lo trae): el overlay limpio de §2 lo borra si no se restaura expresamente
