@@ -163,5 +163,19 @@ Una orden por paso (UPGRADE §4), parada ante cualquier salida distinta de la es
 - **La deriva de `.dockerignore` no es convergible mientras el host tenga otro layout** (`OASIS_PUB/` ≠ `pub/`): el del
   host es el correcto para su raíz y ya cumple §4; `deploy-status` lo marcará DISTINTO hasta la migración (E0). El paso 1
   del protocolo debe decir «converger **si el layout es el mismo**; si no, comprobar que el del host cumple §4».
+- **«Un comando por paso» también vale para el operador.** En GO-4b encadené `hub-wallet.sh on --yes` → `check --wait` →
+  backup → `snapshot post130` → **journal** → `deploy-status` en un solo guion. El `on` **abortó en precondiciones** (el
+  pub no veía al bot conectado) pero el guion siguió: el `check` salió verde (el estado era el de 9a, legítimo) y el
+  journal registró `wallet-engine-on` **con el motor apagado** (14:48:18Z). Detectado al leer la salida parcial; la
+  tarea se detuvo (ya tarde) y el journal lleva desde las 14:53:34Z una línea correctora `wallet-engine-off`. El
+  journal es `devops/logs/deploy-history.jsonl` (local, fuera de git). Regla para §4: tras cualquier orden que **pueda
+  abortar por precondición** (`hub-wallet.sh on`, `pause`), el siguiente paso espera a leer su salida; el journal se
+  escribe solo tras el `check` del estado **real**.
+- **La precondición «el pub lo ve conectado» de `hub-wallet.sh on` destapó un problema previo al ciclo**: el sbot del
+  bot llevaba sin conectar con nuestro pub desde 2026-10-14T23:02Z (`conn.json`: `stateChange`, `failure: 0`,
+  `autoconnect: true`) mientras mantenía cuatro pubs externos (`conn.peers()`); el HUB sí reconectó en 5 s tras cada
+  recreación. TCP del bot al pub en orden (`connect ok 172.18.0.4`). `snapshot`/`check` no lo ven: miden lo publicado,
+  no la conectividad. Hallazgo para el backlog: que `hub-wallet.sh status` (o la foto) diga a qué pares está conectado
+  cada nodo de soporte, y mirar el planificador de `ssb-conn` (`maintainConnections(quota…)`, `MAX_STAGED_PUBS = 3`).
 - **`.dockerignore` del repo** no tenía las reglas que §4 exige al del host (`src.old*`, `src.new*`, `.env.prod*`):
   el repo las lleva desde este WP y la deriva converge hacia el repo.
