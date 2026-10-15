@@ -5,6 +5,29 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Removed — Documentos de entrada superados: `MAPA.md`, `PLAN.md`, `next-steps.md`, `docs/CHANGELOG.md` (WP-O139, D-O37, 2026-10-15)
+
+Criterio nuevo (D-O37): un documento obsoleto se retira, no se marca; git ya archiva. `MAPA.md` describía julio
+(Oasis 0.8.8, «no existe `oasis-upstream`», 4 guards) y se presentaba como estado real; su función vive en
+`deploy-status.sh`, `docs/AGENTES.md`, `plan/BACKLOG.md` y `pub/site/scriptorium/estado.md`. `PLAN.md` estaba
+superado por el backlog; `next-steps.md` era un transcript de ChatGPT sobre Radicle (D-O3); `docs/CHANGELOG.md`
+era el changelog de upstream congelado en v0.7.4. También `scripts/check-docker-context.sh` (sin consumidor) y el
+npm `pub:local:retro-bot:up` (arrancaba el nodo deprecated, D-O36). Las citas `MAPA.md:n` de los dosieres se leen
+con `git show`.
+
+### Changed — Un solo recuento de guards, tres modos, Habitante en las tablas, retro una vez (WP-O139)
+
+- Frase canónica (D-O37): «7 guards en 6 ficheros; con `blockchain-cycle.json` el invariante es de 7 ficheros».
+  README decía 5, BASE-2 5, MAPA 4. «Misma imagen, dos modos» → tres (`full`, `server`, `backend`). Upstream es
+  `epsylon/oasis` también en BASE-1.
+- `docs/AGENTES.md`: la puerta Habitante entra en la tabla de §0; la política del invite público pasa a
+  `roles/habitante.md`; la deprecación del retro se dice en §2.9 y §3 y §5 solo la cita. La ficha de instancia
+  deja de escribir tres versiones y se queda con la del journal («el estado presente se mide»).
+- `plan/BACKLOG.md` al día: once WPs fusionados que figuraban sin estado o «pendiente de merge»; O80/O77 absorbidos
+  por O112/O127; WP-O03 cerrado; altas WP-O139 … WP-O142. D-O34/D-O35 señaladas en su rama.
+- Higiene: `ARCHIVO/DISCO/26sm-exported/` (124 MB de Canva) ignorado en `main` con las reglas de su rama;
+  `ARCHIVO/README` completo; `BASE-1/2/3` enlazados desde `docs/proyecto.md`.
+
 ### Changed — Oasis 1.2.8 en pub, HUB y bot de cartera (WP-O138, 2026-10-11)
 
 Salto 1.2.5 → 1.2.8 (1.2.6 y 1.2.7 dentro), sin cambio de motor. Overlay limpio desde `28fc1a68` y los 7 guards
