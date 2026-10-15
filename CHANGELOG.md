@@ -5,6 +5,32 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Enlace garantizado de los nodos de soporte con el pub (WP-O143, D-O38, 2026-10-15)
+
+Lo que lo motivó: en el ciclo 1.3.0 la precondición de `hub-wallet.sh on` destapó que el sbot del bot de cartera llevaba
+desde 2026-10-14T23:02Z sin conectar con el pub (hasta 2026-10-15T14:55Z, forzado por RPC con GO), con `conn.json` sano
+y TCP en orden. Causa medida: `ssb-conn` mantiene **4 plazas salientes** por nodo (`conn-scheduler.js:316-317`; las
+entrantes no cuentan), las llena por `oasisPeerRank` y rota ~2 h/√N (`network_pause.js:75-90`); `autoconnect` solo
+filtra, no hay par prioritario, y `pub: true` marca `autoconnect` a todo pub conocido (`syncPeerBook`). Medido: bot
+17 pubs / 17 autoconnect / 4 salientes; HUB 12 / 9 / 4; pub 19 / 17 y 1 saliente.
+
+- **El enlace se mide**: `peers` y `pub_link` (`connected in|out` · `ausente` · `?`) en la foto de `upgrade-gates.sh`
+  y criterio del `check` para `GATE_LINK_NODES` (`?` NO MEDIBLE; `ausente` «todavía no» con `--wait`, DESVIACIÓN al
+  tope); `hub-wallet.sh status` línea `pares:` y `ready` por `conn.peers()` del bot, no por el log del pub;
+  `deploy-status.sh` líneas `LINK`. Sonda `ssb-probe.js` con `peers[]` (inbound, failure) y `link` por clave.
+- **Dos capas, homogéneas para HUB y bot**: el pub recuerda a sus nodos (`upgrade-gates.sh link pub --yes`: conexión
+  entrante que no gasta su cupo) y el entrypoint repone el enlace cada 60 s (`start_pub_link`, `pub/tools/pub-link.js
+  --ensure`; `OASIS_PUB_LINK_HOST` por defecto `oasis-pub`, vacío = desactivado; `OASIS_PUB_LINK_EVERY_S` 60,
+  `OASIS_PUB_LINK_FIRST_S` 30, `OASIS_PUB_LINK_ADDR` opcional). Log `[pub-link]` solo en cambios de estado; 0
+  publicaciones; el healthcheck no cambia.
+- `conn.populatePubs: false` en los `ssb-config` del HUB y del bot (×3): no se descubren pubs nuevos; los conocidos siguen.
+- Subcomando `upgrade-gates.sh link <alias> [--yes]` (permitido en `--remote` con `--yes`): restablece y vuelve a
+  medir; `alias = pub` carga la libreta del pub. UPGRADE §4 pasos 8-9: si el `check --wait` deja `ausente`, `link`
+  con GO; nunca un `on` a ciegas.
+- `hub-conn-fix.js` retirado (D-O37): subsumido en `pub-link.js --forget-seeded/--remember/--connect`. Invariantes
+  nuevos `upgrade-invariants.d/link.tsv` (cupo, `inbound`, `oasisPeerRank`, `populatePubs`, `start_pub_link`).
+- Protocolos: UPGRADE §0.2, §3.4, §4, §6; HUB §2, §3, §5, §11; ECOIN §2, §3, §9, §14; AGENTES §4 (trampa nueva).
+
 ### Changed — Oasis 1.3.0 en pub, HUB y bot de cartera (WP-O141, 2026-10-15)
 
 Salto 1.2.8 → 1.3.0 (1.2.9 dentro), sin cambio de motor; primer ciclo con el protocolo v3 (WP-O140). Overlay limpio
