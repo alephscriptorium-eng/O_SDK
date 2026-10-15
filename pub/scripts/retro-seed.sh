@@ -3,6 +3,7 @@
 # El seeder necesita las dependencias de la imagen (/app/src/server/node_modules) y el socket del sbot:
 # por eso corre con `docker exec` como `oasis` y HOME=/home/oasis (como oasis, no como root: ssb_config
 # resolvería ~/.ssb = /root/.ssb). Dry-run por defecto; cada `--yes <bloque>` publica SOLO ese bloque.
+# El bot retro de la casa está DEPRECATED (D-O36): este script requiere el contenedor del bot de plantilla vivo. Generalizar: WP-O142.
 #
 #   bash pub/scripts/retro-seed.sh [--env pub/.env.local] [--pub-id @…] [--template campamento] [--evidence <tag>] [--yes <bloque>]...
 #

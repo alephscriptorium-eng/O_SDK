@@ -3,6 +3,7 @@
 # retro (WP-O135, D-O33, docs/PUB/TEMPLATE-PROTOCOL.md §9). Gemelo de retro-seed.sh: corre como `oasis` con
 # HOME=/home/oasis y habla con el sbot por su socket. Dry-run por defecto; cada `--yes <bloque>` retira SOLO ese
 # bloque (orden: clearnet entrada maps wiki mailing events calendars rooms invites subtribes tribes).
+# El bot retro de la casa está DEPRECATED (D-O36): este script requiere el contenedor del bot de plantilla vivo. Generalizar: WP-O142.
 #
 #   bash pub/scripts/retro-tombstone.sh --pub-id @… [--ledger /home/oasis/.ssb/oasis/keys/plantilla-campamento.json] \
 #        [--evidence <tag>] [--yes <bloque>]...
