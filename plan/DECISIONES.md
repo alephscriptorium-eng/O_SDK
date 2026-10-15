@@ -503,8 +503,8 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   cripta) **no se borran ni se pisan**: se conservan apagadas. Lo que **sigue vigente** de D-O33: el
   servicio `oasis-retro-bot` del compose, `retro-seed.sh`, `retro-tombstone.sh` y la vía caliente son
   **método** para otra instancia y para los drills (que usan un bot desechable en su propio entorno,
-  `pub/scripts/drill-26s.sh`, con guard contra `volumes-real/`). Interpretación del agente, a confirmar
-  por el custodio: «deprecated» se lee como retirado de la operación, no como identidad destruida; y
+  `pub/scripts/drill-26s.sh`, con guard contra `volumes-real/`). Interpretación **confirmada por el
+  custodio el 2026-10-15** (WP-O139): «deprecated» se lee como retirado de la operación, no como identidad destruida; y
   queda **abierto** lo que D-O33 daba como motivo para mantenerlo vivo (en Oasis el gobierno de una
   tribu es la identidad de su autor y no hay traspaso): Campamento está deshecha con tombstones, pero
   dos listas CLOSED privadas del bot siguen sin retirar y solo esa identidad podría hacerlo. Supera a
