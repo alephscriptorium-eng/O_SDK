@@ -128,7 +128,10 @@ Tiempo del camino feliz local (U0+U3+U5+U7, sin el build ni el diff): ≈ 6 min;
 como `+0..1` salió (`karmaScore`: los tres lo habían publicado hace < 24 h; `about`: el bot ya llevaba su `clearnetSince`;
 `pubAvailability`: 12 h sin cumplir) y **el `pub-invites` nuevo no salió** (el bot local no ha creado invites: `total=0`).
 
-**Host**: pendiente (§8).
+**Host** (`pre130` 14:08Z → `post130-on` 15:01Z): pub `oasisVersion+1` (25 → 26) · HUB `oasisVersion+1` (21 → 22) ·
+bot `oasisVersion+1 karmaScore+1` (85 → 87; el `karmaScore` llevaba 3,6 días sin publicarse: declarado `+0..1`).
+Ni `about`, ni `pubAvailability` (motor encendido al final del ciclo, 12 h sin cumplir), ni el `pub-invites` nuevo de
+1.3.0, ni cifrados. **Mismo delta que en local** salvo el `karmaScore` del bot, dentro de lo declarado.
 
 ## 8. Aplicación en el host (2026-10-15 UTC)
 
@@ -147,6 +150,11 @@ Una orden por paso (UPGRADE §4), parada ante cualquier salida distinta de la es
 | 7 | Pub (14:25:40Z) | `up -d --no-deps --no-build oasis-pub` → `healthy` a los **4 s** (imagen `e561a64f`; log: `Version: 1.3.0`, tres parches, sin errores). `$R check pre130 --wait --max 900 --expect 'pub:oasisVersion=+1 hub:karmaScore=+0..1 bot:karmaScore=+0..1,pubAvailability=+0..1'` (para HUB y bot, aún en 1.2.8, su `+0..1` vigente): primera foto a los 7 s NO MEDIBLE (seq 25, el sbot escribía), desde los 33 s `rc=0` con pub 26, `prematuro` hasta los 300 s de `--min-age` → **`GATE OK (… 319 s en total)`**: pub `oasisVersion+1`, HUB Δ0, bot Δ0. `/public/status` → `1.3.0`, `running`, `healthy`, invite público presente (121 caracteres, no copiado) | **GO-2** |
 | 8 | HUB (14:32:27Z) | configs sin cambio (regen al día). `up -d --no-deps --no-build oasis-hub` → `healthy` a los **6 s** (1.3.0, tres parches, `Media cache limit: 2048 MB`, «Admin access» presente y no copiado, 93 MiB / 768). `$R check pre130 --wait` (delta vigente de los tres) → **`GATE OK` (296 s)**: pub `+1`, **HUB `oasisVersion+1`** y nada más, bot Δ0. `hub-disk.sh prune-cache` (2,05 GB → 0, `nginx -s reload`) · `$R hub --strict` contra `https://pub.escrivivir.co` → **`GATE OK`**, 16 ok: MISS→HIT, una CSP, idioma «es» estable, **0 cruces en 18 peticiones de 6 idiomas**, tema por `?theme=`, 165 enlaces con `lang` y 174 con `theme`, sitemap 180 URLs https, RSS 36 + 4 | **GO-3** |
 | 9a | Bot (14:39:02Z) | plantilla sin cambio (regen al día): sin render. `hub-wallet.sh pause` → 1.3.0 con `pub=false`, `healthy` a los 0 s (tres parches, «Admin access» presente y no copiado, 165 MiB / 768); `hub-wallet status`: `wallet=1`, cartera `EYdruX…` (la misma), saldo 0, `ecoind` healthy. `$R check pre130 --wait --expect '… bot:oasisVersion=+1,karmaScore=+0..1,about=+0..1'` → **`GATE OK` (292 s)**: **bot `oasisVersion+1 karmaScore+1`** (declarado; 3,6 días sin publicarlo), `motor: pub=true → pub=false`, `wallet` y `(cifrado)` quietos, misma dirección; pub y HUB sin cambios desde su paso. **Sin `pub-invites`** | **GO-4a** |
+| 9b | Motor (14:46 → 14:56Z) | `hub-wallet.sh on --yes` → **ABORTADO en precondiciones** («el pub no lo ve conectado», §6): el sbot del bot llevaba desde el 14 a las 23:02Z sin conectar con el pub. Con GO del custodio: `sbot.conn.connect('net:oasis-pub:8008~shs:…')` por RPC desde el bot → `connect ok`, el pub registra `CONNECTED` (14:55:58Z). `hub-wallet.sh on --yes` → `ready` en verde, recreado con `pub=true`, `healthy` a los 0 s, «PUB engine on», `ecoind` healthy (blocks 61910), cartera `EYdruX…` saldo 0, pool 0. `$R check pre130 --wait` (delta vigente completo, con `pubAvailability=+0..1`) → **`GATE OK` (292 s)**: bot `oasisVersion+1 karmaScore+1` (los de 9a), **sin `pubAvailability` nuevo** (12 h sin cumplir), sin `about`, **sin `pub-invites`**; pub y HUB sin cambios. `backup-ecoin.sh` después (hot, 86 016 B, sha256 `76e974d4…`) | **GO-4b** |
+| 10 | Cierre (15:01Z) | `snapshot post130-on`: pub 26 · HUB 22 · bot 87, los tres «cuadra · sbot=» · journal `1.3.0`, `server+hub+wallet-engine-on` (tras la línea correctora de 14:53, §6) · `deploy-status.sh`: tres nodos **1.3.0 `healthy` «imagen al día»**, `src/` 1.3.0, Engine 26.1.5, deriva solo en `.dockerignore` (esperada, §6), restos = el rollback de este ciclo (`src.old-1.2.8`, `src-1.2.8.tgz`, `:1.2.8`), pub **VERDE** en el directorio (ciclo 6), `/` 39 %, `/srv/oasis` 34 %, `capacity` 0 avisos | |
+
+Pub sin sbot ≈ 4 s; HUB ≈ 6 s; bot ≈ 0 s medidos por el healthcheck (con `start_interval`). **Nada publicado con identidad real fuera
+de lo declarado.** El cliente (1.2.2, D-O32) no se ha tocado; el bot retro sigue deprecated y parado (D-O36).
 
 ## 6. Correcciones al protocolo
 
