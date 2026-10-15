@@ -18,7 +18,7 @@ filtra, no hay par prioritario, y `pub: true` marca `autoconnect` a todo pub con
   y criterio del `check` para `GATE_LINK_NODES` (`?` NO MEDIBLE; `ausente` «todavía no» con `--wait`, DESVIACIÓN al
   tope); `hub-wallet.sh status` línea `pares:` y `ready` por `conn.peers()` del bot, no por el log del pub;
   `deploy-status.sh` líneas `LINK`. Sonda `ssb-probe.js` con `peers[]` (inbound, failure) y `link` por clave.
-- **Dos capas, homogéneas para HUB y bot**: el pub recuerda a sus nodos (`upgrade-gates.sh link pub --yes`: conexión
+- **Dos capas, homogéneas para HUB y bot**: el pub guarda a sus nodos sin `autoconnect` y conecta solo con el que no tenga el enlace (`upgrade-gates.sh link pub --yes`: conexión
   entrante que no gasta su cupo) y el entrypoint repone el enlace cada 60 s (`start_pub_link`, `pub/tools/pub-link.js
   --ensure`; `OASIS_PUB_LINK_HOST` por defecto `oasis-pub`, vacío = desactivado; `OASIS_PUB_LINK_EVERY_S` 60,
   `OASIS_PUB_LINK_FIRST_S` 30, `OASIS_PUB_LINK_ADDR` opcional). Log `[pub-link]` solo en cambios de estado; 0

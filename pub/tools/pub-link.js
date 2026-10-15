@@ -11,14 +11,19 @@
 // Autocontenido: viaja por stdin, los argumentos van tras `-`:
 //   docker exec -i -u oasis -e HOME=/home/oasis <ctr> sh -lc 'cd /app/src/server && node - <acción> …' < pub/tools/pub-link.js
 //   --status                      pares vivos (conn.peers) y libreta (conn.dbPeers)            [solo lectura]
-//   --ensure <host> [--key <K>] [--port <P>] [--now]
+//   --ensure <host> [--key <K>] [--port <P>] [--type T] [--autoconnect true|false] [--now]
 //                                 si no hay un par CONECTADO con la clave de la entrada net:<host>:… de la
 //                                 libreta (entrante o saliente, cualquier dirección), conn.connect a esa
 //                                 entrada; espera hasta 8 s y vuelve a mirar. Sin entrada por nombre: con --key
 //                                 (la clave del pub) la crea (remember) a partir de la entrada por clave que haya
 //                                 (p. ej. la IP del invite; puerto de esa entrada, --port o 8008); si no,
 //                                 OASIS_PUB_LINK_ADDR; si no, rc 3.
-//   --remember <addr> [--type T]  conn.remember(addr, {key: la del ~shs:, type (pub), autoconnect: true}); sin conectar
+//   --remember <addr> [--type T] [--autoconnect true|false]
+//                                 conn.remember(addr, {key: la del ~shs:, type (pub), autoconnect (true)}); sin conectar.
+//                                 Desde el PUB hacia sus nodos de soporte se usa --autoconnect false: la libreta sirve
+//                                 para que --ensure/link conecten SOLO si al nodo le falta el enlace; con autoconnect el
+//                                 planificador del pub marcaría a un nodo que ya está conectado y habría dos conexiones
+//                                 por clave (medido en local, WP-O143).
 //   --connect <addr>              conn.connect(addr, {key, type: pub})
 //   --disconnect <host>           conn.disconnect de los pares vivos cuya dirección es net:<host>:… (drill)
 //   --forget-seeded <KEY44>       disconnect + forget de toda entrada `~shs:KEY:SEED` (lo que dejaba invite.accept;
@@ -32,13 +37,17 @@
 const path = require('path');
 const { createRequire } = require('module');
 
+// ssb-config (inject) lee process.argv como opciones propias: un `--port 8008` nuestro chocaría con el puerto del
+// nodo («conflicting connection settings for: net port»). Los argumentos se capturan y se retiran ANTES de cargarlo.
+const args = process.argv.slice(2);
+process.argv = process.argv.slice(0, 2);
+
 const serverPackage = process.env.OASIS_SERVER_PACKAGE || '/app/src/server/package.json';
 const req = createRequire(serverPackage);
 const ssbClient = req('ssb-client');
 const pull = req('pull-stream');
 const config = req('./ssb_config');
 
-const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
 const val = (name) => { const i = args.indexOf(name); return i >= 0 && i + 1 < args.length ? args[i + 1] : null; };
 const action = ['--status', '--ensure', '--remember', '--connect', '--disconnect', '--forget-seeded'].find((a) => args.includes(a));
@@ -101,7 +110,7 @@ connect(0, async (err, sbot) => {
         const port = val('--port') || (byKey ? (String(byKey[0]).match(/^net:[^:]+:(\d+)/) || [])[1] : null) || '8008';
         const k44 = wantKey.replace(/^@/, '').replace(/\.ed25519$/, '');
         const a = `net:${arg}:${port}~shs:${k44}`;
-        await cbp(sbot.conn.remember, a, { key: wantKey, type: 'pub', autoconnect: true });
+        await cbp(sbot.conn.remember, a, { key: wantKey, type: val('--type') || 'pub', autoconnect: val('--autoconnect') !== 'false' });
         entry = [a, { key: wantKey, type: 'pub' }]; out.did = 'remember';
       }
       if (!entry && process.env.OASIS_PUB_LINK_ADDR) {
@@ -109,6 +118,12 @@ connect(0, async (err, sbot) => {
       }
       if (!entry) { out.before = out.after = 'no-entry'; return finish(sbot, 3); }
       const addr = String(entry[0]); const key = canonical((entry[1] && entry[1].key) || keyOfAddr(addr)); out.key = key; out.addr = stripShs(addr);
+      // Con --autoconnect explícito se actualiza la libreta aunque la entrada ya existiera (p. ej. para quitarle el
+      // autoconnect a un nodo que el pub guardó antes con él).
+      if (val('--autoconnect') !== null && out.did !== 'remember') {
+        const want = val('--autoconnect') !== 'false';
+        if (!entry[1] || (entry[1].autoconnect !== false) !== want) { await cbp(sbot.conn.remember, addr, { key, type: (entry[1] && entry[1].type) || 'pub', autoconnect: want }); out.did = 'update'; }
+      }
       const live = liveByKey(await livePeers(), key);
       if (live) { out.before = out.after = 'connected'; out.inbound = !!live[1].inbound; return finish(sbot, 0); }
       out.before = 'absent';
@@ -123,7 +138,7 @@ connect(0, async (err, sbot) => {
       const addr = arg; const key = keyOfAddr(addr); if (!key) { console.error('la dirección debe llevar ~shs:<KEY44>'); return finish(sbot, 2); }
       const type = val('--type') || 'pub'; out.key = key; out.addr = stripShs(addr); out.host = hostOfAddr(addr);
       const live = liveByKey(await livePeers(), key); out.before = live ? 'connected' : 'absent';
-      if (action === '--remember') { await cbp(sbot.conn.remember, addr, { key, type, autoconnect: true }); out.did = 'remember'; }
+      if (action === '--remember') { await cbp(sbot.conn.remember, addr, { key, type, autoconnect: val('--autoconnect') !== 'false' }); out.did = 'remember'; }
       else { await cbp(sbot.conn.connect, addr, { key, type }); out.did = 'connect'; await sleep(3000); }
       const after = liveByKey(await livePeers(), key); out.after = after ? 'connected' : 'absent'; out.inbound = after ? !!after[1].inbound : null;
       return finish(sbot, 0);

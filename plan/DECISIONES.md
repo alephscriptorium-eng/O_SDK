@@ -556,9 +556,11 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   `syncPeerBook` (`network_pause.js:179-186`) con `pub: true` marca `autoconnect: true` a **todo** pub
   descubierto (`populatePubs`, `conn-scheduler.js:433`). Medido el 2026-10-15 por RPC dentro de cada
   contenedor: bot 17 pubs conocidos / 17 `autoconnect` / 4 salientes; HUB 12 / 9 / 4 (también compite);
-  pub 19 / 17 y 1 saliente. (a) **Dos capas, homogéneas para HUB y bot**: el pub los recuerda
-  (`net:<servicio>:8008~shs:<KEY44>`, `{type:'pub', autoconnect:true}`): para ellos la conexión es
-  entrante y no gasta su cupo; y el entrypoint de cada nodo de soporte (`start_pub_link`,
+  pub 19 / 17 y 1 saliente. (a) **Dos capas, homogéneas para HUB y bot**: el pub los guarda en su libreta
+  (`net:<servicio>:8008~shs:<KEY44>`, `{type:'pub', autoconnect:false}`) y **conecta con ellos solo si al
+  nodo le falta el enlace** (`link pub`; con `autoconnect` el planificador del pub marcaría a un nodo ya
+  conectado y habría dos conexiones por clave, medido en local): para ellos esa conexión es entrante y no
+  gasta su cupo; y el entrypoint de cada nodo de soporte (`start_pub_link`,
   `OASIS_PUB_LINK_HOST` por defecto `oasis-pub`, vacío = desactivado) repone el enlace por
   `conn.connect` cada 60 s con `pub/tools/pub-link.js --ensure` (`[pub-link]` en el log solo en cambios
   de estado, 0 publicaciones). `conn.populatePubs: false` en los `ssb-config` del HUB y del bot frena los

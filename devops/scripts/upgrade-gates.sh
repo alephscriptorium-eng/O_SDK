@@ -42,8 +42,9 @@
 #                       (pub_link): «ausente» es «todavía no» con --wait y DESVIACIÓN sin él; «?» es NO MEDIBLE.
 #   link <alias> [--yes] Repone el enlace con el pub (WP-O143, D-O38; 0 publicaciones) y vuelve a medirlo.
 #                       <alias> de soporte: pub-link.js --ensure dentro del nodo (conn.connect si falta).
-#                       <alias> = pub: el pub RECUERDA a cada nodo de GATE_LINK_NODES por nombre de servicio
-#                       (conn.remember autoconnect): para ellos la conexión será entrante, fuera de su cupo.
+#                       <alias> = pub: el pub guarda a cada nodo de GATE_LINK_NODES por nombre de servicio (sin
+#                       autoconnect) y conecta SOLO con el que no tenga el enlace: para él la conexión es entrante,
+#                       fuera de su cupo, y no se duplica la de un nodo que ya esté conectado.
 #                       En --remote exige --yes: toca un nodo vivo (su libreta y sus conexiones), no su feed.
 #   hub [--strict]      Matriz del visor clearnet por delante de la caché: 200, MISS→HIT, mismo /c con
 #                       distinto Accept-Language y con cookies (D-O25), ?lang=, cruce de idiomas con
@@ -506,13 +507,15 @@ EOS
     [ -n "$pf" ] || { echo "NO MEDIBLE: no se pudo leer el feed del pub ($pubc)" >&2; exit 3; }
     rc=0
     if [ "$alias" = "$GATE_PUB_ALIAS" ]; then
-      # Capa pub (D-O38): el pub recuerda a cada nodo de soporte por su nombre de servicio; la conexión les llegará entrante.
+      # Capa pub (D-O38): el pub guarda a cada nodo de soporte por su nombre de servicio SIN autoconnect y conecta
+      # con él solo si a ese nodo le falta el enlace (por clave): con autoconnect el planificador del pub marcaría a
+      # un nodo ya conectado y habría dos conexiones por clave (medido en local). Para el nodo, el enlace es entrante.
       for n in $GATE_NODES; do a="${n%%:*}"; is_link_node "$a" || continue; nc="${n#*:}"; nc="${nc%%:*}"; svc="${n##*:}"
         nf="$({ node_remote_preamble; node_remote_lib; printf 'echo "$(node_feed "$(node_ssb_dir %q)")"\n' "$nc"; } | run 2>/dev/null | tail -1)"
         [ -n "$nf" ] || { echo "  $a: sin feed legible, no se recuerda"; rc=3; continue; }
         k44="${nf#@}"; k44="${k44%.ed25519}"
-        out="$({ node_remote_preamble; node_remote_lib; printf 'node_pub_link %q --remember %q --type pub\n' "$pubc" "net:$svc:8008~shs:$k44"; } | run 2>/dev/null | tail -1)"
-        echo "  pub recuerda a $a ($svc): ${out:-sin respuesta}"
+        out="$({ node_remote_preamble; node_remote_lib; printf 'node_pub_link %q --ensure %q --key %q --port %q --autoconnect false --now\n' "$pubc" "$svc" "$k44" "${GATE_NODE_SSB_PORT:-8008}"; } | run 2>/dev/null | tail -1)"
+        echo "  pub → $a ($svc): ${out:-sin respuesta}"
       done
       sleep 5
     else
