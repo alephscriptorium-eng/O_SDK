@@ -55,7 +55,7 @@ def sanitize_text(text: str) -> str:
 
 def special(slug: str, rel: str, text: str) -> str:
     if slug == "aleph-net" and rel == "02-pub-scriptorium.md":
-        # la fila del panel se publica sin el detalle de su exposición: eso vive en MAPA.md y en WP-O52
+        # la fila del panel se publica sin el detalle de su exposición: eso vive en WP-O52 (plan/BACKLOG.md)
         text, n = re.subn(r"(\| `pub-panel-api` \|[^|]*\|)[^|]*\|[^|]*\|",
                           r"\1 `127.0.0.1:${PUB_PANEL_PORT:-8787}` | activo; endurecimiento en backlog (WP-O52) |", text, count=1)
         assert n == 1, "fila del panel no encontrada"

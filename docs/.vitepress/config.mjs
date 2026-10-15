@@ -77,7 +77,6 @@ export default defineConfig({
     'AI/**',
     'devs/**',
     'install/**',
-    'CHANGELOG.md',
     'security.md',
     'PUB/deploy.md',
     'PUB/clearnet.md'
