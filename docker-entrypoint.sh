@@ -390,8 +390,7 @@ persist_client_state() {
     fi
 
     # Estado bancario de un cliente 1.1.2 (state dir) → sitio de 1.1.4, una sola vez y sin pisar.
-    if [ -s "$legacy_bank/wallet-addresses.json" ] && [ "$(tr -d ' 
-' < "$legacy_bank/wallet-addresses.json")" != "{}" ]        && [ ! -e "$new_bank/wallet-addresses.json" ]; then
+    if [ -s "$legacy_bank/wallet-addresses.json" ] && [ "$(tr -d ' \n\r' < "$legacy_bank/wallet-addresses.json")" != "{}" ]        && [ ! -e "$new_bank/wallet-addresses.json" ]; then
         mkdir -p "$new_bank" 2>/dev/null || true
         if cp -n "$legacy_bank"/*.json "$new_bank"/ 2>/dev/null; then
             echo "  → estado bancario de 1.1.2 copiado a $new_bank (el original se conserva en $legacy_bank)"
