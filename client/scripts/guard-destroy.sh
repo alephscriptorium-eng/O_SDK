@@ -56,10 +56,10 @@ echo "SOBREVIVE (no lo toca «down -v»):"
 for d in ssb-data ai-models logs client-state; do
   if [ -d "$DATA_DIR/$d" ]; then
     case "$d" in
-      ssb-data)     note="identidad SSB (secret), log y blobs" ;;
+      ssb-data)     note="identidad SSB (secret), log, blobs, y en oasis/: la config viva de la GUI (oasis-config.json, con las credenciales RPC) y el banking" ;;
       ai-models)    note="modelo de IA (.gguf)" ;;
       logs)         note="logs" ;;
-      client-state) note="oasis-config.json de la GUI y estado del banking (mapa de direcciones)" ;;
+      client-state) note="legado de solo lectura: el oasis-config.json que sembró la config viva (ahora en ssb-data/oasis/oasis-config.json)" ;;
     esac
     echo "  - $DATA_DIR/$d/  ← $note (directorio del host; solo se borra el objeto-volumen que lo apunta)"
   fi
