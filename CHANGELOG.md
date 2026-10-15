@@ -12,7 +12,9 @@ y escribe `~/.ssb/oasis/oasis-config.json` y de `src/configs/oasis-config.json` 
 daba dos verdades (medido en el drill de 1.2.5). Ahora **la config viva es ese fichero** (en el host
 `volumes-dev/ssb-data/oasis/oasis-config.json`, 600, regular: `saveConfig` escribe por `rename`), y
 `volumes-dev/client-state/oasis-config.json` queda como **legado de solo lectura** (sembró la viva una vez; se retira en
-un WP posterior). Drill con identidad desechable en verde; **el cliente real sigue en 1.2.2** hasta el GO.
+un WP posterior). Drill con identidad desechable en verde y **aplicado en el cliente real el 2026-10-15** (GO por paso): etiqueta
+`:1.2.2` y copia en frío como rollback; la viva sembrada desde el legado; delta `oasisVersion+1 about+1 karmaScore+1`
+(`mySeq` 111 → 114, nada más); `ecoin:verify` 16 PASS; el pub ya en `seq 114`.
 
 - `docker-entrypoint.sh`: `persist_client_state` siembra la viva (default de la imagen + legado, gana el legado) o la
   funde (default + viva, gana lo vivo), en todos los modos (también `server`, para `sync-only.sh`); repone el default en

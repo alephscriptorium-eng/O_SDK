@@ -70,11 +70,29 @@ quedar pendiente; en el cliente real no hay rollback previsto). Ningún otro tip
 - `sync-only.sh` (modo `server`) también siembra/funde la viva: así Oasis no deja su default interno la primera vez.
 - Secreto nuevo en el bind: la viva lleva `wallet.user/pass` (600) y **viaja con cualquier copia de `ssb-data`**.
 
-## 6. Pendiente: cliente real (con GO del custodio)
+## 6. Cliente real (GO del custodio para 1-4; 19:11-19:17Z)
 
-1. `docker tag o-sdk-oasis-client:latest o-sdk-oasis-client:1.2.2`.
-2. Copia en frío (cliente parado) de `volumes-dev/ssb-data` y `volumes-dev/client-state` a `devops/backups/client/<ts>/`
-   (ignorado por git; material de claves: a cifrado).
-3. `npm run build && docker compose up -d oasis-client` → log «SEMBRADA … + el legado» → healthy.
-4. `count-feed-type.js` dentro del contenedor y `client:inspect-log`: delta = el declarado; `client:ecoin:verify`;
-   healthcheck §5; `devops:pub-feed-seq`.
+| Paso | Comando | Salida |
+|---|---|---|
+| precondición | `docker ps … grep '^oasis-client '` | nada (parado) |
+| 1 | `docker tag o-sdk-oasis-client:latest o-sdk-oasis-client:1.2.2` | `o-sdk-oasis-client:1.2.2 a46b59ddc176` = `:latest` |
+| 2 | `cp -a volumes-dev/{ssb-data,client-state} devops/backups/client/20261015T191115Z/` | `ssb-data` 498M, `client-state` 4K, `secret copiado`, `ignorado por git`. **Material de claves (y ahora `wallet.user/pass` en la viva): a cifrado.** `mySeq` de la copia = **111** (`tailOk`, 0 `badFrames`) |
+| 3 | `npm run build && docker compose up -d oasis-client` | imagen `8cc7c6506ce5`; `healthy a los 6 s`; log: `Persistiendo estado del cliente (config viva: /home/oasis/.ssb/oasis/oasis-config.json; legado: /app/state)` → `config viva SEMBRADA desde el default de la imagen + el legado de /app/state/oasis-config.json` → `wallet.url: http://ecoin-wallet:7474`; `[Version: 1.3.0]`. `ecoin-wallet` arrancó con él (perfil `ecoin` del `.env`) |
+| 4a | `count-feed-type.js` dentro del contenedor | `oasisVersion` 5 (**112**) · `about` 5 (**113**) · `karmaScore` 11 (**114**) · `wallet` 1 (70) · `pub-invites` 0 |
+| 4a | `inspect-log-offset.js` dentro | `mySeq` **114**, `tailOk`, 0 `badFrames` → Δ = 3 = `oasisVersion+1 about+1 karmaScore+1` |
+| 4a | lectura del log (bipf, sin sbot) | 112 `oasisVersion` (`version, updatedAt`); 113 `about` con `visibilityPrefs.clearnetSince = 2026-10-15T19:14:38Z` (`backend.js:980`; 48 claves frente a 43 del `about` 85, `phone: whole`); 114 `karmaScore` |
+| 4a | viva | `stat`: `600 regular file 1993`; `src/configs` regular; en `volumes-dev/ssb-data/oasis/` solo `oasis-config.json` (ni `tmp-` ni `corrupt`) |
+| 4b | `client:ecoin:verify` | **16 PASS · 0 FAIL · 0 SKIP** (V3 RPC 200 / `ecoinrpc` 401; V4 url/user/pass; V5 viva 600, `src/configs` default, legado presente) |
+| 4c | `devops:pub-feed-seq` | `seq_pub=114`, `pub_follows_feed=true`, `feed_follows_pub=true` |
+| 4d | healthcheck §5 | `GET /` 302; `POST /settings/verify` 302 → «feed: 114 messages, last sequence 114 ✓ Forks: 0»; `welcome-pm` 0; sin líneas de error en el log. (Blobs: «15 orphan, 2 own missing»: estado previo de los blobs, no del feed) |
+
+**Delta: `oasisVersion+1 about+1 karmaScore+1`, nada más** (dentro del declarado `karmaScore=+0..1`). Rollback
+preparado: `:1.2.2` + copia en frío (§6 del protocolo: al volver por retag la imagen vieja lee el legado; la viva no se toca).
+
+## 7. Seguimiento
+
+- Retirar el bind `client-state` del compose y de `setup`/`ecoin-init`/`guard-destroy` (WP nuevo), una vez el real haya
+  corrido unos días sobre la viva.
+- `start_pub_link` no corre en modo `full`: el cliente no tiene keepalive con el pub (hoy `peers=10 connected`); si se
+  quiere, es otro WP.
+- Mover a cifrado `devops/backups/client/20261015T191115Z` junto con los del pub y ecoin de hoy.

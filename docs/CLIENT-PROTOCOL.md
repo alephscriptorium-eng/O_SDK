@@ -218,6 +218,9 @@ for t in oasisVersion about karmaScore wallet pub-invites; do docker exec -i oas
 npm run devops:pub-feed-seq -- '<tu-feed>'                                                  # el pub recibe el seq nuevo
 ```
 
+Medido en el cliente real el 2026-10-15 (1.2.2 → 1.3.0): `mySeq` 111 → 114 = `oasisVersion+1 about+1 karmaScore+1`, el
+`about` con `visibilityPrefs.clearnetSince`; nada más (reporte WP-O145).
+
 Cualquier otro tipo con Δ ≠ 0, o un Δ mayor que el declarado, es **desviación**: parada y reporte
 (no se «arregla» publicando nada). El reporte del WP lleva las dos fotos.
 
