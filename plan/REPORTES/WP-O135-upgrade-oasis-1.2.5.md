@@ -1,4 +1,4 @@
-# WP-O135 · Upgrade a Oasis 1.2.5 en local (preparación; el host no se ha tocado)
+# WP-O135 · Upgrade a Oasis 1.2.5 (local y host; §9 recoge la aplicación en el host)
 
 Rama `upgrade/oasis-1.2.5` (desde `main` 5f4462b6) · 2026-10-10 · `OLD_REF=043f4634` (1.2.3) ·
 `NEW_REF=560580d7` (1.2.5: upstream publicó **tres** commits «Oasis release 1.2.5» el 2026-10-09; el

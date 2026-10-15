@@ -482,6 +482,10 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   `INSTANCIA-SCRIPTORIUM.md` §1-§5, `ARCHIVO/DISCO/scriptorium-exported/` (runbooks de mudanza y de
   deshacer, evidencia `vps/tombstone-*.jsonl`, `vps/ledger-tombstones.json`).
 
+  *Nota (2026-10-15, WP-O139)*: **D-O34 y D-O35** (2026-10-11: cuerpos de wiki sin tablas; reparto de
+  códigos de acceso de tribus por la mesa técnica) están asentadas en la rama `dev/26sm-exported`,
+  sin fusionar a `main` (`git show dev/26sm-exported:plan/DECISIONES.md`). El número no se reutiliza.
+
 - **D-O36 · 2026-10-12 · El bot nº 3 (`retro.escrivivir.co`) está DEPRECATED: no se arranca, no se
   recrea, no se sube de versión y no siembra; su identidad se conserva y no se borra.** Dicho por el
   custodio al cierre de WP-O138, en sus palabras: «El bot retro ha sido deprecated (se supone que
@@ -499,8 +503,8 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   cripta) **no se borran ni se pisan**: se conservan apagadas. Lo que **sigue vigente** de D-O33: el
   servicio `oasis-retro-bot` del compose, `retro-seed.sh`, `retro-tombstone.sh` y la vía caliente son
   **método** para otra instancia y para los drills (que usan un bot desechable en su propio entorno,
-  `pub/scripts/drill-26s.sh`, con guard contra `volumes-real/`). Interpretación del agente, a confirmar
-  por el custodio: «deprecated» se lee como retirado de la operación, no como identidad destruida; y
+  `pub/scripts/drill-26s.sh`, con guard contra `volumes-real/`). Interpretación **confirmada por el
+  custodio el 2026-10-15** (WP-O139): «deprecated» se lee como retirado de la operación, no como identidad destruida; y
   queda **abierto** lo que D-O33 daba como motivo para mantenerlo vivo (en Oasis el gobierno de una
   tribu es la identidad de su autor y no hay traspaso): Campamento está deshecha con tombstones, pero
   dos listas CLOSED privadas del bot siguen sin retirar y solo esa identidad podría hacerlo. Supera a
@@ -508,6 +512,33 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   conserva D-O28 (la vía caliente como método). Aplicación: `AGENTES.md` §2.9, §3 y §5,
   `INSTANCIA-SCRIPTORIUM.md` §1, §3 y §5, `TEMPLATE-PROTOCOL.md` §4.5, `UPGRADE-PROTOCOL.md` §0.2,
   `pub/docker-compose.pub.yml`, `devops/hosts/scriptorium/host.env`, WP-O138 §9.
+
+- **D-O37 · 2026-10-15 · Un documento obsoleto se retira, no se marca: git ya archiva. Recuento vigente
+  de guards: 7 guards en 6 ficheros, invariante de 7 ficheros.** Decidido por el custodio en WP-O139
+  (deuda documental), tras once ciclos de upgrade (0.8.3 → 1.2.8) con los documentos de entrada
+  describiendo julio. (a) **Criterio de retirada**: de cada documento se pregunta qué función cumplía y
+  si esa función está subsumida por un documento vivo. Si lo está → `git rm`; si no → se recoge lo que
+  falta en el documento vivo que corresponda y después se retira. No se deja ningún fichero «superado»
+  en el árbol como aviso: el historial es el archivo. Las citas con número de línea a ficheros retirados
+  (los dosieres de evidencia congelados de `docs/ROADMAP/aleph-net/` citan `MAPA.md:n` y `PLAN.md:n`) no
+  se reescriben: se leen con `git show <sha>:<fichero>` (el sha, el del commit que cita el dosier o el
+  último anterior a la retirada, `git log -1 --format=%h -- <fichero>`). Supera el brief de **WP-O03**
+  («marcar como [cita inerte] lo superado en vez de borrarlo»), que queda cerrado con este asiento.
+  (b) **Recuento vigente de guards del fork**: «7 guards en 6 ficheros; con
+  `src/configs/blockchain-cycle.json` el invariante `git diff $NEW_REF --stat -- src/` es de 7
+  ficheros», con `NEW_REF` el commit «Oasis release X.Y.Z» (UPGRADE §1), no `oasis-upstream/main`. Es la
+  única formulación que se cita en los documentos vivos (UPGRADE §2 la define; README, BASE-2,
+  `roles/mantener.md`, AGENTS.md la copian). Supera, solo en lo que al recuento se refiere, la cifra «6
+  ficheros» de **D-O22** y **D-O27** y el recuento de guards de **D-O30** (sexto) y **D-O31** (séptimo):
+  esos asientos siguen valiendo en lo que deciden. (c) **Retirados hoy** bajo (a): `MAPA.md` (estado del
+  host → `deploy-status.sh`; operación → `AGENTES.md`; deuda → `BACKLOG.md`; sitio →
+  `pub/site/scriptorium/estado.md`), `PLAN.md` (→ `BACKLOG.md`), `next-steps.md` (transcript de
+  ChatGPT sobre Radicle → D-O3, WP-O60/O61), `docs/CHANGELOG.md` (changelog de upstream congelado en
+  v0.7.4; su historia vive en el repo de upstream), `scripts/check-docker-context.sh` (sin ningún
+  consumidor en este repo) y el npm `pub:local:retro-bot:up` (arrancaba un nodo deprecated, D-O36).
+  `BASE-1/2/3` **no** se retiran: su función (doctrina editorial del portal, líneas-sello, cola §F) no
+  está subsumida; se corrigen y se enlazan desde `docs/proyecto.md`. Conserva D-O36 y D-O3. Aplicación:
+  WP-O139, `plan/BACKLOG.md` (WP-O03 ✅), `docs/proyecto.md`, README, BASE-2, `roles/mantener.md`.
 
 ## Índice de dependencias externas vivas
 

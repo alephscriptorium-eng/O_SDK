@@ -63,6 +63,13 @@ cosas. Nada de esto contradice el manual: lo concreta.
 Los detalles para quien opera están en los protocolos: [HUB clearnet](/PUB/HUB-PROTOCOL) (la
 ventana `/c`, la instantánea, el relevo de llamadas) y [protocolo para agentes](/AGENTES).
 
+### Invite de la portada: para quien opera
+
+La portada del pub que trae el SDK **publica un invite de muchos usos**: lo crea el panel
+(`pub/panel-api`, `PUB_INVITE_USES`, 1000 si no se cambia) y lo sirve en `/public/status`. Es
+público **por diseño**. Los que genera un operador a mano (`devops/scripts/generate-invite.sh`)
+siguen siendo secreto: no van a logs ni reportes.
+
 ## Lo de cada casa
 
 Cada pub rellena su hoja: dominio, cómo se entra y qué tiene encendido. La

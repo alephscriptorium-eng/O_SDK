@@ -1,7 +1,7 @@
 # BASE 1 — EL ARGUMENTO
 
 > Fundación del mundo `oasis-sdk`. Ninguna frase sin `⟨ref⟩` al sistema real.
-> Lo no referenciable → necrológica. Primera pasada (calibrar con marketing).
+> Lo no referenciable → necrológica. Calibrar con marketing.
 
 ## 0 · Qué es (denotación)
 
@@ -11,7 +11,7 @@ usuario auto-aloja como cliente o como pub, con IA local opcional.**
 
 ## 1 · Quiénes hacen qué
 
-- **Upstream**: KrakensLab/oasis (app SSB) ⟨`src/`⟩.
+- **Upstream**: epsylon/oasis (app SSB) ⟨`src/`⟩.
 - **El fork**: capa de dockerización + endurecimiento + operación
   ⟨`docker-entrypoint.sh` · `pub/` · `devops/`⟩.
 - **El usuario**: dueño de su identidad y su nodo ⟨volumen `.ssb/secret`⟩.
@@ -65,7 +65,7 @@ Denotación → hechos → técnica como prueba. Una idea por bloque. El hero di
 ## 7 · Líneas-sello
 
 - Portada: «Tu nodo, tu identidad. `docker compose up -d` y estás en la red.»
-- Proyecto: «Misma imagen, dos modos: cliente o pub.»
+- Proyecto: «Misma imagen, tres modos: cliente (`full`), pub (`server`), nodo de soporte (`backend`).»
 - Puertas: «Clonas el repo, se lo dices a tu agente, y se para donde la decisión es tuya.»
 
 ## Necrológica

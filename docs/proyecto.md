@@ -18,14 +18,15 @@ portal — aquí va el **flujo**, no las direcciones duplicadas.
    push es a `main`.
 4. **Pages.** Este sitio, servido en `o-sdk.escrivivir.co` desde la propia forja.
 
-## Roles de despliegue (misma imagen, dos modos)
+## Roles de despliegue (misma imagen, tres modos)
 
 | Rol | Cómo | Persistencia |
 | --- | ---- | ------------ |
-| **Cliente** | `docker compose up -d oasis-client` | volumen `.ssb` (identidad) + modelos IA |
-| **Pub** (VPS) | `pub/scripts/deploy.sh` | `.ssb` del pub + backup previo obligatorio |
+| **Cliente** (`full`) | `docker compose up -d oasis-client` | volumen `.ssb` (identidad) + modelos IA |
+| **Pub** (`server`, VPS) | `pub/scripts/deploy.sh` | `.ssb` del pub + backup previo obligatorio |
+| **Nodo de soporte** (`backend`: HUB, bots) | `docker compose up -d --no-deps <servicio>` en el compose del pub | `.ssb` propio de cada nodo |
 
-El invariante en ambos: **preservar el `.ssb`** (la clave `secret` es la
+El invariante en los tres: **preservar el `.ssb`** (la clave `secret` es la
 identidad). Todo lo demás — índices, blobs, log — es derivable y se
 re-replica desde la red.
 
@@ -52,10 +53,16 @@ Quién llega a cada rol y qué le encarga a su agente: **[¿Quién llega?](/role
   en contenedor propio y bot de cartera; backup, disco, memoria, RBU.
 - **[Protocolo del cliente](/CLIENT-PROTOCOL)** — app cliente: alta, importar
   identidad, upgrade y cartera ECOin.
+- **[Protocolo de plantillas](/PUB/TEMPLATE-PROTOCOL)** — el organigrama de un
+  colectivo convertido en tribus, salas, calendarios y listas de su pub: siembra
+  por bloques con permiso, y su deshacer.
 - **Teatro**: **[obra](/PUB/TEATRO-PROTOCOL)** ·
   **[curaduría](/PUB/TEATRO-CURADURIA-PROTOCOL)** ·
   **[sidecar de RRSS](/PUB/RRSS-SIDECAR-PROTOCOL)** ·
   **[P2P](/PUB/TEATRO-P2P-PROTOCOL)**.
+
+Doctrina editorial del portal (qué se afirma, con qué referencia y con qué sello):
+`BASE-1-ARGUMENTO.md`, `BASE-2-SISTEMA.md`, `BASE-3-MECANISMO.md`, en la raíz del repo.
 
 ## Contribuir
 

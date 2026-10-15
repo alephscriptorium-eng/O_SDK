@@ -22,6 +22,7 @@ dónde se puede llegar hoy.
 
 | Te dicen algo como… | Puerta | Receta |
 |---|---|---|
+| «entro al pub con mi móvil» (sin agente ni repo: la lee la persona) | Habitante | [`roles/habitante.md`](./roles/habitante.md) |
 | «arráncame un cliente Oasis», «…con cartera» | Cliente Oasis | [`roles/cliente.md`](./roles/cliente.md) |
 | «despliega un pub en mi servidor», «añádele la lectura web», «acoge esta obra» | Pub Oasis | [`roles/pub.md`](./roles/pub.md) |
 | «quiero una cartera ECOin», «dale un banco a mi pub» | Economía Oasis | [`roles/economia.md`](./roles/economia.md) |
@@ -51,7 +52,7 @@ a «probado».
 | Dar ECOin al pub: cartera, RBU | [`ECOIN-PROTOCOL.md`](./PUB/ECOIN-PROTOCOL.md) | HUB §3 (mismo bootstrap de bot) |
 | Dar de alta o **renombrar un bot** de soporte | HUB-PROTOCOL [§11-§12](./PUB/HUB-PROTOCOL.md) | §5 de esta página (nombres) |
 | App cliente: alta, importar identidad, cartera | [`CLIENT-PROTOCOL.md`](./CLIENT-PROTOCOL.md) | — |
-| Saber **cómo entra una persona en el pub** (un habitante, con su móvil) | puerta [Habitante](./roles/habitante.md) y su manual | La portada del pub que trae el SDK **publica un invite de muchos usos**: lo crea el panel (`pub/panel-api`, `PUB_INVITE_USES`, 1000 si no se cambia) y lo sirve en `/public/status`. Es público **por diseño**. Los que genera un operador a mano (`devops/scripts/generate-invite.sh`) siguen siendo secreto: no van a logs ni reportes |
+| Saber **cómo entra una persona en el pub** (un habitante, con su móvil) | puerta [Habitante](./roles/habitante.md) y su manual | [qué invite es público y cuál no](./roles/habitante.md#invite-de-la-portada-para-quien-opera) |
 | Acotar o apagar la centralita de llamadas del pub (Phone y Rooms, Oasis ≥ 1.2.2) | [`HUB-PROTOCOL.md`](./PUB/HUB-PROTOCOL.md) §14 | [`CAPACIDAD.md`](./PUB/CAPACIDAD.md) §4 |
 | Acoger y desplegar una obra del Teatro | [`TEATRO-PROTOCOL.md`](./PUB/TEATRO-PROTOCOL.md) · [curaduría](./PUB/TEATRO-CURADURIA-PROTOCOL.md) · [sidecar RRSS](./PUB/RRSS-SIDECAR-PROTOCOL.md) | — |
 | Sacar una obra a la escena P2P (torrent, ed2k) y anunciarla en Oasis | [`TEATRO-P2P-PROTOCOL.md`](./PUB/TEATRO-P2P-PROTOCOL.md) | §3 de esta página: el anuncio es irreversible |
@@ -81,8 +82,7 @@ son como son: `plan/DECISIONES.md`.
    desechable. La identidad real de nadie se usa para ensayar. **En la máquina operadora hay una identidad
    real apagada (D-O33, D-O36):** el bot retro de la casa (bot nº 3) está **DEPRECATED**. Sus datos siguen
    en `volumes-real/` (no en `volumes-dev/`) y **no se arranca, no se recrea, no se sube de versión y no
-   se ofrece como pendiente**: ni `docker start`, ni `compose up`, ni `npm run pub:local:retro-bot:up`
-   (§3). Ningún gate lo copia, repone ni recrea (`upgrade-gates.sh` lo excluye de `backup`/`restore`/`up`
+   se ofrece como pendiente**: ni `docker start`, ni `compose up` (§3). Ningún gate lo copia, repone ni recrea (`upgrade-gates.sh` lo excluye de `backup`/`restore`/`up`
    y del `GATE_NODES` por defecto) y **no se mide**: medirlo exigiría arrancarlo. Tampoco se borra.
    `volumes-real/` va en `.dockerignore`: un build local no se lleva esa identidad a la imagen (§4).
 
@@ -166,9 +166,9 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 | Una imagen de `/c` da 404 aunque el blob existe en la red | desde 1.2.4 upstream sirve en `/c/blob` solo blobs que el HUB **ya tiene** (sin `want`); el séptimo guard (D-O31) vuelve a pedirlos, pero solo los referenciados por un objeto clearnet o un avatar. Si el guard se cayó en un overlay, es esto | UPGRADE §2 · HUB-PROTOCOL, fila de disco |
 | `upgrade-gates.sh check` dice «NO MEDIBLE: sin feed» o «el feed ha cambiado» para un nodo que acabas de retirar | el `check` mezcla los nodos de la foto base con los actuales: si la base tenía ese nodo, la comparación no vale. Toma una foto base **sin** ese nodo (`GATE_NODES` sin él) antes de retirarlo | UPGRADE §3.4 · WP-O135 §9 |
 | `docker compose --profile X down` para quitar un servicio de perfil | `down` para y borra **todos** los servicios sin perfil (pub, HUB, caché, web, panel) y la red; el de perfil inactivo ni lo toca. Un servicio se retira con `rm -sf <servicio>` | ECOIN §9 · HUB §11 |
-| `retro-seed.sh` / `retro-tombstone.sh` miden el pub equivocado desde la máquina operadora | sin `--pub-id` toman el pub de `.env.local` (el desechable); el nodo real está conectado al pub real: siempre `--pub-id` del real | TEMPLATE §4.5 y §9 |
+| `retro-seed.sh` / `retro-tombstone.sh` miden el pub equivocado desde la máquina operadora | sin `--pub-id` toman el pub de `.env.local` (el desechable); el nodo real está conectado al pub real: siempre `--pub-id` del real (requieren el contenedor del bot de plantilla; el de la casa está deprecated, D-O36) | TEMPLATE §4.5 y §9 |
 | Un objeto borrado por su autor sigue en `/c` por URL directa | las rutas de detalle del visor leen el objeto por id y no miran tombstones ni `clearnetItem off`; del índice, la portada y el sitemap sí desaparece (y los blobs dejan de autorizarse). Es del visor de upstream | TEMPLATE §9 |
-| `getOpenInvite` / `removeOpenInvite` no ven una invitación abierta que existe | en Oasis 1.2.5 `TRIBE_LOG_TYPES` (`tribes_model.js:8`) no incluye `tribe-open-invite`: el modelo no lee los marcadores. Para retirarlas se publican los dos tombstones desde el feed propio (`seed-tombstone.js`) | TEMPLATE §9 |
+| `getOpenInvite` / `removeOpenInvite` no ven una invitación abierta que existe | desde Oasis 1.2.5 (sigue así en 1.2.8) `TRIBE_LOG_TYPES` (`tribes_model.js:8`) no incluye `tribe-open-invite`: el modelo no lee los marcadores. Para retirarlas se publican los dos tombstones desde el feed propio (`seed-tombstone.js`) | TEMPLATE §9 |
 
 ## 5. Nombres de los bots de soporte
 
@@ -199,5 +199,5 @@ pub de Banking**, junto a los de otros pubs. La regla:
    El feed id no cambia nunca; lo que identifica al bot es el id, el nombre es cortesía.
 
 Ejemplo (instancia Scriptorium): `clearnet.escrivivir.co`, `ecoin.escrivivir.co` y `retro.escrivivir.co`
-(secretaría de plantillas, modo `server`: TEMPLATE-PROTOCOL §4.5; salió del VPS el 2026-10-10, D-O33, y
-está **deprecated** desde el 2026-10-12, D-O36: identidad conservada y apagada, §2.9). Sus descripciones literales, en la ficha de instancia. Un `about` puede llevar avatar (`image`): se publica en el mismo mensaje, una sola vez (HUB §12).
+(deprecated, D-O36; §2.9). Sus descripciones literales, en la ficha de instancia. Un `about` puede llevar
+avatar (`image`): se publica en el mismo mensaje, una sola vez (HUB §12).

@@ -1,7 +1,7 @@
 # BASE 3 — EL MECANISMO
 
 > Reglas ejecutables del mundo `oasis-sdk`. Texto canónico de §B–§E en el skill
-> `site-web` (`reference/metodo-mecanismo.md`). Primera pasada.
+> `site-web` (`reference/metodo-mecanismo.md`).
 
 ## A · Mapa
 

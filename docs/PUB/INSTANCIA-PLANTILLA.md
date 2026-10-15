@@ -8,7 +8,7 @@
 > datos que cambian solos (versión desplegada, memoria, disco): esos **se miden** con
 > `devops/scripts/deploy-status.sh` y se registran en el journal (`deploy-log.sh`).
 >
-> Cómo se llega hasta aquí: puerta [Hazlo tuyo](/roles/tu-pub).
+> Cómo se llega hasta aquí: puerta [Hazlo tuyo](../roles/tu-pub.md).
 
 ## 1. Identidad de la instancia
 
@@ -43,7 +43,7 @@ nombre puede cambiar.
 | # | Nombre | Tipo · piel | Qué sirve | Contenedor · estado | Feed id | Alta |
 |---|---|---|---|---|---|---|
 | 1 | «tipo.tu-dominio» | «tipo» · «piel» | «qué sirve» | «contenedor» · «carpeta de estado» | «se mide al darlo de alta» | «fecha» |
-| «n» | «retro.tu-dominio» | retro (secretaría de plantillas) · «piel» · «dónde vive: en el host o en la máquina operadora (HUB §11, mudanza)» | «si activas una plantilla de organización (`TEMPLATE-PROTOCOL.md` §4.5): siembra tribus, salas, calendarios, listas, wikis y mapas con permiso por bloque; custodia las claves de las tribus que crea; modo `server`, sin ruta pública» | `oasis-pub-retro-bot` · `<datos>/oasis-retro-bot` | «se mide» | «fecha» |
+| «n» | «ecoin.tu-dominio» | ecoin (cartera) · «piel» | «si activas el banco (`ECOIN-PROTOCOL.md`): cartera ECOin del pub, custodia la dote y reparte la RBU; modo `backend`, sin ruta pública» | `oasis-pub-wallet-bot` + `oasis-pub-ecoin` · «datos»`/oasis-wallet-bot`, «datos»`/ecoin` | «se mide» | «fecha» |
 
 ## 4. `about` literal de cada bot
 
@@ -64,13 +64,15 @@ image:       «ruta del PNG del avatar, si lo lleva: se sube en el mismo about (
 | Pub (solo sbot) | `UPGRADE-PROTOCOL.md` | journal `deploy-log.sh` |
 | «HUB clearnet, si lo activas» | `HUB-PROTOCOL.md` | su §10 |
 | «Centralita de Phone y Rooms: encendida, acotada o apagada; aforo de sala» | `HUB-PROTOCOL.md` §14 | «reporte» |
+| Entrada de habitantes: «qué muestra tu portada (el invite de muchos usos que sirve el panel, `PUB_INVITE_USES`) o cómo repartes la invitación». El de la portada es público por diseño; no se copia aquí | puerta [Habitante](../roles/habitante.md), nota «para quien opera» | hoja del habitante, abajo |
 | «Banco, si lo activas» | `ECOIN-PROTOCOL.md` | su §13 |
+| «Plantillas de organización, si las activas: qué plantilla, qué bot la siembra y en qué estado está» | `TEMPLATE-PROTOCOL.md` | su §8 · «ledger de la siembra» |
 | «Teatro, si lo activas» | `TEATRO-PROTOCOL.md` | en el protocolo |
 
 ### Hoja del habitante
 
-Lo que el [manual de bienvenida](/habitante/manual) deja en blanco y lo que tu pub hace a su
-manera. Es lo que lee quien entra, no quien opera: puerta [Habitante](/roles/habitante).
+Lo que el [manual de bienvenida](../habitante/manual.md) deja en blanco y lo que tu pub hace a su
+manera. Es lo que lee quien entra, no quien opera: puerta [Habitante](../roles/habitante.md).
 
 | El manual pide | En tu pub |
 |---|---|

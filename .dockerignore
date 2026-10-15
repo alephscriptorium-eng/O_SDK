@@ -59,7 +59,6 @@ ecoin/**
 # OJO: README.md NO se excluye — src/backend/backend.js lo lee al arrancar.
 BASE-*.md
 CHANGELOG.md
-next-steps.md
 
 # Del pub solo viaja lo que corre dentro del contenedor (tools/)
 pub/.env

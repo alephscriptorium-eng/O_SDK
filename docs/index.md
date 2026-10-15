@@ -21,13 +21,13 @@ hero:
       link: /PUB/RECOVERY-PROTOCOL
 features:
   - title: Cliente + Pub
-    details: Misma imagen, dos modos — GUI web personal en :3000 o pub de federación en un VPS.
+    details: Misma imagen, tres modos — GUI web personal en :3000 (full), pub de federación en un VPS (server) o nodo de soporte del pub (backend).
     link: /proyecto
   - title: Identidad soberana (SSB)
     details: Tu clave nunca sale del volumen; el log se re-replica desde la red si pierdes el nodo.
     link: /proyecto
   - title: Operación verificada
-    details: Protocolos de upgrade y recuperación reutilizables, probados en producción.
+    details: Protocolos de upgrade y recuperación reutilizables, ejercidos en la demo.
     link: /PUB/UPGRADE-PROTOCOL
   - title: Roadmap futuro
     details: Los dosieres de trabajo — la red de la casa, el modelo relacional, los modelos políticos y el call4obras. Prospectivo, con fecha y estado.

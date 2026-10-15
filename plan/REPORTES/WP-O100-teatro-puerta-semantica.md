@@ -1,7 +1,7 @@
 # WP-O100 · Teatro: puerta semántica («El sistema» y «El cantar»)
 
 **Fecha**: 2026-09-18 · **Rama**: `wp/O100-teatro-puerta-semantica` · **Asiento**: D-O17 · **Dep**: WP-O99
-**Estado**: desplegado y verificado en producción. Propuesta editorial **v1 pendiente de revisión del custodio**.
+**Estado**: desplegado y verificado en producción. Propuesta editorial v1 **revisada por el custodio y aplicada** (merge a `main` 507f660d, 2026-09-18).
 
 ## Qué se pidió
 

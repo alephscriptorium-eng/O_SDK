@@ -64,7 +64,7 @@ Lee el protocolo de recuperación, haz el triaje y dime qué hay.
 |---|---|---|---|
 | 1 | Medir qué hay desplegado | versión de cada nodo, deriva del servidor frente al repo | solo lectura |
 | 2 | De qué versión a cuál, y qué código cambia para cada rol | dos commits de upstream | |
-| 3 | Traer el código nuevo y reponer las siete diferencias del fork | exactamente siete ficheros distintos de upstream | |
+| 3 | Traer el código nuevo y reponer los 7 guards (6 ficheros) | exactamente 7 ficheros distintos de upstream | |
 | 4 | Sacar **qué cambia de comportamiento** y disponer cada línea por escrito | ninguna línea sin leer | |
 | 5 | Ensayo en local con identidades desechables: recrear cada nodo y medir **qué publica** | un anuncio de versión por nodo y nada más | si aparece otra cosa: **parar** |
 | 5b | Si la versión cambia el motor de base de datos: ensayar la migración sobre una copia | los mismos registros antes y después | **DECISIÓN**: tras migrar no hay vuelta atrás |

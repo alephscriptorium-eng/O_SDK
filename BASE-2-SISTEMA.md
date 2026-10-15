@@ -1,7 +1,6 @@
 # BASE 2 — EL SISTEMA
 
 > Obedece a BASE-1. Sustancia + inventario referenciado del mundo `oasis-sdk`.
-> Primera pasada.
 
 ## 1 · La sustancia
 
@@ -26,7 +25,7 @@ Categoría pública: **red social auto-alojada (FOSS, SSB)**.
 | HUB clearnet | lectura pública en la web de lo que cada habitante marca | `/c` | `docs/PUB/HUB-PROTOCOL.md`, `pub/config/hub/` |
 | Teatro | obras como sitios estáticos firmados | catálogo | `docs/PUB/TEATRO-PROTOCOL.md` |
 | Puertas | una receta por rol, con estado medido | sello | `docs/roles/`, `docs/.vitepress/theme/roles.data.mjs` |
-| Fork-guards | 5 divergencias vs upstream | — | ver `docs/PUB/UPGRADE-PROTOCOL.md` §2 |
+| Fork-guards | 7 guards en 6 ficheros; con `src/configs/blockchain-cycle.json` el invariante `git diff $NEW_REF --stat -- src/` es de 7 ficheros | — | ver `docs/PUB/UPGRADE-PROTOCOL.md` §2 |
 
 ## 3 · Lecturas cruzadas
 
@@ -43,17 +42,18 @@ de otro; es un nodo que es tuyo y habla con otros nodos».
 
 ## Decisiones tomadas (2026-07-21)
 
-- El portal surfacea solo superficies propias + los 2 protocolos; la doc
+- ~~El portal surfacea solo superficies propias + los 2 protocolos~~ (superado: D-O26, abajo); la doc
   importada de upstream se enlaza a la forja (`srcExclude`), no se re-renderiza.
 - Dominio del mundo: `o-sdk.escrivivir.co` (Pages, custom domain → base `/`).
-- Legacy landing HTML preservado en `docs/public/legacy.html`.
+- ~~Legacy landing HTML preservado en `docs/public/legacy.html`~~ (superado: D-O26, abajo; hoy en
+  `ARCHIVO/portal/legacy.html`).
 
 ## Decisiones tomadas (2026-10-01, D-O26)
 
 - El portal gana **puertas por rol** (`docs/roles/`), de menos a más: cliente, pub, economía,
   «hazlo tuyo», mantener. Lo que había no se mueve ni se renombra.
-- Los protocolos de operación son hoy once, no dos: se quedan en «Operación» y las puertas apuntan
-  a ellos.
+- Los protocolos de operación son hoy diez, no dos (`docs/PUB/*-PROTOCOL.md` y
+  `docs/CLIENT-PROTOCOL.md`): se quedan en «Operación» y las puertas apuntan a ellos.
 - La landing antigua deja de publicarse (enlazaba a la cuenta anulada y cargaba fuentes de
   terceros: WP-O72, WP-O65) y se conserva en `ARCHIVO/portal/legacy.html`.
 - Excepción a «la doc de upstream no se re-renderiza»: la guía de Mastodon ya estaba publicada;

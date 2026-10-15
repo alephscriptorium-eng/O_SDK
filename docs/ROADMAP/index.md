@@ -29,7 +29,7 @@ se publica su **copia saneada** (sin rutas de disco locales, sin recursos extern
 | [Res publica](./res-publica/00-dictamen.md) | 2026-09-10 | decisión pendiente | Lo mismo para `res_publica`: forma institucional pura; la fricción es tiempo e infraestructura |
 | [Oasis · FairCoin](./oasis-faircoin/00-informe.md) | 2026-09-10 | informe aguas arriba | Cómo usa el catálogo del modelador el código de Oasis y FairCoin, qué reglas se dio y qué **no** pide a upstream |
 | [Publicidad y redes](./publicidad-rrss/00-indice.md) | 2026-09-18 | protocolo + propuestas | Anunciar una generación del Teatro: dato sin relato, checksums, delta fijado, call4obras |
-| [P2P](./p2p/00-indice.md) | 2026-09-19 | opciones + plan aprobado, sin ejecutar | Sacar las obras a BitTorrent y eD2k/Kad (aMule 3): el soporte nativo de Oasis a torrents, las opciones miradas, y la extensión del pub — semilla web, semillas opcionales y **cartelera** para moderar el hardware |
+| [P2P](./p2p/00-indice.md) | 2026-09-19 | opciones + plan aprobado; fase 0 ejecutada (WP-O110, 2026-09-19), resto sin ejecutar | Sacar las obras a BitTorrent y eD2k/Kad (aMule 3): el soporte nativo de Oasis a torrents, las opciones miradas, y la extensión del pub — semilla web, semillas opcionales y **cartelera** para moderar el hardware |
 
 ## Todas las piezas
 
