@@ -41,7 +41,8 @@ Corre la misma imagen que el cliente, en otro modo.
 - Pub simple: <Sello rol="pub" id="pub-minimo" />
 - HUB clearnet: <Sello rol="pub" id="hub-clearnet" />
 - Teatro: <Sello rol="pub" id="teatro" />
-- Plantilla de organización: <Sello rol="pub" id="plantilla" />
+- Plantilla de organización: <Sello rol="pub" id="plantilla" />. El bot que lo ejerció en la demo
+  está deprecated (D-O36); el protocolo sigue vigente.
 
 **Qué funciona hoy.** Hay un pub de demostración en producción, con su HUB, su economía y su
 Teatro, desplegado y subido de versión con este repo, y un protocolo por pieza. **Con qué

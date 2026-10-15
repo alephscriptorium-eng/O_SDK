@@ -6,8 +6,9 @@ de código y le dices qué quieres. El agente lee la receta de tu puerta, hace e
 donde la decisión es tuya.
 
 Las puertas van de menos a más: entrar en la red con tu móvil, un cliente en tu máquina, un pub en
-tu servidor, la economía de la red y, al final, una instancia que es tuya de arriba abajo. La
-primera, [Habitante](/roles/habitante), es la única que no necesita agente ni repo.
+tu servidor, la economía de la red, una instancia que es tuya de arriba abajo y, al final,
+mantenerla: subir de versión y recuperar. La primera, [Habitante](/roles/habitante), es la única
+que no necesita agente ni repo.
 
 <Puertas />
 

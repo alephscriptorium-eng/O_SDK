@@ -17,7 +17,7 @@
 | Host | VPS Debian, 4 GB; definición en `devops/hosts/scriptorium/host.env` |
 | Layout vivo | `/opt/oasis-scriptorium/OASIS_PUB` (pre-refactor, **sin git**). `host.env` lleva esa ruta (el layout medido): los scripts de `devops/` no piden ningún `export`. Migración al layout canónico: pendiente (`devops/MIGRATION-2026-07.md`) |
 | Acceso | SSH con la clave `devops/.ssh/gandi_pub_ed25519` (carpeta fuera de git; nombre en `KEY_FILE` de `host.env`). Los scripts la toman solos |
-| Nodos de Oasis | tres contenedores de la misma imagen en el host: `oasis-pub-scriptorium` (`server`), `oasis-pub-hub` (`backend`), `oasis-pub-wallet-bot` (`backend`); El bot nº 3 `oasis-pub-retro-bot` (`server`) estuvo en el host del 2026-10-08 al 2026-10-10 y en la máquina operadora desde entonces (D-O33, `volumes-real/`); está **DEPRECATED** desde el 2026-10-12 (D-O36): parado, no se arranca ni se sube de versión. Versión y modo de cada uno: `deploy-status.sh`, bloque «Piezas vivas» |
+| Nodos de Oasis | tres contenedores de la misma imagen en el host: `oasis-pub-scriptorium` (`server`), `oasis-pub-hub` (`backend`), `oasis-pub-wallet-bot` (`backend`); el bot 3 no corre en el host (deprecated, D-O36; §3). Versión y modo de cada uno: `deploy-status.sh`, bloque «Piezas vivas» |
 | Datos | volumen `/srv/oasis` (un subdirectorio por servicio) |
 | Edge | Caddy, 6 vhosts; solo `validate` + `reload` |
 | Visor clearnet (`/c`) | tema `Dark-SNH`, idioma por defecto **`es`** (claves `themes.current` y `language` de `pub/config/hub/oasis-config.json`, D-O25). El visitante cambia de idioma con `?lang=` y de tema con `?theme=` (desde WP-O132: ambos viajan en la URL y se re-afirman por petición) |
@@ -43,33 +43,26 @@ nombre puede cambiar.
 |---|---|---|---|---|---|---|
 | 1 | `clearnet.escrivivir.co` | clearnet · scriptorium | HUB web de solo lectura `/c` (Sala 04) | `oasis-pub-hub` · `/srv/oasis/oasis-hub` | `@KM+ZBipR18VSyjNTFjAOnsmz6EiobGYHb3ZCZ4ZxQYI=.ed25519` | 2026-09-13 (WP-O46) |
 | 2 | `ecoin.escrivivir.co` | ecoin (cartera) · scriptorium | hub-wallet: cartera ECOin del pub, custodia la dote y reparte la RBU; **sin ruta pública** | `oasis-pub-wallet-bot` + `oasis-pub-ecoin` · `/srv/oasis/oasis-wallet-bot`, `/srv/oasis/ecoin` | `@NYAqUzX7OACl+Fs866J8aVeKcqPxbbXccV/phcKx9UU=.ed25519` | 2026-09-18 (WP-O102) |
-| 3 | `retro.escrivivir.co` | retro (secretaría de plantillas) · scriptorium · **DEPRECATED desde el 2026-10-12 (D-O36): no se arranca, no se recrea, no se sube de versión, no siembra; la identidad se conserva y no se borra.** Antes: mudado a la máquina operadora el 2026-10-10 (D-O33). Estado medido el 2026-10-12: contenedor local `oasis-pub-retro-bot` `exited` desde el 2026-10-10T04:26Z, imagen 1.2.5, datos en `volumes-real/oasis-retro-bot`; Campamento **deshecha** el 2026-10-10 (feed en 266; dos listas CLOSED privadas sin retirar) | activa plantillas de organización (`TEMPLATE-PROTOCOL.md` §4.5): tribus, salas, calendarios, listas, wikis, mapas, bloque a bloque y con permiso; custodia las claves de las tribus que crea; **modo `server`, sin ruta pública**. Avatar: logo «Scriptorium Skins» 512×512 (blob previsto `&q4Mkl/fcUGNELIrsmVyMBBdZsCXxyh5LmGN/XovlHDg=.sha256`) | `oasis-pub-retro-bot` · `/srv/oasis/oasis-retro-bot` | `@fJG3E7UKNlYVh0Aoc89LKPAAQsKNfy4iMaJtdVH0I8I=.ed25519` | 2026-10-08 (WP-O131) |
+| 3 | `retro.escrivivir.co` | retro (secretaría de plantillas) · scriptorium | activaba plantillas de organización (`TEMPLATE-PROTOCOL.md` §4.5): tribus, salas, calendarios, listas, wikis, mapas, bloque a bloque y con permiso; custodia las claves de las tribus que creó; **modo `server`, sin ruta pública**. Avatar: logo «Scriptorium Skins» 512×512 (blob `&q4Mkl/fcUGNELIrsmVyMBBdZsCXxyh5LmGN/XovlHDg=.sha256`) | **deprecated** (D-O36, 2026-10-12); identidad conservada y apagada en `volumes-real/oasis-retro-bot/` de la máquina operadora (contenedor local `oasis-pub-retro-bot`, parado); no corre en el host (estuvo en `/srv/oasis/oasis-retro-bot` del 2026-10-08 al 2026-10-10, D-O33). No se arranca, no se recrea, no se sube de versión, no siembra; la identidad no se borra | `@fJG3E7UKNlYVh0Aoc89LKPAAQsKNfy4iMaJtdVH0I8I=.ed25519` | 2026-10-08 (WP-O131) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
-Oasis **1.2.8** en pub, HUB y bot-2 desde el 2026-10-11 (WP-O138; antes 1.2.5, WP-O135, 2026-10-10; 1.2.3,
-WP-O128, 2026-10-07). Al subir a 1.2.8 el pub publicó su `oasisVersion`; el HUB, `oasisVersion` y su primer
-`karmaScore`; el bot-2, `oasisVersion`, un `karmaScore` y el `about` de `clearnetSince` pendiente desde 1.2.3.
+Última subida registrada en el journal: Oasis 1.2.8 en pub, HUB y bot 2, 2026-10-11 (WP-O138). El estado
+presente se mide: `deploy-status.sh`. En esa subida el pub publicó su `oasisVersion`; el HUB, `oasisVersion` y
+su primer `karmaScore`; el bot 2, `oasisVersion`, un `karmaScore` y el `about` de `clearnetSince` que arrastraba
+desde el ciclo 1.2.3. Lo que publicó cada nodo en los ciclos anteriores: `UPGRADE-PROTOCOL.md` §7 y sus reportes.
 Desde 1.2.6 HUB y bots publican solos su `karmaScore` cuando cambia, como mucho uno al día (aceptado por el
-custodio, UPGRADE §3.4). El bot nº 3 está **deprecated** (D-O36): quedó en 1.2.5, parado, y no se sube. El pub
-hace de centralita de Phone y Rooms, acotada (`phone` en su ssb-config: relé solo para feeds que sigue,
-aforo de sala 12; `HUB-PROTOCOL.md` §14); HUB y bot-2, no. Nombre del pub (su `about`):
-**`pub.escrivivir.co`**, publicado el 2026-10-05 (cuarto `about` del feed, solo `name`; la descripción
-anterior se conserva). Nombre anterior: `PUB OASIS SCRIPTORIUM`. Motor de
-base de datos **db2** desde el 2026-10-04 (1.2.1, WP-O123): los tres nodos migraron su log y no hay vuelta a una versión
-anterior (`UPGRADE-PROTOCOL.md` §0.5). La versión viva se mide con `deploy-status.sh`. Motor de RBU: **encendido**
-desde el 2026-09-19 17:09 UTC (WP-O107; `hub-wallet.sh status`): la casa sale en la lista de pubs de Banking,
-sin fondos (✗, pool 0) hasta la dote. Época `2026-09` fijada con pool 0.
-
-Al subir a 1.2.2 el bot 1 publicó además un `about` de visibilidad; en el ensayo local ese mensaje lleva solo
-`visibilityPrefs` con `phone: "off"` (2026-10-05, WP-O124 §5.1); el del bot 2 sale cuando alguien
-visite sus páginas. Al subir a 1.2.3 (2026-10-07) cada nodo publicó solo su `oasisVersion`; el `about` de
-`clearnetSince` que 1.2.3 intenta publicar en cada arranque de un backend no público (bot-2) no salió, y puede
-salir en cualquier reinicio: se declara `about=+0..1` (UPGRADE §0.4). Los tres nodos siguen sin salir por Tor
-(`onion: []` en sus ssb-config; upstream lo abre por defecto desde 1.2.3; el custodio decidió el 2026-10-07 no
-salir por Tor, HUB §5.2).
+custodio, UPGRADE §3.4). El pub hace de centralita de Phone y Rooms, acotada (`phone` en su ssb-config: relé
+solo para feeds que sigue, aforo de sala 12; `HUB-PROTOCOL.md` §14); HUB y bot 2, no. Los tres nodos no salen
+por Tor (`onion: []` en sus ssb-config; upstream lo abre por defecto desde 1.2.3; decisión del custodio del
+2026-10-07, HUB §5.2). Nombre del pub (su `about`): **`pub.escrivivir.co`**, publicado el 2026-10-05 (cuarto
+`about` del feed, solo `name`; la descripción anterior se conserva). Nombre anterior: `PUB OASIS SCRIPTORIUM`.
+Motor de base de datos **db2** desde el 2026-10-04 (1.2.1, WP-O123): los tres nodos migraron su log y no hay
+vuelta a una versión anterior (`UPGRADE-PROTOCOL.md` §0.5). Motor de RBU: **encendido** desde el 2026-09-19
+17:09 UTC (WP-O107; `hub-wallet.sh status`): la casa sale en la lista de pubs de Banking, sin fondos (✗, pool 0)
+hasta la dote. Época `2026-09` fijada con pool 0.
 
 Nombres anteriores (siguen en el log de cada feed; D-O14): `azofaifo-scriptorium-skin-bot-1`,
-`azofaifo-scriptorium-wallet-bot-2`. El bot 3 nace ya con su nombre definitivo.
+`azofaifo-scriptorium-wallet-bot-2`. El bot 3 nació ya con su nombre definitivo.
 
 ## 4. `about` literal de cada bot
 
@@ -116,9 +109,9 @@ image:       ARCHIVO/DISCO/scriptorium-exported/assets/avatar-retro-512.png
 | Pub (solo sbot) | `UPGRADE-PROTOCOL.md` | journal `deploy-log.sh` |
 | HUB clearnet `/c` | `HUB-PROTOCOL.md` | §10 |
 | Centralita de Phone y Rooms (en el pub, acotada: aforo de sala 12) | `HUB-PROTOCOL.md` §14 · `CAPACIDAD.md` §4 | `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md` §7 |
-| Entrada de habitantes: la portada (`https://pub.escrivivir.co`) muestra un invite de 1000 usos, que sirve el panel (`/public/status`, `PUB_INVITE_USES`). Es público por diseño; no se copia aquí | `../AGENTES.md` §1 | [hoja del habitante](./INSTANCIA-SCRIPTORIUM-HABITANTE.md) |
+| Entrada de habitantes: la portada (`https://pub.escrivivir.co`) muestra un invite de 1000 usos, que sirve el panel (`/public/status`, `PUB_INVITE_USES`). Es público por diseño; no se copia aquí | puerta [Habitante](../roles/habitante.md), nota «para quien opera» | [hoja del habitante](./INSTANCIA-SCRIPTORIUM-HABITANTE.md) |
 | hub-wallet (ECOin) | `ECOIN-PROTOCOL.md` | §13 |
-| Plantillas de organización — **inactivo: el bot retro está deprecated desde el 2026-10-12 (D-O36)**; queda el método (bot retro, en la máquina operadora desde el 2026-10-10 (D-O33); Campamento **sembrada el 2026-10-08 y deshecha el 2026-10-10** (115 retiradas en 11 bloques, `vps/tombstone-o135.jsonl`; dos listas CLOSED privadas quedan); la siembra fue: 25 tribus, 7 salas, 7 calendarios, 7 eventos, 4 listas, 5 wikis, 2 mapas, 14 `clearnetItem`; feed del bot en 148) | `TEMPLATE-PROTOCOL.md` | §8 · `ARCHIVO/DISCO/scriptorium-exported/` (ledger del VPS en `vps/`) · guía de reparto en la Sala 02 (`site/parlament/campamento/`, generada con los enlaces reales) · **mapa de entrada** publicado por el bot 3 el 2026-10-08 como entrada de Blog, `%PbJ+F75RZoHpKWBIrmLtWVT+VV5mlRu+gY50J7tj1zk=.sha256` (seq 149; su `clearnetItem` seq 150), generado por `mensaje-entrada.mjs`, visible en `/c/blog` |
+| Plantillas de organización — **inactivo** (bot 3: deprecated, D-O36); queda el método. Historia: Campamento **sembrada el 2026-10-08 y deshecha el 2026-10-10**. La siembra fue 25 tribus, 7 salas, 7 calendarios, 7 eventos, 4 listas, 5 wikis, 2 mapas, 14 `clearnetItem` (feed del bot en 148); el deshacer, 115 retiradas en 11 bloques (`vps/tombstone-o135.jsonl`; feed en 266; dos listas CLOSED privadas quedan) | `TEMPLATE-PROTOCOL.md` | §8 · `ARCHIVO/DISCO/scriptorium-exported/` (ledger del VPS en `vps/`) · guía de reparto en la Sala 02 (`site/parlament/campamento/`, generada con los enlaces reales) · **mapa de entrada** publicado por el bot 3 el 2026-10-08 como entrada de Blog, `%PbJ+F75RZoHpKWBIrmLtWVT+VV5mlRu+gY50J7tj1zk=.sha256` (seq 149; su `clearnetItem` seq 150), generado por `mensaje-entrada.mjs`, visible en `/c/blog` |
 | Teatro · sidecar RRSS | `TEATRO-PROTOCOL.md` · `RRSS-SIDECAR-PROTOCOL.md` | en cada uno |
 | Teatro P2P | `TEATRO-P2P-PROTOCOL.md` | §5 · *Aleph Cero* **congelada** el 2026-09-19; enlaces en `/teatro/aleph-cero/p2p/p2p.json`, anuncios de Oasis en `p2p/oasis.json` |
 
