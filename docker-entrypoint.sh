@@ -850,6 +850,44 @@ start_pub_snapshots() {
 
 start_pub_snapshots
 
+# =============================================================================
+# FUNCIÓN: enlace garantizado con el pub de la casa (WP-O143, D-O38, docs/PUB/HUB-PROTOCOL.md §2)
+# ssb-conn mantiene 4 plazas salientes por nodo y las reparte por ranking (oasisPeerRank), no por
+# prioridad: con las plazas llenas de pubs externos el nodo deja de marcar al nuestro hasta rotar,
+# y el pub de la casa queda sin enlace con conn.json sano. Ese enlace es un invariante medido del
+# protocolo de upgrade (pub_link en la foto), así que aquí, en los nodos de soporte (modos client y
+# backend; en server el nodo ES el pub), un proceso de fondo llama a pub/tools/pub-link.js --ensure
+# a los OASIS_PUB_LINK_FIRST_S segundos y después cada OASIS_PUB_LINK_EVERY_S: si el pub ya está
+# conectado (entrante o saliente) no hace nada; si no, conn.connect. La clave sale de conn.json; no
+# publica nada. Al log del contenedor solo va «[pub-link] …» cuando cambia el estado del enlace.
+# OASIS_PUB_LINK_HOST vacío = desactivado (no definida = oasis-pub).
+# =============================================================================
+start_pub_link() {
+    local host="${OASIS_PUB_LINK_HOST-oasis-pub}" every="${OASIS_PUB_LINK_EVERY_S:-60}" first="${OASIS_PUB_LINK_FIRST_S:-30}" js=""
+    case "$MODE" in client|backend) ;; *) return 0 ;; esac
+    if [ -z "$host" ]; then echo "🔗 Enlace con el pub: desactivado (OASIS_PUB_LINK_HOST vacío)"; return 0; fi
+    case "$every" in ''|0|*[!0-9]*) every=60 ;; esac
+    case "$first" in ''|*[!0-9]*) first=30 ;; esac
+    # La carpeta del compose puede no llamarse `pub` en un host con otro layout.
+    for js in "$CURRENT_DIR"/pub/tools/pub-link.js "$CURRENT_DIR"/*/tools/pub-link.js; do [ -f "$js" ] && break; js=""; done
+    if [ -z "$js" ]; then echo "  ⚠ Enlace con el pub: no encuentro tools/pub-link.js en la imagen; no se repondrá"; return 0; fi
+    echo "🔗 Enlace con el pub: ${host}, primera comprobación a los ${first} s y después cada ${every} s ($js)"
+    (
+        set +e
+        last="(sin medir)"
+        sleep "$first"
+        while :; do
+            out="$(node "$js" --ensure "$host" --quiet 2>&1 | tail -1)"
+            st="$(printf '%s' "$out" | sed -n 's/.*"after":"\([a-z?-]*\)".*/\1/p')"
+            [ "$st" = "$last" ] || echo "[pub-link] $out"   # solo cambios de estado (y la primera vez)
+            last="$st"
+            sleep "$every"
+        done
+    ) &
+}
+
+start_pub_link
+
 case "$MODE" in
     "server")
         echo "🚀 Iniciando solo servidor SSB..."
