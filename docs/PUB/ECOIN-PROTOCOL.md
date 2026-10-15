@@ -88,7 +88,7 @@ después cliente (WP-O103).
   `ubiAllocation`, `ubiClaimResult`, `bankClaim` y `transfer` de la RBU salen del feed de bot-2, no
   del feed del pub. Desde 1.1.3 los clientes **descubren solos** el banco por los `pubAvailability` replicados.
   **Desde 1.2.4 solo si el banco es un pub de confianza** (D-O32): el pub por defecto del invite de
-  `snh-invite-code.json` (el de SNH; D-O22 no lo toca) o uno del que el habitante **redimió un invite y
+  `invite-codes.json` (entrada 0, la de SNH; hasta 1.2.8 `snh-invite-code.json`; D-O22 no toca el código) o uno del que el habitante **redimió un invite y
   sigue**. El bot de cartera no emite invites, así que un habitante que no haya reclamado nunca a este
   bot **no lo ve** en Banking → UBI ni lo elige `discoverUbiPub`, aunque siga su feed; quien ya
   reclamó (su `ubiClaim` iba dirigido al bot) conserva historial y pagos. Aceptado tal cual; se mide en

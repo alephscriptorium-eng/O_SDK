@@ -194,14 +194,14 @@ otro para los guards repuestos. Así el diff de los guards se lee solo.
 | `src/server/ssb_config.js` | `mergeDeep` en vez del spread (`config = mergeDeep(config, configData)`); bloque `OASIS_SERVER_CONFIG_OVERRIDE` antes de `const megabyte`; `blobs.max` = 50 MB (upstream lo sube a 75 desde 1.2.4; el fork lo mantiene: fila de disco de `HUB-PROTOCOL.md`, `CAPACIDAD.md`). Conservar `config.statePath`, `config.db2` y, desde 1.2.4, `readServerConfig()` y el bloque `bindHost` de upstream |
 | `src/backend/updater.js` | Los dos `console.log("...new code updates are available!...")` pasan a ser el mensaje del fork. Conservar el fix de ruta con `__dirname` |
 | `src/views/settings_view.js` | El `form({ action: "/update" })` pasa a ser el `p(...)` informativo |
-| `src/configs/snh-invite-code.json` | **Solo `url`** = dominio del pub de la instancia (D-O22): base de los enlaces de «compartir en clearnet». El invite de upstream se conserva |
+| `src/configs/invite-codes.json` (hasta 1.2.8, `snh-invite-code.json`) | **Solo `url` de la entrada 0** = dominio del pub de la instancia (D-O22): `config-manager.defaultInvite()` la lee y es la base de los enlaces de «compartir en clearnet» (`clearnetPublicBase`, `main_views`). El `code` de SNH se conserva: `banking_model`, `phone_model` y `transfers_model` sacan de él el feed del pub de SNH |
 | `src/views/clearnet_view.js` | **Sexto guard (WP-O132, D-O30), tres piezas marcadas `// guard o-sdk (WP-O132, D-O30)`:** (a) `cnWithQuery`/`propagateQuery` (los antiguos `cnWithLang`/`propagateLang` pasan a envolverlos): `lang` y `theme` del visitante viajan a todo `href="/c…"` y formulario; (b) `THEMES` + `renderThemeSelector` + `getCurrentTheme` (prioridad `cnScope().cnTheme` → `config.themes.current` → `Dark-SNH`) y el selector pintado junto al de idioma en `renderClearnetPage`; (c) en `renderClearnetPage`, **re-afirmar `cnScope().lang`** con `mv().setLanguage` antes del render (el idioma es global del proceso y la ruta esperó). Y en `backend.js`, edit (3): `clearnetLanguage` guarda siempre `store.lang`, y `clearnetTheme(ctx)` valida `?theme=` contra `THEMES` y guarda `store.cnTheme`; el middleware lo llama tras `setLanguage` en rutas `/c`. Invariantes en `upgrade-invariants.d/hub.tsv`; gate `upgrade-gates.sh hub --strict` (cruce 0 en 18 peticiones de 6 idiomas, `?theme=`, enlaces con los dos parámetros) |
 | `src/configs/blockchain-cycle.json` | fork-only (marcador de ciclo; se preserva) |
 
 Eso es **todo** lo que puede divergir de upstream dentro de `src/`. Frase canónica (D-O37, la que
 citan los demás documentos): **7 guards en 6 ficheros; con `src/configs/blockchain-cycle.json` el
 invariante `git diff $NEW_REF --stat -- src/` es de 7 ficheros.** Los literales de los guards del
-pub (`/update`, `settings_view`, `snh-invite-code.json`, `blobs.max`, `mergeDeep`) están en
+pub (`/update`, `settings_view`, `invite-codes.json`, `blobs.max`, `mergeDeep`) están en
 `upgrade-invariants.d/pub.tsv` y los del sexto en `hub.tsv`: `annex` (§3.1) los comprueba.
 Fuera de `src/` el fork se mantiene entero (nunca overlay): `Dockerfile`, `docker-compose*.yml`,
 `docker-entrypoint.sh`, `pub/**`, `devops/**`, `client/**`. `install.sh`/`oasis.sh` son
@@ -503,7 +503,7 @@ grep -m1 '"version"' src.new/src/server/package.json          # = X.Y.Z
 grep -c $'\r' src.new/src/backend/backend.js                  # = 0  (sin CRLF)
 test -L src.new/src/server/node_modules && test -d src.new/src/base/node_modules/ssb-db2   # (desde 1.2) el enlace es un enlace y lo vendorizado llegó
 grep -c $'\r' src.new/src/base/node_modules/is-map/index.js    # = 0  (un paquete con .gitattributes propio)
-grep '"url"' src.new/src/configs/snh-invite-code.json         # el dominio del pub (5.º guard)
+grep -m1 '"url"' src.new/src/configs/invite-codes.json        # el dominio del pub en la entrada 0 (5.º guard; hasta 1.2.8, snh-invite-code.json)
 grep -c 'guard o-sdk (WP-O132' src.new/src/views/clearnet_view.js src.new/src/backend/backend.js   # 4 y 2 (6.º guard)
 grep -c 'guard o-sdk (WP-O135' src.new/src/backend/backend.js   # 1 (7.º guard)
 # los demás guards (/update, settings_view, blobs.max, mergeDeep): los literales de upgrade-invariants.d/pub.tsv, con grep sobre src.new/

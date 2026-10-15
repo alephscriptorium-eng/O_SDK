@@ -31,6 +31,11 @@ backups
 backups/**
 .env
 .env.*
+# Rollbacks de src/ en el host (UPGRADE §4) y env de producción en cualquier carpeta de compose: el patrón
+# `.env.*` solo casa en la raíz. Hasta WP-O141 estas reglas vivían solo en el .dockerignore del host (deriva).
+src.old*
+src.new*
+**/.env.prod*
 
 # Identidad y operación remota — NUNCA dentro de la imagen
 devops

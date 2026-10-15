@@ -261,6 +261,9 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   propio deben apuntar a su dominio. Se toca **solo `url`**: el código de
   invite de upstream se conserva. Invariante nuevo:
   `git diff oasis-upstream/main --stat -- src/` = 6 ficheros.
+  *Nota (2026-10-15, WP-O141)*: Oasis 1.3.0 borra `snh-invite-code.json` y pasa a leer la entrada 0 de
+  `src/configs/invite-codes.json` (`config-manager.defaultInvite()`). El guard vive ahora ahí, con la misma regla:
+  solo `url`; el `code` de SNH se conserva. El recuento vigente es el de D-O37 (7 ficheros).
 - **D-O23 · 2026-09-19 · Protocolo primero, aplicación después; la prueba de un
   protocolo es un agente en frío.** El custodio pide reproducibilidad: o-sdk
   debe servir a cualquiera con su lore. (1) Punto de entrada único para
