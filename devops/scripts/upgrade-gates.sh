@@ -10,43 +10,61 @@
 #   bash devops/scripts/upgrade-gates.sh (--local|--remote) <subcomando> [args]
 #
 #   --local    stack local (pub/docker-compose.pub.yml + pub/.env.local + volumes-dev/), identidades desechables
-#   --remote   el host de la instancia (devops/hosts/<DEVOPS_HOST>/host.env), por SSH. SOLO LECTURA:
-#              en remoto solo existen snapshot, check y hub.
+#   --remote   el host de la instancia (devops/hosts/<DEVOPS_HOST>/host.env), por SSH. En remoto solo existen
+#              snapshot, check, hub y smoke: ninguno toca un nodo vivo (smoke arranca contenedores EFÍMEROS
+#              de la imagen, sin red ni volúmenes, y los borra).
 #
 # Subcomandos:
 #   snapshot <tag>      Foto de cada nodo (pub, hub, bot): estado, versión dentro del contenedor, feed,
 #                       formato del log (flume o db2), sequence propio (del log y del sbot vivo),
-#                       mensajes propios por tipo (cifrados incluidos), flag de primer contacto; en el
-#                       bot además dirección, modo del motor,
-#                       épocas abiertas. Se guarda en devops/logs/upgrade/<tag>.<local|remote>.snap
-#   check <tag> [--expect '<esperado>']
+#                       mensajes propios por tipo (cifrados incluidos), flag de primer contacto, segundos
+#                       desde el último arranque; en el bot además dirección, modo del motor, épocas
+#                       abiertas. Se guarda en devops/logs/upgrade/<tag>.<local|remote>.snap
+#   check <tag> [--expect '<esperado>' | --expect 0] [--wait] [--max N] [--every N] [--stable N] [--min-age N]
 #                       Foto nueva y comparación con <tag>. Por nodo: mismo feed; Δsequence == suma de
 #                       Δ por tipo (si no cuadra, la medida no vale); y ese delta es el esperado.
-#                       <esperado>: 'pub:oasisVersion=+1 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1'
+#                       <esperado>: 'pub:oasisVersion=+1 hub:oasisVersion=+1,karmaScore=+0..1 …'
 #                       (todo nodo, también el pub en modo server, anuncia su versión al cambiarla;
-#                       `nodo:=0` declara «nada»). Lo que no se nombra debe ser 0. Sin --expect, todo 0.
-#                       Además: errores en los logs desde la foto (EROFS, ReferenceError…).
+#                       `nodo:=0` declara «nada»). Lo que no se nombra debe ser 0. Sin --expect se lee
+#                       upgrade-invariants.d/expect.conf (el delta vigente, una línea por nodo);
+#                       --expect 0 = todo a cero. Además: errores en los logs desde la foto.
+#                       --wait: repite la foto cada --every s (20) hasta que el delta es el esperado Y
+#                       ningún sequence cambió en los últimos --stable s (60); tope --max s (600). Verde
+#                       solo por estabilidad, nunca por tiempo: una desviación firme (tipo no esperado,
+#                       más de lo declarado, feed o dirección cambiados, errores en el log) corta en la
+#                       primera vuelta; agotado el tope sin alcanzar el delta → DESVIACIÓN.
+#                       --min-age N: un nodo recreado hace menos de N s hace la medida PREMATURA (NO
+#                       MEDIBLE): lo que un nodo publica solo no sale todo al arrancar. Por defecto 300
+#                       en --remote y 0 en --local; con --wait, el bucle espera a cumplirlo.
 #   hub [--strict]      Matriz del visor clearnet por delante de la caché: 200, MISS→HIT, mismo /c con
 #                       distinto Accept-Language y con cookies (D-O25), ?lang=, cruce de idiomas con
 #                       peticiones concurrentes, sitemap y RSS con URLs https. Solo GET.
 #                       --strict: lo que es nuevo de 1.1.10 (?lang=, sitemap, RSS) y de 1.2.1 (Files)
 #                       pasa de aviso a fallo.
+#   smoke <imagen[:tag]> [--max N]
+#                       Humo de una imagen recién construida, en local o en el host, con contenedores
+#                       efímeros (--network none, sin volúmenes, se borran al acabar): versión, node --check,
+#                       0 ficheros `secret`, nada de .env*/volumes-*/src.old*/devops/client dentro de /app;
+#                       modo server hasta que exista el socket del sbot y modo backend hasta GET /c = 200
+#                       (sondeo cada 2 s, tope --max s, 120); los 3 parches del entrypoint; 0 errores.
+#                       Sustituye la receta a mano de U2 y del paso 6 del host (UPGRADE §3.4, §4).
 #   backup <tag>        (local) Copia volumes-dev/{oasis-pub,oasis-hub,oasis-wallet-bot} a
 #                       volumes-dev/.gates/<tag>/ con los contenedores PARADOS.
 #   restore <tag> --yes (local) Repone esa copia. Sin esto el gate no es repetible: tras una pasada el
 #                       log ya tiene el oasisVersion nuevo y la segunda daría delta 0 (falso verde).
-#   up <pub|hub|bot>    (local) Recrea un nodo con la imagen actual, espera a healthy y deja pasar
-#                       GATE_SETTLE segundos (90) con una petición en medio: lo que un nodo publica
-#                       solo no sale todo en el arranque.
+#   up <pub|hub|bot>    (local) Recrea un nodo con la imagen actual y espera a healthy (tope GATE_UP_TIMEOUT s).
+#                       No duerme: lo que el nodo publica solo lo mide después `check <tag> --wait`.
+#                       GATE_SETTLE=N repone el settle fijo antiguo (opt-in).
 #   worst               (local) Peor caso del bot: GET por loopback a las páginas donde el backend refresca
-#                       la cartera solo (/banking, /transfers…; /wallet no: ver el código). Después: check.
+#                       la cartera solo (/banking, /transfers…; /wallet no: ver el código).
+#                       Después: check u5 --wait --expect 'bot:karmaScore=+0..1'.
 #
+# Variables: GATE_NODES="alias:contenedor:servicio …" (por defecto pub, hub y bot de esta casa) ·
+#   GATE_UP_TIMEOUT (300) · GATE_WAIT_MAX (600) · GATE_WAIT_EVERY (20) · GATE_STABLE (60) · GATE_MIN_AGE ·
+#   GATE_SMOKE_MAX (120) · GATE_WORST_PATHS · GATE_RSS_MODULE (feed) · HUB_CACHE_CONTAINER · GATE_SETTLE.
 # Códigos de salida: 0 ok · 1 desviación · 3 no medible o precondición · 64 uso.
-# Nodos: GATE_NODES="alias:contenedor:servicio …" (por defecto pub, hub y bot de esta casa).
-#   El bot retro de la casa es desde WP-O135 (D-O33) un nodo REAL en la máquina operadora (volumes-real/):
-#   se mide aparte con GATE_NODES='retro:oasis-pub-retro-bot:oasis-retro-bot' y SOLO con snapshot/check;
-#   backup/restore/up no lo tocan (repondrían o recrearían una identidad real sobre un drill).
-#   Desde D-O36 (2026-10-12) ese bot está DEPRECATED: parado, no se arranca y por tanto no se mide.
+# Bot retro de la casa: DEPRECATED desde D-O36 (parado; no se mide). Si una instancia opera uno:
+#   GATE_NODES='retro:oasis-pub-retro-bot:oasis-retro-bot', solo snapshot/check (nunca backup/restore/up).
 # =============================================================================
 set -uo pipefail
 
@@ -57,15 +75,21 @@ source "$SCRIPT_DIR/lib-host.sh"
 source "$SCRIPT_DIR/lib-node.sh"
 REPO_ROOT="$(cd "$DEVOPS_DIR/.." && pwd)"
 SNAP_DIR="$DEVOPS_DIR/logs/upgrade"
+EXPECT_FILE="$SCRIPT_DIR/upgrade-invariants.d/expect.conf"
 
-usage() { sed -n '2,41p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '3,/^# ====/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; }
 
-MODE=""; CMD=""; ARGS=(); EXPECT=""; YES=0; STRICT=0
+MODE=""; CMD=""; ARGS=(); EXPECT=""; EXPECT_SET=0; YES=0; STRICT=0; WAIT=0; WMAX=""; WMAX_SET=0; WEVERY=""; WSTABLE=""; MINAGE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --local) MODE=local ;;
     --remote) MODE=remote ;;
-    --expect) EXPECT="${2:-}"; shift ;;
+    --expect) EXPECT="${2:-}"; EXPECT_SET=1; shift ;;
+    --wait) WAIT=1 ;;
+    --max) WMAX="${2:-}"; WMAX_SET=1; shift ;;
+    --every) WEVERY="${2:-}"; shift ;;
+    --stable) WSTABLE="${2:-}"; shift ;;
+    --min-age) MINAGE="${2:-}"; shift ;;
     --yes) YES=1 ;;
     --strict) STRICT=1 ;;
     -h|--help) usage; exit 0 ;;
@@ -75,17 +99,28 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$MODE" ] && [ -n "$CMD" ] || { usage; exit 64; }
 case "$CMD" in
-  snapshot|check|hub) ;;
-  backup|restore|up|worst) [ "$MODE" = local ] || { echo "ERROR: '$CMD' solo existe en --local: en el host este script es de solo lectura." >&2; exit 64; } ;;
+  snapshot|check|hub|smoke) ;;
+  backup|restore|up|worst) [ "$MODE" = local ] || { echo "ERROR: '$CMD' solo existe en --local: en el host este script no toca ningún nodo." >&2; exit 64; } ;;
   *) usage; exit 64 ;;
 esac
+WMAX="${WMAX:-${GATE_WAIT_MAX:-600}}"; WEVERY="${WEVERY:-${GATE_WAIT_EVERY:-20}}"; WSTABLE="${WSTABLE:-${GATE_STABLE:-60}}"
+if [ -z "$MINAGE" ]; then
+  if [ -n "${GATE_MIN_AGE:-}" ]; then MINAGE="$GATE_MIN_AGE"; elif [ "$MODE" = remote ]; then MINAGE=300; else MINAGE=0; fi
+fi
+# El delta esperado por defecto es el vigente (expect.conf): el que se copia de memoria se queda viejo
+# (en el ciclo 1.2.8 el «normal» del protocolo ya no llevaba karmaScore ni about).
+EXPECT_SRC=""
+if [ "$EXPECT_SET" = 0 ] && [ -f "$EXPECT_FILE" ]; then
+  EXPECT="$(grep -v '^[[:space:]]*#' "$EXPECT_FILE" | tr -d '\r' | grep . | tr '\n' ' ' | sed 's/ *$//')"; EXPECT_SRC=" (expect.conf)"
+fi
+[ "$EXPECT" = 0 ] && EXPECT=""
 
 GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot}"
 LOG_ERR_RE='EROFS|EACCES|ReferenceError|TypeError|Cannot find module|Another Oasis|no inicializada|UnhandledPromiseRejection'
 
 trap node_run_cleanup EXIT
 if [ "$MODE" = local ]; then node_run_setup 1 || exit 3; else node_run_setup 0 || exit 3; fi
-compose_local() { (cd "$REPO_ROOT/pub" && MSYS_NO_PATHCONV=1 docker compose -f docker-compose.pub.yml --env-file .env.local --profile wallet "$@"); }   # sin --profile retro: el retro local es real (D-O33)
+compose_local() { (cd "$REPO_ROOT/pub" && MSYS_NO_PATHCONV=1 docker compose -f docker-compose.pub.yml --env-file .env.local --profile wallet "$@"); }   # sin --profile retro (D-O36)
 container_of() { for n in $GATE_NODES; do [ "${n%%:*}" = "$1" ] && { n="${n#*:}"; echo "${n%%:*}"; return 0; }; done; return 1; }
 service_of()   { for n in $GATE_NODES; do [ "${n%%:*}" = "$1" ] && { echo "${n##*:}"; return 0; }; done; return 1; }
 
@@ -96,6 +131,9 @@ take_snapshot() { # take_snapshot [<desde: fecha ISO para los logs>]
   { node_remote_preamble; node_remote_lib
     printf 'GATE_NODES=%q; SINCE=%q; LOG_ERR_RE=%q\n' "$GATE_NODES" "${1:-}" "$LOG_ERR_RE"
     cat <<'EOS'
+# Segundos desde el último arranque del contenedor (StartedAt, RFC 3339 con nanosegundos). 0 = desconocido.
+started_age() { local st t; st="$(docker inspect -f '{{.State.StartedAt}}' "$1" 2>/dev/null | sed -E 's/\.[0-9]+Z$/Z/')"
+  [ -n "$st" ] && t="$(date -d "$st" +%s 2>/dev/null)" && [ -n "$t" ] && echo $(( $(date +%s) - t )) || echo 0; }
 echo "meta|ts|$(date -u +%FT%TZ)"
 for n in $GATE_NODES; do
   a="${n%%:*}"; c="${n#*:}"; c="${c%%:*}"
@@ -104,6 +142,7 @@ for n in $GATE_NODES; do
   echo "$a|version|$(node_version "$c")"
   echo "$a|image|$(node_image "$c")"
   echo "$a|mode|$(docker inspect -f '{{join .Config.Cmd " "}}' "$c" 2>/dev/null)"
+  echo "$a|started_age|$(started_age "$c")"
   d="$(node_ssb_dir "$c")"
   f="$(node_feed "$d")"
   echo "$a|feed|$f"
@@ -129,8 +168,9 @@ for n in $GATE_NODES; do
     echo "$a|engine|pub=$(docker exec "$c" sh -c 'grep -o "\"pub\": *[a-z]*" /home/oasis/.ssb/config' 2>/dev/null | sed 's/.*: *//')"
   fi
   if [ -n "$SINCE" ]; then
-    echo "$a|log_errors|$(docker logs --since "$SINCE" "$c" 2>&1 | grep -a -i -E -c "$LOG_ERR_RE")"
-    docker logs --since "$SINCE" "$c" 2>&1 | grep -a -i -E "$LOG_ERR_RE" | sort | uniq -c | head -3 | cut -c1-160 | sed "s/^/$a|log_sample|/"
+    errs="$(docker logs --since "$SINCE" "$c" 2>&1 | grep -a -i -E "$LOG_ERR_RE")"
+    echo "$a|log_errors|$(printf '%s\n' "$errs" | grep -c .)"
+    printf '%s\n' "$errs" | grep . | sort | uniq -c | head -3 | cut -c1-160 | sed "s/^/$a|log_sample|/"
   fi
 done
 EOS
@@ -153,16 +193,85 @@ show_snapshot() {
     $2=="state"{st[$1]=$3} $2=="version"{v[$1]=$3} $2=="feed"{f[$1]=$3} $2=="seq"{s[$1]=$3} $2=="records"{r[$1]=$3}
     $2=="seq_probe"{p[$1]=$3} $2 ~ /^type:/{t[$1]=t[$1] " " substr($2,6) "=" $3}
     $2=="address"{x[$1]=x[$1] " dirección=" $3} $2=="epochs"{x[$1]=x[$1] " épocas=" $3} $2=="engine"{x[$1]=x[$1] " motor:" $3}
-    $2=="mode"{md[$1]=$3} $2=="log"{lg[$1]=$3}
+    $2=="mode"{md[$1]=$3} $2=="log"{lg[$1]=$3} $2=="started_age"{ag[$1]=$3}
     $2=="first_contact_flag"{x[$1]=x[$1] " flag-primer-contacto=" $3; if ($3=="ausente") noflag[$1]=1}
     $1!="meta" && !seen[$1]++ {order[++n]=$1}
     END { for (i=1;i<=n;i++) { a=order[i]
       ok = (s[a]=="?") ? "LOG ILEGIBLE (medida no válida)" : ((s[a]==r[a]) ? "cuadra" : "NO CUADRA (medida no válida)")
       pr = (p[a]=="" ) ? "" : ((p[a]==s[a]) ? " · sbot=" p[a] : " · sbot=" p[a] " ≠ log")
-      printf "  %-4s %-16s v%-7s %-8s feed %s\n       log=%s seq=%s registros=%s → %s%s\n       tipos:%s\n      %s\n", a, st[a], (v[a]==""?"?":v[a]), md[a], f[a], (lg[a]==""?"?":lg[a]), s[a], r[a], ok, pr, t[a], x[a]
+      age = (ag[a]=="" || ag[a]=="0") ? "" : " · arrancó hace " ag[a] " s"
+      printf "  %-4s %-16s v%-7s %-8s feed %s%s\n       log=%s seq=%s registros=%s → %s%s\n       tipos:%s\n      %s\n", a, st[a], (v[a]==""?"?":v[a]), md[a], f[a], age, (lg[a]==""?"?":lg[a]), s[a], r[a], ok, pr, t[a], x[a]
       if (s[a]=="0" && st[a] ~ /^running/) printf "       AVISO: el nodo corre y su feed no tiene ningún mensaje propio.\n"
       if (noflag[a] && md[a] ~ /backend|full/) printf "       AVISO: sin flag de primer contacto en un nodo con backend: al arrancar enviaría el PM de bienvenida (un cifrado).\n" } }' "$1"
 }
+
+# ---------------------------------------------------------------------------
+# Comparación de dos fotos. compare_snaps <base> <ahora> <wait 0|1>
+# Imprime el informe por nodo y devuelve: 0 delta esperado · 1 desviación · 3 no medible ·
+# 4 (solo con wait=1) «todavía no»: falta un tipo declarado, o está por debajo del mínimo, o el nodo
+# aún no está healthy. Lo que esperar no arregla (más de lo declarado, un tipo no esperado, otro feed,
+# otra dirección, errores en el log) es desviación firme también con wait=1.
+# ---------------------------------------------------------------------------
+compare_snaps() {
+  awk -F'|' -v expect="$EXPECT" -v wait="$3" '
+    function setexp(   i, j, n, parts, kv, node, spec, m, items, rng) {
+      n = split(expect, parts, " ")
+      for (i = 1; i <= n; i++) { if (parts[i] == "") continue
+        node = parts[i]; sub(/:.*/, "", node); spec = parts[i]; sub(/^[^:]*:/, "", spec)
+        named[node] = 1
+        if (spec == "=0") continue
+        m = split(spec, items, ",")
+        for (j = 1; j <= m; j++) { split(items[j], kv, "="); rng = kv[2]; sub(/^\+/, "", rng)
+          if (rng ~ /\.\./) { lo[node, kv[1]] = rng; sub(/\.\..*/, "", lo[node, kv[1]]); hi[node, kv[1]] = rng; sub(/.*\.\./, "", hi[node, kv[1]]) }
+          else { lo[node, kv[1]] = rng; hi[node, kv[1]] = rng }
+          has[node, kv[1]] = 1; exptypes[node] = exptypes[node] " " kv[1] } } }
+    BEGIN { setexp() }
+    FNR == 1 { file++ }
+    $1 == "meta" { next }
+    { v[file, $1, $2] = $3; if (!seen[$1]++) order[++nn] = $1; if ($2 ~ /^type:/) types[$1, substr($2, 6)] = 1 }
+    END {
+      firm = 0; soft = 0; unmeasurable = 0
+      for (i = 1; i <= nn; i++) { a = order[i]; line = ""; sum = 0; nfirm = 0; nsoft = 0; why[a] = ""
+        if (v[1, a, "feed"] != v[2, a, "feed"]) { printf "  %-4s DESVIACIÓN: el feed ha cambiado (%s → %s)\n", a, v[1, a, "feed"], v[2, a, "feed"]; firm = 1; continue }
+        if (v[2, a, "feed"] == "") { printf "  %-4s NO MEDIBLE: sin feed\n", a; unmeasurable = 1; continue }
+        if (v[1, a, "seq"] == "?" || v[2, a, "seq"] == "?") { printf "  %-4s NO MEDIBLE: el log no se puede leer (formato: %s → %s)\n", a, v[1, a, "log"], v[2, a, "log"]; unmeasurable = 1; continue }
+        if (v[1, a, "seq"] != v[1, a, "records"] || v[2, a, "seq"] != v[2, a, "records"]) { printf "  %-4s NO MEDIBLE: sequence y registros no cuadran\n", a; unmeasurable = 1; continue }
+        # La sonda no contesta «?» por casualidad: o el sbot no responde o no entiende la consulta.
+        if (v[2, a, "seq_probe"] != "" && v[2, a, "seq_probe"] != v[2, a, "seq"]) { printf "  %-4s NO MEDIBLE: el sbot dice seq=%s y el log %s\n", a, v[2, a, "seq_probe"], v[2, a, "seq"]; unmeasurable = 1; continue }
+        dseq = v[2, a, "seq"] - v[1, a, "seq"]
+        for (k in types) { split(k, kk, SUBSEP); if (kk[1] != a) continue; t = kk[2]
+          d = v[2, a, "type:" t] - v[1, a, "type:" t]; sum += d
+          if (d != 0) line = line sprintf(" %s%+d", t, d)
+          if (has[a, t]) {
+            if (d > hi[a, t]) { nfirm = 1; why[a] = why[a] sprintf(" %s%+d fuera de [%s..%s];", t, d, lo[a, t], hi[a, t]) }
+            else if (d < lo[a, t]) { nsoft = 1; why[a] = why[a] sprintf(" %s%+d por debajo de [%s..%s];", t, d, lo[a, t], hi[a, t]) } }
+          else if (d != 0) { nfirm = 1; why[a] = why[a] sprintf(" %s%+d no esperado;", t, d) } }
+        n2 = split(exptypes[a], et, " ")
+        for (j = 1; j <= n2; j++) if (!((a, et[j]) in types) && lo[a, et[j]] > 0) { nsoft = 1; why[a] = why[a] " falta " et[j] ";" }
+        if (sum != dseq) { printf "  %-4s NO MEDIBLE: Δsequence=%d pero la suma por tipos es %d\n", a, dseq, sum; unmeasurable = 1; continue }
+        ver = (v[1, a, "version"] == v[2, a, "version"]) ? "v" v[2, a, "version"] : "v" v[1, a, "version"] " → v" v[2, a, "version"]
+        extra = ""
+        if (v[1, a, "log"] != "" && v[1, a, "log"] != v[2, a, "log"]) extra = extra " · log: " v[1, a, "log"] " → " v[2, a, "log"]
+        if (v[1, a, "address"] != v[2, a, "address"]) { nfirm = 1; why[a] = why[a] " la dirección ECOin ha cambiado;" }
+        if (v[1, a, "epochs"] != v[2, a, "epochs"]) extra = extra " · épocas: " v[1, a, "epochs"] " → " v[2, a, "epochs"]
+        if (v[1, a, "engine"] != v[2, a, "engine"]) extra = extra " · motor: " v[1, a, "engine"] " → " v[2, a, "engine"]
+        if (v[2, a, "state"] !~ /healthy/) { nsoft = 1; why[a] = why[a] " estado «" v[2, a, "state"] "»;" }
+        if (v[2, a, "log_errors"] + 0 > 0) { nfirm = 1; why[a] = why[a] " " v[2, a, "log_errors"] " líneas de error en el log;" }
+        verdict = nfirm ? "DESVIACIÓN:" why[a] : (nsoft ? ((wait == 1) ? "todavía no:" why[a] : "DESVIACIÓN:" why[a]) : "ok")
+        printf "  %-4s %s · Δseq=%d ·%s%s → %s\n", a, ver, dseq, (line == "" ? " sin publicaciones" : line), extra, verdict
+        if (nfirm) firm = 1; else if (nsoft) soft = 1 }
+      if (unmeasurable) exit 3
+      if (firm) exit 1
+      if (soft) exit (wait == 1 ? 4 : 1)
+      exit 0 }' "$1" "$2"
+}
+# Nodos en marcha recreados hace menos de MINAGE s (o de edad desconocida): la medida sería prematura.
+premature_nodes() { # premature_nodes <foto>  → líneas «nodo edad»
+  [ "$MINAGE" -gt 0 ] 2>/dev/null || return 0
+  awk -F'|' -v m="$MINAGE" '$2=="state"{st[$1]=$3} $2=="started_age"{ag[$1]=$3}
+    END{for(a in ag) if (st[a] ~ /^running/ && (ag[a]+0) < m) print a, ag[a]}' "$1" | sort
+}
+print_premature() { sed "s/^\([a-z]*\) 0$/  \1   PREMATURO: edad del contenedor desconocida (--min-age $MINAGE)/; s/^\([a-z]*\) \([0-9]*\)$/  \1   PREMATURO: recreado hace \2 s (< $MINAGE; --min-age)/"; }
 
 case "$CMD" in
   snapshot)
@@ -182,60 +291,37 @@ case "$CMD" in
     tag="${ARGS[0]:-}"; base="$SNAP_DIR/$tag.$MODE.snap"
     [ -f "$base" ] || { echo "no existe la foto $base (haz antes: snapshot $tag)" >&2; exit 3; }
     since="$(awk -F'|' '$2=="ts"{print $3}' "$base")"
-    now="$(mktemp)"; take_snapshot "$since" > "$now"; add_probe "$now"
-    echo "== ahora ($MODE)"; show_snapshot "$now"
-    echo "== delta desde «$tag» ($since) · esperado: ${EXPECT:-todo 0}"
-    awk -F'|' -v expect="$EXPECT" '
-      function setexp(   i, j, n, parts, kv, node, spec, m, items, rng) {
-        n = split(expect, parts, " ")
-        for (i = 1; i <= n; i++) { if (parts[i] == "") continue
-          node = parts[i]; sub(/:.*/, "", node); spec = parts[i]; sub(/^[^:]*:/, "", spec)
-          named[node] = 1
-          if (spec == "=0") continue
-          m = split(spec, items, ",")
-          for (j = 1; j <= m; j++) { split(items[j], kv, "="); rng = kv[2]; sub(/^\+/, "", rng)
-            if (rng ~ /\.\./) { lo[node, kv[1]] = rng; sub(/\.\..*/, "", lo[node, kv[1]]); hi[node, kv[1]] = rng; sub(/.*\.\./, "", hi[node, kv[1]]) }
-            else { lo[node, kv[1]] = rng; hi[node, kv[1]] = rng }
-            has[node, kv[1]] = 1; exptypes[node] = exptypes[node] " " kv[1] } } }
-      BEGIN { setexp() }
-      FNR == 1 { file++ }
-      $1 == "meta" { next }
-      { v[file, $1, $2] = $3; if (!seen[$1]++) order[++nn] = $1; if ($2 ~ /^type:/) types[$1, substr($2, 6)] = 1 }
-      END {
-        bad = 0; unmeasurable = 0
-        for (i = 1; i <= nn; i++) { a = order[i]; line = ""; sum = 0; nodebad = 0
-          if (v[1, a, "feed"] != v[2, a, "feed"]) { printf "  %-4s DESVIACIÓN: el feed ha cambiado (%s → %s)\n", a, v[1, a, "feed"], v[2, a, "feed"]; bad = 1; continue }
-          if (v[2, a, "feed"] == "") { printf "  %-4s NO MEDIBLE: sin feed\n", a; unmeasurable = 1; continue }
-          if (v[1, a, "seq"] == "?" || v[2, a, "seq"] == "?") { printf "  %-4s NO MEDIBLE: el log no se puede leer (formato: %s → %s)\n", a, v[1, a, "log"], v[2, a, "log"]; unmeasurable = 1; continue }
-          if (v[1, a, "seq"] != v[1, a, "records"] || v[2, a, "seq"] != v[2, a, "records"]) { printf "  %-4s NO MEDIBLE: sequence y registros no cuadran\n", a; unmeasurable = 1; continue }
-          # La sonda no contesta «?» por casualidad: o el sbot no responde o no entiende la consulta.
-          if (v[2, a, "seq_probe"] != "" && v[2, a, "seq_probe"] != v[2, a, "seq"]) { printf "  %-4s NO MEDIBLE: el sbot dice seq=%s y el log %s\n", a, v[2, a, "seq_probe"], v[2, a, "seq"]; unmeasurable = 1; continue }
-          dseq = v[2, a, "seq"] - v[1, a, "seq"]
-          for (k in types) { split(k, kk, SUBSEP); if (kk[1] != a) continue; t = kk[2]
-            d = v[2, a, "type:" t] - v[1, a, "type:" t]; sum += d
-            if (d != 0) line = line sprintf(" %s%+d", t, d)
-            if (has[a, t]) { if (d < lo[a, t] || d > hi[a, t]) { nodebad = 1; why[a] = why[a] sprintf(" %s%+d fuera de [%s..%s];", t, d, lo[a, t], hi[a, t]) } }
-            else if (d != 0) { nodebad = 1; why[a] = why[a] sprintf(" %s%+d no esperado;", t, d) } }
-          n2 = split(exptypes[a], et, " ")
-          for (j = 1; j <= n2; j++) if (!((a, et[j]) in types) && lo[a, et[j]] > 0) { nodebad = 1; why[a] = why[a] " falta " et[j] ";" }
-          if (sum != dseq) { printf "  %-4s NO MEDIBLE: Δsequence=%d pero la suma por tipos es %d\n", a, dseq, sum; unmeasurable = 1; continue }
-          ver = (v[1, a, "version"] == v[2, a, "version"]) ? "v" v[2, a, "version"] : "v" v[1, a, "version"] " → v" v[2, a, "version"]
-          extra = ""
-          if (v[1, a, "log"] != "" && v[1, a, "log"] != v[2, a, "log"]) extra = extra " · log: " v[1, a, "log"] " → " v[2, a, "log"]
-          if (v[1, a, "address"] != v[2, a, "address"]) { nodebad = 1; why[a] = why[a] " la dirección ECOin ha cambiado;" }
-          if (v[1, a, "epochs"] != v[2, a, "epochs"]) extra = extra " · épocas: " v[1, a, "epochs"] " → " v[2, a, "epochs"]
-          if (v[1, a, "engine"] != v[2, a, "engine"]) extra = extra " · motor: " v[1, a, "engine"] " → " v[2, a, "engine"]
-          if (v[2, a, "state"] !~ /healthy/) { nodebad = 1; why[a] = why[a] " estado «" v[2, a, "state"] "»;" }
-          if (v[2, a, "log_errors"] + 0 > 0) { nodebad = 1; why[a] = why[a] " " v[2, a, "log_errors"] " líneas de error en el log;" }
-          printf "  %-4s %s · Δseq=%d ·%s%s → %s\n", a, ver, dseq, (line == "" ? " sin publicaciones" : line), extra, (nodebad ? "DESVIACIÓN:" why[a] : "ok")
-          if (nodebad) bad = 1 }
-        if (unmeasurable) exit 3
-        exit bad }' "$base" "$now"
-    rc=$?
-    grep '|log_sample|' "$now" | sed 's/^\([a-z]*\)|log_sample|/  log \1: /'
-    rm -f "$now"
-    case $rc in 0) echo "GATE OK";; 1) echo "GATE: DESVIACIÓN — parar y contarlo (AGENTES §2.2)";; *) echo "GATE: NO MEDIBLE";; esac
-    exit $rc
+    rep="$(mktemp)"; t0=$(date +%s); last_seqs=""; stable_since=$t0
+    [ "$WAIT" = 1 ] && echo "== check «$tag» ($MODE) con --wait: cada $WEVERY s, estable $WSTABLE s, tope $WMAX s, min-age $MINAGE s · esperado: ${EXPECT:-todo 0}$EXPECT_SRC"
+    while :; do
+      now="$(mktemp)"; take_snapshot "$since" > "$now"; add_probe "$now"
+      compare_snaps "$base" "$now" "$WAIT" > "$rep"; rc=$?
+      prem="$(premature_nodes "$now")"
+      el=$(( $(date +%s) - t0 ))
+      seqs="$(awk -F'|' '$2=="seq"{printf "%s=%s ", $1, $3}' "$now")"
+      if [ "$seqs" != "$last_seqs" ]; then last_seqs="$seqs"; stable_since=$(date +%s); fi
+      stable=$(( $(date +%s) - stable_since ))
+      finish() { # finish <rc> <mensaje>
+        echo "== ahora ($MODE)"; show_snapshot "$now"
+        echo "== delta desde «$tag» ($since) · esperado: ${EXPECT:-todo 0}$EXPECT_SRC"; cat "$rep"
+        [ -n "$prem" ] && printf '%s\n' "$prem" | print_premature
+        grep '|log_sample|' "$now" | sed 's/^\([a-z]*\)|log_sample|/  log \1: /'
+        rm -f "$now" "$rep"; echo "$2"; exit "$1"; }
+      if [ "$WAIT" = 0 ]; then
+        # Una medida prematura no es un verde: NO MEDIBLE. Una desviación sigue siendo desviación.
+        [ -n "$prem" ] && [ $rc = 0 ] && rc=3
+        case $rc in 0) finish 0 "GATE OK";; 1) finish 1 "GATE: DESVIACIÓN — parar y contarlo (AGENTES §2.2)";; *) finish 3 "GATE: NO MEDIBLE";; esac
+      fi
+      [ $rc = 1 ] && finish 1 "GATE: DESVIACIÓN a los $el s — parar y contarlo (AGENTES §2.2)"
+      if [ $rc = 0 ] && [ -z "$prem" ] && [ "$stable" -ge "$WSTABLE" ]; then
+        finish 0 "GATE OK (delta esperado y sequence estable $WSTABLE s; $el s en total)"
+      fi
+      if [ "$el" -ge "$WMAX" ]; then
+        if [ $rc = 3 ]; then finish 3 "GATE: NO MEDIBLE (tope $WMAX s)"; else finish 1 "GATE: DESVIACIÓN — el delta esperado no se alcanzó en $WMAX s"; fi
+      fi
+      printf '  … %4d s: %src=%d estable=%d s%s\n' "$el" "$seqs" "$rc" "$stable" "${prem:+ · prematuro}"
+      rm -f "$now"; sleep "$WEVERY"
+    done
     ;;
 
   hub)
@@ -327,9 +413,58 @@ case "$CMD" in
     [ "$fail" = 0 ] && { echo "GATE OK$([ "$warn" = 1 ] && echo ' (con avisos)')"; exit 0; } || { echo "GATE: DESVIACIÓN"; exit 1; }
     ;;
 
+  smoke)
+    img="${ARGS[0]:-}"; [ -n "$img" ] || { echo "uso: smoke <imagen[:tag]> [--max N]" >&2; exit 64; }
+    if [ "$WMAX_SET" = 1 ]; then smax="$WMAX"; else smax="${GATE_SMOKE_MAX:-120}"; fi
+    # El mismo guion en local y en el host (viaja por stdin a `run`, como la foto). Nada de lo que hace
+    # toca un nodo: contenedores efímeros sin red ni volúmenes, que se borran al salir.
+    echo "== humo de la imagen $img ($MODE) · tope $smax s por modo"
+    { printf 'IMG=%q; MAX=%q; LOG_ERR_RE=%q\n' "$img" "$smax" "$LOG_ERR_RE"
+      cat <<'EOS'
+fail=0; CIDS=""
+ok() { echo "  ok    $1"; }; ko() { echo "  FALLA $1"; fail=1; }
+cleanup() { [ -n "$CIDS" ] && docker rm -f $CIDS >/dev/null 2>&1; return 0; }; trap cleanup EXIT
+sh0() { docker run --rm --network none --entrypoint sh "$IMG" -c "$1" 2>/dev/null; }
+docker image inspect "$IMG" >/dev/null 2>&1 || { ko "la imagen $IMG no existe aquí"; echo "SMOKE: DESVIACIÓN"; exit 1; }
+v="$(sh0 'grep -m1 "\"version\"" /app/src/server/package.json' | sed 's/.*: *"\([^"]*\)".*/\1/')"
+[ -n "$v" ] && ok "versión de Oasis dentro de la imagen: $v" || ko "sin /app/src/server/package.json legible"
+sh0 'node --check /app/src/backend/backend.js && node --check /app/src/views/clearnet_view.js && node --check /app/src/server/SSB_server.js' \
+  && ok "node --check: backend.js, clearnet_view.js, SSB_server.js" || ko "node --check falla en backend.js, clearnet_view.js o SSB_server.js"
+sh0 'test -L /app/src/server/node_modules && test -d /app/src/base/node_modules/ssb-db2' \
+  && ok "src/server/node_modules es un enlace y src/base trae lo vendorizado" || ko "src/server/node_modules no es un enlace o falta src/base/node_modules/ssb-db2"
+n="$(sh0 'find / -xdev -name secret 2>/dev/null | wc -l' | tr -d ' ')"
+[ "${n:-x}" = 0 ] && ok "0 ficheros «secret» en la imagen" || ko "${n:-?} ficheros «secret» en la imagen (identidad dentro del contexto de build: .dockerignore)"
+# Lo que .dockerignore debe dejar fuera: carpetas del fork en la raíz de /app (src/client es de upstream) y
+# cualquier .env* a dos niveles (la carpeta del compose del host va dentro del contexto).
+leak="$(sh0 'find /app -maxdepth 1 \( -name "volumes-*" -o -name "src.old*" -o -name "src.new*" -o -name devops -o -name client -o -name ARCHIVO -o -name docs \) 2>/dev/null; find /app -maxdepth 2 -name ".env*" 2>/dev/null')"
+[ -z "$leak" ] && ok "sin .env*, volumes-*, src.old*/src.new*, devops/, client/, docs/ ni ARCHIVO/ en /app" || ko "en /app sobra: $(printf '%s' "$leak" | tr '\n' ' ')"
+for mode in server backend; do
+  cid="$(docker run -d --network none -e OASIS_SKIP_AI_MODEL=true -e OASIS_PUBLIC=true -e OASIS_OPEN=false -e HOME=/home/oasis -e SSB_PATH=/home/oasis/.ssb "$IMG" $mode 2>/dev/null)"
+  [ -n "$cid" ] || { ko "$mode: docker run falló"; continue; }
+  CIDS="$CIDS $cid"; t=0; up=0
+  while [ $t -lt "$MAX" ]; do
+    [ "$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null)" = running ] || break
+    if [ $mode = server ]; then docker exec "$cid" test -S /home/oasis/.ssb/socket 2>/dev/null && { up=1; break; }
+    else [ "$(docker exec "$cid" curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3000/c 2>/dev/null)" = 200 ] && { up=1; break; }; fi
+    sleep 2; t=$((t + 2))
+  done
+  if [ $up = 1 ]; then ok "$mode: $([ $mode = server ] && echo 'socket del sbot' || echo 'GET /c → 200') a los $t s"
+  else ko "$mode: $([ "$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null)" = running ] && echo "sin respuesta en $MAX s" || echo "el contenedor se cayó a los $t s")"; fi
+  logs="$(docker logs "$cid" 2>&1)"
+  p="$(printf '%s\n' "$logs" | grep -a -c -E 'patcheado|ya parcheado')"; miss="$(printf '%s\n' "$logs" | grep -a -c -E 'no se encontr|no necesita patch')"
+  [ "$p" -ge 3 ] && [ "$miss" = 0 ] && ok "$mode: $p parches del entrypoint aplicados o ya presentes" || ko "$mode: $p parches aplicados, $miss sin anclaje (se esperan 3 «patcheado»/«ya parcheado»)"
+  e="$(printf '%s\n' "$logs" | grep -a -i -E -c "$LOG_ERR_RE")"
+  [ "$e" = 0 ] && ok "$mode: 0 líneas de error en el log" || { ko "$mode: $e líneas de error en el log"; printf '%s\n' "$logs" | grep -a -i -E "$LOG_ERR_RE" | head -3 | cut -c1-160 | sed 's/^/        /'; }
+  docker rm -f "$cid" >/dev/null 2>&1; CIDS="${CIDS// $cid/}"
+done
+[ $fail = 0 ] && { echo "SMOKE OK"; exit 0; } || { echo "SMOKE: DESVIACIÓN"; exit 1; }
+EOS
+    } | run
+    ;;
+
   backup|restore)
     tag="${ARGS[0]:-}"; [ -n "$tag" ] || { echo "uso: $CMD <tag>" >&2; exit 64; }
-    store="$REPO_ROOT/volumes-dev/.gates/$tag"; dirs="oasis-pub oasis-hub oasis-wallet-bot"   # nunca el retro: identidad real en volumes-real/ (D-O33)
+    store="$REPO_ROOT/volumes-dev/.gates/$tag"; dirs="oasis-pub oasis-hub oasis-wallet-bot"   # nunca el retro: identidad real en volumes-real/ (D-O33, D-O36)
     for n in $GATE_NODES; do c="${n#*:}"; c="${c%%:*}"
       [ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" = true ] && { echo "ERROR: $c está corriendo: para los nodos antes (un log copiado en caliente puede quedar a medias)." >&2; exit 3; }
     done
@@ -341,7 +476,7 @@ case "$CMD" in
       [ -d "$store" ] || { echo "ERROR: no existe $store" >&2; exit 3; }
       [ "$YES" = 1 ] || { echo "restore SUSTITUYE volumes-dev/{oasis-pub,oasis-hub,oasis-wallet-bot} por la copia «$tag» (identidades desechables). Repite con --yes." >&2; exit 64; }
       for d in $dirs; do [ -d "$store/$d" ] || continue; rm -rf "${REPO_ROOT:?}/volumes-dev/$d"; cp -a "$store/$d" "$REPO_ROOT/volumes-dev/"; done
-      echo "repuesta la copia «$tag»"
+      echo "repuesta la copia «$tag» (la config renderizada del bot también: vuelve a renderizarla si el ciclo la cambió)"
     fi
     ;;
 
@@ -351,19 +486,23 @@ case "$CMD" in
     compose_local up -d --no-deps --force-recreate "$svc" 2>&1 | tail -1
     # El primer arranque en una versión con otro motor de base de datos migra el log ANTES de abrir
     # el sbot (1.2: flume → db2): hasta que acaba no hay socket ni healthy. Tope: GATE_UP_TIMEOUT s.
-    tries=$(( ${GATE_UP_TIMEOUT:-300} / 5 ))
-    n=0; until [ "$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null)" = healthy ] || [ $n -ge "$tries" ]; do sleep 5; n=$((n + 1)); done
+    # Con start_interval en el compose el healthy llega en segundos: se sondea cada 2 s.
+    tries=$(( ${GATE_UP_TIMEOUT:-300} / 2 ))
+    n=0; until [ "$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null)" = healthy ] || [ $n -ge "$tries" ]; do sleep 2; n=$((n + 1)); done
     st="$(docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' "$c" 2>/dev/null)"
     echo "$alias ($c): $st · v$(docker exec "$c" sh -c 'grep -m1 "\"version\"" /app/src/server/package.json' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/')"
-    case "$st" in *healthy) ;; *) echo "DESVIACIÓN: $c no llegó a healthy en $((n * 5)) s (¿migración larga? GATE_UP_TIMEOUT)" >&2; exit 1 ;; esac
-    echo "  healthy a los $((n * 5)) s"
+    case "$st" in *healthy) ;; *) echo "DESVIACIÓN: $c no llegó a healthy en $((n * 2)) s (¿migración larga? GATE_UP_TIMEOUT)" >&2; exit 1 ;; esac
+    echo "  healthy a los $((n * 2)) s"
     # Un nodo no publica solo «al arrancar»: el sbot anuncia versión a los 7 s, el motor hace su
-    # primer tick a los 15 s, y los avisos automáticos del backend se disparan con una PETICIÓN
-    # (la del healthcheck vale) cuando los índices ya están: pueden tardar más de un minuto.
-    # Se espera GATE_SETTLE segundos (90) y se provoca una petición a mitad.
-    settle="${GATE_SETTLE:-90}"; sleep $((settle / 2))
-    MSYS_NO_PATHCONV=1 docker exec "$c" sh -c 'curl -s -o /dev/null --max-time 20 http://127.0.0.1:3000/c/inhabitant/@AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=.ed25519' 2>/dev/null || true
-    sleep $((settle - settle / 2))
+    # primer tick a los 15 s, y los avisos del backend se disparan con una petición cuando los índices
+    # ya están. Eso lo mide `check <tag> --wait` (verde solo cuando el delta es el esperado y el
+    # sequence lleva GATE_STABLE s quieto). GATE_SETTLE repone el settle fijo antiguo, opt-in.
+    if [ -n "${GATE_SETTLE:-}" ]; then
+      settle="$GATE_SETTLE"; sleep $((settle / 2))
+      MSYS_NO_PATHCONV=1 docker exec "$c" sh -c 'curl -s -o /dev/null --max-time 20 http://127.0.0.1:3000/c/inhabitant/@AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=.ed25519' 2>/dev/null || true
+      sleep $((settle - settle / 2)); echo "  settle fijo de $settle s (GATE_SETTLE)"
+    fi
+    echo "Ahora: upgrade-gates.sh --local check <tag> --wait"
     ;;
 
   worst)
@@ -377,7 +516,6 @@ case "$CMD" in
       code="$(MSYS_NO_PATHCONV=1 docker exec "$c" curl -s -o /dev/null -w '%{http_code}' --max-time 60 -H 'Host: localhost:3000' "http://127.0.0.1:3000$p")"
       echo "GET $p por loopback en el bot → $code"
     done
-    sleep 30
-    echo "Ahora: upgrade-gates.sh --local check <tag> --expect 'bot:karmaScore=+0..1' (wallet y (cifrado) no deben moverse)."
+    echo "Ahora: upgrade-gates.sh --local check u5 --wait --expect 'bot:karmaScore=+0..1' (wallet y (cifrado) no deben moverse)."
     ;;
 esac
