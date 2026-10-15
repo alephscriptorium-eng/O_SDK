@@ -45,8 +45,8 @@ empaqueta en Docker para que la levantes en un comando.
   sin servidores centrales. Tu `secret` nunca sale de tu volumen.
 - 📡 **Malla P2P** — funciona offline y sincroniza cuando hay red; si pierdes el
   nodo, tu feed se re-replica desde el pub.
-- 🐳 **Misma imagen, dos modos** — cliente web personal (`:3000`) o **pub** de
-  federación en un VPS.
+- 🐳 **Misma imagen, tres modos** — cliente web personal (`full`, `:3000`), **pub** de
+  federación en un VPS (`server`) o **nodo de soporte** del pub (`backend`: HUB, bots).
 - 🤖 **IA local opcional** — modelo `42` (`gguf`) servido en el propio nodo
   (GPU si hay), sin enviar nada a terceros.
 - 🛡️ **Fork endurecido** — _guards_ para que el auto-update destructivo del
@@ -62,6 +62,7 @@ quieres. Cada puerta es a la vez una página del portal y la receta que lee el a
 
 | Puerta | Para qué | Receta |
 |--------|----------|--------|
+| Habitante | entrar en la red de un pub con tu móvil; sin servidor, sin terminal y sin agente | [docs/roles/habitante.md](docs/roles/habitante.md) |
 | Cliente Oasis | tu nodo en tu máquina, con cartera si la quieres | [docs/roles/cliente.md](docs/roles/cliente.md) |
 | Pub Oasis | un pub en tu servidor; lectura web y Teatro como piezas | [docs/roles/pub.md](docs/roles/pub.md) |
 | Economía Oasis | ECOin: tu cartera, y el banco del pub con renta básica | [docs/roles/economia.md](docs/roles/economia.md) |
@@ -107,7 +108,10 @@ operativos, reutilizables y verificados en producción:
 | [Protocolo del HUB clearnet](docs/PUB/HUB-PROTOCOL.md) | HUB web `/c` como nodo de soporte; serie de bots y su renombrado |
 | [Protocolo de ECOin](docs/PUB/ECOIN-PROTOCOL.md) | hub-wallet del pub: `ecoind` en contenedor propio + bot de cartera, RBU |
 | [Protocolo del cliente](docs/CLIENT-PROTOCOL.md) | App cliente: alta, importar identidad, upgrade, cartera ECOin |
+| [Capacidad](docs/PUB/CAPACIDAD.md) | Qué crece en disco y en memoria, quién lo hace crecer, qué límite tiene y cómo se mide |
+| [Protocolo de plantillas](docs/PUB/TEMPLATE-PROTOCOL.md) | El organigrama de un colectivo convertido en tribus, salas, calendarios y listas de su pub, por bloques y con permiso |
 | [Protocolo del Teatro](docs/PUB/TEATRO-PROTOCOL.md) · [curaduría](docs/PUB/TEATRO-CURADURIA-PROTOCOL.md) · [sidecar RRSS](docs/PUB/RRSS-SIDECAR-PROTOCOL.md) | Acoger, desplegar y difundir una obra |
+| [Teatro P2P](docs/PUB/TEATRO-P2P-PROTOCOL.md) | Sacar una obra a la escena P2P (torrent, ed2k) y anunciarla en Oasis |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
 
 ### 🧭 Roadmap futuro
@@ -128,11 +132,11 @@ varios, «sin decisión»): **<https://o-sdk.escrivivir.co/ROADMAP/>** · en el 
 
 ## 🗂 Estructura
 
-Una carpeta por responsabilidad — misma imagen, dos roles (cliente y pub):
+Una carpeta por responsabilidad — misma imagen, tres modos (`full`, `server`, `backend`):
 
 | Carpeta | Responsabilidad |
 |---------|-----------------|
-| [src/](src/) | Código Oasis (overlay 1-1 con upstream + 5 fork-guards) |
+| [src/](src/) | Código Oasis (overlay 1-1 con upstream + los guards del fork: 7 guards en 6 ficheros; con `src/configs/blockchain-cycle.json` el invariante `git diff $NEW_REF --stat -- src/` es de 7 ficheros) |
 | [client/](client/) | Rol **cliente**: identidad del usuario (GPG/SSB) y entorno local |
 | [pub/](pub/) | Rol **pub**: compose, config SSB, panel, site y scripts del nodo de federación |
 | [devops/](devops/) | Operación remota por SSH del host que corre un pub (`devops/hosts/` = instancias) |
