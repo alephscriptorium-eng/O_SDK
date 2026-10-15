@@ -16,5 +16,6 @@
 1	src/server/ssb_config.js	const configData = require('../configs/config-manager').readServerConfig();	upstream: de dónde sale la config que el guard funde (config-manager); si cambia, mergeDeep funde otra cosa
 1	src/server/ssb_config.js	const megabyte = Math.pow(2, 20);	upstream: unidad con la que el guard fija el tope de blobs
 1	src/server/ssb_config.js	config.blobs.max = 50 * megabyte;	guard de ssb_config: tope de blobs a 50 MiB (upstream fija 75 * megabyte en la misma línea)
-1	src/configs/snh-invite-code.json	"url":	base del visor y del invite: upstream trae la clave, el fork solo cambia el valor (dato de instancia; no se mide aquí)
+1	src/configs/invite-codes.json	"url":	base del visor y del invite (D-O22): upstream trae la clave en cada entrada, el fork solo cambia el valor de la entrada 0 (dato de instancia; no se mide aquí). Hasta 1.2.8 era snh-invite-code.json
+1	src/configs/config-manager.js	const defaultInvite = () => readInviteCodes()[0] || null;	upstream: la entrada 0 de invite-codes.json es «el invite por defecto»; si cambia el criterio, el quinto guard hay que ponerlo en otra entrada
 1	src/configs/blockchain-cycle.json	"cycle":	fichero del fork (upstream no lo trae): el overlay limpio de §2 lo borra si no se restaura expresamente

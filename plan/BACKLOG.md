@@ -904,7 +904,7 @@ Dep: WP-O139 (orden de merge). Relación: WP-O112, WP-O127, WP-O138 §9.
 
 | **WP-O141** | **P0** | Upgrade a Oasis 1.3.0 (1.2.8 → 1.3.0; la 1.2.9 queda dentro del salto) |
 
-**Estado** · ⬜. Rama `upgrade/oasis-1.3.0`. Upstream publicó 1.2.9 y 1.3.0 (plan del 2026-10-15; el `oasis-upstream` local sigue en 1.2.8, 28fc1a68: el preflight lo trae y fija `NEW_REF`).
+**Estado** · ✅ 2026-10-15 **aplicado en el host** (pub, HUB y bot de cartera en 1.3.0; delta: pub `oasisVersion+1`, HUB `oasisVersion+1`, bot `oasisVersion+1 karmaScore+1`, nada más; motor de RBU encendido al cierre), rama `upgrade/oasis-1.3.0` (desde `main` a732b7c7), pendiente de merge; reporte `plan/REPORTES/WP-O141-upgrade-oasis-1.3.0.md`. Sin cambio de motor; `OLD_REF=28fc1a68`, `NEW_REF=37e0fc93`. **Primer ciclo con el protocolo v3**: `up` ×3 en 23 s y `check --wait` en 70 s en local; en el host `--min-age 300` impuso los 5 min. Hecho: overlay + 7 guards (el quinto pasa a `invite-codes.json`, entrada 0: D-O22, nota), 90 disposiciones (`--check --from-tsv` 2,5 s), U0-U7 y US en verde, `smoke` local y remoto, GO-1…GO-4b. Hallazgos: 1.3.0 trae el tipo `pub-invites` (no salió); `TRIBE_LOG_TYPES` ya incluye `tribe-open-invite`; el `.dockerignore` del host no es convergible mientras tenga otro layout (E0); **el sbot del bot llevaba desde el 14 sin conectar con el pub** → forzado por RPC con GO (WP-O143). Tropiezos del operador (compose in place sin parar ante un sha distinto; journal con modo falso, corregido) en el reporte §6. Cliente sigue en 1.2.2 (D-O32).
 
 **BRIEF** · Primer ciclo con el protocolo v3 (WP-O140), seguido tal cual: cada tropiezo es un defecto del protocolo y se corrige en O140 (cherry-pick) o en el reporte §6. §0.3 `deploy-status.sh` (lectura) · §1 `upgrade-preflight.sh --to 1.3.0` con **parada** si trae otra capa de base de datos (UM/UR) o `annex` marca `!` · §2 overlay limpio desde `$NEW_REF` + 7 guards (dos commits), invariante de 7 ficheros · §3 disposiciones con `--check --from-tsv` · §3.4 gates U0-U7 + US con la imagen 1.3.0 (U0 con la 1.2.8 etiquetada; U3 cronometrado con `check --wait`; U5 `worst`; U7 `restore` y repetir), tiempo real de cada gate anotado · **host: GO-1…GO-4b del custodio, cada uno expreso**, orden pub → HUB → bot, un comando por paso; el cliente (1.2.2) no entra salvo GO aparte (D-O32); el retro no se sube (D-O36) · §7 cierre: reporte con las seis cabeceras, CHANGELOG, backlog, journal, ficha, fila en UPGRADE §7. Secretos (invites, `secret`, `.env.prod`, token «Admin access») no se copian a ningún reporte.
 **CA** · pub, HUB y bot de cartera en 1.3.0 con el delta declarado en `expect.conf` · `check` en verde en cada paso del host y `hub --strict` en verde · reporte con las seis cabeceras y los tiempos por gate · correcciones al protocolo aplicadas · trampa `TRIBE_LOG_TYPES` (AGENTES §4) vuelta a medir en 1.3.0.
@@ -913,6 +913,20 @@ Dep: WP-O140. Relación: WP-O138, D-O32, D-O36.
 | **WP-O142** | **P2** | Generalizar `retro-seed.sh` / `retro-tombstone.sh` a cualquier bot de plantilla (`--container`) |
 
 **Estado** · ⬜.
+
+| **WP-O143** | **P1** | El bot de cartera no reconecta con el pub: medir la conectividad de los nodos de soporte |
+
+**BRIEF** · En WP-O141 la precondición de `hub-wallet.sh on` destapó que el sbot del bot llevaba desde 2026-10-14T23:02Z
+sin conectar con nuestro pub (`conn.json`: `failure: 0`, `autoconnect: true`) mientras mantenía cuatro pubs externos
+(`conn.peers()`); el HUB reconecta en 5 s. TCP en orden. Sospecha: el planificador de `ssb-conn` (parcheado por
+upstream: `maintainConnections(quota…)`, `MAX_STAGED_PUBS = 3`) llena sus plazas con pubs externos. Se forzó con
+`sbot.conn.connect` por RPC (GO). Hacer: (1) que `hub-wallet.sh status`/`ready` y la foto de `upgrade-gates.sh` digan a
+qué pares está conectado cada nodo de soporte (`conn.peers()`), no solo si el pub lo vio alguna vez en su log; (2) medir
+cuánto tarda el bot en reconectar tras recrear el pub y si vuelve a soltarlo; (3) si el planificador lo deja fuera,
+fijar el pub como par prioritario (`seeds`/`conn` con `autoconnect` y tipo) o acotar las plazas en la config del bot.
+**CA** · tras recrear el pub, el bot aparece `CONNECTED` en su log antes de 2 min sin intervención · `status` muestra
+los pares · el gate del upgrade lo mide.
+**Estado** · ⬜. Dep: WP-O141.
 
 **BRIEF** · `pub/scripts/retro-seed.sh` y `retro-tombstone.sh` hacen `docker exec` **dentro del contenedor del bot retro de la casa** (lo dicen sus cabeceras, líneas 2-6): están atados a un nodo **deprecated** (D-O36) que AGENTES §2.9 prohíbe arrancar. El método (TEMPLATE-PROTOCOL §4 vía caliente y §9 deshacer) es de cualquier bot de plantilla: aceptar `--container <nombre>` (o variable de entorno), parar con mensaje si falta, y documentarlo en `TEMPLATE-PROTOCOL.md`; los npm `pub:local:retro-bot:{seed,tombstone}` pasan a un nombre genérico.
 **CA** · drill local con un bot desechable en otro contenedor (`pub/scripts/drill-26s.sh`): siembra y tombstone sin editar el script · sin `--container` el script para y lo dice · `volumes-real/` sigue apagado e intacto (D-O36).

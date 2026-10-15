@@ -5,6 +5,25 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Oasis 1.3.0 en pub, HUB y bot de cartera (WP-O141, 2026-10-15)
+
+Salto 1.2.8 → 1.3.0 (1.2.9 dentro), sin cambio de motor; primer ciclo con el protocolo v3 (WP-O140). Overlay limpio
+desde `37e0fc93`; 7 guards repuestos (uno con conflicto, resuelto); invariante de 7 ficheros. **El quinto guard cambia
+de fichero**: upstream borra `snh-invite-code.json` y lee la entrada 0 de `invite-codes.json` (`defaultInvite()`): solo
+`url`, el código de SNH se conserva (D-O22, nota). Gates locales U0-U7 y US en verde (`up` ×3 en 23 s, `check --wait`
+en 70 s). Host con GO por paso: pub `oasisVersion+1`; HUB `oasisVersion+1`; bot `oasisVersion+1 karmaScore+1`; nada más.
+
+- **1.3.0 trae un tipo nuevo, `pub-invites`**: un backend con `pub: true` anuncia a los 60 s y cada 24 h el uso de sus
+  invites (`pub_invites.announce`), solo si ha creado alguno. No se declaró y no salió (ni en local ni en el host).
+- `TRIBE_LOG_TYPES` incluye ya `tribe-open-invite` (la trampa de 1.2.5-1.2.8 queda acotada).
+- Tropiezos del operador, contados en el reporte: el compose del host se escribió in place sin parar ante un sha que no
+  era el esperado (el `.bak` y el diff previo lo cubrían); el encadenado de GO-4b siguió tras un `hub-wallet.sh on`
+  abortado y el journal registró `wallet-engine-on` con el motor apagado (línea correctora añadida). Regla nueva en
+  UPGRADE §6 del reporte: un comando por paso también para el operador.
+- **Hallazgo previo al ciclo**: el sbot del bot llevaba desde el 14 sin conectar con nuestro pub (sí con cuatro pubs
+  externos); lo destapó la precondición de `hub-wallet.sh on`. Se forzó por RPC (`conn.connect`) con GO y el motor
+  volvió a encenderse. Backlog: WP-O143.
+
 ### Changed — Protocolo de upgrade v3: los gates miden en vez de dormir (WP-O140, 2026-10-15)
 
 - `upgrade-gates.sh check --wait`: repite la foto hasta que el delta es el esperado **y** el `sequence` lleva 60 s

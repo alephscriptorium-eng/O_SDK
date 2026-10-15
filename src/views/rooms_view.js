@@ -89,10 +89,7 @@ const renderRoomItem = (room, params = {}) => {
   return li({ class: "mailing-archive-item room-item" },
     div({ class: "emergency-update-head mailing-archive-head" },
       div({ class: "mailing-archive-meta" },
-        canJoin && !roomIsFull(occ)
-          ? form({ method: "POST", action: `/rooms/join/${encodeURIComponent(room.rootId)}`, class: "room-join-form" },
-              button({ type: "submit", class: "user-link room-title-join", title: i18n.roomJoin }, room.title || "—"))
-          : a({ href: roomHref(room), class: "user-link" }, room.title || "—"),
+        a({ href: roomHref(room), class: "user-link" }, room.title || "—"),
         span({ class: "card-label activity-update-counts mailing-counts" }, `👥: ${safeArr(room.members).length}`),
         ...roomChips(room, occ, inside),
         room.clearnet === true && clearnetEligible(room) ? renderReachChip(true, i18n, roomClearnetHref(room)) : null,
@@ -344,9 +341,11 @@ exports.singleRoomView = async (room, params = {}) => {
       ),
       restricted ? null : tr(td({ class: "tribe-info-value", colspan: "4" }, userLink(room.author)))
     ),
-    div({ class: "tribe-card-members" },
-      span({ class: "tribe-members-count" }, `${i18n.roomParticipants}: ${safeArr(room.members).length}`)
-    ),
+    live || restricted
+      ? div({ class: "tribe-card-members" },
+          span({ class: "tribe-members-count" }, `${i18n.roomParticipants}: ${safeArr(room.members).length}`)
+        )
+      : null,
     inviteActions.length ? div({ class: "tribe-side-actions" }, ...inviteActions) : null,
     isAuthor && !room.isClosed
       ? div({ class: "tribe-side-actions housing-status-row" },
@@ -359,7 +358,7 @@ exports.singleRoomView = async (room, params = {}) => {
         )
       : null,
     restricted
-      ? div({ class: "tribe-side-actions" }, a({ class: "tribe-action-btn", href: "/invites#invites-rooms" }, i18n.tribeEnterInvite))
+      ? div({ class: "tribe-side-actions" }, a({ class: "tribe-action-btn", href: "/invites?filter=others" }, i18n.tribeEnterInvite))
       : null,
     restricted || !safeArr(room.tags).length
       ? null

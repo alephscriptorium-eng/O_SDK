@@ -434,10 +434,11 @@ sh0 'test -L /app/src/server/node_modules && test -d /app/src/base/node_modules/
   && ok "src/server/node_modules es un enlace y src/base trae lo vendorizado" || ko "src/server/node_modules no es un enlace o falta src/base/node_modules/ssb-db2"
 n="$(sh0 'find / -xdev -name secret 2>/dev/null | wc -l' | tr -d ' ')"
 [ "${n:-x}" = 0 ] && ok "0 ficheros «secret» en la imagen" || ko "${n:-?} ficheros «secret» en la imagen (identidad dentro del contexto de build: .dockerignore)"
-# Lo que .dockerignore debe dejar fuera: carpetas del fork en la raíz de /app (src/client es de upstream) y
-# cualquier .env* a dos niveles (la carpeta del compose del host va dentro del contexto).
-leak="$(sh0 'find /app -maxdepth 1 \( -name "volumes-*" -o -name "src.old*" -o -name "src.new*" -o -name devops -o -name client -o -name ARCHIVO -o -name docs \) 2>/dev/null; find /app -maxdepth 2 -name ".env*" 2>/dev/null')"
-[ -z "$leak" ] && ok "sin .env*, volumes-*, src.old*/src.new*, devops/, client/, docs/ ni ARCHIVO/ en /app" || ko "en /app sobra: $(printf '%s' "$leak" | tr '\n' ' ')"
+# Lo que .dockerignore debe dejar fuera (UPGRADE §3.4 U2 y §4): carpetas del fork en la raíz de /app (src/client es
+# de upstream) y cualquier .env* a dos niveles (la carpeta del compose del host va dentro del contexto); los
+# *.example no son secretos y el host los re-incluye a propósito.
+leak="$(sh0 'find /app -maxdepth 1 \( -name "volumes-*" -o -name "src.old*" -o -name "src.new*" -o -name devops -o -name client -o -name ARCHIVO \) 2>/dev/null; find /app -maxdepth 2 -name ".env*" ! -name "*.example" 2>/dev/null')"
+[ -z "$leak" ] && ok "sin .env* (salvo *.example), volumes-*, src.old*/src.new*, devops/, client/ ni ARCHIVO/ en /app" || ko "en /app sobra: $(printf '%s' "$leak" | tr '\n' ' ')"
 for mode in server backend; do
   cid="$(docker run -d --network none -e OASIS_SKIP_AI_MODEL=true -e OASIS_PUBLIC=true -e OASIS_OPEN=false -e HOME=/home/oasis -e SSB_PATH=/home/oasis/.ssb "$IMG" $mode 2>/dev/null)"
   [ -n "$cid" ] || { ko "$mode: docker run falló"; continue; }
