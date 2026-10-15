@@ -2,9 +2,9 @@
 # =============================================================================
 # upgrade-preflight.sh — check-warning ANTES de un upgrade de Oasis.
 #
-# Corre en el HOST (necesita .git, el remote `oasis-upstream` y salida a internet),
-# NO dentro del contenedor: el updater interno es un no-op en Docker (.dockerignore
-# excluye .git y el aviso es solo console.log). Este script lo reemplaza.
+# Corre en la máquina operadora (checkout con .git, remote `oasis-upstream` y salida a
+# internet), NO dentro del contenedor: el updater interno es un no-op en Docker
+# (.dockerignore excluye .git y el aviso es solo console.log). Este script lo reemplaza.
 #
 # Detecta y AVISA de:
 #   1) Drift de versión: local src/server/package.json vs oasis-upstream/main, y
@@ -40,6 +40,9 @@ UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-oasis-upstream}"
 UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-main}"
 JOURNAL="${DEPLOY_LOG_PATH:-$REPO_ROOT/devops/logs/deploy-history.jsonl}"
 
+# La cabecera entera (de la línea 3 hasta el cierre `# ====`) es la ayuda: no hay segunda copia que mantener.
+usage() { sed -n '3,/^# ====/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; }
+
 FROM_VER=""; TO_VER=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -47,7 +50,7 @@ while [ $# -gt 0 ]; do
     --from=*) FROM_VER="${1#--from=}" ;;
     --to) TO_VER="${2:-}"; shift ;;
     --to=*) TO_VER="${1#--to=}" ;;
-    -h|--help) sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) usage; exit 0 ;;
   esac
   shift
 done
@@ -165,7 +168,7 @@ elif command -v python3 >/dev/null 2>&1; then
   else
     note "Ciclo actual de red: ${CUR_CYCLE:-?}  (cap ${CUR_SHS:-?})"
     if [ -n "$LSHS" ] && [ -n "${CUR_SHS:-}" ] && [ "$LSHS" != "$CUR_SHS" ]; then
-      warn "tu caps.shs local != cap actual de la red → la red cambió de ciclo; hay que rotar (A5.2)"
+      warn "tu caps.shs local != cap actual de la red → la red cambió de ciclo; hay que rotar (UPGRADE-PROTOCOL.md §5, ciclo de red)"
     else
       note "caps.shs local coincide con el cap actual de la red (mismo ciclo)"
     fi
