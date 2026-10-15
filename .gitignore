@@ -79,9 +79,6 @@ docs/.vitepress/dist/
 .cursor/skills/
 .openai/skills/
 
-# Python bytecode
-__pycache__/
-
 # Python (pub/rrss-sidecar): bytecode, y red de seguridad contra datos dentro del sidecar
 __pycache__/
 *.pyc
@@ -94,6 +91,17 @@ src/AI/embeddings/
 src/AI/.cache/
 src/server/node_modules.full/
 *.onnx
+
+# Canva de la 26S (rama dev/26sm-exported, WP-O136/O137): exportaciones pesadas fuera de git; queda el
+# MANIFEST.md con sha256. Las mismas reglas que la rama, para que main no las vea como sin trackear.
+ARCHIVO/DISCO/26sm-exported/canva/**/*.pdf
+ARCHIVO/DISCO/26sm-exported/canva/**/*.png
+ARCHIVO/DISCO/26sm-exported/canva/**/*.jpg
+ARCHIVO/DISCO/26sm-exported/canva/**/*.jpeg
+ARCHIVO/DISCO/26sm-exported/canva/**/*.svg
+ARCHIVO/DISCO/26sm-exported/vista-previa.zip
+ARCHIVO/DISCO/26sm-exported/vista-previa/.chrome-profile/
+
 # Oasis >= 1.2: src/base son las dependencias que upstream vendoriza. Se versionan ENTERAS, tal
 # cual vienen (D-O27): ninguna regla de arriba (node_modules/, dist/, build/, *.log, cache/,
 # packages/) debe esconder un fichero suyo. Estas líneas van las últimas a propósito.
