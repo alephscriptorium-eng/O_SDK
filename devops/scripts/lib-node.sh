@@ -14,8 +14,12 @@
 #                          al script que se envía a `run`:
 #                              { node_remote_preamble; node_remote_lib; cat <<'EOS' … EOS; } | run
 #   node_remote_preamble   imprime las variables que esas funciones esperan
-#   node_probe_seq <contenedor> <feed>   2ª fuente del `sequence`: pregunta al sbot vivo con
-#                          pub/tools/ssb-probe.js por stdin (no depende de lo que traiga la imagen)
+#   node_probe <contenedor> <feed> [<clave del pub>]   UNA llamada a pub/tools/ssb-probe.js por stdin (no depende
+#                          de lo que traiga la imagen): el JSON con seq, pares y enlace con el pub
+#   node_probe_seq <contenedor> <feed>   2ª fuente del `sequence` (del JSON de arriba)
+#   node_probe_fields <json>             «seq|pares|pub_link|dir» de ese JSON, para la foto de upgrade-gates.sh
+#   node_probe_link <contenedor> <feed> <clave del pub>   «connected in|out» · «ausente» · «?»
+#   node_probe_peers <contenedor> <feed>                  «N (M in)» · «?»
 #
 # Lado destino (funciones que imprime node_remote_lib):
 #   node_ssb_dir <contenedor>         carpeta del host montada como /home/oasis/.ssb
@@ -28,6 +32,10 @@
 #                                     Si el log no se puede leer: `S ?`, nunca `S 0`.
 #   node_own_seq / node_own_records / node_own_types   lo mismo, por partes (mismos argumentos)
 #   node_state / node_version / node_image <contenedor>
+#   node_link <contenedor> <clave del pub>   enlace con el pub medido por el sbot del nodo (conn.peers, por clave):
+#                                     «connected in|out» · «ausente» · «?» (la sonda no pudo leer: NO MEDIBLE)
+#   node_peers <contenedor>           «N (M in)» · «?»
+#   node_pub_link <contenedor> <acción…>   pub/tools/pub-link.js por stdin (--ensure, --remember, --disconnect…)
 #
 # Por qué así:
 #  - Contar POR AUTOR. A hops > 0 el log trae los mensajes de media red (AGENTES §4).
@@ -78,12 +86,33 @@ node_remote_preamble() {
   printf 'SUDO=%q; NODE_LOCAL=%q; NODE_DATA=%q; NODE_RETRO_DATA=%q\n' "$NODE_SUDO" "$NODE_LOCAL" "$NODE_DATA" "${NODE_RETRO_DATA:-}"
 }
 
-node_probe_seq() { # node_probe_seq <contenedor> <feed>  → sequence según el sbot vivo, o vacío
+node_probe() { # node_probe <contenedor> <feed> [<clave del pub>]  → el JSON entero de ssb-probe.js (una sola llamada)
   local probe; probe="$(cd "$DEVOPS_DIR/.." && pwd)/pub/tools/ssb-probe.js"
-  [ -f "$probe" ] || return 0
-  run_cmd "docker exec -i -u oasis -e HOME=/home/oasis -e SSB_FEED='$2' -e SSB_ACTION=seq '$1' sh -lc 'cd /app/src/server && node -'" \
-    < "$probe" 2>/dev/null | grep -o '"seq": *[0-9]*' | head -1 | grep -o '[0-9]*$'
+  [ -f "$probe" ] || return 1
+  run_cmd "docker exec -i -u oasis -e HOME=/home/oasis -e SSB_FEED='$2' -e SSB_LINK_KEY='${3:-}' -e SSB_ACTION=seq '$1' sh -lc 'cd /app/src/server && node -'" \
+    < "$probe" 2>/dev/null
 }
+node_probe_seq() { # node_probe_seq <contenedor> <feed>  → sequence según el sbot vivo, o vacío
+  node_probe "$1" "$2" | grep -o '"seq": *[0-9]*' | head -1 | grep -o '[0-9]*$'
+}
+# Las tres lecturas que la foto necesita de un solo JSON (sin volver a sondear): seq, pares y enlace con el pub.
+node_probe_fields() { # node_probe_fields <json>  → «seq|peers|pub_link|dir»; un JSON vacío o sin pares legibles da «?» donde toque
+  local j="$1" seq peers in st dir
+  seq="$(printf '%s' "$j" | grep -o '"seq": *[0-9]*' | head -1 | grep -o '[0-9]*$')"
+  if printf '%s' "$j" | grep -q '"peersError"'; then peers='?'
+  else peers="$(printf '%s' "$j" | grep -o '"peersTotal": *[0-9]*' | grep -o '[0-9]*$')"; in="$(printf '%s' "$j" | grep -o '"peersInbound": *[0-9]*' | grep -o '[0-9]*$')"
+       [ -n "$peers" ] && peers="$peers ($in in)" || peers='?'; fi
+  st="$(printf '%s' "$j" | grep -o '"linkState": *"[a-z?]*"' | sed 's/.*"\([a-z?]*\)"$/\1/')"
+  case "$st" in connected) dir="$(printf '%s' "$j" | grep -o '"linkInbound": *[a-z]*' | grep -o '[a-z]*$')"; [ "$dir" = true ] && dir=in || dir=out ;;
+                absent) st=ausente; dir="" ;; '') st=""; dir="" ;; *) st='?'; dir="" ;; esac
+  printf '%s|%s|%s|%s\n' "${seq:-?}" "$peers" "$st" "$dir"
+}
+node_probe_link() { # node_probe_link <contenedor> <feed> <clave del pub>  → «connected in|out» · «ausente» · «?»
+  local f; f="$(node_probe_fields "$(node_probe "$1" "$2" "$3")")"
+  local st; st="$(printf '%s' "$f" | cut -d'|' -f3)"; local dir; dir="$(printf '%s' "$f" | cut -d'|' -f4)"
+  case "$st" in connected) echo "connected $dir" ;; ausente) echo ausente ;; *) echo '?' ;; esac
+}
+node_probe_peers() { node_probe_fields "$(node_probe "$1" "$2")" | cut -d'|' -f2; }   # node_probe_peers <contenedor> <feed> → «N (M in)» · «?»
 
 node_remote_lib() {
   cat <<'NODE_LIB'
@@ -141,11 +170,36 @@ node_own_seq()     { node_own_scan "$@" | sed -n 's/^S //p'; }
 node_own_records() { node_own_scan "$@" | sed -n 's/^R //p'; }
 node_own_types()   { node_own_records "$@" | sort | uniq -c | sed 's/^ *//'; }
 node_state()   { local s; s="$(docker inspect -f '{{.State.Status}}{{if .State.Health}} {{.State.Health.Status}}{{end}}' "$1" 2>/dev/null)"; echo "${s:-ausente}"; }
+# Enlace de un nodo de soporte con el pub, medido POR SU PROPIO sbot (conn.peers(), por clave, entrante o saliente):
+# nunca por el log del pub. «?» = la sonda no pudo leer los pares: NO MEDIBLE, no «ausente» (WP-O143, D-O38).
+node_link()  { # node_link <contenedor> <clave del pub>  → «connected in|out» · «ausente» · «?»
+  local j st dir; j="$(node_probe_js | docker exec -i -u oasis -e HOME=/home/oasis -e SSB_ACTION=peers -e SSB_LINK_KEY="$2" "$1" sh -lc 'cd /app/src/server && node -' 2>/dev/null)"
+  if printf '%s' "$j" | grep -q '"peersError"'; then echo '?'; return; fi
+  st="$(printf '%s' "$j" | grep -o '"linkState": *"[a-z?]*"' | sed 's/.*"\([a-z?]*\)"$/\1/')"
+  case "$st" in connected) dir="$(printf '%s' "$j" | grep -o '"linkInbound": *[a-z]*' | grep -o '[a-z]*$')"; [ "$dir" = true ] && echo "connected in" || echo "connected out" ;;
+                absent) echo ausente ;; *) echo '?' ;; esac
+}
+node_peers() { # node_peers <contenedor>  → «N (M in)» · «?»
+  local j n i; j="$(node_probe_js | docker exec -i -u oasis -e HOME=/home/oasis -e SSB_ACTION=peers "$1" sh -lc 'cd /app/src/server && node -' 2>/dev/null)"
+  if printf '%s' "$j" | grep -q '"peersError"'; then echo '?'; return; fi
+  n="$(printf '%s' "$j" | grep -o '"peersTotal": *[0-9]*' | grep -o '[0-9]*$')"; i="$(printf '%s' "$j" | grep -o '"peersInbound": *[0-9]*' | grep -o '[0-9]*$')"
+  [ -n "$n" ] && echo "$n (${i:-0} in)" || echo '?'
+}
+node_pub_link() { # node_pub_link <contenedor> <acción y argumentos de pub-link.js…>  → su línea JSON (rc el de la herramienta)
+  local c="$1"; shift
+  node_pub_link_js | docker exec -i -u oasis -e HOME=/home/oasis "$c" sh -lc "cd /app/src/server && node - $*" 2>/dev/null
+}
 node_version() { docker exec "$1" sh -c 'grep -m1 "\"version\"" /app/src/server/package.json' 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/'; }
 node_image()   { docker inspect -f '{{.Config.Image}} {{.Image}}' "$1" 2>/dev/null | sed 's/sha256:\(............\).*/\1/'; }
 NODE_LIB
-  # El lector del log db2 viaja dentro de la librería: en destino no hay checkout del repo.
+  # El lector del log db2, la sonda y pub-link.js viajan dentro de la librería: en destino no hay checkout del repo.
   printf "node_bipf_js() { cat <<'NODE_BIPF_JS'\n"
   tr -d '\r' < "$(cd "$DEVOPS_DIR/.." && pwd)/pub/tools/log-bipf.js"
   printf '\nNODE_BIPF_JS\n}\n'
+  printf "node_probe_js() { cat <<'NODE_PROBE_JS'\n"
+  tr -d '\r' < "$(cd "$DEVOPS_DIR/.." && pwd)/pub/tools/ssb-probe.js"
+  printf '\nNODE_PROBE_JS\n}\n'
+  printf "node_pub_link_js() { cat <<'NODE_PUB_LINK_JS'\n"
+  tr -d '\r' < "$(cd "$DEVOPS_DIR/.." && pwd)/pub/tools/pub-link.js"
+  printf '\nNODE_PUB_LINK_JS\n}\n'
 }
