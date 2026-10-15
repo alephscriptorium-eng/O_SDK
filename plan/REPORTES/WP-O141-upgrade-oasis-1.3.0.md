@@ -105,12 +105,39 @@ upstream; el overlay no los trae (UPGRADE §2). `files +` 2e7812d6 (`src/client/
 
 ## 4. Gates U0-U7, UM, UR, US
 
-(pendiente)
+Stack local sobre `volumes-dev/` (identidades desechables), `$G = upgrade-gates.sh --local`, 2026-10-15 13:56-14:10 UTC.
+UM y UR no aplican (sin cambio de motor, §1).
+
+| Gate | Comando | Salida |
+|---|---|---|
+| **U0** | `docker tag :latest :1.3.0-nueva` · `:1.2.8-vieja` → `:latest` · nodos parados · `$G backup pre130` · `compose up` · `$G snapshot pre130` | copia 3,1 MB; pub 15 · hub 14 · bot 30, los tres «cuadra · sbot=», v1.2.8; `healthy` a los 4 s / 0 s / 0 s. (El compose local lleva ya `start_interval`; la única diferencia con el desplegado es esa, inocua para la línea base) |
+| **U1** | `git diff 37e0fc93 --stat -- src/` · `-- src/base` · `-- scripts/patch-node-modules.js` · `git ls-files -s src/server/node_modules` · `node --check` ×5 · `upgrade-patches-audit.js 37e0fc93` · `--check --from-tsv` | **7 ficheros** (113+/33−) · vacío · vacío · `120000` · ok · `pendiente=0 sin-anclaje=0` · «todas las líneas tienen disposición» (75 IDs, 2,5 s). `annex`: 0 rotos |
+| **U2** | `compose build oasis-pub` · `$G smoke oasis-pub-scriptorium:latest` | imagen `1db4cf4c…` · `SMOKE OK`: 1.3.0, `node --check` ×3, enlace a `src/base`, **0 `secret`**, nada del fork en `/app`, `server` socket a los 2 s, `backend` `GET /c` 200 a los 2 s, 3 parches ×2, 0 errores ×2 |
+| **U3** | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre130 --wait` | `healthy` a los 4 s cada uno, **23 s** en total · `GATE OK (delta esperado y sequence estable 60 s; 70 s en total)`: pub `oasisVersion+1` · hub `oasisVersion+1` · bot `oasisVersion+1`, **nada más** (ni `karmaScore`, ni `about`, ni `pub-invites`) |
+| **U4** | `compose up -d --no-deps oasis-pub oasis-hub hub-cache pub-web` · `$G hub --strict` | `GATE OK`, 16 ok: MISS→HIT, una CSP, idioma «es» igual con de/es/fr y cookies, `?lang=`, **0 cruces en 18 peticiones de 6 idiomas**, `?lang=ar`, selector de tema, `?theme=` Clear/Matrix/desconocido, enlaces con `lang` (27) y `theme` (36), variante `?theme=` en caché, 0 cruces de tema en 9, `/c?type=files` 200, sitemap 13 URLs https, RSS feed/files https |
+| **U5** | `$G snapshot u5` · `$G worst` · `$G check u5 --wait --expect 'bot:karmaScore=+0..1'` | 5 GET → 200 · `GATE OK` (71 s): los tres Δ0; `wallet` y `(cifrado)` quietos, misma dirección |
+| **U6** | — | no aplica: `ssb-invite` solo añade `invite.list` (§2); el canario del invite se mide en el host (§6 del protocolo) |
+| **U7** | parar · `$G restore pre130 --yes` · `render-wallet-bot-config.sh pub/.env.local` · `up` ×3 · `$G check pre130 --wait` | `healthy` a los 4 s ×3 (20 s) · `GATE OK` (70 s): **mismo delta que la primera vez** (`oasisVersion+1` ×3, nada más) |
+| **US** | `$G snapshot us2` · `pub-snapshot.sh --local build` · `$G check us2 --expect 0` · `status` | `{"ok":true,"messages":216,"feeds":6,"boxed":5,"bytes":67818}` · `GATE OK`: los tres Δ0 (construir no publica) · snapshot de hace 0 h, reconstrucción cada 6 h |
+
+Tiempo del camino feliz local (U0+U3+U5+U7, sin el build ni el diff): ≈ 6 min; en WP-O138 el mismo tramo rondaba los 20.
 
 ## 5. Delta de publicación
 
-(pendiente: local y host, por nodo)
+**Local** (U3 y U7, idénticos): pub `oasisVersion+1` · HUB `oasisVersion+1` · bot `oasisVersion+1`. Nada de lo declarado
+como `+0..1` salió (`karmaScore`: los tres lo habían publicado hace < 24 h; `about`: el bot ya llevaba su `clearnetSince`;
+`pubAvailability`: 12 h sin cumplir) y **el `pub-invites` nuevo no salió** (el bot local no ha creado invites: `total=0`).
+
+**Host**: pendiente (§8).
 
 ## 6. Correcciones al protocolo
 
-(pendiente; «ninguna» si no hubo)
+- **U4 en local necesita `pub-web` levantado, no solo `hub-cache`**: el puerto 8088 lo publica el edge local; con el
+  edge parado todo da `000` y el gate falla por el stack, no por el HUB. La tabla de §3.4 lo dice ahora.
+- **US exige los tres nodos de `GATE_NODES` en marcha** (el log db2 solo se lee con el contenedor arriba): con el bot
+  parado, `check` da NO MEDIBLE aunque pub y HUB cuadren. Correcto, pero conviene decirlo en la fila de US.
+- **El quinto guard cambia de fichero** (`invite-codes.json`, entrada 0): tabla de §2, comprobación de `src.new` en §4 y
+  `pub.tsv` actualizados en este WP (45c6a5f0). La regla «guards cuyo fichero SÍ cambió se reponen a mano» cubría el
+  caso, pero no el de un fichero **borrado y sustituido**: añadido a §2.
+- **`.dockerignore` del repo** no tenía las reglas que §4 exige al del host (`src.old*`, `src.new*`, `.env.prod*`):
+  el repo las lleva desde este WP y la deriva converge hacia el repo.
