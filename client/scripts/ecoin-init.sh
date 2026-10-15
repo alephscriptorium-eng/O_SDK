@@ -24,7 +24,9 @@
 #      COMPOSE_PROFILES, ECOIN_RPC_URL y OASIS_WALLET_PUB_ID; el resto de líneas no se toca.
 #   2. Volumen docker EXTERNO de la cartera (etiqueta o-sdk.role=client-wallet) si no existe.
 #      `docker compose down -v` no borra volúmenes externos. PROHIBIDO `docker volume prune`.
-#   3. mkdir -p volumes-dev/client-state (oasis-config.json de la GUI; el banking vive en ssb-data/oasis desde 1.1.3).
+#   3. mkdir -p volumes-dev/client-state (el compose lo bindea; es LEGADO de solo lectura: su
+#      oasis-config.json sembró una vez la config viva, que desde Oasis 1.2.4 está en
+#      volumes-dev/ssb-data/oasis/oasis-config.json; el banking vive en ssb-data/oasis desde 1.1.3).
 #
 # Variables (para el drill; los valores por defecto son los del cliente real):
 #   ECOIN_ENV_FILE   fichero env            (default <repo>/.env; drill: client/.env.drill)

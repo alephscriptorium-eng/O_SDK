@@ -12,7 +12,7 @@ mundo · **P2** horizonte · **P3** sin fecha / cuando toque.
 | Fuente normativa | `INFORME-R4.md` · consenso H-01 sellado |
 | Asientos del carril | [`plan/DECISIONES.md`](DECISIONES.md) (D-O1…D-O37) |
 | Régimen | **nada se abre sin GO del custodio**; encolar de más cuesta cero |
-| Revisión | 2026-10-15 · WP-O139 (deuda documental): estados de WPs fusionados, +WP-O139/O140/O141/O142, D-O37. Anterior: 2026-07-26 · relevo de estación (D-O12): +WP-O19 · T5 resuelto en concepto (D-O9) · U93 acotado (D-O11) |
+| Revisión | 2026-10-15 · WP-O145 (cliente 1.3.0, config viva); WP-O139 (deuda documental): estados de WPs fusionados, +WP-O139/O140/O141/O142, D-O37. Anterior: 2026-07-26 · relevo de estación (D-O12): +WP-O19 · T5 resuelto en concepto (D-O9) · U93 acotado (D-O11) |
 | Edición | **F2-unificada** (Anfitrión + revisión Temis): +O07/O08/O09/O55/O66/O76/O77/O78/O95 · ownership O13/O21/O37 → dependencias externas · O94 = gate de v1 |
 
 **Dependencias externas de este plan** (un solo Scriptorium): U93/torno =
@@ -914,6 +914,12 @@ Dep: WP-O140. Relación: WP-O138, D-O32, D-O36.
 
 **Estado** · ✅ 2026-10-15 **aplicado en el host**: `ssb-admin.js` y `docker-entrypoint.sh` in place (blob de HEAD, sha verificado; el entrypoint ya sin el CR literal, `tr -d ' \n\r'`), pub recreado en `8639c5f9…` (misma versión, Δ0, `GATE OK`), `deploy-status` sin «IMAGEN VIEJA»; sin rebuild (la imagen lleva la variante con CR, idéntica en función; el próximo ciclo la reconstruye). Rama `wp/O144-restos-host` (desde `main` eb72c330); reporte `plan/REPORTES/WP-O144-restos-host.md`. Dep: WP-O143.
 
+| **WP-O145** | **P0** | Cliente 1.2.2 → 1.3.0: la config viva pasa a `~/.ssb/oasis/oasis-config.json` (Oasis ≥ 1.2.4); `client-state` queda como legado |
+
+**Estado** · ✅ 2026-10-15 **aplicado en el cliente real** (1.2.2 → 1.3.0, imagen `8cc7c6506ce5`; delta `oasisVersion+1 about+1 karmaScore+1`, `mySeq` 111 → 114, nada más; `ecoin:verify` 16 PASS; `seq_pub=114`; etiqueta `:1.2.2` y copia en frío `devops/backups/client/20261015T191115Z` como rollback). Rama `upgrade/oasis-1.3.0-cliente` (desde `main` 04011c4d): entrypoint (siembra/fusión de la viva, 600, sin enlace; `persist_client_state` en todos los modos; `OASIS_CONFIG_FILE` → la viva con backend), `ecoin-verify` V4/V5 sobre la viva, CLIENT-PROTOCOL §4 reescrito (receta, delta declarado §4.3, D10-D14). Drill con identidad desechable en verde (siembra desde el legado, 16 PASS, la viva sobrevive al recreate, el env llega, 0 `tmp-`, rollback por retag y vuelta). Reporte `plan/REPORTES/WP-O145-cliente-1.3.0.md`. Después: retirar el bind `client-state` (WP nuevo). Resuelve el bloqueo anotado en WP-O135.
+
+Dep: WP-O141. Relación: WP-O103 (cableado de la cartera), WP-O124 (salto de motor del cliente).
+
 | **WP-O142** | **P2** | Generalizar `retro-seed.sh` / `retro-tombstone.sh` a cualquier bot de plantilla (`--container`) |
 
 **Estado** · ⬜.
@@ -1486,7 +1492,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-18: +WP-O102 P1 en L5 — hub-wallet del pub (ecoind + wallet-bot-2), +WP-O103 P1 en L4 — ECOin en el cliente, asiento D-O19.)
 (2026-09-19: +WP-O110 P2 en L4 — Teatro P2P con cartelera, planificado; dosier en docs/ROADMAP/p2p, asiento D-O24.)
 (2026-10-01: +WP-O112 P1, +WP-O113 P1, +WP-O114 P1 en L4 — protocolo de upgrade y ciclo 1.1.4 → 1.1.10, asiento D-O25.)
-(2026-10-15: +WP-O139 P1, +WP-O140 P0, +WP-O141 P0, +WP-O142 P2 — deuda documental, protocolo de upgrade v3, ciclo 1.3.0, scripts de plantilla genéricos; asiento D-O37. **Total real medido hoy**: `grep -c '^| \*\*WP-O' plan/BACKLOG.md` = **118** filas (P0 25 · P1 62 · P2 30 · P3 1); la tabla de arriba es la foto de la edición F2-unificada y no se recalcula.)
+(2026-10-15: +WP-O139 P1, +WP-O140 P0, +WP-O141 P0, +WP-O142 P2 — deuda documental, protocolo de upgrade v3, ciclo 1.3.0, scripts de plantilla genéricos; asiento D-O37. **Total real medido hoy**: `grep -c '^| \*\*WP-O' plan/BACKLOG.md` = **118** filas (P0 25 · P1 62 · P2 30 · P3 1); la tabla de arriba es la foto de la edición F2-unificada y no se recalcula. 2026-10-15, más tarde: +WP-O143 P1, +WP-O144 P1, +WP-O145 P0 → **121**.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11

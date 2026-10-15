@@ -14,10 +14,11 @@
 #   V2  el host NO alcanza 127.0.0.1:7474 / :7408 / :12000
 #   V3  RPC por DNS de servicio desde el cliente: 200 con las credenciales de su entorno,
 #       401 con ecoinrpc:ecoinrpc; credenciales ≠ valores públicos por defecto
-#   V4  wallet.url / user / pass (y walletPub.pubId) de /app/src/configs/oasis-config.json
-#       iguales a ECOIN_RPC_* / OASIS_WALLET_PUB_ID del contenedor (solo se imprime la URL)
-#   V5  symlinks: src/configs/oasis-config.json → $OASIS_CLIENT_STATE_DIR/oasis-config.json y
-#       src/configs/wallet-addresses.json → $OASIS_BANKING_DIR/wallet-addresses.json
+#   V4  wallet.url / user / pass (y walletPub) de la config VIVA ~/.ssb/oasis/oasis-config.json (Oasis >= 1.2.4,
+#       WP-O145) iguales a ECOIN_RPC_* del contenedor (solo se imprime la URL)
+#   V5  la config viva es un fichero regular (no symlink) a 600 dentro del bind de ssb-data; src/configs/oasis-config.json
+#       es el default de la imagen (ya no un enlace); el legado $OASIS_CLIENT_STATE_DIR/oasis-config.json es solo lectura;
+#       sin mapa de direcciones en src/configs ni symlink en ~/.ssb/oasis/banking
 #   V6  nº de mensajes `type: wallet` del feed propio en el log local; con --expect-wallet-msgs N
 #       es PASS solo si son exactamente N (el CA del WP es N = 1 tras cualquier nº de recreates)
 #   V0  (informativo) puerto de la GUI en el host
@@ -140,8 +141,9 @@ else
 const fs = require('fs');
 const e = process.env;
 let c;
-try { c = JSON.parse(fs.readFileSync('/app/src/configs/oasis-config.json', 'utf8')); }
-catch (err) { console.log('ERR no se pudo leer oasis-config.json: ' + err.message); process.exit(0); }
+// Oasis >= 1.2.4: la config viva es ~/.ssb/oasis/oasis-config.json (WP-O145); src/configs es el default de la imagen.
+try { c = JSON.parse(fs.readFileSync('/home/oasis/.ssb/oasis/oasis-config.json', 'utf8')); }
+catch (err) { console.log('ERR no se pudo leer la config viva ~/.ssb/oasis/oasis-config.json: ' + err.message); process.exit(0); }
 const w = c.wallet || {};
 const wantUrl = e.ECOIN_RPC_URL || '';
 const r = [];
@@ -172,11 +174,12 @@ NODE
     s="${OASIS_CLIENT_STATE_DIR-}"
     [ -n "$s" ] || { echo "KO OASIS_CLIENT_STATE_DIR no definida en el contenedor"; exit 0; }
     [ -z "${OASIS_BANKING_DIR-}" ] && echo "OK OASIS_BANKING_DIR no definida (estado bancario en ~/.ssb/oasis/banking)" || echo "KO OASIS_BANKING_DIR definida: en Oasis 1.1.4 parte el estado en dos mapas de direcciones"
-    chk() { t="$(readlink "$1" 2>/dev/null || true)"
-      if [ "$t" = "$2" ] && [ -f "$2" ]; then echo "OK $1 → $2"
-      elif [ -z "$t" ]; then echo "KO $1 no es un symlink (estado en la capa efímera)"
-      else echo "KO $1 → $t (esperado $2$([ -f "$2" ] || echo "; el destino no existe"))"; fi; }
-    chk /app/src/configs/oasis-config.json "$s/oasis-config.json"
+    live=/home/oasis/.ssb/oasis/oasis-config.json
+    if [ -L "$live" ]; then echo "KO $live es un symlink (el saveConfig de Oasis lo rompería)"
+    elif [ -f "$live" ]; then echo "OK config viva $live ($(stat -c %a "$live" 2>/dev/null || echo ?), dentro del bind de ssb-data)"
+    else echo "KO no existe la config viva $live (el entrypoint no la sembró)"; fi
+    [ -L /app/src/configs/oasis-config.json ] && echo "KO /app/src/configs/oasis-config.json sigue siendo un enlace (entrypoint anterior a WP-O145)" || echo "OK src/configs/oasis-config.json es el default de la imagen (Oasis >= 1.2.4 no lo lee)"
+    [ -f "$s/oasis-config.json" ] && echo "OK legado $s/oasis-config.json presente (solo lectura; sembró la config viva)" || echo "OK sin legado en $s (config viva sembrada desde el default)"
     [ ! -e /app/src/configs/wallet-addresses.json ] && [ ! -L /app/src/configs/wallet-addresses.json ] && echo "OK sin mapa de direcciones en src/configs" || echo "KO queda /app/src/configs/wallet-addresses.json (resto de 1.1.2: state-manager lo migraría)"
     m=/home/oasis/.ssb/oasis/banking/wallet-addresses.json; [ -L "$m" ] && echo "KO $m es un symlink" || true' || true)"
   [ -n "$V5" ] || fail "V5 no se pudieron inspeccionar los symlinks dentro de $CLIENT"

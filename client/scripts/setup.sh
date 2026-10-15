@@ -19,7 +19,8 @@ echo "Volúmenes del cliente (volumes-dev/):"
 echo "- ssb-data/    <- identidad (secret) + log + blobs  $( [ -f volumes-dev/ssb-data/secret ] && echo '[ya hay secret: no se toca]' || echo '[vacío: el primer arranque crea una identidad NUEVA; para traer una existente: client/scripts/import-identity.sh]')"
 echo "- ai-models/   <- oasis-42-1-chat.Q4_K_M.gguf       $( [ -f volumes-dev/ai-models/oasis-42-1-chat.Q4_K_M.gguf ] && echo '[presente]' || echo '[ausente: el entrypoint lo descarga (3,8 GB) salvo OASIS_SKIP_AI_MODEL=true]')"
 echo "- logs/        <- /app/logs"
-echo "- client-state/ <- /app/state: oasis-config.json de la GUI (el estado bancario vive en ssb-data/oasis/banking desde Oasis 1.1.3); sobrevive a recreate/rebuild"
+echo "- client-state/ <- /app/state: LEGADO de solo lectura (su oasis-config.json sembró una vez la config viva; se retira en un WP posterior)"
+echo "  La config viva (GUI + cartera, Oasis >= 1.2.4) está en ssb-data/oasis/oasis-config.json (600) y el banking en ssb-data/oasis/banking: sobreviven a recreate/rebuild"
 echo "La cartera ECOin (wallet.dat) NO está en volumes-dev/: volumen docker externo o-sdk-client-ecoin-data → npm run client:ecoin:init"
 if [ -d volumes-dev/ecoin-data ]; then
   echo "AVISO: existe volumes-dev/ecoin-data (esquema anterior a WP-O103). Ya no se usa ni se toca; si contiene una wallet.dat, guárdala antes de borrarlo a mano." >&2

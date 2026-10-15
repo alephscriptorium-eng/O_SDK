@@ -270,11 +270,22 @@ link_ai_model() {
 
 # =============================================================================
 # WP-O103 · Estado persistente del cliente y cableado de la cartera ECOin
+# WP-O145 · Desde Oasis 1.2.4 la config viva es ~/.ssb/oasis/oasis-config.json
 # -----------------------------------------------------------------------------
-# Todo lo de este bloque está condicionado a OASIS_CLIENT_STATE_DIR definido y a
-# un modo distinto de "server". Pub, HUB y wallet-bot no definen la variable (y
-# montan oasis-config.json como bind :ro): para ellos nada de esto se ejecuta.
+# config-manager.js (>= 1.2.4) lee y escribe ~/.ssb/oasis/oasis-config.json; de
+# src/configs/oasis-config.json solo COPIA el contenido una vez, si el nuevo no
+# existe, y después lo ignora. Por eso aquí:
+#   - la siembra y la fusión de defaults se hacen SOBRE el fichero nuevo (dentro del
+#     bind de ssb-data: persiste solo), antes de que Oasis arranque, para que su
+#     copia «una sola vez» nunca llegue a hacerse con el default de la imagen;
+#   - $OASIS_CLIENT_STATE_DIR/oasis-config.json (lo que persistía hasta 1.2.2) es un
+#     LEGADO de solo lectura: se usa para sembrar la primera vez y no se vuelve a tocar;
+#   - wire_wallet_config y setup_oasis_config escriben en el fichero nuevo («el
+#     entorno manda» en cada arranque).
+# Condicionado a OASIS_CLIENT_STATE_DIR definido. Pub, HUB y wallet-bot no la definen:
+# HUB y bot montan su oasis-config.json como bind :ro en ese mismo sitio nuevo.
 # =============================================================================
+OASIS_LIVE_CONFIG_FILE="/home/oasis/.ssb/oasis/oasis-config.json"   # HOME no es fiable aquí (su -m): ruta explícita
 
 # Utilidades JS compartidas por los `node -e` de configuración. Va entre comillas
 # simples de bash: el JS de este bloque NO puede contener comillas simples.
@@ -317,76 +328,81 @@ const writeJson = (target, obj) => {
 '
 
 client_state_enabled() {
-    [ -n "${OASIS_CLIENT_STATE_DIR:-}" ] && [ "$MODE" != "server" ]
+    [ -n "${OASIS_CLIENT_STATE_DIR:-}" ]
 }
 
 # =============================================================================
 # FUNCIÓN: Persistir el estado del cliente fuera de la capa efímera de la imagen
-#   - oasis-config.json: default de la imagen + deep-merge de lo persistido
-#     (gana lo persistido; las claves nuevas de upstream entran por el default),
-#     escrito en $OASIS_CLIENT_STATE_DIR y enlazado desde src/configs.
+#   - oasis-config.json VIVO = ~/.ssb/oasis/oasis-config.json (Oasis >= 1.2.4; dentro del
+#     bind de ssb-data). Si no existe, se SIEMBRA: default de la imagen + deep-merge del
+#     legado $OASIS_CLIENT_STATE_DIR/oasis-config.json (gana el legado). Si existe, se
+#     funde el default de la imagen con él (gana lo vivo: las claves nuevas de upstream
+#     entran por el default, lo que la GUI guardó se conserva). El legado no se escribe.
+#   - También en modo `server` (sync-only.sh): así Oasis no siembra su default interno.
 #   - Estado bancario: desde Oasis 1.1.3 vive en ~/.ssb/oasis/banking (state-manager.js),
 #     dentro del bind de ssb-data: ya persiste solo. NO se define OASIS_BANKING_DIR
 #     (backend.js la ignora y banking_model.js no: habría dos mapas de direcciones) ni
 #     se enlaza nada en src/configs (state-manager migraría el symlink). Si queda un
 #     banking/ de 1.1.2 en el state dir, se copia UNA vez al sitio nuevo.
-# Corre como usuario oasis (dueño de /app; el state dir lo prepara el bloque root).
+# Corre como usuario oasis (dueño de /app y del bind de ssb-data).
 # =============================================================================
 persist_client_state() {
     local state_dir="$OASIS_CLIENT_STATE_DIR"
     unset OASIS_BANKING_DIR
-    local state_cfg="$state_dir/oasis-config.json"
+    local legacy_cfg="$state_dir/oasis-config.json"
+    local live_cfg="$OASIS_LIVE_CONFIG_FILE"
     local default_cfg="$CURRENT_DIR/src/configs/.oasis-config.image-default.json"
     local legacy_bank="$state_dir/banking"
-    local new_bank="${SSB_PATH:-/home/oasis/.ssb}/oasis/banking"
+    local new_bank="/home/oasis/.ssb/oasis/banking"
 
-    echo "Persistiendo estado del cliente en $state_dir ..."
+    echo "Persistiendo estado del cliente (config viva: $live_cfg; legado: $state_dir) ..."
 
-    mkdir -p "$state_dir" 2>/dev/null || true
-    if [ ! -d "$state_dir" ] || [ ! -w "$state_dir" ]; then
-        echo "  ⚠ $state_dir no existe o no es escribible: el estado NO se persiste en este arranque"
-        return 0
-    fi
-
-    # Contenedor nuevo: oasis-config.json es fichero regular = default de la imagen.
-    # Se guarda una copia para poder rehacer el merge en reinicios del mismo contenedor.
+    # Contenedor nuevo: src/configs/oasis-config.json es fichero regular = default de la imagen.
+    # Se guarda una copia para rehacer el merge en reinicios del mismo contenedor. Si quedó un enlace
+    # de una versión anterior del entrypoint, se repone el default (Oasis >= 1.2.4 ya no lo lee).
     if [ -f "$OASIS_CONFIG_FILE" ] && [ ! -L "$OASIS_CONFIG_FILE" ]; then
         cp -f "$OASIS_CONFIG_FILE" "$default_cfg" 2>/dev/null || \
             echo "  ⚠ No se pudo guardar la copia del default de la imagen"
+    elif [ -L "$OASIS_CONFIG_FILE" ] && [ -f "$default_cfg" ]; then
+        rm -f "$OASIS_CONFIG_FILE" && cp -f "$default_cfg" "$OASIS_CONFIG_FILE" 2>/dev/null && \
+            echo "  → src/configs/oasis-config.json: enlace de un entrypoint anterior sustituido por el default de la imagen"
     fi
 
-    if [ -f "$default_cfg" ]; then
-        if CFG_DEFAULT="$default_cfg" CFG_STATE="$state_cfg" node -e "$NODE_CFG_LIB"'
-            const def = readJson(process.env.CFG_DEFAULT);
-            const state = process.env.CFG_STATE;
-            let persisted = null;
-            if (fs.existsSync(state)) {
-              try {
-                persisted = readJson(state);
-                if (!isObj(persisted)) throw new Error("no es un objeto JSON");
-              } catch (e) {
-                const bad = state + ".corrupt-" + Date.now();
-                fs.renameSync(state, bad);
-                persisted = null;
-                console.log("  ⚠ oasis-config.json persistido ilegible (" + e.message + "): apartado en " + bad);
-              }
-            }
-            const merged = persisted ? deepMerge(def, persisted) : def;
-            const wrote = writeJson(state, merged);
-            console.log(persisted
-              ? "  → oasis-config.json: default de la imagen + estado persistido" + (wrote ? "" : " (sin cambios)")
-              : "  → oasis-config.json: sembrado desde el default de la imagen");
-        '; then
-            if [ "$(readlink "$OASIS_CONFIG_FILE" 2>/dev/null)" != "$state_cfg" ]; then
-                ln -sfn "$state_cfg" "$OASIS_CONFIG_FILE" 2>/dev/null || \
-                    echo "  ⚠ No se pudo enlazar $OASIS_CONFIG_FILE → $state_cfg (¿montado por bind?)"
-            fi
-            [ -L "$OASIS_CONFIG_FILE" ] && echo "    ✓ $OASIS_CONFIG_FILE → $state_cfg"
-        else
-            echo "  ⚠ Falló el merge de oasis-config.json: se mantiene la configuración actual"
-        fi
-    else
+    if [ ! -f "$default_cfg" ]; then
         echo "  ⚠ Sin default de la imagen para oasis-config.json: no se toca"
+    else
+        mkdir -p "$(dirname "$live_cfg")" 2>/dev/null || true
+        if [ ! -w "$(dirname "$live_cfg")" ]; then
+            echo "  ⚠ $(dirname "$live_cfg") no es escribible: la config viva no se siembra ni se funde en este arranque"
+        elif CFG_DEFAULT="$default_cfg" CFG_LIVE="$live_cfg" CFG_LEGACY="$legacy_cfg" node -e "$NODE_CFG_LIB"'
+            const def = readJson(process.env.CFG_DEFAULT);
+            const live = process.env.CFG_LIVE, legacy = process.env.CFG_LEGACY;
+            const readObj = (p, label) => {
+              if (!fs.existsSync(p)) return null;
+              try { const o = readJson(p); if (!isObj(o)) throw new Error("no es un objeto JSON"); return o; }
+              catch (e) {
+                if (p === live) { const bad = p + ".corrupt-" + Date.now(); fs.renameSync(p, bad); console.log("  ⚠ " + label + " ilegible (" + e.message + "): apartado en " + bad); }
+                else console.log("  ⚠ " + label + " ilegible (" + e.message + "): se ignora");
+                return null;
+              }
+            };
+            const current = readObj(live, "oasis-config.json vivo");
+            if (current) {
+              const wrote = writeJson(live, deepMerge(def, current));
+              console.log("  → config viva: default de la imagen + lo vivo (gana lo vivo)" + (wrote ? "" : " (sin cambios)"));
+            } else {
+              const old = readObj(legacy, "oasis-config.json legado (" + legacy + ")");
+              writeJson(live, old ? deepMerge(def, old) : def);
+              console.log(old
+                ? "  → config viva SEMBRADA desde el default de la imagen + el legado de " + legacy + " (el legado no se vuelve a tocar)"
+                : "  → config viva SEMBRADA desde el default de la imagen (sin legado)");
+            }
+            try { fs.chmodSync(live, 0o600); } catch (e) {}
+        '; then
+            echo "    ✓ $live_cfg"
+        else
+            echo "  ⚠ Falló la siembra/fusión de la config viva: Oasis arrancará con lo que haya en $live_cfg"
+        fi
     fi
 
     # Estado bancario de un cliente 1.1.2 (state dir) → sitio de 1.1.4, una sola vez y sin pisar.
@@ -745,10 +761,19 @@ check_runtime_deps
 # 4. Aplicar parches críticos
 apply_node_patches
 
-# 4b. WP-O103: estado persistente del cliente y cableado de la cartera.
-# Depende de OASIS_CLIENT_STATE_DIR y del modo, NO de OASIS_SKIP_AI_MODEL.
+# 4b. WP-O103/WP-O145: estado persistente del cliente y cableado de la cartera.
+# Depende de OASIS_CLIENT_STATE_DIR, NO de OASIS_SKIP_AI_MODEL. La siembra de la config viva
+# corre en todos los modos (también `server`, para sync-only.sh); el cableado de la cartera y
+# el ajuste de aiMod, solo con backend (full/client/backend).
 if client_state_enabled; then
     persist_client_state
+fi
+# Desde Oasis 1.2.4 la config que manda es la de ~/.ssb/oasis (en HUB y bot, su bind :ro): lo que
+# quede por escribir se escribe ahí; src/configs/oasis-config.json es solo el default de la imagen.
+if [ "$MODE" != "server" ] && [ -f "$OASIS_LIVE_CONFIG_FILE" ]; then
+    OASIS_CONFIG_FILE="$OASIS_LIVE_CONFIG_FILE"
+fi
+if client_state_enabled && [ "$MODE" != "server" ]; then
     wire_wallet_config
 fi
 

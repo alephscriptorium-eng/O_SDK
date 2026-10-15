@@ -138,36 +138,100 @@ escritura en curso es inocuo.
 
 ## 4. Upgrade del cliente
 
-> **Pendiente antes de subir el cliente a ≥ 1.2.4 (WP-O135).** `config-manager.js` deja de leer
-> `src/configs/oasis-config.json` y pasa a `~/.ssb/oasis/oasis-config.json` (copia la vieja una sola
-> vez). Hoy el entrypoint fusiona el default con lo persistido en `$OASIS_CLIENT_STATE_DIR` y enlaza
-> `src/configs/oasis-config.json` a ese resultado (§8): en 1.2.4+ ese enlace se leería **una vez** y
-> después mandaría la copia del volumen de `.ssb`, con lo que `wire_wallet_config` («el entorno
-> manda») y los cambios de la GUI dejarían de coincidir. Hay que adaptar `persist_client_state` /
-> `wire_wallet_config` / `setup_oasis_config` al sitio nuevo y repetir el drill (§5) antes de
-> ningún upgrade del cliente. Además, el default de `phone.visibility` pasa a `mutuals`: un cliente
-> con `phoneMod` activo publicará un `about` nuevo al subir (`about=+1` en su delta).
-
 Misma imagen y mismo ciclo que el pub: `UPGRADE-PROTOCOL.md` §1-§3 (rama `upgrade/oasis-X.Y.Z`,
-overlay, guards). Para el cliente:
+overlay, guards). En el cliente hay dos casos: el **upgrade ordinario** entre versiones con el
+mismo motor (≥ 1.2 → ≥ 1.2.4; el primero del cliente real es 1.2.2 → 1.3.0, WP-O145) y el **salto
+de motor** (≤ 1.1.x → ≥ 1.2), ya pasado en el cliente real (WP-O124) y descrito aparte en §4.4.
+
+### 4.1 Dónde vive la config desde Oasis 1.2.4
+
+- **La config viva es `~/.ssb/oasis/oasis-config.json`** (en el host,
+  `volumes-dev/ssb-data/oasis/oasis-config.json`: dentro del bind de `ssb-data`, persiste sola).
+  Desde 1.2.4 `config-manager.js` la lee y la escribe ahí; de `src/configs/oasis-config.json` solo
+  **copia** el contenido una vez (si la viva no existe) y después lo ignora. Su `saveConfig` escribe
+  con `rename`: un symlink en el sitio nuevo se rompería y un bind de fichero fallaría. Por eso la
+  viva es un **fichero regular** y no se enlaza nada.
+- **Qué hace el entrypoint** (`persist_client_state`; corre si `OASIS_CLIENT_STATE_DIR` está
+  definida, en **todos** los modos, también `server` para `sync-only.sh`), antes de que Oasis arranque:
+  - si la viva **no existe**, la **siembra** = default de la imagen + deep-merge del legado
+    `client-state/oasis-config.json` (gana el legado). Así la copia «una sola vez» de upstream nunca
+    llega a hacerse con el default pelado de la imagen;
+  - si la viva **existe**, funde el default de la imagen con ella (**gana lo vivo**): las claves
+    nuevas de upstream entran, lo que la GUI guardó se conserva;
+  - deja la viva en modo **600**; `src/configs/oasis-config.json` queda como default de la imagen (si
+    quedó un enlace de un entrypoint anterior, se repone el default);
+  - el legado `client-state/oasis-config.json` es de **solo lectura**: sembró una vez y no se vuelve a
+    tocar (se retira en un WP posterior).
+- En los modos con backend (`full`/`client`/`backend`) `OASIS_CONFIG_FILE` pasa a la viva:
+  `wire_wallet_config` («el entorno manda»: `ECOIN_RPC_URL/USER/PASS`, `OASIS_WALLET_FEE`,
+  `OASIS_WALLET_WIRING=manual`) y `setup_oasis_config` (`modules.aiMod` según modelo) escriben ahí en
+  **cada arranque**. Vaciar `ECOIN_RPC_URL` en el `.env` y recrear sigue dejando de usar la cartera (§8.8).
+- HUB y bot **no cambian**: su bind `:ro` ya está en el sitio nuevo; las escrituras siguen tolerándose.
+- **Secreto.** Las credenciales RPC (`wallet.user/pass`) viven ahora en
+  `ssb-data/oasis/oasis-config.json` (600): **viajan con cualquier copia de `ssb-data`**. El backup
+  de la GUI las excluye (`NOT_BACKED_UP` en `src/models/backup_model.js`).
+
+Antes de este diseño el entrypoint enlazaba `src/configs/oasis-config.json` → `/app/state/oasis-config.json`:
+en ≥ 1.2.4 ese enlace se leía una sola vez y la GUI escribía en otro sitio, dos verdades (el drill
+lo mostró: `language` «es» en `.ssb/oasis` y «en» en `client-state`).
+
+### 4.2 Receta (upgrade ordinario)
 
 ```bash
-docker tag o-sdk-oasis-client o-sdk-oasis-client:<ver-vieja>     # rollback preparado
-npm run build && docker compose up -d oasis-client               # .ssb, ai-models y client-state son binds: se preservan
+docker tag o-sdk-oasis-client:latest o-sdk-oasis-client:<ver-vieja>   # rollback preparado. Crear ANTES del build: hoy no existe la etiqueta 1.2.2
+docker compose stop oasis-client                                       # copia en frío con el cliente PARADO:
+cp -a volumes-dev/ssb-data     volumes-dev/ssb-data.pre-<ver-nueva>-<ts>      #   lleva la config viva (600: material sensible; volumes-dev/ está ignorado)
+cp -a volumes-dev/client-state volumes-dev/client-state.pre-<ver-nueva>-<ts>  #   el legado
+npm run build && docker compose up -d oasis-client                     # .ssb, ai-models y client-state son binds: se preservan
+docker compose logs oasis-client | grep -A2 'Persistiendo estado'      # «config viva: default de la imagen + lo vivo (gana lo vivo)»; la 1.ª vez bajo ≥ 1.2.4: «SEMBRADA … + el legado»
 ```
 
-- **De ≤ 1.1.x a ≥ 1.2 el primer arranque migra el log a `db2/` y borra el viejo: no hay vuelta por
-  retag.** Antes: copia en frío de `volumes-dev/ssb-data` y `client-state` con el cliente parado, y
-  ensayo de la migración sobre una copia del log **sin el `secret`**, en un contenedor sin red
-  (`PUB/UPGRADE-PROTOCOL.md` §0.5 y §4, «ensayo de migración»). Con identidad real, GO del custodio.
 - Con el log intacto la GUI arranca directa: su `oasisVersion` cae en seq N+1.
-- Si el upgrade obligó a apartar los índices (`db2/indexes` y `db2/jit`; `flume/` en ≤ 1.1.x): `Settings › Rebuild database`
+- Si el upgrade obligó a apartar los índices (`db2/indexes` y `db2/jit`): `Settings › Rebuild database`
   (`POST /settings/rebuild`, no toca el log). Si se apartó el **log entero**, entonces §3 antes de la GUI.
-- La config de la GUI y el estado bancario viven en `volumes-dev/client-state` (§8.4): sobreviven al
-  rebuild, y las claves nuevas que traiga upstream en `oasis-config.json` entran por el default de la imagen.
+- La config viva y el estado bancario (`ssb-data/oasis/`, §8.4) sobreviven al rebuild; las claves
+  nuevas que traiga upstream en `oasis-config.json` entran por la fusión del default de la imagen.
 - Phone y Rooms (Oasis ≥ 1.2.2) **no funcionan en el cliente en contenedor**: `/phone` responde
   «not available on this device» porque el contenedor no tiene acceso al audio de la máquina.
-- Healthcheck: §5 (y `npm run client:ecoin:verify` si usas ECOin, §8). Journal: no aplica (el journal es del pub).
+- Healthcheck: §5 (con `npm run client:ecoin:verify`: V4 lee la viva, V5 comprueba su sitio).
+  Journal: no aplica (el journal es del pub).
+
+### 4.3 Delta declarado y cómo medirlo
+
+Como en el pub (`UPGRADE-PROTOCOL.md`, `upgrade-gates.sh`): **foto por tipo antes y después**, y
+la suma de los Δ por tipo tiene que cuadrar con el Δ de `mySeq`; si no cuadra, la medida no vale.
+Delta esperado al subir el cliente real de 1.2.2 a 1.3.0:
+
+| Tipo | Δ | Por qué |
+|---|---|---|
+| `oasisVersion` | +1 | `SSB_server.js` lo publica al arrancar con el log no vacío |
+| `about` | +1 | `clearnetSince`: `syncClearnetSince` a los 3 s del arranque, porque las preferencias de visibilidad publicadas no lo llevan. Otro `about` por `phone` **solo** si la config llegase con `visibility` distinta de `whole` (la viva la trae: no se espera) |
+| `karmaScore` | +0..1 | |
+| `wallet` | 0 | el mapa de direcciones ya está presente (§8.2) |
+| `pub-invites` | 0 | `pub: false` |
+
+```bash
+# ANTES (cliente parado, sobre el bind) y DESPUÉS (en caliente, dentro del contenedor): mismos tipos
+for t in oasisVersion about karmaScore wallet pub-invites; do node client/scripts/lib/count-feed-type.js volumes-dev/ssb-data "$t"; done
+npm run client:inspect-log -- '<tu-feed>'                                                   # tailOk, mySeq
+for t in oasisVersion about karmaScore wallet pub-invites; do docker exec -i oasis-client node - /home/oasis/.ssb "$t" < client/scripts/lib/count-feed-type.js; done
+npm run devops:pub-feed-seq -- '<tu-feed>'                                                  # el pub recibe el seq nuevo
+```
+
+Medido en el cliente real el 2026-10-15 (1.2.2 → 1.3.0): `mySeq` 111 → 114 = `oasisVersion+1 about+1 karmaScore+1`, el
+`about` con `visibilityPrefs.clearnetSince`; nada más (reporte WP-O145).
+
+Cualquier otro tipo con Δ ≠ 0, o un Δ mayor que el declarado, es **desviación**: parada y reporte
+(no se «arregla» publicando nada). El reporte del WP lleva las dos fotos.
+
+### 4.4 Salto de motor (≤ 1.1.x → ≥ 1.2), ya pasado
+
+**El primer arranque migra el log a `db2/` y borra el viejo: no hay vuelta por retag.** Antes:
+copia en frío de `volumes-dev/ssb-data` y `client-state` con el cliente parado, y ensayo de la
+migración sobre una copia del log **sin el `secret`**, en un contenedor sin red
+(`PUB/UPGRADE-PROTOCOL.md` §0.5 y §4, «ensayo de migración»). Con identidad real, GO del custodio.
+Si quedaron índices de `flume/`, `Settings › Rebuild database`. El cliente real lo pasó en WP-O124
+(1.1.4 → 1.2.2); desde entonces todo upgrade es ordinario (§4.2) y el rollback por retag vale (§6).
 
 ## 5. Healthcheck
 
@@ -181,6 +245,9 @@ curl -s -X POST -H 'Referer: http://localhost:3000/settings' http://localhost:30
   curl -s http://localhost:3000/settings | grep -i -A3 'verification'             # sin gaps / broken links / forks (mine)
 docker compose logs oasis-client | grep -c 'welcome-pm'                           # 0 tras una importación
 npm run client:test-ai                                                            # POST /ai dentro del contenedor
+test -f volumes-dev/ssb-data/oasis/oasis-config.json && \
+  docker exec oasis-client stat -c '%a %F' /home/oasis/.ssb/oasis/oasis-config.json   # config viva presente: «600 regular file» (§4.1)
+npm run client:ecoin:verify                                                       # V4 lee la viva · V5: regular a 600, src/configs sin enlace, legado presente (§8.3)
 ```
 
 Perfil sin nombre/avatar tras importar **no** es pérdida de identidad: los `about` son mensajes del
@@ -191,7 +258,13 @@ log; llegan con la replicación.
 - **Upgrade fallido**: `docker compose stop oasis-client` → `docker tag o-sdk-oasis-client:<ver-vieja> o-sdk-oasis-client` →
   `docker compose up -d --no-build oasis-client`. `.ssb` intacto (binds). **Salvo si el upgrade
   cambió de motor** (≤ 1.1.x → ≥ 1.2): la imagen vieja no arranca sobre un log migrado; el rollback
-  es restaurar la copia en frío de §4, no el retag.
+  es restaurar la copia en frío de §4.4, no el retag.
+- **Salvedad de la config al volver de ≥ 1.2.4 a ≤ 1.2.3** (p. ej. 1.3.0 → 1.2.2 por retag): la
+  imagen vieja vuelve a leer `src/configs` → `/app/state` (el **legado**, §8.4), así que lo que la
+  GUI guardó bajo la versión nueva (está en la viva, `ssb-data/oasis/oasis-config.json`) **no se ve
+  hasta volver a subir**; la viva queda intacta en el bind y la siguiente subida la encuentra tal
+  cual. El `.env` sigue mandando en los dos sitios. Entre dos versiones ≥ 1.2.4 las dos leen la
+  viva: sin salvedad.
 - **Importación fallida** (log corrupto al arrancar, `ID-MISMATCH`): `sync-only stop --now`; volver a
   `volumes-dev/ssb-data.pre-import-<ts>` (si lo había) o re-importar desde el backup
   `devops/backups/client/<ts>/`; en último caso solo `secret` + flag + §3.
@@ -227,9 +300,9 @@ sus `*.nul-damaged-bak` (5,7 GB) son los primeros candidatos a borrar.
 > tu dirección sola** (§8.2); (2) el estado bancario vive en `~/.ssb/oasis/banking`, dentro de `ssb-data`
 > (§8.4); (3) el banco **se autodescubre** (§8.7).
 
-> **Modelo mental.** Oasis lee la cartera **solo** de `src/configs/oasis-config.json`
-> (`wallet.{url,user,pass,fee}`); las variables `ECOIN_RPC_*` no las lee nadie
-> salvo el entrypoint, que las escribe ahí. Un mensaje SSB `wallet` con tu dirección es **permanente**
+> **Modelo mental.** Oasis lee la cartera **solo** de su `oasis-config.json`
+> (`wallet.{url,user,pass,fee}`; desde 1.2.4 la **viva**, `~/.ssb/oasis/oasis-config.json`, §4.1 y
+> §8.4); las variables `ECOIN_RPC_*` no las lee nadie salvo el entrypoint, que las escribe ahí. Un mensaje SSB `wallet` con tu dirección es **permanente**
 > y solo sirve si conservas la `wallet.dat` que tiene su clave: **una dirección publicada sin copia de
 > su cartera queda huérfana para siempre**. Por eso el orden es siempre *cartera → backup → publicar*.
 > En 1.1.4 «publicar» ocurre **al abrir la GUI**: el backup va antes de ese momento.
@@ -297,13 +370,15 @@ npm run client:ecoin:verify                          # RPC por DNS de servicio, 
 ### 8.3 Qué hace el entrypoint con cada variable
 
 `docker-entrypoint.sh` (raíz; zona *wholesale*, fuera de los guards de `src/`) solo actúa si
-`OASIS_CLIENT_STATE_DIR` está definido y el modo no es `server`. El pub, el HUB y bot-2 no lo
-definen: para ellos nada cambia. Orden: `persist_client_state` → `wire_wallet_config` →
-`setup_oasis_config`.
+`OASIS_CLIENT_STATE_DIR` está definido. El pub, el HUB y bot-2 no lo definen: para ellos nada
+cambia. Orden: `persist_client_state` (en todos los modos, también `server`) →
+`wire_wallet_config` → `setup_oasis_config` (los dos últimos solo con backend: `full`/`client`/`backend`).
+Todos escriben sobre la **config viva**, `~/.ssb/oasis/oasis-config.json` (§4.1): desde Oasis 1.2.4
+es la única que `config-manager.js` lee y escribe.
 
-| Variable | Qué hace el entrypoint | Clave de `oasis-config.json` |
+| Variable | Qué hace el entrypoint | Clave de `oasis-config.json` (la viva) |
 |---|---|---|
-| `OASIS_CLIENT_STATE_DIR` (`/app/state`) | activa todo lo de esta tabla; crea y chowna el directorio; fusiona el default de la imagen con el `oasis-config.json` persistido (gana lo persistido) y deja `src/configs/oasis-config.json` como symlink al resultado | el fichero entero |
+| `OASIS_CLIENT_STATE_DIR` (`/app/state`) | activa todo lo de esta tabla; crea y chowna el directorio. Si la viva no existe la **siembra** (default de la imagen + deep-merge del legado `/app/state/oasis-config.json`, gana el legado); si existe, funde el default de la imagen con ella (gana lo vivo). Modo 600. `src/configs/oasis-config.json` queda como default de la imagen (sin enlace; si lo había, se repone). El legado es de **solo lectura** | el fichero entero |
 | `OASIS_BANKING_DIR` | **retirada en 1.1.4: no la definas.** `banking_model.js` la honra y `backend.js` no: tendrías dos mapas de direcciones. El entrypoint la desactiva (`unset`) y, si encuentra un `banking/` de 1.1.2 en el state dir, lo copia **una vez** a `~/.ssb/oasis/banking/` sin pisar | — |
 | `ECOIN_RPC_URL` | si está **definida, aunque vacía**, se asigna tal cual; pasa antes por la guarda anti-remoto | `wallet.url` |
 | `ECOIN_RPC_USER` | se asigna junto a la URL; nunca se imprime | `wallet.user` |
@@ -318,26 +393,35 @@ definen: para ellos nada cambia. Orden: `persist_client_state` → `wire_wallet_
 - **Guarda anti-remoto.** El host de `ECOIN_RPC_URL` debe ser `ecoin-wallet`, `localhost`,
   `127.0.0.1` o `host.docker.internal`. Cualquier otro → error en el log y `wallet.url = ""`.
 - **Env manda.** Lo que teclees en `/settings/wallet` se **pisa en el siguiente arranque** con lo que
-  diga el entorno. Es deliberado: la GUI no sabe vaciar `wallet.url` (solo el entrypoint puede poner
-  `""`) y así las credenciales viven en un único sitio, el `.env` raíz (ignorado por git).
+  diga el entorno: `wire_wallet_config` escribe sobre la viva en cada arranque, el mismo fichero
+  que la GUI lee. Es deliberado: la GUI no sabe vaciar `wallet.url` (solo el entrypoint puede poner
+  `""`) y así la fuente de las credenciales es una sola, el `.env` raíz (ignorado por git); su copia
+  de trabajo queda en la viva (600, §8.4).
   Escape: `OASIS_WALLET_WIRING=manual` y gestionas la cartera desde la GUI bajo tu responsabilidad.
-- El resto de la config de la GUI (tema, idioma, módulos) **no** se pisa: se persiste (§8.4).
+- El resto de la config de la GUI (tema, idioma, módulos) **no** se pisa: la GUI escribe en la viva
+  desde sus rutas y el entrypoint solo le funde encima el default de la imagen, donde gana lo vivo (§8.4).
 
-### 8.4 Estado persistente: `client-state` y `ssb-data/oasis`
+### 8.4 Estado persistente: `ssb-data/oasis` y el legado `client-state`
 
-Dos sitios, los dos persistentes:
+Desde Oasis 1.2.4 **todo el estado del cliente vive en `ssb-data/oasis/`**; `client-state` queda como legado:
 
-- **`./volumes-dev/client-state` → `/app/state`**: solo `oasis-config.json` (config de la GUI + cableado de la
-  cartera). La GUI lo reescribe entero desde 11 rutas: un bind de solo lectura la rompería, y `src/configs/`
-  contiene código y guards, así que se persiste **solo el fichero**, por symlink; `setup_oasis_config` está
-  en node porque `sed -i` rompe los symlinks. Lleva las credenciales RPC: `volumes-dev/` está ignorado por git.
+- **`ssb-data/oasis/oasis-config.json`, la config viva** (`~/.ssb/oasis/oasis-config.json` en el
+  contenedor; §4.1): config de la GUI + cableado de la cartera. La GUI la reescribe entera desde sus
+  rutas (`saveConfig`, por `rename`: por eso es un fichero regular, ni symlink ni bind de fichero);
+  el entrypoint la siembra la primera vez y en cada arranque le funde el default de la imagen (gana
+  lo vivo) y le aplica el entorno (`wallet.*`, `modules.aiMod`). Modo 600: **lleva las credenciales
+  RPC** y viaja con cualquier copia de `ssb-data` (`volumes-dev/` está ignorado por git).
 - **`ssb-data/oasis/**`** (desde Oasis 1.1.3, `src/configs/state-manager.js`): `banking/` (mapa de direcciones,
   épocas, libro de pagos), `flags/`, `content/`, `peers/`, `keys/`… Upstream lo migra solo al arrancar desde
   `~/.ssb/` y `src/configs/`. Viaja con tu identidad: **el backup de `ssb-data` ya lo incluye**, y
   `client:import-identity -- --force` lo aparta junto con ella. La cartera no se toca.
-
-Si vienes de un cliente 1.1.2 con `client-state/banking/`, el entrypoint lo copia una vez al sitio nuevo y
-conserva el original.
+- **`./volumes-dev/client-state` → `/app/state`, legado de solo lectura**: su `oasis-config.json`
+  es lo que persistía hasta 1.2.2 (entonces por symlink desde `src/configs/`). Sirvió para **sembrar**
+  la viva la primera vez que el cliente arrancó con el entrypoint de WP-O145 y no se vuelve a leer
+  ni a escribir: lo que cambies ahí no surte efecto. Se retira en un WP posterior; hasta entonces
+  `setup` y `ecoin-init` siguen creando el directorio porque el compose lo bindea. Si vienes de un
+  cliente 1.1.2 con `client-state/banking/`, el entrypoint lo copia una vez a `ssb-data/oasis/banking/`
+  y conserva el original.
 
 ### 8.5 La `wallet.dat`: volumen nombrado externo
 
@@ -416,8 +500,11 @@ para donar. `OASIS_WALLET_PUB_ID` y `--pub-id` ya no hacen nada.
 - **Al pasar de cartera propia a solo dirección, para antes `ecoind`**: `npm run ecoin:stop`. Un
   `docker compose down` sin `--profile ecoin` no ve el servicio `ecoin-wallet`: lo deja corriendo y la
   red queda «still in use».
-- En modo solo dirección `wallet.url` queda vacía, pero `wallet.user` y `wallet.pass` siguen en
-  `volumes-dev/client-state/oasis-config.json`: inocuo (no hay RPC), pero es un fichero con secretos.
+- **Para retirar la cartera**: vaciar `ECOIN_RPC_URL` en el `.env` raíz y recrear
+  (`docker compose up -d oasis-client`) sigue valiendo: el entrypoint escribe `wallet.url = ""` sobre
+  la viva en el arranque. En modo solo dirección `wallet.url` queda vacía, pero `wallet.user` y
+  `wallet.pass` siguen en `volumes-dev/ssb-data/oasis/oasis-config.json` (600), **no** en
+  `client-state`: inocuo (no hay RPC), pero es un fichero con secretos que viaja con `ssb-data`.
 
 **Medido en el drill del 2026-09-18** (identidad desechable, proyecto `o-sdk-drill`): el healthcheck
 del contenedor pide `/` sin seguir el 302 y **no** genera direcciones; la dirección la fija la primera
@@ -456,15 +543,20 @@ ECOIN_VOLUME=o-sdk-drill-ecoin-data ECOIN_CONTAINER=ecoin-wallet-drill GUARD_DAT
 |---|---|
 | D1 | `ecoin:fetch-deb` y build |
 | D2 | `docker port ecoin-wallet-drill` vacío; el host no alcanza 7474/7408/12000; RPC 200 por DNS de servicio desde `oasis-client-drill`; `ecoinrpc` → 401 |
-| D3 | config cableada y symlinks (`client:ecoin:verify`) |
+| D3 | config cableada y sitio de la config (`client:ecoin:verify` V4 sobre la viva; V5: fichero regular a 600, `src/configs` sin enlace) |
 | D4 | `/wallet` con saldo 0 y dirección; publicar **una vez**; exactamente 1 mensaje `wallet` |
 | D5 | `--force-recreate` y rebuild: sobreviven tema, config de cartera y mapa; sigue habiendo 1 mensaje |
 | D6 | `down -v` con guard: `wallet.dat` intacta |
 | D7 | backup → volumen nuevo (otra dirección) → restore → `ismine: true` |
 | D8 | sin perfil: arranca, `/banking` sin latencia, cableado omitido |
 | D9 | guarda anti-remoto: URL remota → `wallet.url = ""` |
+| D10 | **siembra desde el legado**: con `volumes-dev/drill/ssb-data/oasis/oasis-config.json` ausente y un `client-state/oasis-config.json` con una clave reconocible (p. ej. `language`), el primer arranque la deja en la viva; el log dice «SEMBRADA … + el legado» |
+| D11 | **la viva sobrevive a un recreate**: cambiar una clave en la viva como haría la GUI (`/settings`, o editar `ssb-data/oasis/oasis-config.json` con el cliente parado) → `--force-recreate` → la clave sigue; el legado `client-state/oasis-config.json` **no** ha cambiado (`sha256` igual) |
+| D12 | **el entorno llega a la viva**: cambiar `OASIS_WALLET_FEE` en `client/.env.drill` → recreate → `wallet.fee` nuevo en la viva (V4) |
+| D13 | `client:ecoin:verify` V4/V5 en verde tras D10-D12 |
+| D14 | sin restos de escritura: `ls -a volumes-dev/drill/ssb-data/oasis/` no tiene `*.tmp-*` ni `*.corrupt-*` |
 
-**Puerta**: solo con D1-D9 en verde y **confirmación expresa del custodio** se pasa a la identidad
+**Puerta**: solo con D1-D14 en verde y **confirmación expresa del custodio** se pasa a la identidad
 real, en este orden: `client:backup-keys` → `client:ecoin:init` → `ecoin:up` → **backup de cartera
 antes de publicar** → publicar una vez → 1 mensaje `wallet` en el feed y replicado al pub → después,
 `--pub-id` de bot-2. El primer claim real es otra confirmación aparte.

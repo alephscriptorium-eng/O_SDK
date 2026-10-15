@@ -16,6 +16,11 @@
 #   BEHIND       seq local <  seq pub → NO arrancar la GUI; esperar / reiniciar el contenedor
 #   PUB-UNKNOWN  el pub no tiene el feed ni lo sigue → `invite`
 #   ID-MISMATCH  el sbot no es el feed del secret → parar YA y revisar el montaje
+#
+# Config (Oasis >= 1.2.4): también en modo `server` el entrypoint siembra/funde la config viva
+# (~/.ssb/oasis/oasis-config.json, dentro del bind de ssb-data) si OASIS_CLIENT_STATE_DIR está
+# definida: así Oasis no deja su default interno la primera vez. En este modo NO se cablea la
+# cartera ni se toca aiMod (eso es solo con backend); la GUI sigue sin arrancar.
 # =============================================================================
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
