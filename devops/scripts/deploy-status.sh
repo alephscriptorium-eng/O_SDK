@@ -52,7 +52,7 @@ echo "-- Piezas vivas y deriva host↔repo (SSH, solo lectura) --"
 # entrypoint, compose, configs) son los del repo. Nunca fatal.
 if [ "${SKIP_LIVE:-0}" != "1" ] && node_run_setup 0 2>/dev/null; then
   REPO_FILES="Dockerfile docker-entrypoint.sh .dockerignore"
-  PUB_FILES="docker-compose.pub.yml caddy/Caddyfile config/hub/nginx.conf.template config/hub/oasis-config.json config/hub/ssb-config config/wallet-bot/oasis-config.json.tpl config/wallet-bot/ssb-config config/wallet-bot/ssb-config.engine-on scripts/render-wallet-bot-config.sh config/retro-bot/ssb-config"
+  PUB_FILES="docker-compose.pub.yml caddy/Caddyfile config/hub/nginx.conf.template config/hub/oasis-config.json config/hub/ssb-config config/wallet-bot/oasis-config.json.tpl config/wallet-bot/ssb-config config/wallet-bot/ssb-config.engine-on scripts/render-wallet-bot-config.sh config/retro-bot/ssb-config tools/ssb-probe.js tools/pub-link.js tools/snapshot-build.js tools/log-bipf.js tools/ssb-admin.js"
   live="$({ node_remote_preamble; node_remote_lib
     printf 'ROOT=%q; PUBDIR=%q; REPO_FILES=%q; PUB_FILES=%q; PUBC=%q\n' "${REMOTE_REPO_ROOT:-}" "${REMOTE_REPO_DIR:-}" "$REPO_FILES" "$PUB_FILES" "${PUB_CONTAINER:-oasis-pub-scriptorium}"
     cat <<'EOS'

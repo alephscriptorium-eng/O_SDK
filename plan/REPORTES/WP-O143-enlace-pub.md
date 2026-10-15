@@ -88,10 +88,32 @@ Host: pendiente (§6).
   `link <alias>` la pasa siempre. HUB §3 (bootstrap) debería terminar con `link hub` por esta razón, no solo por medir.
 - **`--disconnect` corta por clave**, no por dirección: un nodo tiene al pub por nombre y por IP, y cortar solo una no
   es una caída (medido: `--ensure` veía el enlace vivo por la otra).
+- **Inventario de «qué viaja» incompleto** (parada en el humo del host): la imagen del host se construye desde su raíz,
+  y allí viajan también `docker-entrypoint.sh` (cuando cambia un bucle suyo) y `pub/tools/*.js` (a
+  `<carpeta del compose>/tools/`, que el entrypoint busca como `*/tools/`). El primer build del host salió sin keepalive
+  y `smoke` lo cazó («el entrypoint no anuncia “Enlace con el pub”»). UPGRADE §3.2 lleva ahora las dos filas, y
+  `deploy-status.sh` vigila la deriva de `tools/*.js` (el `ssb-probe.js` del host era una copia distinta desde el 4 de
+  octubre y nadie lo veía).
+- **El entrypoint lleva un `\r` literal intencional** (línea 394, un `tr -d '<CR>'`): escribirlo in place con una
+  tubería que filtra `\r` lo deja un byte distinto y rompe ese `tr` (el mismo defecto que O140 encontró en
+  `behaviour-diff.sh`). La regla: los ficheros que viajan se escriben con el **blob tal cual** (`git show HEAD:…`) y se
+  verifica el sha; el filtro de CR solo vale para ficheros que git guarda en LF sin CR. Pendiente del repo: ese `\r`
+  debería ser `$'\r'` para que el fichero sea legible y copiable (WP aparte, toca el entrypoint).
+- **El sha del vivo se comprueba antes de pisar y se para si no cuadra** (lección O141, ejercida hoy: los cuatro
+  ficheros del GO-1 coincidían con `main`; el entrypoint se verificó tras escribir y el guion paró al no cuadrar).
 
-## 6. Aplicación en el host
+## 6. Aplicación en el host (2026-10-15 UTC, misma versión 1.3.0)
 
-(pendiente: GO-1 … GO-3)
+Estado de partida: pub, HUB y bot en 1.3.0 `healthy` (WP-O141); `deploy-status` con la sección LINK nueva: HUB y bot
+`connected out`, 4 pares cada uno; motor de RBU encendido. Un comando por paso; tras cualquier orden que pueda abortar
+se lee su salida antes de la siguiente (O141 §6).
+
+| # | Paso | Hecho | Puerta |
+|---|---|---|---|
+| 1 | In place | sha del vivo = blob de `main` **antes de pisar** en los cuatro ficheros (compose `d9ff6862…`, `config/hub/ssb-config` y `config/wallet-bot/ssb-config` `8fad4f52…`, `engine-on` `0baf3860…`) → `.bak-o143-2026-10-15` → HEAD (`68f84184…`, `93d71be7…` ×2, `14c8f210…`) verificados; `populatePubs` ×3, `OASIS_PUB_LINK_HOST` ×2 en el compose | **GO-1** |
+| 1b | Build y humo (1.ª) | `compose build` → `d30582f3…`; `$R smoke` → **FALLA**: «el entrypoint no anuncia “Enlace con el pub”». Causa: el entrypoint de la raíz del host y `tools/` no habían viajado (inventario, §5). Parada; nada recreado | |
+| 1c | Entrypoint y tools | `docker-entrypoint.sh`: vivo = `main` (`74fc932e…`) → `.bak` → HEAD; la primera escritura (con filtro de `\r`) dio `1bdef91e…` ≠ HEAD y el guion **paró** (§5); reescrito con el blob tal cual → `9a13be08…` ✓. `tools/ssb-probe.js` (vivo `7b8768e2…`, distinto del repo desde el 4-oct) → `.bak` → HEAD; `tools/pub-link.js` nuevo (755) | **GO-1b** |
+| 1d | Build y humo (2.ª) · foto base | (pendiente) | |
 
 ## 7. Seguimiento
 
