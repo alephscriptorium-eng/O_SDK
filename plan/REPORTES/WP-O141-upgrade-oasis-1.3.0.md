@@ -142,6 +142,8 @@ Una orden por paso (UPGRADE §4), parada ante cualquier salida distinta de la es
 | 2 | Disco | 0 contenedores sobre `:1.2.5` → `rm` de `src.old-1.2.5` y `src-1.2.5.tgz`, `rmi :1.2.5` (`ca6c85a7`), `image prune` 0 B, `builder prune` 512 MB; `/` 39 % → 35 % | |
 | 3 | Rollback | `oasis-pub-scriptorium:1.2.8` = `28b8db7a` (= `latest`) · `/srv/oasis/src-1.2.8.tgz` (94 MB, 600) | **GO pasos 2-4** |
 | 4 | `src/` | `git archive` LF de `upgrade/oasis-1.3.0` → `src.new` (24 143 ficheros, 287 MB). Antes del `mv`: 1.3.0, 0 CR en `backend.js` e `is-map`, enlace a `src/base` + `ssb-db2`, 5.º guard (`url` de la entrada 0 de `invite-codes.json`), 6.º (4 + 2), 7.º (1), `blobs.max 50`, solo 4 JSON en `configs/`, `src.old-1.2.8` no existía. `mv src src.old-1.2.8` · `src/` = 1.3.0 | |
+| 5 | Lo demás que viaja | nada (el compose ya está in place desde el paso 1; `.dockerignore` del host se conserva) | |
+| 6 | Build y humo | `compose build oasis-pub` → `latest` = `e561a64f` (1,06 GB), `:1.2.8` = `28b8db7a`; `/` 39 %. `$R smoke oasis-pub-scriptorium:latest` → primera pasada **FALLA del gate, no de la imagen**: marcaba `/app/docs` (copia de la documentación de upstream del layout del host) y tres `.env*.example` que el `.dockerignore` del host re-incluye a propósito; el protocolo no pide excluir `docs/` ni los `*.example`. Gate corregido (§6) y repetido → **`SMOKE OK`**: 1.3.0, `node --check` ×3, enlace a `src/base`, **0 `secret`**, 0 `.env` reales, `server` socket a los 2 s, `backend` `GET /c` 200 a los 2 s, 3 parches ×2, 0 errores ×2. Los tres nodos siguen `healthy` en `28b8db7a` | **GO paso 6** |
 
 ## 6. Correcciones al protocolo
 
@@ -152,5 +154,11 @@ Una orden por paso (UPGRADE §4), parada ante cualquier salida distinta de la es
 - **El quinto guard cambia de fichero** (`invite-codes.json`, entrada 0): tabla de §2, comprobación de `src.new` en §4 y
   `pub.tsv` actualizados en este WP (45c6a5f0). La regla «guards cuyo fichero SÍ cambió se reponen a mano» cubría el
   caso, pero no el de un fichero **borrado y sustituido**: añadido a §2.
+- **`smoke` era más estricto que el protocolo**: fallaba por `docs/` y por `.env*.example` en `/app`, que U2/§4 no
+  prohíben (el host re-incluye los `.example` a propósito). El gate mide ahora lo que el protocolo dice: `.env*` sin los
+  `*.example`, y sin `docs/` en la lista. `/app/docs` en la imagen del host es lastre, no secreto: hallazgo para E0.
+- **La deriva de `.dockerignore` no es convergible mientras el host tenga otro layout** (`OASIS_PUB/` ≠ `pub/`): el del
+  host es el correcto para su raíz y ya cumple §4; `deploy-status` lo marcará DISTINTO hasta la migración (E0). El paso 1
+  del protocolo debe decir «converger **si el layout es el mismo**; si no, comprobar que el del host cumple §4».
 - **`.dockerignore` del repo** no tenía las reglas que §4 exige al del host (`src.old*`, `src.new*`, `.env.prod*`):
   el repo las lleva desde este WP y la deriva converge hacia el repo.
