@@ -5,6 +5,23 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Protocolo de upgrade v3: los gates miden en vez de dormir (WP-O140, 2026-10-15)
+
+- `upgrade-gates.sh check --wait`: repite la foto hasta que el delta es el esperado **y** el `sequence` lleva 60 s
+  quieto; verde solo por estabilidad, nunca por tiempo (una desviación firme corta en la primera vuelta; agotado el
+  tope, DESVIACIÓN). `--min-age` (300 en el host) sustituye la regla de «5 minutos» contada a mano. `up` ya no duerme
+  90 s por nodo; `worst` pierde su `sleep`.
+- `smoke <imagen>`: humo de la imagen con contenedores efímeros (0 `secret`, nada del fork en `/app`, socket del sbot,
+  `GET /c` = 200, 3 parches, 0 errores) en local y en el host; sustituye la receta a mano de U2 y del paso 6.
+- `expect.conf`: el delta esperado vigente, leído por `check` cuando no se pasa `--expect` (el «normal» del protocolo
+  se había quedado sin `karmaScore` ni `about`).
+- `upgrade-behaviour-diff.sh --check --from-tsv`: de minutos a 2,4 s; `--skip`; un solo `git diff` compartido.
+- `start_interval: 3s` en los healthchecks de pub, HUB y bot (Engine ≥ 25; `deploy-status.sh` lo imprime). Medido
+  en local: `healthy` a los 4 s, `up` de los tres nodos en 25 s, `check --wait` verde en 75 s (antes ≈ 7 min).
+- Invariantes nuevos `pub.tsv` (guards del pub) y `client.tsv`; `snapshot.tsv`; `--help` entero en los tres scripts.
+- `UPGRADE-PROTOCOL.md`: el cuerpo en presente y la historia en §7 (completa, ordenada, con el ciclo 1.3.0 que viene);
+  tabla «delta vigente»; tabla de variables de los gates. La historia de la receta v0 del HUB pasa a `HUB-PROTOCOL.md` §0.
+
 ### Removed — Documentos de entrada superados: `MAPA.md`, `PLAN.md`, `next-steps.md`, `docs/CHANGELOG.md` (WP-O139, D-O37, 2026-10-15)
 
 Criterio nuevo (D-O37): un documento obsoleto se retira, no se marca; git ya archiva. `MAPA.md` describía julio

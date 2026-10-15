@@ -11,5 +11,3 @@
 1	src/backend/backend.js	const isLoopbackRequest	las escrituras de banca solo entran por loopback
 1	src/backend/backend.js	.post("/banking/addresses"	ruta que fija y publica la dirección (no idempotente)
 1	src/backend/backend.js	ensureSelfAddressPublished	autopublicación de la dirección al abrir la GUI
-1	src/models/onboarding_model.js	oasis-first-contact	flag anti-PM de bienvenida
-1	docker-entrypoint.sh	exec node backend.js	modo backend del entrypoint (nuestro)

@@ -1,0 +1,14 @@
+# Invariantes del cliente local (docs/CLIENT-PROTOCOL.md; client/scripts/import-identity.sh,
+# client/scripts/lib/inspect-log-offset.js y las funciones del cliente en docker-entrypoint.sh). Columnas separadas por TAB:
+# mínimo	fichero	cadena literal (grep -F)	de qué depende la pieza
+# Solo lo verificable hoy sobre el árbol. El nombre del flag (`oasis-first-contact`) y el formato del log db2
+# (BLOCK_SIZE, cabecera u16LE, fichero-guarda) ya están en hub.tsv y db2.tsv: no se repiten.
+1	src/models/onboarding_model.js	const DONE = 'welcome=done';	import-identity.sh escribe `welcome=done` en el flag para que el cliente no reabra la bienvenida sobre una identidad importada
+1	src/models/onboarding_model.js	return path.join(dir, FLAG);	el flag vive en la raíz del .ssb importado (volumes-dev/ssb-data), que es donde lo deja import-identity.sh
+1	src/configs/server-config.json	"shs":	import-identity.sh lee de aquí el cap de red para avisar si el .ssb viejo venía de otro ciclo
+1	src/base/node_modules/bipf/package.json	"name": "bipf"	inspect-log-offset.js decodifica db2/log.bipf con el bipf vendorizado en src/base (sin él no verifica el log antes de importarlo)
+1	src/configs/oasis-config.json	"wallet": {	wire_wallet_config (entrypoint) escribe wallet.url/user/pass/fee bajo esta clave
+1	src/configs/oasis-config.json	"aiMod":	setup_oasis_config (entrypoint) conmuta modules.aiMod según haya modelo IA
+1	src/configs/config-manager.js	const legacyConfigPath = path.join(__dirname, 'oasis-config.json');	persist_client_state enlaza src/configs/oasis-config.json al state dir: Oasis tiene que seguir leyendo esa ruta como default de la imagen
+1	src/configs/config-manager.js	path.join(stateDir, 'oasis-config.json')	Oasis busca también la copia en el state dir (.ssb): es el fichero que persist_client_state funde y enlaza
+1	src/configs/state-manager.js	'wallet-addresses.json': 'banking'	persist_client_state muda el estado bancario de 1.1.2 a ~/.ssb/oasis/banking: ese es el destino que declara state-manager
