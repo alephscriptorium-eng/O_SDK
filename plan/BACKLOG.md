@@ -910,6 +910,10 @@ Dep: WP-O139 (orden de merge). Relación: WP-O112, WP-O127, WP-O138 §9.
 **CA** · pub, HUB y bot de cartera en 1.3.0 con el delta declarado en `expect.conf` · `check` en verde en cada paso del host y `hub --strict` en verde · reporte con las seis cabeceras y los tiempos por gate · correcciones al protocolo aplicadas · trampa `TRIBE_LOG_TYPES` (AGENTES §4) vuelta a medir en 1.3.0.
 Dep: WP-O140. Relación: WP-O138, D-O32, D-O36.
 
+| **WP-O144** | **P1** | Restos del host tras O143: pub a la imagen actual, `tools/ssb-admin.js` convergido, `\r` literal del entrypoint |
+
+**Estado** · ✅ 2026-10-15 **aplicado en el host**: `ssb-admin.js` y `docker-entrypoint.sh` in place (blob de HEAD, sha verificado; el entrypoint ya sin el CR literal, `tr -d ' \n\r'`), pub recreado en `8639c5f9…` (misma versión, Δ0, `GATE OK`), `deploy-status` sin «IMAGEN VIEJA»; sin rebuild (la imagen lleva la variante con CR, idéntica en función; el próximo ciclo la reconstruye). Rama `wp/O144-restos-host` (desde `main` eb72c330); reporte `plan/REPORTES/WP-O144-restos-host.md`. Dep: WP-O143.
+
 | **WP-O142** | **P2** | Generalizar `retro-seed.sh` / `retro-tombstone.sh` a cualquier bot de plantilla (`--container`) |
 
 **Estado** · ⬜.

@@ -5,6 +5,13 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Fixed — Restos del host tras O143 (WP-O144, 2026-10-15)
+
+El entrypoint llevaba un `\r` literal dentro de las comillas de un `tr -d` (l.393-394): ahora `tr -d ' \n\r'`, sin bytes
+invisibles (una tubería que filtre CR lo dejaba un byte distinto y convertía ese `tr` en un no-op). En el host: ese
+fichero y `tools/ssb-admin.js` convergidos al blob de HEAD, y el pub recreado en la imagen actual (misma versión, Δ0):
+los tres nodos «imagen al día».
+
 ### Added — Enlace garantizado de los nodos de soporte con el pub (WP-O143, D-O38, 2026-10-15)
 
 **Aplicado en el host el 2026-10-15** (GO-1 … GO-3): compose, los tres `ssb-config`, el entrypoint y `tools/` in place
