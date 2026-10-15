@@ -2,8 +2,8 @@ const { existsSync, readFileSync, writeFileSync, unlinkSync } = require('fs');
 const { join } = require('path');
 
 const localpackage = join(__dirname, '../server/package.json');
-const remoteUrl = 'https://code.03c8.net/KrakensLab/oasis/raw/master/src/server/package.json'; // Official SNH-Oasis
-const remoteUrl2 = 'https://raw.githubusercontent.com/epsylon/oasis/refs/heads/main/src/server/package.json'; // Mirror SNH-Oasis
+const remoteUrl = 'https://code.03c8.net/KrakensLab/oasis/raw/master/src/server/package.json';
+const remoteUrl2 = 'https://raw.githubusercontent.com/epsylon/oasis/refs/heads/main/src/server/package.json';
 
 let printed = false;
 const repoRoot = join(__dirname, '..', '..');
@@ -86,7 +86,7 @@ async function diffVersion(body, callback) {
       callback("required");
     } else {
       if (existsSync(updateFlagPath)) unlinkSync(updateFlagPath);
-      callback("");  // no updates required
+      callback("");
     }
   } catch (error) {
     console.error("Error comparing versions:", error.message);
@@ -138,7 +138,7 @@ exports.getRemoteVersion = async () => {
       diffVersion(data, (status) => {
         if (status === "required" && !printed) {
           printed = true; 
-          console.log("\noasis@version: upstream Oasis updates are available.\n\nThis Dockerized deployment should be updated from the host repository and rebuilt. In-app auto-update is disabled.\n");
+          console.log("\noasis@version: new code updates are available!\n\n1) Run Oasis and go to 'Settings' tab\n2) Click at 'Get updates' button to download latest code\n3) Restart Oasis when finished\n");
         } else if (status === "") {
           console.log("\noasis@version: no updates requested.\n");
         }
@@ -151,7 +151,7 @@ exports.getRemoteVersion = async () => {
           diffVersion(data, (status) => {
             if (status === "required" && !printed) {
               printed = true; 
-              console.log("\noasis@version: upstream Oasis updates are available.\n\nThis Dockerized deployment should be updated from the host repository and rebuilt. In-app auto-update is disabled.\n");
+              console.log("\noasis@version: new code updates are available!\n\n1) Run Oasis and go to 'Settings' tab\n2) Click at 'Get updates' button to download latest code\n3) Restart Oasis when finished\n");
             } else {
               console.log("oasis@version: no updates requested.\n");
             }

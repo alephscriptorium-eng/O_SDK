@@ -165,7 +165,7 @@ exports.renderInvitePage = (inviteCode) => {
     input({ type: 'text', value: inviteCode, readonly: 'readonly', class: 'tribe-invite-code-input' }),
     br(),
     form({ method: "GET", action: `/tribes` },
-      button({ type: "submit", class: "filter-btn" }, i18n.walletBack)
+      button({ type: "submit", class: "tribe-action-btn" }, i18n.walletBack)
     ),
   );
   return template(i18n.tribeInviteMode, section(pageContent));
@@ -320,7 +320,6 @@ exports.tribesView = async (tribes, filter, tribeId, query = {}, allTribes = nul
   const shownTribes = filter === 'create' || filter === 'edit' ? [] : paged(sorted);
 
   const tribeCards = shownTribes.map(t => {
-    const isMember = t.members.includes(userId);
     const parentTribe = t.parentTribeId ? allT.find(p => p.id === t.parentTribeId) : null;
 
     const isOwn = String(t.author) === String(userId);
@@ -333,12 +332,7 @@ exports.tribesView = async (tribes, filter, tribeId, query = {}, allTribes = nul
         div({ class: 'tribe-card-image-wrapper' },
           a({ href: `/tribe/${encodeURIComponent(t.id)}` },
             renderMediaBlob(t.image, '/assets/images/default-tribe.png', { class: 'tribe-card-hero-image' })
-          ),
-          isMember
-            ? form({ method: 'GET', action: `/tribe/${encodeURIComponent(t.id)}`, class: 'tribe-visit-btn-wrapper' },
-                button({ type: 'submit', class: 'filter-btn' }, t.parentTribeId ? String(i18n.tribeviewSubTribeButton || 'VISIT SUB-TRIBE').toUpperCase() : String(i18n.tribeviewTribeButton || '').toUpperCase())
-              )
-            : null
+          )
         ),
         div({ class: 'tribe-card-body' },
           div({ class: 'shop-title-row' },
@@ -363,28 +357,7 @@ exports.tribesView = async (tribes, filter, tribeId, query = {}, allTribes = nul
           ) : null,
           div({ class: 'tribe-card-members' },
             span({ class: 'tribe-members-count' }, `${i18n.tribeMembersCount}: ${t.memberCount != null ? t.memberCount : t.members.length}`)
-          ),
-          (t.openInviteCode && !isMember && String(t.author) !== String(userId)) ? div({ class: 'tribe-card-join' },
-            form({ method: 'POST', action: '/tribes/open-invite/join' },
-              input({ type: 'hidden', name: 'tribeId', value: t.id }),
-              button({ type: 'submit', class: 'tribe-action-btn' }, i18n.tribeJoinOpen)
-            ),
-            renderInviteQrCard({ qrDataUrl: t.openInviteQr, name: t.title })
-          ) : null,
-          isMember ? div({ class: 'tribe-card-actions' },
-            !isLarpHouseTribe(t)
-              ? form({ method: 'POST', action: '/tribes/generate-invite' },
-                  input({ type: 'hidden', name: 'tribeId', value: t.id }),
-                  button({ type: 'submit', class: 'tribe-action-btn' }, i18n.tribeGenerateInvite)
-                )
-              : null,
-            form({ method: 'POST', action: `/tribes/leave/${encodeURIComponent(t.id)}` },
-              button({ type: 'submit', class: 'tribe-action-btn danger-btn' }, i18n.tribeLeaveButton)
-            )
-          ) : null,
-          filter === 'mine' ? div({ class: 'tribe-actions' },
-            form({ method: 'GET', action: `/tribes/edit/${encodeURIComponent(t.id)}` }, button({ type: 'submit' }, i18n.tribeUpdateButton))
-          ) : null
+          )
         )
       )
     );
@@ -411,7 +384,7 @@ exports.tribesView = async (tribes, filter, tribeId, query = {}, allTribes = nul
 const sectionLink = (tribe, sectionKey, label, currentSection) =>
   form({ method: 'GET', action: `/tribe/${encodeURIComponent(tribe.id)}` },
     input({ type: 'hidden', name: 'section', value: sectionKey }),
-    button({ type: 'submit', class: currentSection === sectionKey ? 'filter-btn active' : 'filter-btn' }, label)
+    button({ type: 'submit', class: currentSection === sectionKey ? 'filter-btn active' : 'filter-btn' }, String(label).toUpperCase())
   );
 
 const renderSectionNav = (tribe, section) => {
@@ -430,7 +403,7 @@ const renderSectionNav = (tribe, section) => {
       div({ class: 'tribe-section-group no-border' },
         g.items.map(s => s.href
           ? form({ method: 'GET', action: s.href },
-              button({ type: 'submit', class: 'filter-btn' }, s.label)
+              button({ type: 'submit', class: 'filter-btn' }, String(s.label).toUpperCase())
             )
           : sectionLink(tribe, s.key, s.label, section))
       )
@@ -476,7 +449,7 @@ const contentTypeVerb = (ct) => {
 };
 
 const contentTypeName = (ct) => {
-  const map = { event: i18n.tribeSectionEvents, task: i18n.tribeSectionTasks, votation: i18n.tribeSectionVotations, poll: i18n.pollsTitle, forum: i18n.tribeSectionForum, 'forum-reply': i18n.tribeSectionForum, media: i18n.tribeSectionMedia, feed: i18n.tribeSectionFeed, pad: i18n.tribeSectionPads || 'PADS', chat: i18n.tribeSectionChats || 'CHATS', calendar: i18n.tribeSectionCalendars || 'CALENDARS', map: i18n.tribeSectionMaps || 'MAPS' };
+  const map = { event: i18n.tribeSectionEvents, task: i18n.tribeSectionTasks, votation: i18n.tribeSectionVotations, poll: i18n.pollsTitle, forum: i18n.tribeSectionForum, 'forum-reply': i18n.tribeSectionForum, media: i18n.tribeSectionMedia, feed: i18n.tribeSectionFeed, pad: i18n.tribeSectionPads || 'PADS', chat: i18n.tribeSectionChats || 'CHATS', calendar: i18n.tribeSectionCalendars || 'CALENDARS', map: i18n.tribeSectionMaps || 'MAPS', wiki: i18n.tribeSectionWiki || 'WIKI' };
   return map[ct] || ct;
 };
 
@@ -484,7 +457,7 @@ const activitySectionMap = {
   event: 'events', task: 'tasks', votation: 'votations', poll: 'polls',
   forum: 'forum', 'forum-reply': 'forum',
   feed: 'feed',
-  pad: 'pads', chat: 'chats', calendar: 'calendars', map: 'maps', torrent: 'torrents', file: 'files'
+  pad: 'pads', chat: 'chats', calendar: 'calendars', map: 'maps', wiki: 'wiki', torrent: 'torrents', file: 'files'
 };
 
 const activitySectionForItem = (item) => {
@@ -517,7 +490,7 @@ const renderTribeActivitySection = (tribe, sectionData) => {
         return div({ class: 'card card-rpg tribe-card-padded chat-thread' },
           div({ class: 'card-header' },
             h2({ class: 'card-label' }, headerText),
-            a({ href: item.directUrl, class: 'filter-btn' }, i18n.viewDetails || 'View Details')
+            a({ href: item.directUrl, class: 'tribe-action-btn' }, i18n.viewDetails || 'View Details')
           ),
           div({ class: 'tribe-card-body' },
             item.title ? div({ class: 'card-field' }, span({ class: 'card-value' }, item.title)) : null,
@@ -561,10 +534,10 @@ const renderTribeActivitySection = (tribe, sectionData) => {
         div({ class: 'card-header' },
           h2({ class: 'card-label' }, headerText),
           item.directUrl
-            ? a({ href: item.directUrl, class: 'filter-btn' }, i18n.viewDetails || 'View Details')
+            ? a({ href: item.directUrl, class: 'tribe-action-btn' }, i18n.viewDetails || 'View Details')
             : form({ method: 'GET', action: tribeUrl },
                 input({ type: 'hidden', name: 'section', value: targetSection }),
-                button({ type: 'submit', class: 'filter-btn' }, i18n.viewDetails || 'View Details')
+                button({ type: 'submit', class: 'tribe-action-btn' }, i18n.viewDetails || 'View Details')
               )
         ),
         div({ class: 'tribe-card-body' },
@@ -931,7 +904,7 @@ const renderTribeEventCard = (tribe, e, member, returnTo) => {
       member && isOpen
         ? div({ class: 'tribe-side-actions' },
             form({ method: 'POST', action: `${tribeUrl}/events/attend/${encodeURIComponent(e.id)}` },
-              button({ type: 'submit', class: 'filter-btn' }, attending ? i18n.tribeEventUnattend : i18n.tribeEventAttend)
+              button({ type: 'submit', class: 'tribe-action-btn' }, attending ? i18n.tribeEventUnattend : i18n.tribeEventAttend)
             )
           )
         : null,
@@ -1302,7 +1275,7 @@ const renderForumSection = (tribe, items, query = {}) => {
     return div({ class: 'tribe-content-list' }, header, chips,
       form({ method: 'GET', action: tribeUrl, class: 'forum-back-form' },
         input({ type: 'hidden', name: 'section', value: 'forum' }),
-        button({ type: 'submit', class: 'filter-btn' }, i18n.walletBack)
+        button({ type: 'submit', class: 'tribe-action-btn' }, i18n.walletBack)
       ),
       renderForumThreadDetail(tribe, allItems, query.thread, member)
     );
@@ -1427,11 +1400,21 @@ const renderStandaloneSection = (tribe, sectionKey, items, query, cfg) => {
   );
 };
 
+const withModuleReach = (tribe, item, contentType, card, returnTo) => {
+  if (item.tribeOrigin) return card;
+  const it = { ...item, id: item.rootId || item.id || item.key, contentType };
+  const chip = tribeReachChipFor(tribe, it);
+  return div(card, chip ? div({ class: 'card-chips-row' }, chip) : null, renderTribeReachControls(tribe, it, returnTo));
+};
+
 const renderTribeMapsSection = (tribe, maps, query = {}) =>
   renderStandaloneSection(tribe, 'maps', maps, query, {
     title: i18n.tribeSectionMaps || 'MAPS', description: i18n.mapDescription, createAction: '/maps', createLabel: i18n.mapCreateButton || 'Create Map',
     labelOf: m => i18n[`mapFilter${capFirst(m)}`], placeholder: i18n.mapSearchPlaceholder, empty: i18n.noMaps,
-    render: (list) => div({ class: 'jobs-grid' }, ...list.map(m => renderMapCard(m, 'all', { q: query.q || '' })))
+    render: (list) => {
+      const returnTo = sectionHref(tribe, 'maps', { filter: query.filter, q: query.q });
+      return div({ class: 'jobs-grid' }, ...list.map(m => withModuleReach(tribe, m, 'map', renderMapCard(m, 'all', { q: query.q || '', returnTo }), returnTo)));
+    }
   });
 
 const renderTribeTorrentsSection = (tribe, torrents, query = {}) =>
@@ -1487,7 +1470,10 @@ const renderTribeCalendarsSection = (tribe, calendars, query = {}) =>
     modes: openClosedModes(closedByFlag), modeList: ['all', 'recent', 'mine', 'open', 'closed'],
     labelOf: m => i18n[`calendarFilter${capFirst(m)}`], placeholder: i18n.calendarSearchPlaceholder, empty: i18n.tribeCalendarsEmpty || i18n.calendarsNoItems,
     stats: (list) => openClosedStats(list, closedByFlag, i18n.calendarStatusOpen, i18n.calendarStatusClosed),
-    render: (list) => div({ class: 'tribe-grid' }, ...list.map(c => renderCalendarCard(c, null)))
+    render: (list) => {
+      const returnTo = sectionHref(tribe, 'calendars', { filter: query.filter, q: query.q });
+      return div({ class: 'tribe-grid' }, ...list.map(c => withModuleReach(tribe, c, 'calendar', renderCalendarCard(c, null), returnTo)));
+    }
   });
 
 const renderTribeWikiSectionPage = (tribe, pages, query = {}) => {
@@ -1523,7 +1509,8 @@ const renderTribeWikiSectionPage = (tribe, pages, query = {}) => {
     ),
     emptyMod ? null : renderTribeSearchRow(tribe, 'wiki', filter, q, renderModuleStats(shown.length), i18n.wikiSearchPlaceholder)
   );
-  return renderTribeWikiSection(tribe, shown, toolbar);
+  const returnTo = sectionHref(tribe, 'wiki', { filter: query.filter, q: query.q });
+  return renderTribeWikiSection(tribe, shown, toolbar, (pg, card) => withModuleReach(tribe, pg, 'wiki', card, returnTo));
 };
 
 const ROOM_MODES = { ...openClosedModes(r => !!r.isClosed), live: () => false };
@@ -1689,7 +1676,7 @@ exports.tribeView = async (tribe, userIdParam, query, section, sectionData) => {
     : (isAuthorOfTribe || (tribe.inviteMode === 'open' && isMemberOfTribe));
   const canLeave = isMemberOfTribe && (isLarpHouse || !isAuthorOfTribe);
   const showOwnerControls = !isLarpHouse && isAuthorOfTribe;
-  const inviteHref = isLarpHouse ? '/invites#invites-houses' : '/invites#invites-tribes';
+  const inviteHref = '/invites?filter=others';
   const showInviteTop = isOutsider && !tribe.parentTribeId;
   const hasOpenInvite = !!tribe.openInviteCode;
   const canManageOpenInvite = hasOpenInvite && (tribe.openInviteBy === userId || isAuthorOfTribe);
@@ -1732,7 +1719,16 @@ exports.tribeView = async (tribe, userIdParam, query, section, sectionData) => {
         ) : null
       ),
       h2({ class: 'tribe-members-count' }, `${i18n.tribeMembersCount}: ${tribe.memberCount != null ? tribe.memberCount : tribe.members.length}`),
-      (canGenerateInvite || (isOutsider && !showInviteTop)) ? div({ class: 'tribe-side-actions' },
+      (isOutsider && hasOpenInvite)
+        ? div({ class: 'tribe-side-actions tribe-side-center' },
+            renderInviteQrCard({ qrDataUrl: tribe.openInviteQr, name: tribe.title }),
+            form({ method: 'POST', action: '/tribes/open-invite/join' },
+              input({ type: 'hidden', name: 'tribeId', value: tribe.id }),
+              button({ type: 'submit', class: 'tribe-action-btn' }, i18n.tribeJoinOpen)
+            )
+          )
+        : null,
+      (canGenerateInvite || (isOutsider && !showInviteTop)) ? div({ class: canGenerateInvite ? 'tribe-side-actions' : 'tribe-side-actions tribe-side-center tribe-enter-invite' },
         canGenerateInvite
           ? (isLarpHouse
               ? form({ method: 'POST', action: '/larp/invite/create' },
@@ -1786,16 +1782,16 @@ exports.tribeView = async (tribe, userIdParam, query, section, sectionData) => {
       ) : null,
       tribe.description ? p({ class: 'tribe-side-description' }, ...renderStyledText(tribe.description)) : null,
       renderMapEmbed(tribe.mapData, tribe.mapUrl),
-      (!tribe.parentTribeId && (canCreateSub || subTribes.length > 0 || showInviteTop)) ? div({ class: 'tribe-side-subtribes' },
+      showInviteTop
+        ? div({ class: 'tribe-side-actions tribe-side-center tribe-enter-invite' }, a({ class: 'tribe-action-btn', href: inviteHref }, i18n.tribeEnterInvite))
+        : null,
+      (!tribe.parentTribeId && (canCreateSub || subTribes.length > 0)) ? div({ class: 'tribe-side-subtribes' },
         canCreateSub
           ? form({ method: 'GET', action: `/tribe/${encodeURIComponent(tribe.id)}` },
               input({ type: 'hidden', name: 'section', value: 'subtribes' }),
               input({ type: 'hidden', name: 'action', value: 'create' }),
               button({ type: 'submit', class: 'tribe-action-btn' }, i18n.tribeSubTribesCreate)
             )
-          : null,
-        showInviteTop
-          ? a({ class: 'tribe-action-btn', href: inviteHref }, i18n.tribeEnterInvite)
           : null,
         subTribes.length > 0
           ? div({ class: 'tribe-subtribes-list' },
@@ -1873,7 +1869,10 @@ exports.clearnetTribeView = async ({ tribe, items, names = {}, slug, page = 1 })
       it.date ? `${i18n.tribeEventDate || 'Date'}: ${it.date}` : '',
       it.deadline ? `${i18n.tribeTaskDeadline || 'Deadline'}: ${it.deadline}` : '',
       it.location ? `${i18n.tribeEventLocation || 'Location'}: ${it.location}` : '',
-      it.status ? (statusI18n()[it.status] || it.status) : ''
+      it.status ? (statusI18n()[it.status] || it.status) : '',
+      it.contentType === 'map' && Number.isFinite(Number(it.lat)) ? `📍 ${Number(it.lat).toFixed(4)}, ${Number(it.lng).toFixed(4)}` : '',
+      ...(it.contentType === 'map' && Array.isArray(it.markers) ? it.markers.map(mk => `📍 ${Number(mk.lat).toFixed(4)}, ${Number(mk.lng).toFixed(4)}${mk.label ? ` · ${mk.label}` : ''}`) : []),
+      ...(it.contentType === 'calendar' && Array.isArray(it.dates) ? it.dates.map(d => `📅 ${day(d.date)}${d.label ? ` · ${d.label}` : ''}`) : [])
     ].filter(Boolean).map(d => `<span class="cn-detail">${escapeHtml(String(d))}</span>`).join('');
     const options = it.contentType === 'votation' && Array.isArray(it.options) && it.options.length
       ? `<ul class="cn-tribe-options">${it.options.map(o => `<li>${escapeHtml(String(o))}</li>`).join('')}</ul>`
@@ -1925,7 +1924,7 @@ exports.clearnetTribeView = async ({ tribe, items, names = {}, slug, page = 1 })
     </div>
   </div>
   ${list.length
-    ? `<h2 class="cn-section">${escapeHtml(i18n.cnPublicContent || 'Public Content')} (${list.length})</h2><div class="cn-tribe-list">${paged.items.map(renderItem).join('')}</div>${pager}`
+    ? `<h2 class="cn-section">${escapeHtml(i18n.cnPublicContent || 'Content')} (${list.length})</h2><div class="cn-tribe-list">${paged.items.map(renderItem).join('')}</div>${pager}`
     : `<div class="cn-empty-content">${escapeHtml(i18n.cnCategoryEmpty || '')}</div>`}
 `;
   return renderClearnetPage({
@@ -2083,7 +2082,7 @@ const candidaturesBlock = (tribe, candidatures, alreadyPublishedThisGlobalCycle)
             ' ',
             form({ method: 'POST', action: `/tribe/${encodeURIComponent(tribe.id)}/governance/candidature/vote`, class: 'inline-form' },
               input({ type: 'hidden', name: 'candidatureId', value: c.id }),
-              button({ type: 'submit', class: 'filter-btn' }, i18n.vote || 'Vote')
+              button({ type: 'submit', class: 'tribe-action-btn' }, i18n.vote || 'Vote')
             )
           )
         ))
@@ -2113,7 +2112,7 @@ const rulesBlock = (tribe, rules, isCreator) => div({},
           isCreator
             ? form({ method: 'POST', action: `/tribe/${encodeURIComponent(tribe.id)}/governance/rule/delete`, class: 'inline-form' },
                 input({ type: 'hidden', name: 'ruleId', value: r.id }),
-                button({ type: 'submit', class: 'filter-btn danger-btn' }, i18n.delete || 'Delete')
+                button({ type: 'submit', class: 'tribe-action-btn danger-btn' }, i18n.delete || 'Delete')
               )
             : null
         )
