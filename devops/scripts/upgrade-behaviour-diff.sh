@@ -11,8 +11,14 @@
 # en <sección> · gate <id>.
 #
 # Uso:
-#   bash devops/scripts/upgrade-behaviour-diff.sh <OLD> <NEW> [--section S[,S…]] [--check <registro.md>]
+#   bash devops/scripts/upgrade-behaviour-diff.sh <OLD> <NEW> [--section S[,S…]] [--skip S[,S…]] [--check <registro.md>]
+#   bash devops/scripts/upgrade-behaviour-diff.sh --from-tsv <diff.tsv> --check <registro.md>
 #   OLD/NEW: commits de upstream (los da upgrade-preflight.sh: OLD_REF / NEW_REF).
+#   --section S[,S…]   solo esas secciones (por defecto, todas, en el orden de abajo)
+#   --skip S[,S…]      todas menos esas (p. ej. `--skip patches,annex` cuando node o el árbol no están a mano)
+#   --from-tsv <f>     no regenera ni reimprime: toma el TSV ya generado (salida de una ejecución anterior
+#                      guardada con `> diff.tsv`). OLD/NEW sobran; `--check` trabaja sobre ese fichero
+#                      y tarda segundos, no los minutos de los git diff.
 #
 # Secciones:
 #   roles     ficheros que cambian por rol (pub en modo server = cierre de requires de SSB_server.js,
@@ -41,9 +47,10 @@
 # --check <registro.md>: sale 1 si algún ID con signo + - o ! no aparece en ese fichero, o si al
 #   registro le falta alguna de las seis cabeceras del reporte de ciclo (UPGRADE-PROTOCOL §7):
 #   Estado de partida · Disposiciones · Qué viaja al host · Gates · Delta de publicación ·
-#   Correcciones al protocolo.
+#   Correcciones al protocolo. Con --from-tsv lee el TSV ya generado (no vuelve a calcular nada).
 # Códigos: 0 ok · 1 hay IDs sin disponer o cabeceras que faltan (solo con --check) · 2 refs inválidas o uso incorrecto.
-# Solo lectura: git, grep y node (el audit de parches no escribe).
+# Solo lectura: git, grep y node (el audit de parches no escribe). El único `git diff -U0` del código se
+# calcula una vez por ejecución y lo comparten publish, timers y headers.
 # =============================================================================
 set -uo pipefail
 
@@ -51,22 +58,38 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT" || exit 2
 INV_DIR="$REPO_ROOT/devops/scripts/upgrade-invariants.d"
 
-OLD=""; NEW=""; SECTIONS=""; CHECK=""
+# La cabecera entera (de la línea 3 hasta el cierre `# ====`) es la ayuda: no hay segunda copia que mantener.
+usage() { sed -n '3,/^# ====/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; }
+
+OLD=""; NEW=""; SECTIONS=""; SKIP=""; CHECK=""; FROM_TSV=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --section) SECTIONS="${2:-}"; shift ;;
+    --skip) SKIP="${2:-}"; shift ;;
     --check) CHECK="${2:-}"; shift ;;
-    -h|--help) sed -n '2,39p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --from-tsv) FROM_TSV="${2:-}"; shift ;;
+    -h|--help) usage; exit 0 ;;
     *) if [ -z "$OLD" ]; then OLD="$1"; elif [ -z "$NEW" ]; then NEW="$1"; else echo "argumento de más: $1" >&2; exit 2; fi ;;
   esac
   shift
 done
-[ -n "$OLD" ] && [ -n "$NEW" ] || { echo "uso: upgrade-behaviour-diff.sh <OLD> <NEW> [--section S] [--check registro.md]" >&2; exit 2; }
-git rev-parse -q --verify "$OLD^{commit}" >/dev/null || { echo "ref inválida: $OLD" >&2; exit 2; }
-git rev-parse -q --verify "$NEW^{commit}" >/dev/null || { echo "ref inválida: $NEW" >&2; exit 2; }
-[ -z "$CHECK" ] || [ -f "$CHECK" ] || { echo "no existe el registro: $CHECK" >&2; exit 2; }
 ALL="roles files routes loopback publish timers headers env state config deps outside annex patches"
+if [ -n "$FROM_TSV" ]; then
+  # Modo lectura: el TSV ya está calculado. Nada de git; OLD/NEW, --section y --skip no pintan nada.
+  [ -f "$FROM_TSV" ] || { echo "no existe el TSV: $FROM_TSV" >&2; exit 2; }
+  [ -z "$SECTIONS$SKIP" ] || echo "aviso: --section/--skip no se aplican con --from-tsv (el TSV ya viene hecho)" >&2
+else
+  [ -n "$OLD" ] && [ -n "$NEW" ] || { echo "uso: upgrade-behaviour-diff.sh <OLD> <NEW> [--section S] [--skip S] [--check registro.md] | --from-tsv diff.tsv --check registro.md" >&2; exit 2; }
+  git rev-parse -q --verify "$OLD^{commit}" >/dev/null || { echo "ref inválida: $OLD" >&2; exit 2; }
+  git rev-parse -q --verify "$NEW^{commit}" >/dev/null || { echo "ref inválida: $NEW" >&2; exit 2; }
+fi
+[ -z "$CHECK" ] || [ -f "$CHECK" ] || { echo "no existe el registro: $CHECK" >&2; exit 2; }
 SECTIONS="${SECTIONS:-$ALL}"; SECTIONS="${SECTIONS//,/ }"
+# --skip quita secciones de la lista (sea la completa o la de --section); una desconocida es error de uso.
+for s in ${SKIP//,/ }; do
+  case " $ALL " in *" $s "*) ;; *) echo "sección desconocida en --skip: $s (válidas: $ALL)" >&2; exit 2 ;; esac
+  SECTIONS="$(printf '%s\n' $SECTIONS | grep -vx -- "$s" | tr '\n' ' ')"
+done
 
 BACKEND="src/backend/backend.js"
 # Código, no texto ni estilos: las traducciones y el CSS no deciden comportamiento.
@@ -75,7 +98,11 @@ BACKEND="src/backend/backend.js"
 VENDOR='src/base'
 CODE=(src ':!src/client/assets' ":!$VENDOR" ':!src/**/package-lock.json')
 
-OUT="$(mktemp)"; trap 'rm -f "$OUT"' EXIT
+if [ -n "$FROM_TSV" ]; then
+  OUT="$FROM_TSV"   # el TSV del operador: no se toca ni se borra
+else
+  OUT="$(mktemp)"; trap 'rm -f "$OUT" "$OUT.a" "$OUT.b" "$OUT.diff"' EXIT
+fi
 emit() { # emit <sección> <signo> <fichero> <texto>
   local text; text="$(printf '%s' "$4" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]\{1,\}/ /g' | cut -c1-170)"
   local id; id="$(printf '%s|%s|%s|%s' "$1" "$2" "$3" "$text" | sha1sum | cut -c1-8)"
@@ -83,15 +110,23 @@ emit() { # emit <sección> <signo> <fichero> <texto>
 }
 head_of() { printf '# == %s — %s\n' "$1" "$2" >> "$OUT"; }
 
-# Líneas añadidas/quitadas del diff de código que casan con un patrón: "signo<TAB>fichero<TAB>línea"
+# Líneas añadidas/quitadas del diff de código, ya aplanadas a "signo<TAB>fichero<TAB>línea" (sin los
+# comentarios `//`). El `git diff -U0` del código es lo caro del script (src/ entero): se calcula UNA vez,
+# en la primera sección que lo pide, y se guarda en $OUT.diff; publish, timers y headers hacen grep sobre esa caché.
+code_diff() {
+  if [ ! -f "$OUT.diff" ]; then   # -f, no -s: un diff vacío (OLD = NEW) también se cachea
+    git diff -U0 "$OLD" "$NEW" -- "${CODE[@]}" | tr -d '\r' | awk '
+      /^--- a\//    { fa = substr($0, 7); next }
+      /^--- /       { next }
+      /^\+\+\+ b\// { f = substr($0, 7); next }
+      /^\+\+\+ /    { f = fa; next }
+      /^[+-]/       { l = substr($0, 2); if (l !~ /^[[:space:]]*\/\//) printf "%s\t%s\t%s\n", substr($0, 1, 1), f, l }' > "$OUT.diff"
+  fi
+  cat "$OUT.diff"
+}
+# Las de la caché que casan con un patrón
 diff_lines() { # diff_lines <regex-extendida> [-i]
-  git diff -U0 "$OLD" "$NEW" -- "${CODE[@]}" | tr -d '\r' | awk '
-    /^--- a\//    { fa = substr($0, 7); next }
-    /^--- /       { next }
-    /^\+\+\+ b\// { f = substr($0, 7); next }
-    /^\+\+\+ /    { f = fa; next }
-    /^[+-]/       { l = substr($0, 2); if (l !~ /^[[:space:]]*\/\//) printf "%s\t%s\t%s\n", substr($0, 1, 1), f, l }' \
-    | grep -E ${2:+"$2"} -- $'^[+-]\t[^\t]*\t.*('"$1"')'
+  code_diff | grep -E ${2:+"$2"} -- $'^[+-]\t[^\t]*\t.*('"$1"')'
 }
 # Diferencia de conjuntos entre dos listas: imprime "+<TAB>x" y "-<TAB>x"
 set_diff() { # set_diff <fichero-viejo> <fichero-nuevo>
@@ -107,6 +142,7 @@ loopback_of() { # rutas cuya primera línea de cuerpo comprueba isLoopbackReques
     /isLoopbackRequest\(ctx\)/ && r != "" && NR - n <= 2 { print r; r = "" }' | sed -E 's/^([a-z]+)\("/\U\1 /; s/"$//'
 }
 
+[ -n "$FROM_TSV" ] && SECTIONS=""   # modo lectura: no se genera nada
 for s in $SECTIONS; do
   case "$s" in
     roles)
@@ -124,7 +160,7 @@ for s in $SECTIONS; do
       # Activos (teselas y datos de mapas, assets del cliente) se colapsan en una línea por carpeta y
       # signo: en 1.2.3 upstream cambió 10 922 teselas, y una línea (y una disposición) por tesela no
       # es información (y en Windows, con ~6 procesos por línea, es más de una hora de script).
-      git diff --name-status --no-renames "$OLD" "$NEW" -- src ":!$VENDOR" | tr -d '' | awk '$1 != "M"'         | awk -F'	' '{ f=$2; st=$1
+      git diff --name-status --no-renames "$OLD" "$NEW" -- src ":!$VENDOR" | awk '$1 != "M"'         | awk -F'	' '{ f=$2; st=$1
             if (f ~ /^src\/(maps\/(tiles|cache|data)|client\/assets)\//) { sub(/\/[^\/]*$/, "", f); n=split(f, p, "/"); d=p[1]"/"p[2]"/"p[3]; k=st"	"d; c[k]++ }
             else print st"	"f }
           END { for (k in c) { split(k, q, "	"); print q[1]"	"q[2]"/**	"c[k] } }'         | while IFS=$'	' read -r st f n; do
@@ -224,11 +260,12 @@ for s in $SECTIONS; do
     *) echo "sección desconocida: $s (válidas: $ALL)" >&2; exit 2 ;;
   esac
 done
-rm -f "$OUT.a" "$OUT.b"
+[ -n "$FROM_TSV" ] || rm -f "$OUT.a" "$OUT.b" "$OUT.diff"
 
-cat "$OUT"
+# Con --from-tsv el TSV ya lo tiene el operador: no se reimprime, solo se cuenta.
+[ -n "$FROM_TSV" ] || cat "$OUT"
 total="$(grep -vc '^#' "$OUT")"; todo="$(awk -F'\t' '!/^#/ && $3 != "="' "$OUT" | wc -l | tr -d ' ')"
-echo "# $total líneas; $todo piden disposición en el registro del ciclo (signo + - !)" >&2
+echo "# $total líneas; $todo piden disposición en el registro del ciclo (signo + - !)${FROM_TSV:+ — leídas de $FROM_TSV}" >&2
 
 if [ -n "$CHECK" ]; then
   missing=0
