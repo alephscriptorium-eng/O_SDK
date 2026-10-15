@@ -27,7 +27,7 @@ CR convierte en un no-op (WP-O143 §5).
 | a | `tools/ssb-admin.js`: precondición «contenido sin CR = HEAD sin CR» ✓ → `.bak-o144-2026-10-15` → blob de HEAD tal cual → sha = HEAD ✓ |
 | b | `docker-entrypoint.sh`: vivo = blob de O143 (`9a13be08…`) ✓ → `.bak` → blob de HEAD (`73f7a1da…`), CR 0, ejecutable ✓ |
 | c | `up -d --no-deps --no-build oasis-pub` → `healthy` a los 4 s, imagen `8639c5f9…`, `Version: 1.3.0`, tres parches |
-| check | `check pre144 --wait --expect 0` → **`GATE OK` (316 s)**: Δ0 en los tres; `hub connected(out)`, `bot connected(in)` (tras recrear el pub, el enlace con el bot lo abrió el pub: su libreta lo tiene sin `autoconnect`, así que fue el keepalive del bot quien… no: `in` significa que lo abrió el pub. Se anota; `pub_link` mide por clave y no distingue quién marcó) |
+| check | `check pre144 --wait --expect 0` → **`GATE OK` (316 s)**: Δ0 en los tres; `hub connected(out)`, `bot connected(in)`. Tras recrear el pub, el enlace con el bot lo abrió **el pub** (`in` visto desde el bot) aunque su libreta tiene al bot sin `autoconnect`: `ssb-conn` también marca a pares conocidos al arrancar por otras vías (gossip, `conn.json` con `type: pub`). Observación, no desviación: `pub_link` mide por clave y el enlace existe |
 | cierre | `deploy-status`: los tres nodos «imagen al día»; LINK `connected` ×2; deriva solo `.dockerignore` (esperada, E0); VERDE; `capacity` 0 |
 
 Delta: ninguno. Nada publicado.
