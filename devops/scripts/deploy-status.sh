@@ -67,6 +67,7 @@ docker ps --format '{{.Names}}' | sort | while read -r c; do
 done
 docker ps --format '{{.Names}}|{{.Image}}|{{.Status}}' | sort | sed 's/^/CTR|/'
 echo "SRC|$(grep -m1 '"version"' "$ROOT/src/server/package.json" 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/')"
+echo "ENGINE|$(docker version --format '{{.Server.Version}}' 2>/dev/null)"
 for f in $REPO_FILES; do echo "FILE|$f|$(blob "$ROOT/$f")"; done
 for f in $PUB_FILES;  do echo "FILE|pub/$f|$(blob "$PUBDIR/$f")"; done
 for d in "$ROOT"/src.old* "$ROOT"/src.new*; do [ -e "$d" ] && echo "REST|$d"; done
@@ -82,6 +83,7 @@ EOS
     echo "  Resto de contenedores:"
     printf '%s\n' "$live" | awk -F'|' '$1=="CTR"{printf "    %-30s %-34s %s\n",$2,$3,$4}' | grep -v -F "$(printf '%s\n' "$live" | awk -F'|' '$1=="NODE"{print "    "$2" "}')" || true
     echo "  src/ en disco del host: $(printf '%s\n' "$live" | awk -F'|' '$1=="SRC"{print $2}')  (lo que entrará en el próximo build)"
+    echo "  Docker Engine del host: $(printf '%s\n' "$live" | awk -F'|' '$1=="ENGINE"{print $2}')  (el start_interval de los healthchecks exige >= 25)"
     echo "  Deriva (fichero del host frente al repo):"
     printf '%s\n' "$live" | awk -F'|' '$1=="FILE"{print $2" "$3}' | while read -r f h; do
       if [ "$h" = "-" ]; then verdict="no existe en el host"
@@ -113,7 +115,7 @@ if [ -n "$api" ] && command -v python3 >/dev/null 2>&1; then
       if [ -n "${SELF_SHS:-}" ] && [ "${SELF_CYCLE:-}" = "${CUR_CYCLE:-}" ]; then verdict="VERDE"; fi
       echo "  $OUR_PUB_HOST → cycle=${SELF_CYCLE:-?} shs=${SELF_SHS:-null} status=${SELF_STATUS:-?}  [$verdict]"
       if [ "$verdict" = "ROJO" ]; then
-        echo "  motivo probable: DESCUBRIBILIDAD (falta follow-back/invite de la red), no re-deploy — protocolo A5.1"
+        echo "  motivo probable: DESCUBRIBILIDAD (falta follow-back/invite de la red), no re-deploy — UPGRADE-PROTOCOL.md §5"
       fi
     else
       echo "  $OUR_PUB_HOST NO aparece en el directorio"

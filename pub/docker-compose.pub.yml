@@ -38,6 +38,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+      start_interval: 3s                   # sondeo denso SOLO dentro de start_period (Engine >= 25); despues manda interval
     networks:
       - oasis_pub_net
 
@@ -96,7 +97,7 @@ services:
   oasis-hub:                      # nodo de soporte: backend.js --public con sbot embebido (gui.js:12-16)
     image: oasis-pub-scriptorium:latest      # misma imagen que el pub, sin build
     container_name: oasis-pub-hub
-    command: ["backend"]                     # docker-entrypoint.sh:521-524 -> node backend.js --host 0.0.0.0
+    command: ["backend"]                     # docker-entrypoint.sh:859-862 -> node backend.js --host 0.0.0.0
     restart: unless-stopped
     depends_on: [oasis-pub]
     environment:
@@ -128,6 +129,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 120s
+      start_interval: 3s                   # sondeo denso SOLO dentro de start_period (Engine >= 25); despues manda interval
     networks: [oasis_pub_net]
 
   hub-cache:                      # caché HTTP en disco delante del HUB
@@ -223,6 +225,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 120s
+      start_interval: 3s                   # sondeo denso SOLO dentro de start_period (Engine >= 25); despues manda interval
     networks: [oasis_pub_net]
 
   oasis-retro-bot:                # retro.escrivivir.co (bot nº 3): secretaría de plantillas (WP-O131, docs/PUB/TEMPLATE-PROTOCOL.md §4.3)
