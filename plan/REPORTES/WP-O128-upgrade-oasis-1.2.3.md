@@ -1,4 +1,4 @@
-# WP-O128 · Upgrade a Oasis 1.2.3 en local
+# WP-O128 · Upgrade a Oasis 1.2.3 (local y host)
 
 Rama `upgrade/oasis-1.2.3` (sobre `fix/upgrade-protocol-o127`) · 2026-10-07 ·
 `OLD_REF=b1f7adfc` (1.2.2) · `NEW_REF=043f4634` (1.2.3, «Oasis release 1.2.3», 14:13 +0200 del

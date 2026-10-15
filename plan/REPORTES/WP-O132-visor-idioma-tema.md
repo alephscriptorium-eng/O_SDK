@@ -62,5 +62,5 @@ de la imagen (11 comprobaciones, `scratchpad/test-guard.js` → en el dosier no:
 
 ## 6. Seguimiento
 
-- Merge a `main`, web (CI `Docs`) y estado ✅ en el backlog.
+- ~~Merge a `main`, web (CI `Docs`) y estado ✅ en el backlog~~ → hecho: merge 9285a1db (2026-10-08), estado ✅ en el backlog.
 - Pendiente de fondo (fuera de alcance): `i18n` por petición en toda la GUI; el guard solo cubre el visor `/c`.

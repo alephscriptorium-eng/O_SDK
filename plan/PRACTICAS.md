@@ -26,10 +26,14 @@ secuencia y el porqué.
 
 ## 3. Gates: local antes que remoto
 
-1. **Gates locales** (Docker local) numerados `G0…Gn`, cada uno con salida esperada. Bloqueantes.
+1. **Gates locales** (Docker local) numerados por protocolo (upgrades de Oasis: `U0-U7`, `UM`, `UR`, `US` de
+   `docs/PUB/UPGRADE-PROTOCOL.md` §3.4; otros WPs: `G0…Gn` del BRIEF), cada uno con salida esperada. Bloqueantes.
 2. **Drill con identidad desechable** para todo lo que publique en SSB o toque una cartera. La
    identidad real de nadie —tampoco la del custodio— se usa para ensayar.
-3. `src/` no se toca fuera de los guards: invariante `git diff oasis-upstream/main --stat -- src/`.
+3. `src/` no se toca fuera de los guards: invariante `git diff $NEW_REF --stat -- src/` = **7 ficheros**
+   (7 guards en 6 ficheros + `src/configs/blockchain-cycle.json`; D-O37), con `NEW_REF` el commit
+   «Oasis release X.Y.Z» que fija el preflight (`docs/PUB/UPGRADE-PROTOCOL.md` §1), **no**
+   `oasis-upstream/main`. Los WPs `upgrade/` siguen ese protocolo de principio a fin.
 4. Docs: `npm run docs:build` y `.claude/skills/site-web/scripts/verificar-sitio.mjs` (enlaces muertos rompen el build).
 5. Solo entonces el host, paso a paso, con **parada dura** (`docs/AGENTES.md` §2).
 

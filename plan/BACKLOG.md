@@ -3,16 +3,16 @@
 Estados: ⬜ pendiente · 🔶 en curso · ✅ aceptado · ⛔ bloqueado.
 Serie: **WP-Onn**. Método: `swarm-orquestacion` (lane · WP · BRIEF · CA).
 Prioridad: **P0** desbloquea a la mesa o a otro carril · **P1** núcleo del
-mundo · **P2** horizonte.
+mundo · **P2** horizonte · **P3** sin fecha / cuando toque.
 
 | dato | valor |
 | ---- | ----- |
 | Mundo | `C:\S_LAB\o-sdk` |
 | Encargo | `INFORME-R4 §2` (F2) — proyectar el mundo **acabado**, sin limitarse a lo votado |
 | Fuente normativa | `INFORME-R4.md` · consenso H-01 sellado |
-| Asientos del carril | [`plan/DECISIONES.md`](DECISIONES.md) (D-O1…D-O12) |
+| Asientos del carril | [`plan/DECISIONES.md`](DECISIONES.md) (D-O1…D-O37) |
 | Régimen | **nada se abre sin GO del custodio**; encolar de más cuesta cero |
-| Revisión | 2026-07-26 · relevo de estación (D-O12): +WP-O19 · T5 resuelto en concepto (D-O9) · U93 acotado (D-O11) |
+| Revisión | 2026-10-15 · WP-O139 (deuda documental): estados de WPs fusionados, +WP-O139/O140/O141/O142, D-O37. Anterior: 2026-07-26 · relevo de estación (D-O12): +WP-O19 · T5 resuelto en concepto (D-O9) · U93 acotado (D-O11) |
 | Edición | **F2-unificada** (Anfitrión + revisión Temis): +O07/O08/O09/O55/O66/O76/O77/O78/O95 · ownership O13/O21/O37 → dependencias externas · O94 = gate de v1 |
 
 **Dependencias externas de este plan** (un solo Scriptorium): U93/torno =
@@ -86,6 +86,8 @@ hoy inaplicable en O.
 ronda · ampliar mapa = commit de gobierno.
 
 | **WP-O03** | **P1** | Consolidar gobierno disperso |
+
+**Estado** · ✅ 2026-10-15 · WP-O139 y **D-O37** (criterio nuevo: lo subsumido se **retira** con `git rm`, git archiva; no «cita inerte»). Retirados `MAPA.md`, `PLAN.md`, `next-steps.md` y `docs/CHANGELOG.md` (upstream v0.7.4); `BASE-1/2/3` se quedan (función no subsumida: doctrina del portal), corregidos y enlazados desde `docs/proyecto.md`. **Seguimiento**: los riesgos de `MAPA.md` §7 se contrastaron con este backlog el 2026-10-15. Cubiertos: (1) socket de Docker = root tras Bearer → WP-O52 (`pub/docker-compose.pub.yml:65` sigue montando `/var/run/docker.sock`); (2) token de rooms público en el historial → WP-O73 (⛔ custodio, D-O10); (3) `curl | bash` desde la cuenta vieja → WP-O72 (`pub/site/scriptorium/index.html:349` sigue con el `curl -fsSL https://raw.githubusercontent.com/…`); (4) DoS por invite no cacheado en fallo → WP-O53 (`pub/panel-api/src/server.mjs:167-171` solo cachea el invite positivo); (5) enlaces a la cuenta anulada → WP-O72 (`pub/site/scriptorium/estado.md:66`: 17 enlaces en 6 ficheros); (8) remote `oasis-upstream` → **resuelto** (`git remote -v` lo lista); (9) `caps.shs` en `src/configs/server-config.json:6`, zona de overlay → WP-O82 y UPGRADE §5 «Mantener / Rotar». **No estaban en el backlog**: (6) CI con Verdaccio propio → **resuelto sin WP**: `.github/workflows/docs.yml:40-41` hace `npm ci` sin registry propio; (7) datos de instancia versionados → `devops/hosts/scriptorium/host.env` existe (WP-O117 lo generaliza), pero `pub/BACKLOG.md` **sigue en git** con la IP pública y el fingerprint SSH del VPS (líneas 88-113): **pendiente**, bajo el mismo criterio D-O37 (retirarlo o pasar lo vivo a `devops/hosts/`). Las citas con número de línea a `MAPA.md`/`PLAN.md` en `docs/ROADMAP/aleph-net/` son dosieres congelados y se leen con `git show <sha>:<fichero>` (D-O37).
 
 **BRIEF** · Fusionar/retirar `MAPA.md`, `PLAN.md` (mi diseño target
 retirado), `BASE-*.md` y `pub/BACKLOG.md` hacia `plan/`. Marcar como
@@ -445,6 +447,8 @@ lo retirado queda documentado con motivo.
 
 | **WP-O46** | **P1** | Sala 04 · HUB clearnet como nodo de soporte |
 
+**Estado** · ✅ 2026-09-13 en `main` (merge d1047c0e; desplegado el mismo día). Asientos D-O13, D-O14, D-O15.
+
 **BRIEF** · Servir el HUB web de solo lectura de Oasis 1.0.8 (`/c`, 12
 tipos) desde un **segundo nodo SSB con identidad propia** (`oasis-hub`:
 `backend.js --public` con sbot embebido, misma imagen, `command:
@@ -494,6 +498,8 @@ Dep: WP-O46.
 
 | **WP-O97** | **P1** | Upgrade Oasis 1.0.8 → 1.1.2 con el HUB activo |
 
+**Estado** · ✅ 2026-09-17 en `main` (merge b19dd1f2; desplegado el mismo día). Reporte `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md`.
+
 **BRIEF** · Primer upgrade del fork con el nodo de soporte en producción.
 Seguir `UPGRADE-PROTOCOL.md` + `HUB-PROTOCOL.md` §5: overlay limpio,
 4 guards, greps de invariantes del HUB sobre el árbol nuevo, adaptar lo
@@ -512,6 +518,8 @@ vhost nunca llegan al HUB · `/c/qr/x` sin `X-Cache-Status: HIT` (`no-store`).
 Dep: WP-O46. Relación: WP-O80, WP-O77.
 
 | **WP-O98** | **P1** | Cliente fresco en o-sdk + importación de identidad |
+
+**Estado** · ✅ 2026-09-17 en `main` (merge b748b0f4; cliente activo el mismo día). Reporte `plan/REPORTES/WP-O98-cliente-fresco-identidad.md`.
 
 **BRIEF** · El cliente personal nunca se inicializó desde este repo (vivía en
 un checkout antiguo, Oasis 0.8.8). Probar el protocolo de alta fresca del
@@ -534,6 +542,8 @@ el sbot no es el feed del secret · `status --pub` llega a SYNC-OK (seq local
 Dep: WP-O97. Relación: WP-O77, WP-O80, WP-O46 (§3 invite desde sbot puro).
 
 | **WP-O99** | **P1** | Teatro · sidecar de RRSS con fuente en exports de x.com |
+
+**Estado** · ✅ 2026-09-18 en `main` (merge add314c9; desplegado el mismo día). Reporte `plan/REPORTES/WP-O99-teatro-rrss-sidecar.md`. Asiento D-O16.
 
 **BRIEF** · El Teatro (Sala 03) estaba en producción sin gobierno: el generador
 de la Obra Nº 1 solo existía fuera del repo, el deploy tenía la obra
@@ -571,6 +581,8 @@ Dep: WP-O46 (volumen y layout del VPS). Relación: WP-O47 (disco), WP-O55 (backu
 
 | **WP-O100** | **P1** | Teatro · puerta semántica: «El sistema» y «El cantar» (capa curada) |
 
+**Estado** · ✅ 2026-09-18 en `main` (merge 507f660d: revisión del custodio aplicada y desplegada). Reporte `plan/REPORTES/WP-O100-teatro-puerta-semantica.md`. Asiento D-O17.
+
 **BRIEF** · El Teatro solo ofrecía puertas mecánicas. Añadir la puerta que
 explica la obra como **visión del mundo expresada como sistema** (teoría →
 máquina → red → juguetes → libro; los protagonistas son los constructos del
@@ -600,6 +612,8 @@ enlazan · el JSON y los dosieres de `editorial/` no se publican.
 Dep: WP-O99.
 
 | **WP-O101** | **P2** | Roadmap · los dosieres de trabajo publicados en `docs/ROADMAP/` |
+
+**Estado** · ✅ 2026-09-18 en `main` (merge d9f540af). Asiento D-O18.
 
 **BRIEF** · El material prospectivo de la casa (seis dosieres de trabajo:
 aleph-net, relacional, colectivizaciones, res-publica, oasis-faircoin,
@@ -634,14 +648,10 @@ Dep: —. Relación: WP-O52 (panel), WP-O100 (Aleph Cero como manual de cobertur
 | a upstream | `Vary` en `/c` e idioma global por proceso; `GET /wallet` republica la dirección; avisos a uno mismo en un nodo `--public` | reporte WP-O113 §7 |
 | al llegar la **dote** | `backup-ecoin.sh` inmediato; comprobar pool y primer pago; avisar a upstream de que estamos en la lista | ECOIN §8, §9 |
 | semanal | `backup-ecoin.sh` (cada anuncio usa una dirección nueva del keypool) + `hub-wallet.sh status` + `hub-disk.sh status --json` | ECOIN §9 · HUB §6 |
-| **2026-10-02** | **A las 24 h de WP-O114**: memoria de HUB y bot en 1.1.10; `upgrade-gates.sh --remote check post-o114` (esperado: `pubAvailability` +1 o +2, cifrados 0). Si va bien, retirar el rollback: imagen `:1.1.4` (lleva dentro el `.env.prod` viejo), `src.old-1.1.4`, `/srv/oasis/src-1.1.4.tgz` y los `*.bak-o114-*` | reporte WP-O114 |
-| cuanto antes | Backups del 2026-10-01 (`devops/backups/{oasis-pub,ecoin}/20261001T17*`) a almacenamiento cifrado. Decidir si se rota lo que había en el `.env.prod` (estuvo dentro de las imágenes del host) | reporte WP-O114 |
+| cuanto antes | **Backups a almacenamiento cifrado fuera de la máquina**: `devops/backups/{oasis-pub,ecoin,client,client-wallet}/2026091*` y `devops/backups/{oasis-pub,ecoin}/20261001T17*` (llevan `secret` y `wallet.dat` sin cifrar; las copias de estado de `/srv/oasis` ya salieron en WP-O133, los backups del retro los recuerda WP-O135). Decidir si se rota lo que había en el `.env.prod` (estuvo dentro de las imágenes del host) | AGENTES §2.7 · reporte WP-O114 |
 | ~~2026-09-20~~ ✅ WP-O114 | Memoria de HUB y bot-2 en 1.1.4 con el motor encendido; si va bien, retirar en el VPS la imagen `:1.1.2`, `src.old` y `/srv/oasis/src-1.1.2.tgz`. **Sin hacer a 2026-10-01** (`deploy-status.sh`, restos de rollback: `src.old`, `:1.1.2` y los tgz de 0.9.6, 1.0.8 y 1.1.2): pasa al paso 2 de WP-O114, porque `src.old` rompe el `mv` del deploy | reporte WP-O106 · UPGRADE §4 |
-| cuanto antes | **Backups de hoy a almacenamiento cifrado fuera de la máquina**: `devops/backups/{oasis-pub,ecoin,client,client-wallet}/2026091*` (llevan `secret` y `wallet.dat` sin cifrar) | AGENTES §2.7 |
 | custodio, en el navegador | Casilla «Torrents» en clearnet de su perfil → `/c/torrents/…` en el HUB; opcional «wallet» visible para recibir pagos desde la UI. Cada una es un `about` | TEATRO-P2P §4.4 |
 | custodio | Comprobar en Banking el cobro del `ubiClaim` de 2026-09 (dirigido a La Plaza) | CLIENT §8.7 |
-| siguiente sesión | WP-O110: puerta «P2P» en el sitio de la obra y en el catálogo; `backup-teatro.sh` debe respaldar `p2p/` y `CONGELADO.json`; semillas propias, cartelera y medición | dosier P2P `06`/`07` |
-| siguiente sesión | WP-O109: prueba de agente en frío del protocolo; `limit_req` en `/c`; docs de upstream | AGENTES, D-O23 |
 | horizonte | Carteras en los 2 clientes Android del custodio: protocolo propio (la app trae su cartera); en 1.1.4 abrir la app con cartera publica la dirección | CLIENT §8.2 |
 | a upstream | Hallazgos de ECOIN §12 (suelo de 1 ECO sin fondos y época fijada, `isLoopbackRequest` tras proxy/contenedor, alta no idempotente…) | ECOIN §12 |
 
@@ -751,7 +761,7 @@ Dep: WP-O116 y WP-O117 para las puertas que hoy están en obras.
 
 | **WP-O119** | **P0** | La medida de los nodos deja de depender del formato del log |
 
-**Estado** · ✅ 2026-10-04 en la rama `wp/O119-medida-db2` (`plan/REPORTES/WP-O119-medida-db2.md`); pendiente de merge a `main`. Asiento D-O27.
+**Estado** · ✅ 2026-10-04 en la rama `wp/O119-medida-db2` (`plan/REPORTES/WP-O119-medida-db2.md`); fusionada en `main` el 2026-10-04 (merge 7658b120). Asiento D-O27.
 
 **BRIEF** · Oasis 1.2 cambia el log de `flume/log.offset` (JSON) a `db2/log.bipf` (binario) y deja en
 el sitio del viejo un fichero-guarda. `lib-node.sh` contaba con `grep` sobre el fichero viejo y la
@@ -832,14 +842,14 @@ Dep: —. Relación: WP-O112, WP-O118.
 
 | **WP-O128** | **P0** | Upgrade a Oasis 1.2.3 |
 
-**Estado** · ✅ 2026-10-07: pub, HUB y bot en 1.2.3 en el host (`plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md` §9), mismo delta que en local: `oasisVersion` +1 por nodo y nada más (el `about` de `clearnetSince` del bot no salió; queda declarado `+0..1` en cada arranque). Rollbacks de 1.1.10 y 1.2.1 retirados. Rama `upgrade/oasis-1.2.3` (sobre `fix/upgrade-protocol-o127`), pendiente de merge. Sala 04 al día (23 tipos). Tor: decidido que no (`onion: []`). Cliente: el custodio decidió no subirlo (sigue en 1.2.2). **Pendiente**: backups viejos de `/srv/oasis` fuera de la máquina, medida a las 24 h, una llamada real por el pub, merge hecho (`7732f233`).
+**Estado** · ✅ 2026-10-07: pub, HUB y bot en 1.2.3 en el host (`plan/REPORTES/WP-O128-upgrade-oasis-1.2.3.md` §9), mismo delta que en local: `oasisVersion` +1 por nodo y nada más (el `about` de `clearnetSince` del bot no salió; queda declarado `+0..1` en cada arranque). Rollbacks de 1.1.10 y 1.2.1 retirados. Rama `upgrade/oasis-1.2.3` (sobre `fix/upgrade-protocol-o127`), fusionada en `main` el 2026-10-07 (merge conjunto O127+O128, 7732f233). Sala 04 al día (23 tipos). Tor: decidido que no (`onion: []`). Cliente: el custodio decidió no subirlo (sigue en 1.2.2). **Pendiente**: backups viejos de `/srv/oasis` fuera de la máquina (cerrado por WP-O133), medida a las 24 h, una llamada real por el pub.
 
 **BRIEF** · Ciclo gordo: `backend.js` +1354/−261, `long_text.js`, `pdf.js`, mapas reescritos (PNG → SVG/JPG), `opusscript` para Phone, `ssb-box`/`ssb-conn`/`ssb-gossip` tocados en `src/base` (cierre del pub: invite obligatorio), `outgoing.onion` abierto en `server-config.json` (DECISIÓN: `[]` en HUB y bots), 10 parches en el script de upstream. Riesgo de saltar el ensayo local estimado > 50 %: se ensaya. Sin cambio de motor.
 Dep: WP-O127.
 
 | **WP-O129** | **P1** | Plantilla de organización: del organigrama de un colectivo a la infra de su pub (demo Acampada26S) |
 
-**Estado** · 🔶 2026-10-07, rama `dev/retro-exporter` (desde `main` 00124a7b). Hecho: organigrama de Acampada26S transcrito (`ARCHIVO/DISCO/retro-exporter/entrada/`), mapeo con cinco reglas y trazabilidad por `id` (`MAPEO.md`), plantilla `pub/templates/acampada26s.json` + contrato `SCHEMA.md` (firmas verificadas sobre 1.2.3), protocolo genérico `docs/PUB/TEMPLATE-PROTOCOL.md` con tres vías de activación (guion / fría / caliente) y contrato de la herramienta, `pub/tools/template-seed.js --guion` (25 tribus, 7 salas, 7 calendarios, 4 listas, 4 wikis, 2 mapas; 24 `origen` resueltos; 9 pendientes del colectivo), guion generado en el dosier, presentación doble carril (Acampada / Oasis). Hallazgos medidos que cambiaron el diseño: los modelos publican siempre como el sbot (no hay identidad proxy; la vía caliente es un bot secretaría), el workflow es local al cliente (solo el guion lo lleva), sin intervalo diario, semáforo en `votes` y no en `parliament`. Decisión D-O28.
+**Estado** · ✅ 2026-10-07, rama `dev/retro-exporter` (desde `main` 00124a7b), fusionada en `main` el 2026-10-08 (merge f76bb835). Pendiente menor: sin reporte en `plan/REPORTES/` ni entrada en `CHANGELOG.md` (medido el 2026-10-15; el dosier vive en `ARCHIVO/DISCO/retro-exporter/`). Hecho: organigrama de Acampada26S transcrito (`ARCHIVO/DISCO/retro-exporter/entrada/`), mapeo con cinco reglas y trazabilidad por `id` (`MAPEO.md`), plantilla `pub/templates/acampada26s.json` + contrato `SCHEMA.md` (firmas verificadas sobre 1.2.3), protocolo genérico `docs/PUB/TEMPLATE-PROTOCOL.md` con tres vías de activación (guion / fría / caliente) y contrato de la herramienta, `pub/tools/template-seed.js --guion` (25 tribus, 7 salas, 7 calendarios, 4 listas, 4 wikis, 2 mapas; 24 `origen` resueltos; 9 pendientes del colectivo), guion generado en el dosier, presentación doble carril (Acampada / Oasis). Hallazgos medidos que cambiaron el diseño: los modelos publican siempre como el sbot (no hay identidad proxy; la vía caliente es un bot secretaría), el workflow es local al cliente (solo el guion lo lleva), sin intervalo diario, semáforo en `votes` y no en `parliament`. Decisión D-O28.
 
 **BRIEF** · Acampada26S corre Oasis 1.2.3 upstream (`acampada26s.net/c`, consigna «todos con workflow activists») y publicó su organigrama como imagen. Pregunta del custodio: ¿se puede parsear ese modelo a infraestructura Oasis y entregárselo como kit? Respuesta: sí, como **plantilla** (estructura, no mock), con activación por guion humano hoy y automatismos con permiso por bloque después. Método genérico en `docs/PUB`, instancia en `ARCHIVO/DISCO`. Fuera de alcance: el código de `--cold` (WP-O130) y `--hot` (WP-O131).
 Dep: WP-O128 (firmas de 1.2.3).
@@ -868,12 +878,45 @@ Dep: WP-O132.
 
 | **WP-O135** | **P0** | Upgrade a Oasis 1.2.5 (1.2.3 → 1.2.5; la 1.2.4 queda dentro del salto) |
 
-**Estado** · ✅ 2026-10-10 **aplicado en el host** (pub, HUB y bot de cartera en 1.2.5: `oasisVersion+1` por nodo y nada más, mismo delta que en local), rama `upgrade/oasis-1.2.5` (desde `main` 5f4462b6), pendiente de merge; reporte `plan/REPORTES/WP-O135-upgrade-oasis-1.2.5.md`. Hecho: UPGRADE §2 (overlay 560580d7 + **7 guards** en 6 ficheros; audit de parches `pendiente=0`), §3.1-§3.3 (184 disposiciones, `--check` en verde), adaptación del fork (bind de `oasis-config.json` al directorio de estado, donde `config-manager.js` lee desde 1.2.4; `gossip` fuera de los cinco `ssb-config`), **séptimo guard** D-O31 (`/c/blob` vuelve a pedir a la red los blobs de la lista blanca), D-O32 (confianza de Banking aceptada; cliente en 1.2.2 hasta su WP); gates U0-U7 y US en local con cuatro nodos; host GO-1…GO-4b con `check` en verde en cada paso, `hub --strict` en verde, snapshot del pub reconstruido. **El bot retro no se subió en el host: D-O33**, se mudó a la máquina operadora como nodo real (`volumes-real/`, identidad íntegra verificada con sha256 y log en frío, `oasisVersion` 1.2.5 aceptado por el pub como seq 151; contenedor, env y datos retirados del VPS con pub/HUB/bot Δ0) y **Campamento se deshizo** (115 tombstones en 11 bloques con `seed-tombstone.js`, nuevo; feed del bot en 266; TEMPLATE §9 nuevo, HUB §11 «mudanza o baja»). Hallazgos de upstream 1.2.5 en el reporte §9.1 (invitaciones abiertas invisibles al modelo, calendarios de tribu no borrables por el modelo, detalle de `/c` sin filtro de tombstones). **Pendiente**: cripta USB (aviso al custodio: copias de `devops/backups/{oasis-retro-bot,srv-oasis,oasis-pub,ecoin}/2026101*`), PERMISO 5 (tgz del retro en el host), medir H2 con un cliente real, retirar la Sala 02 del sitio, WP del cliente. Dep: WP-O128.
+**Estado** · ✅ 2026-10-10 **aplicado en el host** (pub, HUB y bot de cartera en 1.2.5: `oasisVersion+1` por nodo y nada más, mismo delta que en local), rama `upgrade/oasis-1.2.5` (desde `main` 5f4462b6), fusionada en `main` el 2026-10-10 (merge 030c1012); reporte `plan/REPORTES/WP-O135-upgrade-oasis-1.2.5.md`. Hecho: UPGRADE §2 (overlay 560580d7 + **7 guards** en 6 ficheros; audit de parches `pendiente=0`), §3.1-§3.3 (184 disposiciones, `--check` en verde), adaptación del fork (bind de `oasis-config.json` al directorio de estado, donde `config-manager.js` lee desde 1.2.4; `gossip` fuera de los cinco `ssb-config`), **séptimo guard** D-O31 (`/c/blob` vuelve a pedir a la red los blobs de la lista blanca), D-O32 (confianza de Banking aceptada; cliente en 1.2.2 hasta su WP); gates U0-U7 y US en local con cuatro nodos; host GO-1…GO-4b con `check` en verde en cada paso, `hub --strict` en verde, snapshot del pub reconstruido. **El bot retro no se subió en el host: D-O33**, se mudó a la máquina operadora como nodo real (`volumes-real/`, identidad íntegra verificada con sha256 y log en frío, `oasisVersion` 1.2.5 aceptado por el pub como seq 151; contenedor, env y datos retirados del VPS con pub/HUB/bot Δ0) y **Campamento se deshizo** (115 tombstones en 11 bloques con `seed-tombstone.js`, nuevo; feed del bot en 266; TEMPLATE §9 nuevo, HUB §11 «mudanza o baja»). Hallazgos de upstream 1.2.5 en el reporte §9.1 (invitaciones abiertas invisibles al modelo, calendarios de tribu no borrables por el modelo, detalle de `/c` sin filtro de tombstones). **Pendiente**: cripta USB (aviso al custodio: copias de `devops/backups/{oasis-retro-bot,srv-oasis,oasis-pub,ecoin}/2026101*`), PERMISO 5 (tgz del retro en el host), medir H2 con un cliente real, retirar la Sala 02 del sitio, WP del cliente. Dep: WP-O128.
 
 | **WP-O138** | **P0** | Upgrade a Oasis 1.2.8 (1.2.5 → 1.2.8; 1.2.6 y 1.2.7 quedan dentro del salto) |
 
 **Estado** · ✅ 2026-10-11 **aplicado en el host** (pub, HUB y bot de cartera en 1.2.8, mismo delta que el declarado: pub `oasisVersion+1`; HUB `oasisVersion+1 karmaScore+1`; bot `oasisVersion+1 karmaScore+1 about+1`), rama `upgrade/oasis-1.2.8` (desde `main` 030c1012), fusionada en `main` el 2026-10-12; reporte `plan/REPORTES/WP-O138-upgrade-oasis-1.2.8.md`. Sin cambio de motor; 7 guards repuestos sin conflictos; solo viaja `src/`. Hallazgos: desde 1.2.6 todo backend publica solo su `karmaScore` (aceptado y declarado); `volumes-real/` entraba en el contexto de build (corregido). **Abierto:** DECISIÓN sobre el reequilibrio de RBU sin tope antes de la dote (H2); cliente en 1.2.2 (WP propio); el bot retro está **deprecated** (D-O36, asentado al cierre de este WP: la baja no constaba en ningún documento) y no se sube; que el diff de comportamiento vea las llamadas que se mudan a un temporizador.
 Dep: WP-O135. (El número salta O136 y O137, que viven en `dev/26sm-exported`.)
+
+| **WP-O139** | **P1** | Deuda documental: docs de entrada, `plan/` e higiene |
+
+**Estado** · 🔶 2026-10-15, rama `wp/O139-deuda-docs` (desde `main` d5a4e929). Asiento D-O37.
+
+**BRIEF** · Tras once ciclos de upgrade (0.8.3 → 1.2.8) los documentos de entrada mienten o se contradicen (`MAPA.md` describe julio y se presenta como «estado real»; 4, 5 o 7 guards según el fichero; la deprecación del retro, D-O36, repetida tres o cuatro veces por fichero), el backlog lleva WPs fusionados como «pendiente de merge», `ARCHIVO/DISCO/26sm-exported/` está sin ignorar y `.claude/settings.json` es un residuo. Retirar `MAPA.md`, `PLAN.md`, `next-steps.md` y `docs/CHANGELOG.md` (upstream v0.7.4), subsumidos (criterio D-O37); corregir `BASE-1/2/3` («Primera pasada», `KrakensLab`, «dos modos», «5 divergencias») y enlazarlos desde `docs/proyecto.md`; frase canónica de guards («7 guards en 6 ficheros; con `blockchain-cycle.json` el invariante `git diff $NEW_REF --stat -- src/` es de 7 ficheros») en README, BASE-2 y `roles/mantener.md`; retro una sola vez por fichero (AGENTES §2.9/§3/§5, fichas de instancia); puerta **Habitante** en las tablas de AGENTES §0 y README; estados del backlog (O46, O97-O102, O119, O128, O129, O135, O80, O77, O03, O111); `.gitignore` para `26sm-exported`; retirar `scripts/check-docker-context.sh` y el npm `pub:local:retro-bot:up`. **No toca** `UPGRADE-PROTOCOL.md` ni `devops/scripts/upgrade-*` (WP-O140).
+**CA** · `git grep -nE "5 fork-guards|5 divergencias|4 ficheros\)|0\.8\.8|KrakensLab|dos modos"` vacío fuera de `archive/`, `ARCHIVO/` y `src/`, y `git grep -nE "MAPA\.md|PLAN\.md|next-steps\.md"` vacío fuera de `archive/`, `ARCHIVO/`, `docs/ROADMAP/` y `plan/` · `npm run docs:build && npm run docs:gate` verde · `bash devops/scripts/docs-ceguera.sh` ok · `git status --short` limpio · D-O37 asentado · WP-O03 ✅.
+**Fuera de alcance (anotado, no se hace)** · `.claude/skills/site-web` medio trackeado (`.gitignore:78` ignora `.claude/skills/` y `git ls-files` devuelve 8 ficheros) · `CHANGELOG.md` todo bajo `[Unreleased]` y `package.json` en 1.0.0 (WP-O05) · el hito `ubiClaim` ≥ 2026-10-18 de WP-O111 es **DECISIÓN del custodio** (se le recuerda, no se ejecuta) · `pub/BACKLOG.md` con datos de instancia en git (ver WP-O03, seguimiento 7).
+Dep: —. Relación: WP-O03, WP-O05, D-O36, D-O37.
+
+| **WP-O140** | **P0** | Protocolo de upgrade v3: tiempos y comprobaciones |
+
+**Estado** · ⬜. Rama `wp/O140-upgrade-v3`; se abre tras fusionar WP-O139 (ambos tocan `docs/AGENTES.md` en secciones distintas: se fusionan en orden).
+
+**BRIEF** · El protocolo se ha parcheado en 48 commits y el camino feliz local acumula ≈22 min de espera ciega (3×90 s de settle, healthchecks a 60 s sin `start_interval`, `sleep 30`, humo 2×45 s, regla de 5 min contada a mano); `--help` truncado en los tres scripts; `--check` recalcula el diff entero (>5 min en Windows); anécdotas de ciclos pasados en medio del procedimiento; tabla §7 sin el ciclo 1.2.5. Entregar, una pieza por commit y verificación local tras cada uno: `--help` entero (`upgrade-gates.sh`, `upgrade-behaviour-diff.sh`, `upgrade-preflight.sh`); `upgrade-invariants.d/expect.conf` (delta esperado por nodo; `check` sin `--expect` lo lee y lo dice, `--expect 0` = todo cero); `check <tag> --wait` (verde solo si rc 0 **y** ningún `seq` cambia en `--stable` s; desviación firme → rojo inmediato; agotado `--max` → rojo o NO MEDIBLE) y `--min-age` (300 s por defecto en `--remote`: nodo PREMATURO = NO MEDIBLE); `up` sin settle fijo; `smoke <imagen>` (efímeros `--network none` sin volúmenes: versión, `node --check`, 0 `secret`, sin `.env*`/`volumes-*`/`src.old`, ≥3 parches, 0 errores; sustituye la receta a mano de U2 y del paso 6 del host); `upgrade-behaviour-diff.sh --from-tsv` y `--skip` con un solo `git diff`; `start_interval: 3s` en pub/HUB/bot (precondición medible: Engine ≥ 25 en el host); `pub.tsv`, `client.tsv`, `snapshot.tsv` (cada literal contrastado con `git diff $NEW_REF -- src/`); `UPGRADE-PROTOCOL.md` en imperativo y presente, la historia solo en §7 (fila 1.2.3 → 1.2.5 añadida, orden cronológico), tabla «delta vigente por nodo» en vez de viñetas por ciclo, gates U0-U7 + UM, UR, US con su subcomando.
+**CA** · `--help | tail -2` sin `# ===` en los tres scripts · `shellcheck` sin avisos nuevos · stack local 1.2.8: `snapshot t0` → `up pub|hub|bot` (sin settle) → `check t0 --wait` = `GATE OK` con delta 0, tiempo total medido frente a los ≈7 min actuales · `smoke <imagen local>` = `SMOKE OK`, 0 `secret`, sin contenedores sobrantes; `smoke alpine:3` → rc 1 · `check --min-age 3600` tras `up` → PREMATURO, rc 3 · `--check --from-tsv` sobre el reporte de WP-O138 en < 5 s · **NO MEDIBLE nunca es verde**: `check --wait --expect 'pub:=0 hub:=0 bot:=0'` → DESVIACIÓN en la primera vuelta · ≈10-12 min menos de espera ciega por ciclo, medidos en local antes/después · UPGRADE-PROTOCOL sin anécdotas en el cuerpo y §7 completa.
+Dep: WP-O139 (orden de merge). Relación: WP-O112, WP-O127, WP-O138 §9.
+
+| **WP-O141** | **P0** | Upgrade a Oasis 1.3.0 (1.2.8 → 1.3.0; la 1.2.9 queda dentro del salto) |
+
+**Estado** · ⬜. Rama `upgrade/oasis-1.3.0`. Upstream publicó 1.2.9 y 1.3.0 (plan del 2026-10-15; el `oasis-upstream` local sigue en 1.2.8, 28fc1a68: el preflight lo trae y fija `NEW_REF`).
+
+**BRIEF** · Primer ciclo con el protocolo v3 (WP-O140), seguido tal cual: cada tropiezo es un defecto del protocolo y se corrige en O140 (cherry-pick) o en el reporte §6. §0.3 `deploy-status.sh` (lectura) · §1 `upgrade-preflight.sh --to 1.3.0` con **parada** si trae otra capa de base de datos (UM/UR) o `annex` marca `!` · §2 overlay limpio desde `$NEW_REF` + 7 guards (dos commits), invariante de 7 ficheros · §3 disposiciones con `--check --from-tsv` · §3.4 gates U0-U7 + US con la imagen 1.3.0 (U0 con la 1.2.8 etiquetada; U3 cronometrado con `check --wait`; U5 `worst`; U7 `restore` y repetir), tiempo real de cada gate anotado · **host: GO-1…GO-4b del custodio, cada uno expreso**, orden pub → HUB → bot, un comando por paso; el cliente (1.2.2) no entra salvo GO aparte (D-O32); el retro no se sube (D-O36) · §7 cierre: reporte con las seis cabeceras, CHANGELOG, backlog, journal, ficha, fila en UPGRADE §7. Secretos (invites, `secret`, `.env.prod`, token «Admin access») no se copian a ningún reporte.
+**CA** · pub, HUB y bot de cartera en 1.3.0 con el delta declarado en `expect.conf` · `check` en verde en cada paso del host y `hub --strict` en verde · reporte con las seis cabeceras y los tiempos por gate · correcciones al protocolo aplicadas · trampa `TRIBE_LOG_TYPES` (AGENTES §4) vuelta a medir en 1.3.0.
+Dep: WP-O140. Relación: WP-O138, D-O32, D-O36.
+
+| **WP-O142** | **P2** | Generalizar `retro-seed.sh` / `retro-tombstone.sh` a cualquier bot de plantilla (`--container`) |
+
+**Estado** · ⬜.
+
+**BRIEF** · `pub/scripts/retro-seed.sh` y `retro-tombstone.sh` hacen `docker exec` **dentro del contenedor del bot retro de la casa** (lo dicen sus cabeceras, líneas 2-6): están atados a un nodo **deprecated** (D-O36) que AGENTES §2.9 prohíbe arrancar. El método (TEMPLATE-PROTOCOL §4 vía caliente y §9 deshacer) es de cualquier bot de plantilla: aceptar `--container <nombre>` (o variable de entorno), parar con mensaje si falta, y documentarlo en `TEMPLATE-PROTOCOL.md`; los npm `pub:local:retro-bot:{seed,tombstone}` pasan a un nombre genérico.
+**CA** · drill local con un bot desechable en otro contenedor (`pub/scripts/drill-26s.sh`): siembra y tombstone sin editar el script · sin `--container` el script para y lo dice · `volumes-real/` sigue apagado e intacto (D-O36).
+Dep: —. Relación: WP-O129, WP-O131, D-O33, D-O36.
 
 | **WP-O104** | **P1** | Protocolo para agentes: entrada única, irreversibles, trampas, nombres |
 
@@ -934,7 +977,7 @@ Dep: WP-O106.
 
 | **WP-O110** | **P2** | Teatro P2P · las obras salen a la red (torrent + eD2k/Kad) con cartelera |
 
-**Estado** · 🟡 2026-09-19: **fase 0 hecha** (`plan/REPORTES/WP-O110-teatro-p2p-fase0.md`): *Aleph Cero*
+**Estado** · 🔶 2026-09-19: **fase 0 hecha** (`plan/REPORTES/WP-O110-teatro-p2p-fase0.md`): *Aleph Cero*
 congelada, torrent con semilla web + magnet + ed2k + metalink, anuncio en Oasis. Pendiente: semillas propias,
 cartelera, medición, puerta P2P en el sitio. Plan aprobado por el custodio. Dosier con lo explorado, las opciones y el plan verbatim:
 `docs/ROADMAP/p2p/` (el plan, en `06-plan-wp-o110.md`). Asiento D-O24.
@@ -1073,6 +1116,8 @@ memoria y conexiones conocidos **antes** de que se crucen.
 evidencia · capacidad medida en el molde real, no estimada.
 
 | **WP-O102** | **P1** | hub-wallet del pub: `ecoind` + `azofaifo-scriptorium-wallet-bot-2` |
+
+**Estado** · ✅ 2026-09-18 en `main` (merge 8be408b1; desplegado el mismo día). Reporte `plan/REPORTES/WP-O102-hub-wallet.md`. Asiento D-O19.
 
 **BRIEF** · Oasis 1.1.2 trae Wallet, Banking y RBU, y upstream pide a los
 operadores de pub un `ecoind` 0.0.4 junto al pub (la 1.1.3, sin fuente aún,
@@ -1264,6 +1309,8 @@ se puede sanear y qué queda declarado como pasado.
 | -- | ---- | ------ |
 | **WP-O80** | **P1** | Cablear el protocolo de upgrade |
 
+**Estado** · ✅ absorbido por WP-O112 (protocolo que mide comportamiento: `upgrade-behaviour-diff.sh`, gates U0-U7) y WP-O127 (preflight por commit «Oasis release», `OLD_REF`/`NEW_REF`). El remote `oasis-upstream` existe (`git remote -v`) y el preflight corre de principio a fin; ejercido en ocho ciclos, de 1.0.8 → 1.1.2 a 1.2.5 → 1.2.8 (UPGRADE §7). Anotado el 2026-10-15 (WP-O139).
+
 **BRIEF** · El protocolo está documentado y **no se puede ejecutar**: falta
 el remoto del upstream del que depende cada paso.
 **CA** · El preflight de upgrade corre de principio a fin · deriva de
@@ -1331,6 +1378,8 @@ camino de arranque** (cerco).
 de confianza · desconectar la red no impide arrancar.
 
 | **WP-O77** | **P1** | Upgrade y rollback de instancia |
+
+**Estado** · ✅ absorbido por WP-O112 (protocolo que mide comportamiento; U7 = `restore` con nodo desechable) y WP-O127 (preflight por commit release; rollback preparado antes del build en el host, `src.old-*` + imagen etiquetada). Ejercido en ocho ciclos (UPGRADE §7); el único rollback que no existe es el de la migración de motor flume → db2 (D-O27), declarado como tal. Anotado el 2026-10-15 (WP-O139).
 
 **BRIEF** · Una instancia que solo sabe avanzar es una trampa: la
 actualización fallida debe volver al estado anterior **sin perder datos**.
@@ -1416,9 +1465,10 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-18: +WP-O99 P1 en L4 — Teatro: sidecar de RRSS, asiento D-O16.)
 (2026-09-18: +WP-O100 P1 en L4 — Teatro: puerta semántica, asiento D-O17.)
 (2026-09-18: +WP-O101 P2 en L4 — Roadmap: dosieres de trabajo en docs/ROADMAP, asiento D-O18.)
+(2026-09-18: +WP-O102 P1 en L5 — hub-wallet del pub (ecoind + wallet-bot-2), +WP-O103 P1 en L4 — ECOin en el cliente, asiento D-O19.)
 (2026-09-19: +WP-O110 P2 en L4 — Teatro P2P con cartelera, planificado; dosier en docs/ROADMAP/p2p, asiento D-O24.)
 (2026-10-01: +WP-O112 P1, +WP-O113 P1, +WP-O114 P1 en L4 — protocolo de upgrade y ciclo 1.1.4 → 1.1.10, asiento D-O25.)
-(2026-09-18: +WP-O102 P1 en L5 — hub-wallet del pub (ecoind + wallet-bot-2), +WP-O103 P1 en L4 — ECOin en el cliente, asiento D-O19.)
+(2026-10-15: +WP-O139 P1, +WP-O140 P0, +WP-O141 P0, +WP-O142 P2 — deuda documental, protocolo de upgrade v3, ciclo 1.3.0, scripts de plantilla genéricos; asiento D-O37. **Total real medido hoy**: `grep -c '^| \*\*WP-O' plan/BACKLOG.md` = **118** filas (P0 25 · P1 62 · P2 30 · P3 1); la tabla de arriba es la foto de la edición F2-unificada y no se recalcula.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11
