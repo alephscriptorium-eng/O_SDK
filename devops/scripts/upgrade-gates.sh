@@ -18,8 +18,10 @@
 #   snapshot <tag>      Foto de cada nodo (pub, hub, bot): estado, versión dentro del contenedor, feed,
 #                       formato del log (flume o db2), sequence propio (del log y del sbot vivo),
 #                       mensajes propios por tipo (cifrados incluidos), flag de primer contacto, segundos
-#                       desde el último arranque; en el bot además dirección, modo del motor, épocas
-#                       abiertas. Se guarda en devops/logs/upgrade/<tag>.<local|remote>.snap
+#                       desde el último arranque, pares conectados y, en los nodos de soporte, el ENLACE
+#                       con el pub medido por su propio conn.peers() (pub_link: connected in|out, ausente, ?);
+#                       en el bot además dirección, modo del motor, épocas abiertas.
+#                       Se guarda en devops/logs/upgrade/<tag>.<local|remote>.snap
 #   check <tag> [--expect '<esperado>' | --expect 0] [--wait] [--max N] [--every N] [--stable N] [--min-age N]
 #                       Foto nueva y comparación con <tag>. Por nodo: mismo feed; Δsequence == suma de
 #                       Δ por tipo (si no cuadra, la medida no vale); y ese delta es el esperado.
@@ -36,6 +38,13 @@
 #                       --min-age N: un nodo recreado hace menos de N s hace la medida PREMATURA (NO
 #                       MEDIBLE): lo que un nodo publica solo no sale todo al arrancar. Por defecto 300
 #                       en --remote y 0 en --local; con --wait, el bucle espera a cumplirlo.
+#                       Exige además que cada nodo de GATE_LINK_NODES tenga el pub como par conectado
+#                       (pub_link): «ausente» es «todavía no» con --wait y DESVIACIÓN sin él; «?» es NO MEDIBLE.
+#   link <alias> [--yes] Repone el enlace con el pub (WP-O143, D-O38; 0 publicaciones) y vuelve a medirlo.
+#                       <alias> de soporte: pub-link.js --ensure dentro del nodo (conn.connect si falta).
+#                       <alias> = pub: el pub RECUERDA a cada nodo de GATE_LINK_NODES por nombre de servicio
+#                       (conn.remember autoconnect): para ellos la conexión será entrante, fuera de su cupo.
+#                       En --remote exige --yes: toca un nodo vivo (su libreta y sus conexiones), no su feed.
 #   hub [--strict]      Matriz del visor clearnet por delante de la caché: 200, MISS→HIT, mismo /c con
 #                       distinto Accept-Language y con cookies (D-O25), ?lang=, cruce de idiomas con
 #                       peticiones concurrentes, sitemap y RSS con URLs https. Solo GET.
@@ -60,6 +69,8 @@
 #                       Después: check u5 --wait --expect 'bot:karmaScore=+0..1'.
 #
 # Variables: GATE_NODES="alias:contenedor:servicio …" (por defecto pub, hub y bot de esta casa) ·
+#   GATE_PUB_ALIAS (pub) · GATE_LINK_NODES (alias de soporte que deben tener el pub conectado; por defecto
+#   todos menos GATE_PUB_ALIAS) · GATE_PUB_LINK_HOST (oasis-pub: nombre de servicio del pub en la red del compose) ·
 #   GATE_UP_TIMEOUT (300) · GATE_WAIT_MAX (600) · GATE_WAIT_EVERY (20) · GATE_STABLE (60) · GATE_MIN_AGE ·
 #   GATE_SMOKE_MAX (120) · GATE_WORST_PATHS · GATE_RSS_MODULE (feed) · HUB_CACHE_CONTAINER · GATE_SETTLE.
 # Códigos de salida: 0 ok · 1 desviación · 3 no medible o precondición · 64 uso.
@@ -100,6 +111,7 @@ done
 [ -n "$MODE" ] && [ -n "$CMD" ] || { usage; exit 64; }
 case "$CMD" in
   snapshot|check|hub|smoke) ;;
+  link) [ "$MODE" = local ] || [ "$YES" = 1 ] || { echo "ERROR: 'link' en --remote toca la libreta y las conexiones de un nodo vivo (no su feed): repite con --yes tras el GO." >&2; exit 64; } ;;
   backup|restore|up|worst) [ "$MODE" = local ] || { echo "ERROR: '$CMD' solo existe en --local: en el host este script no toca ningún nodo." >&2; exit 64; } ;;
   *) usage; exit 64 ;;
 esac
@@ -116,6 +128,11 @@ fi
 [ "$EXPECT" = 0 ] && EXPECT=""
 
 GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot}"
+GATE_PUB_ALIAS="${GATE_PUB_ALIAS:-pub}"
+GATE_PUB_LINK_HOST="${GATE_PUB_LINK_HOST:-oasis-pub}"
+# Nodos de soporte que deben tener el pub como par conectado (WP-O143, D-O38): todos menos el pub.
+if [ -z "${GATE_LINK_NODES:-}" ]; then GATE_LINK_NODES=""; for n in $GATE_NODES; do [ "${n%%:*}" = "$GATE_PUB_ALIAS" ] || GATE_LINK_NODES="$GATE_LINK_NODES ${n%%:*}"; done; GATE_LINK_NODES="${GATE_LINK_NODES# }"; fi
+is_link_node() { for l in $GATE_LINK_NODES; do [ "$l" = "$1" ] && return 0; done; return 1; }
 LOG_ERR_RE='EROFS|EACCES|ReferenceError|TypeError|Cannot find module|Another Oasis|no inicializada|UnhandledPromiseRejection'
 
 trap node_run_cleanup EXIT
@@ -176,16 +193,24 @@ done
 EOS
   } | run 2>/dev/null
 }
-add_probe() { # 2ª fuente del sequence: el sbot vivo. add_probe <fichero .snap>
-  local a c f st s
+add_probe() { # 2ª fuente del sequence (el sbot vivo), pares y enlace con el pub: UNA sonda por nodo. add_probe <fichero .snap>
+  local a c f st j fields pf
+  pf="$(awk -F'|' -v a="$GATE_PUB_ALIAS" '$1==a && $2=="feed"{print $3}' "$1")"
   for n in $GATE_NODES; do
     a="${n%%:*}"; c="${n#*:}"; c="${c%%:*}"
     f="$(awk -F'|' -v a="$a" '$1==a && $2=="feed"{print $3}' "$1")"
     st="$(awk -F'|' -v a="$a" '$1==a && $2=="state"{print $3}' "$1")"
     case "$st" in running*) ;; *) continue ;; esac
     [ -n "$f" ] || continue
-    s="$(node_probe_seq "$c" "$f")"
-    echo "$a|seq_probe|${s:-?}" >> "$1"
+    if is_link_node "$a" && [ -n "$pf" ]; then j="$(node_probe "$c" "$f" "$pf")"; else j="$(node_probe "$c" "$f")"; fi
+    fields="$(node_probe_fields "$j")"
+    echo "$a|seq_probe|$(printf '%s' "$fields" | cut -d'|' -f1)" >> "$1"
+    echo "$a|peers|$(printf '%s' "$fields" | cut -d'|' -f2)" >> "$1"
+    # pub_link: connected|ausente|? y la dirección (in|out). Sin feed del pub en la foto no se mide: «?» (NO MEDIBLE).
+    if is_link_node "$a"; then
+      if [ -n "$pf" ]; then echo "$a|pub_link|$(printf '%s' "$fields" | cut -d'|' -f3)|$(printf '%s' "$fields" | cut -d'|' -f4)" >> "$1"
+      else echo "$a|pub_link|?|" >> "$1"; fi
+    fi
   done
 }
 show_snapshot() {
@@ -194,6 +219,7 @@ show_snapshot() {
     $2=="seq_probe"{p[$1]=$3} $2 ~ /^type:/{t[$1]=t[$1] " " substr($2,6) "=" $3}
     $2=="address"{x[$1]=x[$1] " dirección=" $3} $2=="epochs"{x[$1]=x[$1] " épocas=" $3} $2=="engine"{x[$1]=x[$1] " motor:" $3}
     $2=="mode"{md[$1]=$3} $2=="log"{lg[$1]=$3} $2=="started_age"{ag[$1]=$3}
+    $2=="peers"{x[$1]=x[$1] " pares=" $3} $2=="pub_link"{x[$1]=x[$1] " enlace-pub=" $3 ($4!="" ? "(" $4 ")" : "")}
     $2=="first_contact_flag"{x[$1]=x[$1] " flag-primer-contacto=" $3; if ($3=="ausente") noflag[$1]=1}
     $1!="meta" && !seen[$1]++ {order[++n]=$1}
     END { for (i=1;i<=n;i++) { a=order[i]
@@ -228,7 +254,8 @@ compare_snaps() {
     BEGIN { setexp() }
     FNR == 1 { file++ }
     $1 == "meta" { next }
-    { v[file, $1, $2] = $3; if (!seen[$1]++) order[++nn] = $1; if ($2 ~ /^type:/) types[$1, substr($2, 6)] = 1 }
+    { v[file, $1, $2] = $3; if (!seen[$1]++) order[++nn] = $1; if ($2 ~ /^type:/) types[$1, substr($2, 6)] = 1
+      if ($2 == "pub_link") { v[file, $1, "pub_link_dir"] = $4; haslink[file, $1] = 1 } }
     END {
       firm = 0; soft = 0; unmeasurable = 0
       for (i = 1; i <= nn; i++) { a = order[i]; line = ""; sum = 0; nfirm = 0; nsoft = 0; why[a] = ""
@@ -256,6 +283,11 @@ compare_snaps() {
         if (v[1, a, "epochs"] != v[2, a, "epochs"]) extra = extra " · épocas: " v[1, a, "epochs"] " → " v[2, a, "epochs"]
         if (v[1, a, "engine"] != v[2, a, "engine"]) extra = extra " · motor: " v[1, a, "engine"] " → " v[2, a, "engine"]
         if (v[2, a, "state"] !~ /healthy/) { nsoft = 1; why[a] = why[a] " estado «" v[2, a, "state"] "»;" }
+        # Enlace con el pub (WP-O143, D-O38): la sonda no pudo leer → NO MEDIBLE; ausente → «todavía no» (soft).
+        if ((2, a) in haslink) {
+          if (v[2, a, "pub_link"] == "?") { printf "  %-4s NO MEDIBLE: la sonda no pudo leer conn.peers() (enlace con el pub)\n", a; unmeasurable = 1; continue }
+          if (v[2, a, "pub_link"] == "ausente") { nsoft = 1; why[a] = why[a] " sin enlace con el pub (pub_link ausente);" }
+          extra = extra " · enlace-pub " v[2, a, "pub_link"] (v[2, a, "pub_link_dir"] != "" ? "(" v[2, a, "pub_link_dir"] ")" : "") }
         if (v[2, a, "log_errors"] + 0 > 0) { nfirm = 1; why[a] = why[a] " " v[2, a, "log_errors"] " líneas de error en el log;" }
         verdict = nfirm ? "DESVIACIÓN:" why[a] : (nsoft ? ((wait == 1) ? "todavía no:" why[a] : "DESVIACIÓN:" why[a]) : "ok")
         printf "  %-4s %s · Δseq=%d ·%s%s → %s\n", a, ver, dseq, (line == "" ? " sin publicaciones" : line), extra, verdict
@@ -452,6 +484,8 @@ for mode in server backend; do
   if [ $up = 1 ]; then ok "$mode: $([ $mode = server ] && echo 'socket del sbot' || echo 'GET /c → 200') a los $t s"
   else ko "$mode: $([ "$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null)" = running ] && echo "sin respuesta en $MAX s" || echo "el contenedor se cayó a los $t s")"; fi
   logs="$(docker logs "$cid" 2>&1)"
+  # El keepalive del enlace con el pub (WP-O143) solo se mide en que arranca o se declara desactivado: sin red no hay enlace.
+  if [ $mode = backend ]; then printf '%s\n' "$logs" | grep -a -q 'Enlace con el pub' && ok "$mode: el entrypoint anuncia el enlace con el pub (start_pub_link)" || ko "$mode: el entrypoint no anuncia «Enlace con el pub» (¿pub-link.js en la imagen? ¿start_pub_link?)"; fi
   p="$(printf '%s\n' "$logs" | grep -a -c -E 'patcheado|ya parcheado')"; miss="$(printf '%s\n' "$logs" | grep -a -c -E 'no se encontr|no necesita patch')"
   [ "$p" -ge 3 ] && [ "$miss" = 0 ] && ok "$mode: $p parches del entrypoint aplicados o ya presentes" || ko "$mode: $p parches aplicados, $miss sin anclaje (se esperan 3 «patcheado»/«ya parcheado»)"
   e="$(printf '%s\n' "$logs" | grep -a -i -E -c "$LOG_ERR_RE")"
@@ -461,6 +495,41 @@ done
 [ $fail = 0 ] && { echo "SMOKE OK"; exit 0; } || { echo "SMOKE: DESVIACIÓN"; exit 1; }
 EOS
     } | run
+    ;;
+
+  link)
+    alias="${ARGS[0]:-}"; [ -n "$alias" ] || { echo "uso: link <alias> [--yes]" >&2; exit 64; }
+    c="$(container_of "$alias")" || { echo "alias desconocido: $alias (GATE_NODES)" >&2; exit 64; }
+    pubc="$(container_of "$GATE_PUB_ALIAS")"
+    # El feed del pub se lee de su secret (solo el campo público), en destino, como hace la foto.
+    pf="$({ node_remote_preamble; node_remote_lib; printf 'echo "$(node_feed "$(node_ssb_dir %q)")"\n' "$pubc"; } | run 2>/dev/null | tail -1)"
+    [ -n "$pf" ] || { echo "NO MEDIBLE: no se pudo leer el feed del pub ($pubc)" >&2; exit 3; }
+    rc=0
+    if [ "$alias" = "$GATE_PUB_ALIAS" ]; then
+      # Capa pub (D-O38): el pub recuerda a cada nodo de soporte por su nombre de servicio; la conexión les llegará entrante.
+      for n in $GATE_NODES; do a="${n%%:*}"; is_link_node "$a" || continue; nc="${n#*:}"; nc="${nc%%:*}"; svc="${n##*:}"
+        nf="$({ node_remote_preamble; node_remote_lib; printf 'echo "$(node_feed "$(node_ssb_dir %q)")"\n' "$nc"; } | run 2>/dev/null | tail -1)"
+        [ -n "$nf" ] || { echo "  $a: sin feed legible, no se recuerda"; rc=3; continue; }
+        k44="${nf#@}"; k44="${k44%.ed25519}"
+        out="$({ node_remote_preamble; node_remote_lib; printf 'node_pub_link %q --remember %q --type pub\n' "$pubc" "net:$svc:8008~shs:$k44"; } | run 2>/dev/null | tail -1)"
+        echo "  pub recuerda a $a ($svc): ${out:-sin respuesta}"
+      done
+      sleep 5
+    else
+      is_link_node "$alias" || { echo "uso: link <alias de soporte|$GATE_PUB_ALIAS> (GATE_LINK_NODES=$GATE_LINK_NODES)" >&2; exit 64; }
+      # Con la clave del pub, --ensure crea la entrada por nombre de servicio si el nodo solo lo conocía por IP.
+      k44="${pf#@}"; k44="${k44%.ed25519}"
+      out="$({ node_remote_preamble; node_remote_lib; printf 'node_pub_link %q --ensure %q --key %q --now\n' "$c" "$GATE_PUB_LINK_HOST" "$k44"; } | run 2>/dev/null | tail -1)"
+      echo "  $alias: ${out:-sin respuesta de pub-link.js}"
+    fi
+    echo "== enlace con el pub tras link ($MODE)"
+    for n in $GATE_NODES; do a="${n%%:*}"; is_link_node "$a" || continue; nc="${n#*:}"; nc="${nc%%:*}"
+      st="$({ node_remote_preamble; node_remote_lib; printf 'node_link %q %q\n' "$nc" "$pf"; } | run 2>/dev/null | tail -1)"
+      echo "  $a|pub_link|${st:-?}"
+      case "$st" in connected*) ;; ausente) [ $rc = 0 ] && rc=1 ;; *) rc=3 ;; esac
+    done
+    case $rc in 0) echo "LINK OK";; 1) echo "LINK: ausente en algún nodo (repite tras unos segundos; si persiste, mira su log [pub-link])";; *) echo "LINK: NO MEDIBLE";; esac
+    exit $rc
     ;;
 
   backup|restore)

@@ -11,10 +11,13 @@
 // Autocontenido: viaja por stdin, los argumentos van tras `-`:
 //   docker exec -i -u oasis -e HOME=/home/oasis <ctr> sh -lc 'cd /app/src/server && node - <acción> …' < pub/tools/pub-link.js
 //   --status                      pares vivos (conn.peers) y libreta (conn.dbPeers)            [solo lectura]
-//   --ensure <host> [--now]       si no hay un par CONECTADO con la clave de la entrada net:<host>:… de la
+//   --ensure <host> [--key <K>] [--port <P>] [--now]
+//                                 si no hay un par CONECTADO con la clave de la entrada net:<host>:… de la
 //                                 libreta (entrante o saliente, cualquier dirección), conn.connect a esa
-//                                 entrada; espera hasta 8 s y vuelve a mirar. Sin entrada: OASIS_PUB_LINK_ADDR
-//                                 o rc 3.
+//                                 entrada; espera hasta 8 s y vuelve a mirar. Sin entrada por nombre: con --key
+//                                 (la clave del pub) la crea (remember) a partir de la entrada por clave que haya
+//                                 (p. ej. la IP del invite; puerto de esa entrada, --port o 8008); si no,
+//                                 OASIS_PUB_LINK_ADDR; si no, rc 3.
 //   --remember <addr> [--type T]  conn.remember(addr, {key: la del ~shs:, type (pub), autoconnect: true}); sin conectar
 //   --connect <addr>              conn.connect(addr, {key, type: pub})
 //   --disconnect <host>           conn.disconnect de los pares vivos cuya dirección es net:<host>:… (drill)
@@ -89,6 +92,18 @@ connect(0, async (err, sbot) => {
       const db = await book();
       // Prefiere la entrada por nombre de servicio (DNS, sobrevive a un cambio de IP del pub) de tipo pub.
       let entry = db.find(([a, d]) => hostOfAddr(a) === arg && keyOfAddr(a) && (!d || !d.type || d.type === 'pub')) || null;
+      // Sin entrada por nombre pero con --key (la clave del pub, que el gate conoce): se busca por clave (p. ej. la
+      // entrada por IP que dejó el invite), se toma su puerto y se RECUERDA la dirección por nombre: a partir de ahí
+      // el keepalive, que no sabe la clave, ya tiene su entrada.
+      const wantKey = canonical(val('--key'));
+      if (!entry && wantKey) {
+        const byKey = db.find(([a, d]) => canonical((d && d.key) || keyOfAddr(a)) === wantKey) || null;
+        const port = val('--port') || (byKey ? (String(byKey[0]).match(/^net:[^:]+:(\d+)/) || [])[1] : null) || '8008';
+        const k44 = wantKey.replace(/^@/, '').replace(/\.ed25519$/, '');
+        const a = `net:${arg}:${port}~shs:${k44}`;
+        await cbp(sbot.conn.remember, a, { key: wantKey, type: 'pub', autoconnect: true });
+        entry = [a, { key: wantKey, type: 'pub' }]; out.did = 'remember';
+      }
       if (!entry && process.env.OASIS_PUB_LINK_ADDR) {
         const a = process.env.OASIS_PUB_LINK_ADDR; if (keyOfAddr(a)) entry = [a, { key: keyOfAddr(a), type: 'pub' }];
       }
@@ -97,7 +112,7 @@ connect(0, async (err, sbot) => {
       const live = liveByKey(await livePeers(), key);
       if (live) { out.before = out.after = 'connected'; out.inbound = !!live[1].inbound; return finish(sbot, 0); }
       out.before = 'absent';
-      try { await cbp(sbot.conn.connect, addr, { key, type: 'pub' }); out.did = 'connect'; } catch (e) { out.did = 'error'; out.error = `connect: ${e.message || e}`; }
+      try { await cbp(sbot.conn.connect, addr, { key, type: 'pub' }); out.did = out.did === 'remember' ? 'remember+connect' : 'connect'; } catch (e) { out.did = 'error'; out.error = `connect: ${e.message || e}`; }
       let hit = null;
       for (let i = 0; i < 8 && !hit; i++) { await sleep(1000); hit = liveByKey(await livePeers(), key); }
       out.after = hit ? 'connected' : 'absent'; out.inbound = hit ? !!hit[1].inbound : null;
