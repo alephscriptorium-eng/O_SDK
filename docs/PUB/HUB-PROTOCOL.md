@@ -104,8 +104,9 @@ sbot del pub no se toca y `/qr/*` queda fuera. Siguen valiendo los hechos del pr
 | Pieza | Fichero | Qué fija | Estado |
 |---|---|---|---|
 | Servicios `oasis-hub` + `hub-cache` | `pub/docker-compose.pub.yml` | misma imagen, `command: ["backend"]`, env `OASIS_*`, `mem_limit`, healthcheck a `/c/inhabitant/@AAAA…=.ed25519` (**no** a `/c`, que es O(N·k)), sin `ports`, sin `profiles` | ⏳ WP-O46 |
-| Identidad y replicación | `pub/config/hub/ssb-config` (bind `:ro` a `~/.ssb/config`) | `caps.shs` del ciclo, `pub:false`, `friends.hops:3` (D-O15: con 2 el HUB solo alcanzaba los 3 seguidos directos del pub y `/c` quedaba vacío; los habitantes con Clearnet están a 3 saltos, seguidos por La Plaza), **sin `seeds`** (un seed al pub mete su clave en `gossip.json` antes del invite y el backend responde `alreadyFederated` sin redimirlo; la conexión persistente la deja `hub-conn-fix.js` en `conn.json`), `connections` **completo** (`mergeDeep` reemplaza arrays enteros) con `incoming.net.host: 0.0.0.0` **obligatorio** (el entrypoint pasa `--host 0.0.0.0`; otro valor = crash loop «conflicting connection settings») | ✅ G2 |
-| Normalizar `conn.json` tras el invite | `pub/tools/hub-conn-fix.js` (se copia al HUB con `docker cp`; `pub/tools` no está montado allí) | tras `invite.accept`, ssb-invite deja la dirección del pub **con el seed y sin `key`**: el HUB reconecta con la identidad desechable y el pub no replica; sin `key` nunca reconecta tras un reinicio. El script hace forget `addr:SEED` · remember `{key,type:pub,autoconnect}` · connect | ✅ G3 |
+| Identidad y replicación | `pub/config/hub/ssb-config` (bind `:ro` a `~/.ssb/config`) | `caps.shs` del ciclo, `pub:false`, `friends.hops:3` (D-O15: con 2 el HUB solo alcanzaba los 3 seguidos directos del pub y `/c` quedaba vacío; los habitantes con Clearnet están a 3 saltos, seguidos por La Plaza), **sin `seeds`** (un seed al pub mete su clave en `gossip.json` antes del invite y el backend responde `alreadyFederated` sin redimirlo; la entrada persistente del pub la deja `pub-link.js --remember` en `conn.json`), `conn.populatePubs: false` (WP-O143: el nodo deja de descubrir pubs **nuevos** por los mensajes `pub` de la red, `conn-scheduler.js`; los ya conocidos en `conn.json` siguen: «pub de la casa garantizado, externos permitidos», D-O38), `connections` **completo** (`mergeDeep` reemplaza arrays enteros) con `incoming.net.host: 0.0.0.0` **obligatorio** (el entrypoint pasa `--host 0.0.0.0`; otro valor = crash loop «conflicting connection settings») | ✅ G2 |
+| Normalizar `conn.json` tras el invite | `pub/tools/pub-link.js --forget-seeded <KEY44>` · `--remember <addr>` · `--connect <addr>` (viaja por stdin, `node -`; `pub/tools` no está montado en el HUB). `hub-conn-fix.js` queda subsumido en estas tres acciones (WP-O143, D-O37) | tras `invite.accept`, ssb-invite deja la dirección del pub **con el seed y sin `key`**: el HUB reconecta con la identidad desechable y el pub no replica; sin `key` nunca reconecta tras un reinicio. La secuencia es forget `addr:SEED` · remember `{key,type:pub,autoconnect:true}` · connect | ✅ G3 |
+| Enlace con el pub (WP-O143, D-O38) | `start_pub_link` del `docker-entrypoint.sh` (modos `client` y `backend`; `OASIS_PUB_LINK_HOST`, por defecto `oasis-pub`, vacío = desactivado; `OASIS_PUB_LINK_FIRST_S` 30, `OASIS_PUB_LINK_EVERY_S` 60, `OASIS_PUB_LINK_ADDR` opcional para una instancia sin libreta) + `pub/tools/pub-link.js --ensure` · libreta del pub (`upgrade-gates.sh link pub --yes`) | **El cupo**: `ssb-conn` mantiene **4 plazas salientes** por nodo para pares que no son room (`maintainConnections(4, …)`, `conn-scheduler.js:316-317`); las **entrantes no cuentan** (parche de upstream); con las plazas llenas no marca a nadie hasta rotar (~2 h/√N, expulsando al de menor `oasisPeerRank`, `src/server/network_pause.js:75-90`: versión al día, seguidos compartidos, total). `autoconnect` solo filtra candidatos: **no hay par prioritario**, y `syncPeerBook` con `pub: true` (`network_pause.js:179-186`) marca `autoconnect: true` a **todo** pub descubierto. Un nodo de soporte con 4 externos arriba puede quedarse horas sin el pub con `conn.json` sano. **Dos capas, homogéneas para HUB y bot**: (1) el pub recuerda a sus nodos (`net:<servicio>:8008~shs:<KEY44>`, `{type:'pub', autoconnect:true}`): para ellos la conexión es **entrante** y no gasta su cupo (el pub gasta una saliente por nodo); (2) el keepalive del entrypoint pide `--ensure <host>` cada 60 s: busca la clave del pub en `conn.peers()` (in u out) y, si falta, `conn.connect` (abre una 5.ª saliente que el scheduler no corta pero sí puede rotar: por eso es periódico). 0 publicaciones; log `[pub-link]` **solo en cambios de estado**. El healthcheck no cambia: un enlace caído es un gate, no una salud de contenedor. Se mide por `conn.peers()` del nodo (`pub_link` en la foto, `pares:` en `hub-wallet.sh status`, `LINK` en `deploy-status.sh`), nunca por el log del pub | ✅ WP-O143 |
 | Visor | `pub/config/hub/oasis-config.json` (bind `:ro` a `~/.ssb/oasis/oasis-config.json`; hasta 1.2.3 a `src/configs/oasis-config.json`, que desde 1.2.4 `config-manager.js` solo copia **una vez** si el del estado falta) | copia del de `src/configs/` con 7 claves fijadas: `aiMod/aiNavMod:off`, `ssbLogStream.limit:20000`, `lanBroadcasting:false`, `inboxMutedBots` (todos los avisos automáticos silenciados: sin esto el HUB se envía cifrados a sí mismo, §1) y, por D-O25, `themes.current` y `language` (tema e idioma por defecto del visor; valores de instancia: en la casa `Dark-SNH`, igual al original, y `es` → **6 diferencias efectivas** en 1.1.10). `walletPub` salió en 1.1.10. Se regenera con `node pub/scripts/regen-node-configs.js`, no se parchea (§5.2) | ✅ regenerado en 1.1.10 |
 | Caché HTTP | `pub/config/hub/nginx.conf.template` | `proxy_cache_path … max_size=${HUB_CACHE_MAX_SIZE} inactive=7d`, caché negativa (404 30 s, 5xx 5 s, WP-O53), `proxy_hide_header` de las cabeceras del backend, `limit_req` por XFF, `location / { return 404; }`; en `/assets/*` y en `/c/assets/*` (visor 1.1.2) `proxy_ignore_headers Cache-Control` (koa-static manda `max-age=0`). **D-O25 (1.1.10)**: `Accept-Language`, `Cookie` y `Accept-Encoding` no se reenvían al HUB; `location` propia para `/c/sitemap.xml` y `/c/rss/*` que corrige las URLs a `https` con `sub_filter`. En **local Windows** el cache dir es el volumen nombrado `hub_http_cache` (los bind mounts rompen `proxy_cache`); en el VPS es la ruta bind | ✅ G4 · U4 |
 | Edge | `pub/caddy/Caddyfile` (bloque `@hub` del vhost del pub) | `reverse_proxy hub-cache:80`; `transport http {…}` en multilínea; `/qr/*` **fuera**; `/assets/*` entero **no** (`fanzine.css` es de la landing); desde 1.1.2 el visor usa `/c/assets/*`, ya cubierto por `/c/*`; `header {}` global intacto | ✅ G1/G4 |
@@ -161,8 +162,10 @@ G0  gates locales con npm run pub:local:up (G1 sintaxis · G2 arranque · G3 inv
     invite.create en el pub → reescribir host a la IP DEL BRIDGE del pub (docker inspect; ssb-ref
     exige IP o dominio con punto, 'oasis-pub' no vale) → POST /settings/invite/accept con Referer
     (siempre 302: verificar POR ESTADO: conn.json del HUB + contact +1 en el pub) →
-    hub-conn-fix.js 'net:oasis-pub:8008~shs:<KEY del pub>' (normaliza conn.json; sin esto no
-    replica ni reconecta) → docker restart oasis-pub-hub y ver CONNECTED en el log del pub →
+    pub-link.js --forget-seeded <KEY44> · --remember 'net:oasis-pub:8008~shs:<KEY44>' ·
+    --connect (normaliza conn.json; sin esto no replica ni reconecta) → docker restart
+    oasis-pub-hub → verificar el enlace POR SONDA, no por el log del pub:
+    upgrade-gates.sh --remote link hub --yes (o snapshot: hub pub_link=connected) →
     POST /profile/edit (about según §12: nombre y descripción de la ficha de instancia, sin
     vis_*) → up -d --no-deps oasis-hub (PUBLIC=true) → POST invite/accept = 302 con
     ?error=…public mode… (400 sin Referer; nunca 200) = gate antes de exponer
@@ -219,7 +222,7 @@ el comportamiento que importa sale de cuatro secciones del diff, y cada una tien
 | `routes` | GET nuevas bajo `/c/` | salen solas al clearnet (Caddy y nginx enrutan `/c/*`): decidir si se publican, darles `location` propia si no son HTML cacheable, paridad en la Sala 04 |
 | `headers` | cabeceras, cookies, `accept-language`, `ctx.protocol` en código que sirve `/c` | **regla D-O25** (§2): si la respuesta depende de algo que no está en la URL, la caché la sirve a quien no toca. Cabeceras de respuesta nuevas: a `proxy_hide_header` si Caddy ya las fija |
 | `config` | defaults de `oasis-config.json`, `server-config.json` | regenerar la copia del HUB (§5.2) |
-| `deps` | `ssb-conn`, `ssb-invite` | `hub-conn-fix.js` depende de su API: repetir el gate G3 en local (invite + `docker restart` + CONNECTED en el log del pub) |
+| `deps` | `ssb-conn`, `ssb-conn-hub`, `ssb-invite`, `network_pause.js` | `pub-link.js` y la sonda dependen de su API (`peers`, `dbPeers`, `remember`, `connect`, `inbound`); el cupo y el ranking viven ahí (§2). Si cambia alguno: `annex` (`link.tsv`) sin `!` + repetir el gate G3 en local (invite + `docker restart` + `link hub` → `connected`) + **drill de caída**: `pub-link.js --disconnect oasis-pub` en el nodo → `check --wait --expect 0` verde con `pub_link=connected` en < 120 s y 2 líneas `[pub-link]` en su log (ausente → connected); `SSB_ACTION=peers` en el pub: cada `key` ≤ 1 vez (sin stream duplicado) |
 
 Si un invariante cae o una de esas líneas afecta, la pieza de §2 se adapta **en la misma rama
 del upgrade** y se repite el gate del visor (`upgrade-gates.sh --local hub --strict`, UPGRADE
@@ -410,14 +413,14 @@ a las 20:02:48 UTC (gitSha `7ed4641`). Línea base de disco (`devops/logs/hub-di
 Memoria al cierre: HUB 113 MiB / 1,5 GiB · pub 88 MiB · Caddy 74 MiB · nginx 5 MiB. Feed del pub sin
 cambios (`contact` +1 hacia el HUB). Pub `StartedAt` 2026-09-12 17:02 UTC antes y después: **no se
 reinició**. Backups en el VPS con sufijo `.bak-hub-2026-09-13` (compose, `.env.prod`, Caddyfile,
-`tools/hub-conn-fix.js`, `site/index.html`, `site/scriptorium/index.html`) y
+`tools/hub-conn-fix.js` (retirado en WP-O143: subsumido en `pub-link.js --forget-seeded/--remember/--connect`), `site/index.html`, `site/scriptorium/index.html`) y
 `config/hub/ssb-config.bak-hub-2026-09-13-seeds`. Reporte: `plan/REPORTES/WP-O46-hub-nodo-soporte.md`.
 Pendiente: revisión adversarial con la contraevidencia de `dosier/05` · merge a `main`.
 
 **Desviaciones del plan durante el deploy** (todas corregidas en la rama y en `v2.md`):
 ruta viva de `ssb-admin.js` en la imagen (`/app/OASIS_PUB/tools/`, §9) · `seeds` retirado del
-`ssb-config` (bloqueaba el invite con `alreadyFederated`) · `hub-conn-fix.js` filtraba la entrada
-con seed por host (`7ed4641`) · el contador de `contact` del pub con `grep -c` no se mueve en un log
+`ssb-config` (bloqueaba el invite con `alreadyFederated`) · `hub-conn-fix.js` (hoy subsumido en
+`pub-link.js --forget-seeded`, WP-O143) filtraba la entrada con seed por host (`7ed4641`) · el contador de `contact` del pub con `grep -c` no se mueve en un log
 binario (usar `grep -a -o | wc -l` o buscar `"contact":"<HUB_ID>"`) · el site se subió fichero a
 fichero con merge a tres bandas en vez de `deploy-site.sh` (riesgo 10 del plan).
 
@@ -447,8 +450,8 @@ declara en su `about` y **no se lista a sí mismo**. El pub no se toca para aña
 - **Bot en modo `server`** (sin backend; p. ej. el bot secretaría de plantillas, TEMPLATE-PROTOCOL §4.5):
   el bootstrap de §3 se hace por el socket, no por HTTP: `pub/tools/ssb-probe.js` con
   `SSB_ACTION=invite-accept` y `SSB_INVITE='<host:port:@key~seed>'` (precedente UPGRADE U6) en lugar de
-  `POST /settings/invite/accept`; **reiniciar** antes de `hub-conn-fix.js` (un nodo `server` escribe
-  `conn.json` al parar: recién aceptado el invite está vacío) y reiniciar después; el `about`, con
+  `POST /settings/invite/accept`; **reiniciar** antes de `pub-link.js --forget-seeded/--remember/--connect`
+  (un nodo `server` escribe `conn.json` al parar: recién aceptado el invite está vacío) y reiniciar después; el `about`, con
   `ssb-admin.js publish-about` (§12, variante sin formulario). No hay ventana `PUBLIC=false` que abrir ni
   cerrar: nada escucha en HTTP. El feed queda con `contact` + `pub` (de `invite.accept`) + `oasisVersion`
   (del reinicio): es lo esperado, no una desviación (medido, WP-O131).
@@ -463,7 +466,7 @@ declara en su `about` y **no se lista a sí mismo**. El pub no se toca para aña
   --rm --entrypoint sh -v …:ro`): `S` = el seq del pub, `D 0`, tipos iguales a la foto; si no, no se arranca;
   (5) arrancar el destino con la misma versión o superior (si cambia, publica un `oasisVersion`: PERMISO) y
   comprobar que el pub acepta el seq nuevo como continuación (`pub-feed-seq.sh`); `conn.remember` del pub
-  por nombre (`hub-conn-fix.js`, 0 publicaciones); (6) retirar el origen: `compose --profile X rm -sf <svc>`
+  por nombre (`pub-link.js --remember`, 0 publicaciones); (6) retirar el origen: `compose --profile X rm -sf <svc>`
   (**nunca** `--profile X down`: tumba todo lo sin perfil), comentar su bloque de env in place, tgz de sus
   datos con sha256 → copia local → retirar del host; `check` de los que se quedan = Δ0; journal sin él.
   **Baja definitiva** = los mismos pasos sin el (5): el archivo guarda `secret` + keyring + log completo y
