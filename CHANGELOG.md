@@ -7,6 +7,13 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ### Added — Enlace garantizado de los nodos de soporte con el pub (WP-O143, D-O38, 2026-10-15)
 
+**Aplicado en el host el 2026-10-15** (GO-1 … GO-3): compose, los tres `ssb-config`, el entrypoint y `tools/` in place
+(sha del vivo comprobado antes de pisar); imagen `8639c5f9…` con `SMOKE OK`; `link pub` (el pub abrió el enlace con el
+HUB, que no tenía visto desde su lado); HUB y bot recreados con el keepalive: **Δ0 en los tres nodos**, `pub_link=connected`
+medido en cada `check`. Dos tropiezos del operador, contados en el reporte: el primer build salió sin keepalive porque
+el entrypoint y `tools/` no estaban en «qué viaja» (ahora sí, UPGRADE §3.2), y una tubería que filtraba `\r` dejó el
+entrypoint un byte distinto (el fichero lleva un `\r` literal intencional): el sha lo paró y se reescribió con el blob tal cual.
+
 Lo que lo motivó: en el ciclo 1.3.0 la precondición de `hub-wallet.sh on` destapó que el sbot del bot de cartera llevaba
 desde 2026-10-14T23:02Z sin conectar con el pub (hasta 2026-10-15T14:55Z, forzado por RPC con GO), con `conn.json` sano
 y TCP en orden. Causa medida: `ssb-conn` mantiene **4 plazas salientes** por nodo (`conn-scheduler.js:316-317`; las

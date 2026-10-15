@@ -74,7 +74,8 @@ anterior al arreglo de `process.argv` (el keepalive no pasa `--port`, así que n
 ## 4. Delta de publicación
 
 Local: ninguna publicación en ningún gate (recreaciones en la misma versión; todos los `check --expect 0` verdes).
-Host: pendiente (§6).
+Host (`pre143` 17:14Z → `post143` 17:28Z): **Δ0 en pub, HUB y bot** (26 · 22 · 87). Declarado `about/karmaScore` `+0..1`
+en HUB y bot y `pubAvailability +0..1` en el bot: no salió ninguno.
 
 ## 5. Correcciones al protocolo
 
@@ -113,8 +114,26 @@ se lee su salida antes de la siguiente (O141 §6).
 | 1 | In place | sha del vivo = blob de `main` **antes de pisar** en los cuatro ficheros (compose `d9ff6862…`, `config/hub/ssb-config` y `config/wallet-bot/ssb-config` `8fad4f52…`, `engine-on` `0baf3860…`) → `.bak-o143-2026-10-15` → HEAD (`68f84184…`, `93d71be7…` ×2, `14c8f210…`) verificados; `populatePubs` ×3, `OASIS_PUB_LINK_HOST` ×2 en el compose | **GO-1** |
 | 1b | Build y humo (1.ª) | `compose build` → `d30582f3…`; `$R smoke` → **FALLA**: «el entrypoint no anuncia “Enlace con el pub”». Causa: el entrypoint de la raíz del host y `tools/` no habían viajado (inventario, §5). Parada; nada recreado | |
 | 1c | Entrypoint y tools | `docker-entrypoint.sh`: vivo = `main` (`74fc932e…`) → `.bak` → HEAD; la primera escritura (con filtro de `\r`) dio `1bdef91e…` ≠ HEAD y el guion **paró** (§5); reescrito con el blob tal cual → `9a13be08…` ✓. `tools/ssb-probe.js` (vivo `7b8768e2…`, distinto del repo desde el 4-oct) → `.bak` → HEAD; `tools/pub-link.js` nuevo (755) | **GO-1b** |
-| 1d | Build y humo (2.ª) · foto base | (pendiente) | |
+| 1d | Build y humo (2.ª) · foto base | `compose build` → **`8639c5f9…`** (1,06 GB; `/` 42 %). `$R smoke` → **`SMOKE OK`**: 0 `secret`, «el entrypoint anuncia el enlace con el pub (start_pub_link)», 3 parches ×2, 0 errores. `$R snapshot pre143` (17:14:30Z): pub 1.3.0 `pares=9 (6 in)` · HUB 1.3.0 `pares=4 (0 in) enlace-pub=connected(out)` · bot 1.3.0 `pares=4 (0 in) enlace-pub=connected(out)`, motor `pub=true`; los tres «cuadra · sbot=» | |
+| 2a | Capa pub (17:17:12Z) | `$R link pub --yes` → `pub → hub: before absent, did remember+connect, after connected` (visto desde el pub, el HUB no tenía el enlace: el pub lo abrió; para el HUB es entrante) · `pub → bot: before connected, did remember` (ya lo tenía: solo libreta, sin `autoconnect`) · `hub pub_link=connected in`, `bot connected out` · **`LINK OK`**. 0 publicaciones | **GO-2a** |
+| 2b | HUB (17:17:25Z) | `up -d --no-deps --no-build oasis-hub` → `healthy` a los **4 s**, imagen `8639c5f9…`; log: `🔗 Enlace con el pub: oasis-pub, primera comprobación a los 30 s y después cada 60 s (/app/OASIS_PUB/tools/pub-link.js)` + primera `[pub-link]`. `$R check pre143 --wait --expect 'pub:=0 hub:about=+0..1,karmaScore=+0..1 bot:=0'` → **`GATE OK` (286 s)**: Δ0 en los tres, `hub enlace-pub connected(out)` (volvió a marcar él mismo al arrancar) | **GO-2b** |
+| 3 | Bot (17:23:00Z) | env tal cual (`…ssb-config.engine-on`): `up -d --no-deps --no-build --force-recreate oasis-wallet-bot` → `healthy` a los **6 s**, imagen `8639c5f9…`; log: enlace anunciado, `[UBI] PUB engine on`, primera `[pub-link]`. `$R check pre143 --wait --expect '… bot:about=+0..1,karmaScore=+0..1,pubAvailability=+0..1'` → **`GATE OK` (258 s)**: **Δ0 en los tres** (ni `about`, ni `karmaScore`, ni `pubAvailability`: 12 h sin cumplir), `bot enlace-pub connected(out)`, `wallet=1`, misma dirección. Sin `pubAvailability` → sin backup de cartera | **GO-3** |
+| 4 | Cierre (17:28Z) | `snapshot post143`: pub 26 `pares=10 (6 in)` · HUB 22 `pares=4 (0 in) connected(out)` · bot 87 `pares=4 (0 in) connected(out)`, motor `pub=true` · `hub-wallet.sh status`: `pares: 4 (0 in) · pub: connected out` · journal (1.3.0, `server+hub+wallet-engine-on`) · `deploy-status`: HUB y bot «imagen al día», **pub «IMAGEN VIEJA»** (no se recreó: en modo `server` no usa el keepalive; recrearlo no publicaría nada, pero es una decisión del custodio, no un paso de este WP) · LINK: HUB y bot `connected out` · `tools/*.js` = HEAD salvo **`ssb-admin.js` del host, editado a mano** (deriva previa, ahora visible) · VERDE en el directorio, `capacity` 0 avisos | |
+
+Pub sin tocar; HUB ≈ 4 s y bot ≈ 6 s sin backend. **Nada publicado con identidad real.**
 
 ## 7. Seguimiento
 
-(pendiente)
+- Merge a `main` con `--no-ff`; el reporte y la rama llevan el ciclo entero.
+- **Pub en «IMAGEN VIEJA»** (corre `e561a64f…`, `latest` es `8639c5f9…`): decisión del custodio; en modo `server` no
+  cambia nada para él; el próximo ciclo lo recrea igualmente.
+- **`tools/ssb-admin.js` del host editado a mano** (desde el 8-oct, `.bak-retro-…`): diferenciar con el repo y converger
+  (lo usa el panel por `docker exec`). Fila de backlog.
+- **`\r` literal en `docker-entrypoint.sh`** (línea 394): pasar a `$'\r'` para que el fichero viaje por cualquier
+  tubería; toca el entrypoint → rebuild; WP aparte o dentro del próximo ciclo.
+- **D8 (restore + repetir) no se ejecutó en local**: no es un cambio de versión y los gates de enlace se repitieron
+  tres veces (D3, D4, D6'); anotado.
+- **Observación en el host**: visto desde el pub, el HUB no tenía el enlace cuando `link pub` lo midió, aunque el HUB
+  sí tenía al pub como par saliente (`connected out`): las dos libretas no ven lo mismo (el pub lo conocía por la IP
+  entrante efímera, no por clave con dirección estable). La sonda mide por clave y por eso no se equivocó; la capa pub
+  conectó y el HUB mostró `in`. Nada que corregir, pero vale saberlo al leer `pub|peers`.
