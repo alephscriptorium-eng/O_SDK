@@ -543,6 +543,42 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   está subsumida; se corrigen y se enlazan desde `docs/proyecto.md`. Conserva D-O36 y D-O3. Aplicación:
   WP-O139, `plan/BACKLOG.md` (WP-O03 ✅), `docs/proyecto.md`, README, BASE-2, `roles/mantener.md`.
 
+- **D-O38 · 2026-10-15 · Pub de la casa garantizado, externos permitidos: el enlace de cada nodo de
+  soporte con el pub es un invariante medido, no una esperanza del planificador.** Política dicha por el
+  custodio el 2026-10-15 (WP-O143), tras el hallazgo del ciclo 1.3.0 (WP-O141): el sbot del bot de
+  cartera llevó desde 2026-10-14T23:02Z hasta 2026-10-15T14:55Z sin conectar con el pub, con `conn.json`
+  sano (`autoconnect: true`, `failure: 0`) y TCP en orden, y ningún gate lo vio: la foto mide lo
+  publicado, no la conectividad, y `hub-wallet.sh ready` leía el log del pub. Causa medida en código y en
+  vivo: `ssb-conn` mantiene **4 plazas salientes** por nodo para pares que no son room
+  (`conn-scheduler.js:316-317`), las entrantes no cuentan (parche de upstream), con las plazas llenas no
+  marca a nadie hasta rotar (~2 h/√N, expulsando al de menor `oasisPeerRank`,
+  `src/server/network_pause.js:75-90`); `autoconnect` solo filtra, **no hay par prioritario**; y
+  `syncPeerBook` (`network_pause.js:179-186`) con `pub: true` marca `autoconnect: true` a **todo** pub
+  descubierto (`populatePubs`, `conn-scheduler.js:433`). Medido el 2026-10-15 por RPC dentro de cada
+  contenedor: bot 17 pubs conocidos / 17 `autoconnect` / 4 salientes; HUB 12 / 9 / 4 (también compite);
+  pub 19 / 17 y 1 saliente. (a) **Dos capas, homogéneas para HUB y bot**: el pub los guarda en su libreta
+  (`net:<servicio>:8008~shs:<KEY44>`, `{type:'pub', autoconnect:false}`) y **conecta con ellos solo si al
+  nodo le falta el enlace** (`link pub`; con `autoconnect` el planificador del pub marcaría a un nodo ya
+  conectado y habría dos conexiones por clave, medido en local): para ellos esa conexión es entrante y no
+  gasta su cupo; y el entrypoint de cada nodo de soporte (`start_pub_link`,
+  `OASIS_PUB_LINK_HOST` por defecto `oasis-pub`, vacío = desactivado) repone el enlace por
+  `conn.connect` cada 60 s con `pub/tools/pub-link.js --ensure` (`[pub-link]` en el log solo en cambios
+  de estado, 0 publicaciones). `conn.populatePubs: false` en los `ssb-config` del HUB y del bot frena los
+  pubs **nuevos**; los conocidos siguen («externos permitidos»). (b) **El enlace se mide** por
+  `conn.peers()` del propio nodo buscando la clave del pub, in u out (`pub_link` y `peers` en la foto y
+  criterio del `check`; `pares:` en `hub-wallet.sh status`; `LINK` en `deploy-status.sh`;
+  `link.tsv` en los invariantes), **nunca por el log del pub**; `?` es NO MEDIBLE, `ausente` es
+  «todavía no» con `--wait` y DESVIACIÓN al agotar el tope. (c) **Un `on` del motor exige
+  `pub_link=connected`**; un `ausente` se restablece con `upgrade-gates.sh link <alias> --yes` con GO,
+  nunca con un `on` a ciegas. El healthcheck de Docker no cambia: un enlace caído es un gate, no una
+  salud de contenedor. Retira `hub-conn-fix.js` bajo el criterio D-O37: su función (forget de la
+  entrada con semilla, remember, connect) está subsumida en `pub-link.js
+  --forget-seeded/--remember/--connect`. Conserva D-O13 (nodos de soporte en contenedor propio) y
+  D-O15 (`hops: 3`). Aplicación: WP-O143, `UPGRADE-PROTOCOL.md` §0.2, §3.4, §4, §6; `HUB-PROTOCOL.md`
+  §2, §3, §5, §11; `ECOIN-PROTOCOL.md` §2, §3, §9, §14; `AGENTES.md` §4; `docker-entrypoint.sh`,
+  `pub/docker-compose.pub.yml`, `pub/config/{hub,wallet-bot}/ssb-config*`,
+  `devops/scripts/upgrade-invariants.d/link.tsv`; fichas de instancia §5.
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |

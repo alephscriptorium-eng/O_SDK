@@ -6,6 +6,7 @@
   "friends": { "dunbar": 150, "hops": 3 },
   "replicationScheduler": { "autostart": true, "partialReplication": null },
   "autofollow": { "enabled": false, "feeds": [] },
+  "conn": { "populatePubs": false },
   "connections": {
     "incoming": {
       "net":  [ { "scope": "device", "transform": "shs", "port": 8008, "host": "0.0.0.0" } ],

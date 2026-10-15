@@ -121,7 +121,8 @@ Todas costaron una parada. Síntoma → causa → dónde está el detalle.
 |---|---|---|
 | `ecoind` responde 403 a todo el RPC | `rpcallowip` no entiende CIDR: usar comodines (`172.16.*` … `172.31.*`) | ECOIN §14 |
 | El invite no conecta desde otro contenedor | el invite lleva el host público; reescribirlo a la IP del bridge del pub | HUB §3 · ECOIN §3 |
-| Tras el invite el bot conecta a una dirección muerta | `conn.json` guarda la entrada con semilla; normalizar con `pub/tools/hub-conn-fix.js` y reiniciar | HUB §2 |
+| Tras el invite el bot conecta a una dirección muerta | `conn.json` guarda la entrada con semilla; normalizar con `pub/tools/pub-link.js --forget-seeded <KEY44>` + `--remember`/`--connect` y reiniciar | HUB §2 |
+| El bot tiene `conn.json` correcto (`failure: 0`, `autoconnect: true`) y no conecta con el pub | el cupo de 4 salientes de `ssb-conn` está lleno de pubs externos: `autoconnect` solo filtra y `oasisPeerRank` ordena, no hay par prioritario (y `pub: true` marca `autoconnect` a todo pub conocido). Se mide por `conn.peers()` del nodo (`pub_link` en la foto, `pares:` en `hub-wallet.sh status`), no por el log del pub; se restablece con `upgrade-gates.sh link <alias> --yes` (GO); el keepalive `start_pub_link` del entrypoint y la libreta del pub lo evitan | HUB §2 |
 | El invite responde `alreadyFederated` | `seeds` en el `ssb-config`, o clave vieja en `gossip.json` | HUB §5, §10 |
 | Aparecen dos mensajes `wallet` | `POST /banking/addresses` no es idempotente | ECOIN §3 · CLIENT §8.1 |
 | Un backup de cartera no contiene la dirección publicada | el backup se hizo **antes** de generar la dirección | ECOIN §8 |

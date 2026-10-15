@@ -111,6 +111,11 @@ services:
       OASIS_OPEN: "false"
       OASIS_ALLOW_HOST: ${OASIS_HUB_ALLOW_HOST:-pub.escrivivir.co}
       NODE_OPTIONS: ${OASIS_HUB_NODE_OPTIONS:---max-old-space-size=1024}
+      # WP-O143 (D-O38): el entrypoint repone el enlace con el pub de la casa por conn.connect cada N s
+      # (la clave sale de conn.json). Vacío = desactivado. El cupo de 4 salientes de ssb-conn no lo cubre.
+      OASIS_PUB_LINK_HOST: ${OASIS_PUB_LINK_HOST:-oasis-pub}
+      OASIS_PUB_LINK_EVERY_S: ${OASIS_PUB_LINK_EVERY_S:-60}
+      OASIS_PUB_LINK_FIRST_S: ${OASIS_PUB_LINK_FIRST_S:-30}
     volumes:
       - "${OASIS_HUB_SSB_DATA_DIR:-../volumes-dev/oasis-hub/ssb-data}:/home/oasis/.ssb"
       - "${OASIS_HUB_LOGS_DIR:-../volumes-dev/oasis-hub/logs}:/app/logs"
@@ -205,6 +210,11 @@ services:
       # del bind de ssb-data. backend.js ignora esa variable y banking_model.js no: con ella habría dos
       # mapas de direcciones y riesgo de publicar una segunda dirección (ECOIN-PROTOCOL.md §5.4).
       NODE_OPTIONS: ${OASIS_WALLET_BOT_NODE_OPTIONS:---max-old-space-size=512}
+      # WP-O143 (D-O38): el entrypoint repone el enlace con el pub de la casa por conn.connect cada N s
+      # (la clave sale de conn.json). Vacío = desactivado. El cupo de 4 salientes de ssb-conn no lo cubre.
+      OASIS_PUB_LINK_HOST: ${OASIS_PUB_LINK_HOST:-oasis-pub}
+      OASIS_PUB_LINK_EVERY_S: ${OASIS_PUB_LINK_EVERY_S:-60}
+      OASIS_PUB_LINK_FIRST_S: ${OASIS_PUB_LINK_FIRST_S:-30}
     volumes:
       - "${OASIS_WALLET_BOT_SSB_DATA_DIR:-../volumes-dev/oasis-wallet-bot/ssb-data}:/home/oasis/.ssb"
       - "${OASIS_WALLET_BOT_LOGS_DIR:-../volumes-dev/oasis-wallet-bot/logs}:/app/logs"

@@ -92,6 +92,10 @@ rpc() { # rpc <method> [json-params]  — credenciales solo dentro del contenedo
 num() { grep -o "\"\$1\" *: *[-0-9.]*" | head -1 | sed 's/.*: *//'; }
 
 FEED="\$(\$SUDO cat "\$MAP" 2>/dev/null | grep -o '@[A-Za-z0-9+/]\{43\}=\.ed25519' | head -1)"
+# Enlace con el pub medido por el propio sbot del bot (conn.peers, por clave; WP-O143, D-O38), no por el log del pub.
+PUBKEY="\$(node_feed "\$(node_ssb_dir "\$PUBC")")"
+LINK="\$([ -n "\$PUBKEY" ] && node_link "\$BOT" "\$PUBKEY" || echo '?')"
+PEERS="\$(node_peers "\$BOT")"
 ADDR="\$(\$SUDO cat "\$MAP" 2>/dev/null | grep -o '"E[A-Za-z0-9]\{25,40\}"' | head -1 | tr -d '"')"
 MOUNTED="\$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/home/oasis/.ssb/config"}}{{.Source}}{{end}}{{end}}' "\$BOT" 2>/dev/null)"
 PUBFLAG="\$(docker exec "\$BOT" sh -c 'grep -o "\"pub\": *[a-z]*" /home/oasis/.ssb/config' 2>/dev/null | sed 's/.*: *//')"
@@ -112,6 +116,7 @@ status() {
   echo "modo:       pub=\${PUBFLAG:-?}  (\${MOUNTED##*/})   «PUB engine on» en el log: \$ENGINE_LOG"
   echo "mensajes:   wallet=\$(own wallet) about=\$(own about) pubAvailability=\$(own pubAvailability) ubiAllocation=\$(own ubiAllocation)"
   echo "anuncio:    \$(printf '%s\n' "\$SCAN" | sed -n 's/^L //p' | cut -c1-200)"
+  echo "pares:      \$PEERS · pub: \$LINK   (conn.peers() del bot; «?» = la sonda no pudo leer)"
   echo "ecoind:     \$(docker inspect -f '{{.State.Health.Status}}' "\$ECOIN" 2>/dev/null)  blocks=\${BLOCKS:-?} (pares: \${PEERH:-?})  conexiones=\${CONNS:-?}"
   echo "cartera:    \${ADDR:-?}  saldo=\${BAL:-?} ECO"
   awk -v b="\${BAL:-0}" 'BEGIN{a=b-500; if(a<0)a=0; p=a; if(2000<p)p=2000; if(0.2*b<p)p=0.2*b; printf "pool:       %.4f ECO esta época  (min(saldo-500, 2000, 0.2*saldo); con saldo <= 500 no se paga)\n", p}'
@@ -130,9 +135,13 @@ ready() {
   [ -n "\$ADDR" ] && rpc validateaddress "[\"\$ADDR\"]" | grep -q '"ismine" *: *true' && ok "la dirección es de esta cartera (ismine)" || ko "validateaddress no dice ismine:true"
   [ "\$(own wallet)" = 1 ] && ok "un único mensaje wallet propio" || ko "mensajes wallet propios = \$(own wallet) (esperado 1)"
   [ "\$BACKUP_OK" = 1 ] && ok "backup local de wallet.dat reciente" || ko "sin backup local reciente de wallet.dat (backup-ecoin.sh)"
+  # El enlace se mide en el propio bot (conn.peers por clave, entrante o saliente): el log del pub solo informa.
+  case "\$LINK" in connected*) ok "conectado al pub (\$LINK, por conn.peers() del bot)" ;;
+                  ausente) ko "sin enlace con el pub (pub_link ausente): upgrade-gates.sh --remote link bot --yes (GO) y repetir" ;;
+                  *) ko "enlace con el pub NO MEDIBLE (\$LINK): la sonda no pudo leer conn.peers()" ;; esac
   KEY="\${FEED#@}"; KEY="\${KEY%.ed25519}"
   last="\$(docker logs --tail 2000 "\$PUBC" 2>&1 | grep -a -F "\$KEY" | grep -a -o 'CONNECTED\|DISCONNECTED' | tail -1)"
-  [ "\$last" = CONNECTED ] && ok "conectado al pub" || ko "el pub no lo ve conectado (último: \${last:-nada})"
+  echo "  info  log del pub (últimas 2000 líneas): \${last:-sin rastro del bot}"
   [ -f "\$CFG_ON" ] && grep -q '"pub": *true' "\$CFG_ON" && ok "\$CFG_ON presente (pub:true)" || ko "falta \$CFG_ON"
   if awk -v b="\${BAL:-0}" 'BEGIN{exit !(b<=500)}'; then
     echo "  AVISO saldo \${BAL:-0} <= 500 ECO: al encender, el motor FIJA la época del mes con pool 0 y publica una"

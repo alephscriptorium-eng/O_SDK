@@ -126,7 +126,7 @@ después cliente (WP-O103).
 | Identidad y replicación | `pub/config/wallet-bot/ssb-config` (bind `:ro`) | copia del del HUB: `friends.hops: 3`, `host 0.0.0.0`, **sin `seeds`**, mismo `caps.shs` (lockstep de rotación, `HUB-PROTOCOL.md` §5.2) | ✅ rama |
 | Config del bot (plantilla) | `pub/config/wallet-bot/oasis-config.json.tpl` | copia de `src/configs/oasis-config.json` con `aiMod/aiNavMod off`, `lanBroadcasting false`, `ssbLogStream.limit 20000`, `bankingMod/walletMod on`, `wallet.url "http://ecoin:7474"` y tres marcadores: `__ECOIN_RPC_USER__`, `__ECOIN_RPC_PASS__`, `__WALLET_BOT_PUB_ID__` | ✅ rama |
 | Render de la config | `pub/scripts/render-wallet-bot-config.sh` (npm `pub:wallet-bot:render`) | rellena la plantilla desde el env-file, valida hex y la regex del feed, escribe **in place** y a 400 en `OASIS_WALLET_BOT_OASIS_CONFIG_FILE` (fuera de git), aborta si el destino es un directorio. Se monta `:ro` en `/app/src/configs/oasis-config.json` | ✅ rama |
-| Normalizar `conn.json` tras el invite | `pub/tools/hub-conn-fix.js` | **sin cambios**: el del HUB | ✅ |
+| Normalizar `conn.json` tras el invite y enlace con el pub | `pub/tools/pub-link.js` (`--forget-seeded/--remember/--connect`; subsume a `hub-conn-fix.js`, WP-O143) · `start_pub_link` del entrypoint (`OASIS_PUB_LINK_*`) · `conn.populatePubs: false` en los dos `ssb-config` del bot | **sin cambios**: el del HUB (`HUB-PROTOCOL.md` §2) | ✅ |
 | Variables | `pub/.env.vps.example`, `.env.local.example`, `.env.example`; `.env.prod` del VPS | `OASIS_ECOIN_{DATA_DIR,RPC_USER,RPC_PASS,MEM_LIMIT,CPUS,MAXCONNECTIONS}` · `OASIS_WALLET_BOT_{SSB_DATA,LOGS,BANKING}_DIR` · `OASIS_WALLET_BOT_{SSB_CONFIG,OASIS_CONFIG}_FILE` · `OASIS_WALLET_BOT_PUB_ID` (**interruptor**) · `OASIS_WALLET_BOT_{MEM_LIMIT,NODE_OPTIONS}` · `OASIS_WALLET_BOT_PUBLIC` (comentada) | ✅ rama |
 | Validación de rutas | `pub/scripts/common.sh` · `devops/scripts/verify-debian13-base.sh` (`check_layout`) | rutas nuevas absolutas bajo `/srv/oasis` (solo si están definidas); `wallet.dat` 600 / uid 1000 (solo si existe) | ✅ rama |
 | Backup de la cartera | `devops/scripts/backup-ecoin.sh` (npm `devops:backup:ecoin`) | RPC `backupwallet` → `devops/backups/ecoin/<TS>/` con sha256 remoto = local, `RESTORE.txt`, metadatos; `--cold`, `--verify` (§8) | ✅ rama |
@@ -190,7 +190,7 @@ Reglas fijas (las del HUB): **siempre**
 **nunca** el `deploy.sh` del VPS; **Caddy no se toca**; backups `*.bak-wallet-<fecha>` de todo
 fichero pisado; binds de fichero in place.
 
-**Bootstrap del bot = el del HUB tal cual** (`HUB-PROTOCOL.md` §3 paso 3, `pub/tools/hub-conn-fix.js`
+**Bootstrap del bot = el del HUB tal cual** (`HUB-PROTOCOL.md` §3 paso 3, `pub/tools/pub-link.js`
 sin cambios), con `oasis-wallet-bot` donde dice `oasis-hub`:
 
 1. Flag `ssb-data/oasis-first-contact` pre-creado (evita el PM de bienvenida).
@@ -199,8 +199,9 @@ sin cambios), con `oasis-wallet-bot` donde dice `oasis-hub`:
    del pub; `POST /settings/invite/accept` con Referer desde el loopback del bot.
 4. Verificar **por estado** (`conn.json` del bot y `contact` +1 en el pub con `grep -a -o | wc -l`,
    nunca `grep -c` sobre el log binario).
-5. `hub-conn-fix.js 'net:oasis-pub:8008~shs:<KEY del pub>'` → `docker restart oasis-pub-wallet-bot`
-   → CONNECTED en el log del pub.
+5. `pub-link.js --forget-seeded <KEY44>` · `--remember 'net:oasis-pub:8008~shs:<KEY44>'` · `--connect`
+   → `docker restart oasis-pub-wallet-bot` → verificar el enlace **por sonda**, no por el log del pub:
+   `upgrade-gates.sh --remote link bot --yes` (o `snapshot`: `bot pub_link=connected`).
 6. `about`: `name` = `azofaifo-scriptorium-wallet-bot-2`; descripción: cartera ECOin del pub,
    custodia la dote, reparte la RBU, no escribe en el pub; serie de bots. Sin `vis_*`.
 7. Con `ecoind` healthy y **sincronizado** (`blocks` ≥ altura que anuncian los pares, que sale de las
@@ -459,14 +460,19 @@ La `wallet.url` la pone el render (§2); `pub` lo decide **qué fichero se monta
 | `pub/config/wallet-bot/ssb-config.engine-on` | `true` | motor encendido |
 
 Se elige con `OASIS_WALLET_BOT_SSB_CONFIG_FILE` en el env-file del host + recreate del bot. `pub: true`
-también cambia el plugin `ssb-invite-client` por `ssb-invite` y quita `ssb-lan`; la conexión al pub va
-por `conn.json` y **no se ve afectada** (ensayado). El bootstrap del invite se hace siempre con `pub: false`.
-Los dos ficheros deben ser idénticos salvo esa línea (`diff` = 1 línea): `caps.shs` rota en los dos.
+también cambia el plugin `ssb-invite-client` por `ssb-invite` y quita `ssb-lan`; y **sí afecta al enlace
+con el pub**: `pub: true` activa `syncPeerBook` (`src/server/network_pause.js:179-186`), que marca
+`autoconnect: true` a **todo** pub conocido en `conn.json`, y con eso cambia la competencia por las 4
+plazas salientes de `ssb-conn` (`HUB-PROTOCOL.md` §2): cada `on` llena de candidatos al bot y el pub de
+la casa no tiene prioridad. El enlace de la casa lo sostienen las dos capas de WP-O143 (libreta del pub +
+keepalive `start_pub_link`, con `conn.populatePubs: false` en los dos ficheros) y `ready` lo mide por
+`conn.peers()` del bot. El bootstrap del invite se hace siempre con `pub: false`. Los dos ficheros deben
+ser idénticos salvo esa línea (`diff` = 1 línea): `caps.shs` rota en los dos.
 
 **La gestión** es `devops/scripts/hub-wallet.sh` (`--local` para el stack local):
 
 ```bash
-bash devops/scripts/hub-wallet.sh status     # modo, log del motor, mensajes propios, anuncio, saldo, pool
+bash devops/scripts/hub-wallet.sh status     # modo, log del motor, mensajes propios, anuncio, saldo, pool, pares: (conn.peers() · pub: connected in|out)
 bash devops/scripts/hub-wallet.sh ready      # precondiciones, sin encender (exit 0 = listo)
 bash devops/scripts/hub-wallet.sh on --yes   # ready + interruptor + recreate + verificación
 bash devops/scripts/hub-wallet.sh pause      # vuelve a pub:false; no publica nada
@@ -474,7 +480,10 @@ bash devops/scripts/hub-wallet.sh pause      # vuelve a pub:false; no publica na
 
 `ready` exige: bot y `ecoind` healthy · RPC responde · cadena sincronizada con la altura que anuncian los
 pares · dirección en `oasis/banking` y `ismine: true` · **un** mensaje `wallet` propio · backup local de
-`wallet.dat` de menos de 24 h (`backup-ecoin.sh`) · el pub ve conectado al bot · `ssb-config.engine-on`
+`wallet.dat` de menos de 24 h (`backup-ecoin.sh`) · **el bot está conectado al pub**, medido por
+`conn.peers()` del propio bot buscando la clave del pub (`connected in|out`; el grep del log del pub
+queda como línea informativa, no como criterio: si falla → «sin enlace con el pub» y la salida es
+`upgrade-gates.sh --remote link bot --yes` con GO, nunca encender a ciegas) · `ssb-config.engine-on`
 presente. Las credenciales RPC no salen del contenedor de `ecoind`.
 
 **Encender es irreversible** (`AGENTES.md` §3) y pide GO del custodio: a los 15 s del arranque el motor
@@ -640,3 +649,4 @@ Contra el stack local en Docker Desktop, con una identidad desechable. Todos pas
 | G5 | Backup en caliente y `--cold` verificados por sha256; **simulacro de restore**: con la cartera apartada la dirección del bot deja de ser `ismine`, tras restaurar vuelve a serlo | — |
 | G5 | `ecoin-disk.sh` no sumaba `txleveldb/` (el índice de esta build) | añadido a `chain_bytes` y a `status` |
 | G6 | Cadena **completa a 51.750 bloques ≈ 50 MB** de datadir (`blk0001.dat` 21 MB, `txleveldb/` 23 MB). Pico de `ecoind` 122 MiB sincronizando desde cero, ~30 MiB en reposo, CPU < 1 % ya sincronizado; bot 139 MiB de pico | los límites 512m / 768m sobran; ajuste a las 24 h en el VPS |
+| `ready` (WP-O143, 2026-10-15) | **El bot puede tener `conn.json` sano (`autoconnect: true`, `failure: 0`) y llevar horas sin conectar con el pub**: el cupo de 4 salientes de `ssb-conn` estaba lleno de pubs externos (`autoconnect` solo filtra, `oasisPeerRank` ordena; no hay par prioritario) y la foto del upgrade medía lo publicado, no el enlace. Un `on` lo habría encendido a ciegas | el enlace es invariante medido: `pub_link` en la foto y criterio del `check`, `pares:` en `status`, `ready` mide por `conn.peers()` del bot; garantía por dos capas (libreta del pub + keepalive) y `populatePubs: false`; restablecer con `upgrade-gates.sh link bot --yes` (`HUB-PROTOCOL.md` §2, D-O38) |

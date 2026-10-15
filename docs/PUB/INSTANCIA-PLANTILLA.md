@@ -66,6 +66,7 @@ image:       «ruta del PNG del avatar, si lo lleva: se sube en el mismo about (
 | «Centralita de Phone y Rooms: encendida, acotada o apagada; aforo de sala» | `HUB-PROTOCOL.md` §14 | «reporte» |
 | Entrada de habitantes: «qué muestra tu portada (el invite de muchos usos que sirve el panel, `PUB_INVITE_USES`) o cómo repartes la invitación». El de la portada es público por diseño; no se copia aquí | puerta [Habitante](../roles/habitante.md), nota «para quien opera» | hoja del habitante, abajo |
 | «Banco, si lo activas» | `ECOIN-PROTOCOL.md` | su §13 |
+| Enlace de los nodos de soporte con el pub: «con las variables `OASIS_PUB_LINK_*` por defecto (`OASIS_PUB_LINK_HOST=oasis-pub`, 60 s / 30 s; `.env.prod` sin tocar) o con qué valores; `conn.populatePubs: false` en sus `ssb-config`». Se mide: `hub-wallet.sh status` (línea `pares:`), `deploy-status.sh` (líneas `LINK`), foto de `upgrade-gates.sh --remote snapshot` (`pub_link=connected` en cada nodo de soporte) | `HUB-PROTOCOL.md` §2 · `UPGRADE-PROTOCOL.md` §3.4, §6 | «reporte» |
 | «Plantillas de organización, si las activas: qué plantilla, qué bot la siembra y en qué estado está» | `TEMPLATE-PROTOCOL.md` | su §8 · «ledger de la siembra» |
 | «Teatro, si lo activas» | `TEATRO-PROTOCOL.md` | en el protocolo |
 

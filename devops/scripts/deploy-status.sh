@@ -52,13 +52,16 @@ echo "-- Piezas vivas y deriva host↔repo (SSH, solo lectura) --"
 # entrypoint, compose, configs) son los del repo. Nunca fatal.
 if [ "${SKIP_LIVE:-0}" != "1" ] && node_run_setup 0 2>/dev/null; then
   REPO_FILES="Dockerfile docker-entrypoint.sh .dockerignore"
-  PUB_FILES="docker-compose.pub.yml caddy/Caddyfile config/hub/nginx.conf.template config/hub/oasis-config.json config/hub/ssb-config config/wallet-bot/oasis-config.json.tpl config/wallet-bot/ssb-config config/wallet-bot/ssb-config.engine-on scripts/render-wallet-bot-config.sh config/retro-bot/ssb-config"
+  PUB_FILES="docker-compose.pub.yml caddy/Caddyfile config/hub/nginx.conf.template config/hub/oasis-config.json config/hub/ssb-config config/wallet-bot/oasis-config.json.tpl config/wallet-bot/ssb-config config/wallet-bot/ssb-config.engine-on scripts/render-wallet-bot-config.sh config/retro-bot/ssb-config tools/ssb-probe.js tools/pub-link.js tools/snapshot-build.js tools/log-bipf.js tools/ssb-admin.js"
   live="$({ node_remote_preamble; node_remote_lib
-    printf 'ROOT=%q; PUBDIR=%q; REPO_FILES=%q; PUB_FILES=%q\n' "${REMOTE_REPO_ROOT:-}" "${REMOTE_REPO_DIR:-}" "$REPO_FILES" "$PUB_FILES"
+    printf 'ROOT=%q; PUBDIR=%q; REPO_FILES=%q; PUB_FILES=%q; PUBC=%q\n' "${REMOTE_REPO_ROOT:-}" "${REMOTE_REPO_DIR:-}" "$REPO_FILES" "$PUB_FILES" "${PUB_CONTAINER:-oasis-pub-scriptorium}"
     cat <<'EOS'
 blob() { [ -f "$1" ] && (printf 'blob %s\0' "$(stat -c%s "$1")"; cat "$1") | sha1sum | cut -d' ' -f1 || echo -; }
+# Enlace de cada nodo de soporte (backend) con el pub, medido por su propio sbot (WP-O143, D-O38).
+pk="$(node_feed "$(node_ssb_dir "$PUBC")")"
 docker ps --format '{{.Names}}' | sort | while read -r c; do
   v="$(node_version "$c")"; [ -n "$v" ] || continue
+  case "$(docker inspect -f '{{join .Config.Cmd " "}}' "$c" 2>/dev/null)" in *backend*) [ -n "$pk" ] && echo "LINK|$c|$(node_link "$c" "$pk")|$(node_peers "$c")" ;; esac
   cur="$(docker inspect -f '{{.Image}}' "$c" 2>/dev/null)"
   name="$(docker inspect -f '{{.Config.Image}}' "$c" 2>/dev/null)"
   latest="$(docker image inspect -f '{{.Id}}' "$name" 2>/dev/null)"
@@ -84,6 +87,8 @@ EOS
     printf '%s\n' "$live" | awk -F'|' '$1=="CTR"{printf "    %-30s %-34s %s\n",$2,$3,$4}' | grep -v -F "$(printf '%s\n' "$live" | awk -F'|' '$1=="NODE"{print "    "$2" "}')" || true
     echo "  src/ en disco del host: $(printf '%s\n' "$live" | awk -F'|' '$1=="SRC"{print $2}')  (lo que entrará en el próximo build)"
     echo "  Docker Engine del host: $(printf '%s\n' "$live" | awk -F'|' '$1=="ENGINE"{print $2}')  (el start_interval de los healthchecks exige >= 25)"
+    echo "  Enlace de los nodos de soporte con el pub (conn.peers() de cada uno; «?» = no medible; «ausente» → upgrade-gates.sh --remote link <alias> --yes):"
+    printf '%s\n' "$live" | awk -F'|' '$1=="LINK"{printf "    %-26s %-16s pares %s\n",$2,$3,$4}'
     echo "  Deriva (fichero del host frente al repo):"
     printf '%s\n' "$live" | awk -F'|' '$1=="FILE"{print $2" "$3}' | while read -r f h; do
       if [ "$h" = "-" ]; then verdict="no existe en el host"
