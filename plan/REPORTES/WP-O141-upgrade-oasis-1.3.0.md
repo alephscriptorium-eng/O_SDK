@@ -130,6 +130,19 @@ como `+0..1` salió (`karmaScore`: los tres lo habían publicado hace < 24 h; `a
 
 **Host**: pendiente (§8).
 
+## 8. Aplicación en el host (2026-10-15 UTC)
+
+Una orden por paso (UPGRADE §4), parada ante cualquier salida distinta de la esperada. Estado de partida: §1 y foto
+`pre130` (remote, 14:08:20Z): pub 1.2.8 `server` · HUB 1.2.8 `backend` · bot 1.2.8 `backend` (`pubAvailability=51`,
+`ubiAllocation=16`, `wallet=1`), los tres `seq = registros = sbot`, arrancados hace 3,6 días.
+
+| # | Paso | Hecho | Puerta |
+|---|---|---|---|
+| 1 | Backups | pub → `devops/backups/oasis-pub/20261015T141217Z` (archivo de `ssb-data`); `wallet.dat` → `devops/backups/ecoin/20261015T141604Z` (86 016 B, sha256 `1556c3b4…`, hot). En el host `oasis-hub.bak-o141-2026-10-15.tgz` (919 MB) y `oasis-wallet-bot.bak-o141-2026-10-15.tgz` (176 MB), root 600, `/srv/oasis` 41 %. `docker-compose.pub.yml.bak-o141-2026-10-15` y compose in place = blob de HEAD (`d9ff6862…`, 3 `start_interval`; el vivo era el blob de d21fc7b8 `1626b470…`, +7/−1 líneas frente a HEAD: `start_interval` y comentarios). `.dockerignore` del host **no se toca** (§6). **Tropiezo**: el guion del operador fijó como «esperado» otro blob y no paró ante el sha distinto antes de escribir; el `.bak` previo y el diff vivo→repo (solo líneas añadidas) lo cubrían | **GO-1** (solo paso 1) |
+| 2 | Disco | 0 contenedores sobre `:1.2.5` → `rm` de `src.old-1.2.5` y `src-1.2.5.tgz`, `rmi :1.2.5` (`ca6c85a7`), `image prune` 0 B, `builder prune` 512 MB; `/` 39 % → 35 % | |
+| 3 | Rollback | `oasis-pub-scriptorium:1.2.8` = `28b8db7a` (= `latest`) · `/srv/oasis/src-1.2.8.tgz` (94 MB, 600) | **GO pasos 2-4** |
+| 4 | `src/` | `git archive` LF de `upgrade/oasis-1.3.0` → `src.new` (24 143 ficheros, 287 MB). Antes del `mv`: 1.3.0, 0 CR en `backend.js` e `is-map`, enlace a `src/base` + `ssb-db2`, 5.º guard (`url` de la entrada 0 de `invite-codes.json`), 6.º (4 + 2), 7.º (1), `blobs.max 50`, solo 4 JSON en `configs/`, `src.old-1.2.8` no existía. `mv src src.old-1.2.8` · `src/` = 1.3.0 | |
+
 ## 6. Correcciones al protocolo
 
 - **U4 en local necesita `pub-web` levantado, no solo `hub-cache`**: el puerto 8088 lo publica el edge local; con el
