@@ -9,17 +9,16 @@ nada que no esté previsto y sin romper las piezas que el fork ha puesto alreded
 **orquesta**: dice qué se mide, en qué orden y con qué puerta. Lo particular de cada pieza vive en
 su anexo (`HUB-PROTOCOL.md` §5, `ECOIN-PROTOCOL.md` §5, `../CLIENT-PROTOCOL.md` §4).
 
-Deriva de los ciclos 0.8.3→0.8.8, 0.8.8→0.9.6, 0.9.6→1.0.8, 1.0.8→1.1.2, 1.1.2→1.1.4,
-1.1.4→1.1.10, 1.1.10→1.2.1, 1.2.1→1.2.2, 1.2.2→1.2.3, 1.2.3→1.2.5 y 1.2.5→1.2.8. Se reescribió en el ciclo 1.1.4→1.1.10 (WP-O112) porque el protocolo anterior comprobaba bien
-lo barato —que los guards de `src/` siguen puestos— y no comprobaba lo caro: que Oasis **se
-comporta** igual. Sus greps decían «esto sigue existiendo», no «esto sigue haciendo lo mismo».
+Deriva de los ciclos registrados en §7. Mide lo caro, no solo lo barato: no basta con que los
+guards de `src/` sigan puestos («esto sigue existiendo»); hay que medir que Oasis **se comporta**
+igual («esto sigue haciendo lo mismo») y que cada nodo publica exactamente lo declarado.
 
 | Paso | Qué | Dónde | Puerta |
 |---|---|---|---|
 | §0 | Qué se sube, qué hay desplegado | host (lectura) | — |
 | §1 | Preflight: de qué versión a cuál | repo | — |
 | §2 | Overlay de `src/` + guards | rama `upgrade/oasis-X.Y.Z` | invariante de 7 ficheros |
-| §3 | Qué cambia de comportamiento; derivados; gates locales | repo + Docker local | gates U0-U7 |
+| §3 | Qué cambia de comportamiento; derivados; gates locales | repo + Docker local | gates U0-U7, UM, UR, US |
 | §4 | Deploy por rol | host | **GO del custodio** |
 | §5 | Ciclo de red (solo si rota) | repo + host | GO |
 | §6 | Healthcheck y rollback | host | — |
@@ -34,13 +33,14 @@ tanto un upgrade le cambia cosas distintas:
 
 | Rol | `command` | Qué código de Oasis ejecuta | Qué arriesga en un upgrade |
 |---|---|---|---|
-| **pub** | `server` | el sbot: `src/server/SSB_server.js` **y lo que carga** (en 1.1.10, 15 ficheros: también `banking_model.js`, `state-manager.js`, `typed_log.js`) | dependencias `ssb-*`, `ssb_config.js`, y lo que el sbot hace solo al arrancar (anunciar versión; publicar dirección si tuviera cartera a mano). Es el único cuyo reinicio se nota en la red |
+| **pub** | `server` | el sbot: `src/server/SSB_server.js` **y lo que carga** (su cierre de requires: también `banking_model.js`, `state-manager.js`, `typed_log.js`; el preflight lo cuenta) | dependencias `ssb-*`, `ssb_config.js`, y lo que el sbot hace solo al arrancar (anunciar versión; publicar dirección si tuviera cartera a mano). Es el único cuyo reinicio se nota en la red |
 | **nodo de soporte** (HUB, bots) | `backend` | todo `src/`: sbot embebido + `backend.js` con identidad propia y, en un bot de cartera, dinero | todo lo que el backend haga **solo** al arrancar o por temporizador, y todo lo que publique |
 | **cliente** | `full` | todo `src/` + GUI con una persona delante + IA | lo anterior, más cada botón nuevo que publique |
 
 `upgrade-preflight.sh` (§1) dice qué ficheros cambian para cada rol. Para el pub no cuenta una
-carpeta sino el **cierre de requires** de `SSB_server.js` (`devops/scripts/upgrade-closure.js`): en
-1.1.4→1.1.10 cambian 6 de los 15 ficheros que carga el pub, y 73 para backends y cliente.
+carpeta sino el **cierre de requires** de `SSB_server.js` (`devops/scripts/upgrade-closure.js`): el
+preflight cuenta cuántos ficheros cambian para el pub y cuántos para backends y cliente; lo normal
+es que el pub cargue una fracción pequeña de `src/` y los backends todo.
 
 ### 0.2 Inventario de piezas
 
@@ -136,7 +136,7 @@ bash devops/scripts/upgrade-preflight.sh [--from X.Y.Z] [--to X.Y.Z]   # drift d
 - Imprime `OLD_REF` y `NEW_REF`: el commit de upstream de la versión **desplegada** y el de la
   nueva. Upstream no etiqueta las versiones de Oasis (solo las de Android): el commit de una
   versión es el titulado `Oasis release X.Y.Z`, y **los dos** se resuelven así. Si hay varios con el
-  mismo título (1.2.5 tuvo tres el mismo día), vale el **último**: es el que resuelve el preflight. La versión de
+  mismo título, vale el **último**: es el que resuelve el preflight. La versión de
   partida sale del journal de deploys (último registro del **pub**); si §0.3 midió otra,
   `--from X.Y.Z`. La de llegada es la de upstream, o `--to X.Y.Z` para subir a una intermedia.
   `NEW_REF` **no es la punta de la rama**: si upstream empujó algo después de la release, el
@@ -190,7 +190,7 @@ otro para los guards repuestos. Así el diff de los guards se lee solo.
 
 | Fichero | Qué reponer sobre el fichero nuevo |
 |---|---|
-| `src/backend/backend.js` | **Cuatro edits.** (0) **Séptimo guard (WP-O135, D-O31)**, marcado `// guard o-sdk (WP-O135, D-O31)`: en `.get("/c/blob/:cnBlobId")`, `blob.getLocal` → `blob.getResolved` (pide a la red hasta 30 s **solo** los blobs que la lista blanca `clearnetBlobAllowed` de upstream admite; con `getLocal` un blob que el HUB no tiene nunca saldría en `/c`). (1) En `.post("/update")`: conservar `isLoopbackRequest` y `safeRefererRedirect`; sustituir las dos `exec` (`git reset --hard && git pull`, `sh install.sh`) por el `console.warn` del fork. (2) Interruptor de snapshots (D-O27): `const snapshotsOff = process.env.OASIS_SNAPSHOT === 'off';` antes de `runSnapshotBuild`, y `|| snapshotsOff` en la primera condición de `runSnapshotBuild` y de `bootstrapFromPub` |
+| `src/backend/backend.js` | **Cuatro edits, (0)-(3).** (0) **Séptimo guard (WP-O135, D-O31)**, marcado `// guard o-sdk (WP-O135, D-O31)`: en `.get("/c/blob/:cnBlobId")`, `blob.getLocal` → `blob.getResolved` (pide a la red hasta 30 s **solo** los blobs que la lista blanca `clearnetBlobAllowed` de upstream admite; con `getLocal` un blob que el HUB no tiene nunca saldría en `/c`). (1) En `.post("/update")`: conservar `isLoopbackRequest` y `safeRefererRedirect`; sustituir las dos `exec` (`git reset --hard && git pull`, `sh install.sh`) por el `console.warn` del fork. (2) Interruptor de snapshots (D-O27): `const snapshotsOff = process.env.OASIS_SNAPSHOT === 'off';` antes de `runSnapshotBuild`, y `|| snapshotsOff` en la primera condición de `runSnapshotBuild` y de `bootstrapFromPub`. (3) La parte del sexto guard que vive en este fichero (`clearnetLanguage`/`clearnetTheme`): **está descrita en la fila de `clearnet_view.js`**, abajo |
 | `src/server/ssb_config.js` | `mergeDeep` en vez del spread (`config = mergeDeep(config, configData)`); bloque `OASIS_SERVER_CONFIG_OVERRIDE` antes de `const megabyte`; `blobs.max` = 50 MB (upstream lo sube a 75 desde 1.2.4; el fork lo mantiene: fila de disco de `HUB-PROTOCOL.md`, `CAPACIDAD.md`). Conservar `config.statePath`, `config.db2` y, desde 1.2.4, `readServerConfig()` y el bloque `bindHost` de upstream |
 | `src/backend/updater.js` | Los dos `console.log("...new code updates are available!...")` pasan a ser el mensaje del fork. Conservar el fix de ruta con `__dirname` |
 | `src/views/settings_view.js` | El `form({ action: "/update" })` pasa a ser el `p(...)` informativo |
@@ -198,7 +198,11 @@ otro para los guards repuestos. Así el diff de los guards se lee solo.
 | `src/views/clearnet_view.js` | **Sexto guard (WP-O132, D-O30), tres piezas marcadas `// guard o-sdk (WP-O132, D-O30)`:** (a) `cnWithQuery`/`propagateQuery` (los antiguos `cnWithLang`/`propagateLang` pasan a envolverlos): `lang` y `theme` del visitante viajan a todo `href="/c…"` y formulario; (b) `THEMES` + `renderThemeSelector` + `getCurrentTheme` (prioridad `cnScope().cnTheme` → `config.themes.current` → `Dark-SNH`) y el selector pintado junto al de idioma en `renderClearnetPage`; (c) en `renderClearnetPage`, **re-afirmar `cnScope().lang`** con `mv().setLanguage` antes del render (el idioma es global del proceso y la ruta esperó). Y en `backend.js`, edit (3): `clearnetLanguage` guarda siempre `store.lang`, y `clearnetTheme(ctx)` valida `?theme=` contra `THEMES` y guarda `store.cnTheme`; el middleware lo llama tras `setLanguage` en rutas `/c`. Invariantes en `upgrade-invariants.d/hub.tsv`; gate `upgrade-gates.sh hub --strict` (cruce 0 en 18 peticiones de 6 idiomas, `?theme=`, enlaces con los dos parámetros) |
 | `src/configs/blockchain-cycle.json` | fork-only (marcador de ciclo; se preserva) |
 
-Eso es **todo** lo que puede divergir de upstream dentro de `src/`: 7 guards (en 6 ficheros) y un fichero propio.
+Eso es **todo** lo que puede divergir de upstream dentro de `src/`. Frase canónica (D-O37, la que
+citan los demás documentos): **7 guards en 6 ficheros; con `src/configs/blockchain-cycle.json` el
+invariante `git diff $NEW_REF --stat -- src/` es de 7 ficheros.** Los literales de los guards del
+pub (`/update`, `settings_view`, `snh-invite-code.json`, `blobs.max`, `mergeDeep`) están en
+`upgrade-invariants.d/pub.tsv` y los del sexto en `hub.tsv`: `annex` (§3.1) los comprueba.
 Fuera de `src/` el fork se mantiene entero (nunca overlay): `Dockerfile`, `docker-compose*.yml`,
 `docker-entrypoint.sh`, `pub/**`, `devops/**`, `client/**`. `install.sh`/`oasis.sh` son
 bare-metal: sincronizarlos con upstream es opcional.
@@ -219,13 +223,13 @@ entrypoint (§3.3) en la misma rama, o se dispone por escrito por qué no. `sin-
 upstream contradiciéndose (su parche no casa con su propia dependencia): se dispone igual.
 `ausente` en `src/AI/**` es normal (la pila de IA se instala en el build). Los tres parches del
 entrypoint (`ssb-ref`, `ssb-blobs`, `multiserver`) no se retiran porque upstream los traiga: son
-idempotentes y el log de arranque sigue siendo la prueba (§3.3). En el ciclo 1.2.3 la copia del
-fork era la de 1.2.1 y nadie lo había notado: el audit lo saca como línea `patches` del diff.
+idempotentes y el log de arranque sigue siendo la prueba (§3.3). Una copia del fork que se quede
+atrás no se ve leyendo: el audit la saca como línea `patches` del diff (§3.1).
 
 ### Verificación de invariantes (bloqueante)
 
 ```bash
-git diff $NEW_REF --stat -- src/                  # exactamente 7 ficheros (6 guards + blockchain-cycle.json)
+git diff $NEW_REF --stat -- src/                  # exactamente 7 ficheros: los 6 de los 7 guards + blockchain-cycle.json (frase canónica, arriba)
 git diff $NEW_REF --stat -- src/base              # vacío: lo vendorizado es el de upstream
 git diff $NEW_REF --stat -- scripts/patch-node-modules.js   # vacío: la lista de parches es la de upstream
 git ls-files -s src/server/node_modules           # modo 120000: sigue siendo un enlace
@@ -295,7 +299,7 @@ reporte de ciclo.
 | `pub/caddy/Caddyfile` | una ruta nueva del visor fuera de los prefijos que ya enruta | in place + `validate` + `reload` (`../AGENTES.md` §2.6) |
 | `pub/site/hub/` (Sala 04) | tipos o rutas nuevas del visor | `deploy-site.sh` |
 | `client/scripts/*`, `docker-entrypoint.sh` | cambia el contrato de IA, la forma de `oasis-config.json` o los módulos parcheados | rebuild del cliente; el entrypoint del **host** es el suyo (§0.3, deriva) |
-| `pub/docker-compose.pub.yml` | upstream cambia **dónde lee** un fichero que montamos por bind (1.2.4: `oasis-config.json` pasa a `~/.ssb/oasis/`), o una variable que el compose fija | sustituir in place tras `sha256` del vivo contra el del repo + recrear los nodos afectados (ya se recrean en el ciclo) |
+| `pub/docker-compose.pub.yml` | upstream cambia **dónde lee** un fichero que montamos por bind (1.2.4: `oasis-config.json` pasa a `~/.ssb/oasis/`), o una variable que el compose fija, o cambia el fork (healthchecks) | **antes de que viaje**: Docker Engine del host ≥ 25 (`docker version`, el comando exacto en el bloque de §3.4: los healthchecks llevan `start_interval`) · sustituir in place tras `sha256` del vivo contra el del repo + recrear los nodos afectados (ya se recrean en el ciclo) |
 
 El reporte del WP lleva la lista **«qué viaja al host»** de este ciclo: `src/` y cada fichero de
 esta tabla que haya cambiado. §4 la ejecuta; lo que no esté en la lista no se sube.
@@ -326,57 +330,50 @@ bloqueantes y cada uno tiene salida esperada; ante otra salida, parada dura.
 
 ```bash
 G="bash devops/scripts/upgrade-gates.sh --local"
+CL="docker compose --env-file pub/.env.local -f pub/docker-compose.pub.yml --profile wallet"
+docker version --format '{{.Server.Version}}'      # ≥ 25: los healthchecks del compose llevan start_interval (abajo, «Variables»)
 ```
 
 | Gate | Qué | Comando | Salida esperada |
 |---|---|---|---|
-| **U0** | Línea base **como el host**: stack local en la versión vieja, con cada pieza en el mismo modo que en §0.3 (motor encendido si allí lo está, época del mes abierta). Copia del estado. **Si el ciclo cambia el compose** (§3.2), U0 se levanta con el compose **desplegado** (`git show main:pub/docker-compose.pub.yml > pub/docker-compose.pub.<vieja>.yml`, sin trackear): en 1.2.5 el compose nuevo con la imagen vieja habría leído la config por defecto de la imagen | parar nodos · `$G backup pre` · arrancar · `$G snapshot pre` | todos los nodos healthy en la versión vieja; `seq` = `registros` = `sbot` en todos |
-| **U1** | Árbol | verificación de §2 · `annex` · `--check` del reporte | 7 ficheros · ningún `!` · 0 IDs sin disponer |
-| **U2** | Imagen nueva | etiquetar la vieja (`docker tag …:latest …:X.Y.Z-vieja`) · `npm run build` (o el build del compose del pub) · humo sin red: `ls /app` y `find / -xdev -name secret` | build limpio; `node --check` dentro de la imagen; **0 ficheros `secret`**, sin `volumes-*` ni `.env*` (en 1.2.8 el primer build local se llevó `volumes-real/`, la identidad real del bot retro: `.dockerignore` no la excluía) |
-| **U3** | Recrear en orden pub → HUB → bot y medir **qué publica cada uno** | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre --expect '…'` | `GATE OK` con el delta declarado (abajo) |
+| **U0** | Línea base **como el host**: stack local en la versión vieja, con cada pieza en el mismo modo que en §0.3 (motor encendido si allí lo está, época del mes abierta). Copia del estado. **Si el ciclo cambia el compose** (§3.2), U0 se levanta con el compose **desplegado** (`git show main:pub/docker-compose.pub.yml > pub/docker-compose.pub.<vieja>.yml`, sin trackear): con el compose nuevo y la imagen vieja la línea base no sería «como el host» | `$CL stop oasis-pub oasis-hub oasis-wallet-bot` · `$G backup pre` · arrancar · `$G snapshot pre` | todos los nodos healthy en la versión vieja; `seq` = `registros` = `sbot` en todos |
+| **U1** | Árbol | verificación de §2 · `annex` · `upgrade-behaviour-diff.sh $OLD_REF $NEW_REF --check <reporte> --from-tsv /tmp/diff.tsv` (lee el TSV de §3.1, no regenera el diff) | 7 ficheros · ningún `!` · 0 IDs sin disponer |
+| **U2** | Imagen nueva | etiquetar la vieja (`docker tag <imagen>:latest <imagen>:X.Y.Z-vieja`) · `npm run build` (o el build del compose del pub) · `$G smoke <imagen>:latest` | build limpio · `SMOKE OK`: versión nueva, `node --check` de `backend.js`/`clearnet_view.js`/`SSB_server.js`, **0 ficheros `secret`**, sin `.env*`, `volumes-*`, `src.old*`/`src.new*`, `devops/`, `client/`, `docs/` ni `ARCHIVO/` en la raíz de `/app` (`src/client` es de upstream y no cuenta), el enlace `src/server/node_modules` → `src/base`, modo `server` abre el socket del sbot, modo `backend` da `GET /c` = 200, ≥3 parches («patcheado»/«ya parcheado»), 0 líneas de error. Los contenedores del humo son efímeros (`--network none`, sin volúmenes) y se borran al acabar |
+| **U3** | Recrear en orden pub → HUB → bot y medir **qué publica cada uno** | `$G up pub` · `$G up hub` · `$G up bot` · `$G check pre --wait` | cada `up` termina en `healthy` (sin espera fija) · `check --wait` repite la foto hasta que el delta es el esperado (`expect.conf`, abajo) **y** ningún `seq` cambió en los últimos `GATE_STABLE` s → `GATE OK (delta esperado y sequence estable 60 s; N s en total)` (medido en local con 1.2.8: `healthy` a los 4 s por nodo, `up` de los tres en 25 s, `check --wait` verde en 75 s). Una desviación firme corta en la primera vuelta |
 | **U4** | Visor por delante de la caché | recrear `hub-cache` si cambió la plantilla · `$G hub --strict` | `GATE OK`: MISS→HIT, idioma independiente del visitante, sin cruce, rutas nuevas |
-| **U5** | Peor caso del bot: las páginas donde el backend refresca la cartera por su cuenta (`/banking`, `/transfers`, `/shops`, `/market`, `/school`) | `$G snapshot u5` · `$G worst` · `$G check u5 --expect 'bot:karmaScore=+0..1'` | `wallet` y `(cifrado)` no se mueven; misma dirección. **`/wallet` queda fuera a propósito**: en cualquier versión, con el motor encendido, republica la dirección (`../AGENTES.md` §4) |
+| **U5** | Peor caso del bot: las páginas donde el backend refresca la cartera por su cuenta (`/banking`, `/transfers`, `/shops`, `/market`, `/school`; `GATE_WORST_PATHS` para otra lista) | `$G snapshot u5` · `$G worst` · `$G check u5 --wait --expect 'bot:karmaScore=+0..1'` | `wallet` y `(cifrado)` no se mueven; misma dirección. **`/wallet` queda fuera a propósito**: en cualquier versión, con el motor encendido, republica la dirección (`../AGENTES.md` §4) |
 | **U6** | Gates propios de las piezas que el diff ha tocado | invite (`HUB-PROTOCOL.md` §3, si cambian `ssb-*`; en local, abajo) · bootstrap de un bot nuevo (`ECOIN-PROTOCOL.md` §3, si cambia la publicación de la dirección) · drill del cliente (`../CLIENT-PROTOCOL.md` §5) | los de cada anexo |
-| **U7** | Repetible | parar nodos · `$G restore pre --yes` · **volver a renderizar** la config del bot (`restore` repone también la renderizada vieja, que vive en `volumes-dev/`) · repetir U3 | mismo delta que la primera vez |
+| **U7** | Repetible | `$CL stop oasis-pub oasis-hub oasis-wallet-bot` · `$G restore pre --yes` · **volver a renderizar** la config del bot (`restore` repone también la renderizada vieja, que vive en `volumes-dev/`) · repetir U3 | mismo delta que la primera vez |
 | **UM** | Solo si cambia el motor (§0.5). Migración sobre una **copia** de cada nodo, sin red | copia de `volumes-dev/.gates/pre/<nodo>/ssb-data` · contenedor efímero `--network none` de la imagen nueva en modo `server` · contar antes (`FULL_SCAN=1 node client/scripts/lib/inspect-log-offset.js`) y después (`pub/tools/log-bipf.js`) | guarda presente, `db2/log.bipf` existe, mismo nº de autores, registros = los de antes **+1** (el `oasisVersion` propio), 0 borrados |
 | **UR** | Solo si cambia el motor. No-retorno | la imagen **vieja** en modo `server` sobre una copia ya migrada | el contenedor se cae; la guarda y `db2/log.bipf` no cambian (mismo sha256) |
 | **US** | Snapshot del pub | `pub-snapshot.sh --local build` · `$G check <tag>` · un nodo desechable pide el snapshot antes y después de aceptar un invite; otro, con `OASIS_SNAPSHOT=off` | construir no publica; sin invite: `not allowed`; con invite, el log del nodo salta en segundos; con el interruptor, no |
 
-**El delta declarado (U3).** Lo normal:
+**El delta declarado (U3).** El delta esperado por defecto vive en
+`devops/scripts/upgrade-invariants.d/expect.conf` (una línea por nodo) y `check` lo lee si no se
+pasa `--expect`; lo imprime como `esperado: … (expect.conf)`. `--expect 0` declara todo a cero
+(recrear en la misma versión); un `--expect '…'` explícito manda sobre el fichero (U5, U6). Lo que
+el fichero declara es esta tabla; si upstream cambia lo que un nodo publica solo, cambian las dos a
+la vez, en la misma rama:
 
-```
---expect 'pub:oasisVersion=+1 hub:oasisVersion=+1 bot:oasisVersion=+1,pubAvailability=+0..1'
-```
+| Nodo | Tipo | Cuándo | Rango |
+|---|---|---|---|
+| pub | `oasisVersion` | al arrancar en otra versión que la última anunciada (también el pub, en modo `server`; también al volver atrás) | `+1` |
+| hub | `oasisVersion` | ídem | `+1` |
+| hub | `karmaScore` | refresco de fondo del backend: si el valor cambió (o nunca lo publicó) y pasaron 24 h del último (≥ 1.2.6) | `+0..1` |
+| bot | `oasisVersion` | ídem | `+1` |
+| bot | `karmaScore` | ídem hub | `+0..1` |
+| bot | `about` | `syncClearnetSince` a los 3 s de **cada** arranque de un backend no público con `visibilityPrefs` publicados (≥ 1.2.3); si los índices no responden, no publica y lo reintenta en el siguiente arranque (§0.4). En el HUB no: es público | `+0..1` |
+| bot | `pubAvailability` | solo con el motor encendido: al arrancar relee su último anuncio y vuelve a anunciar si pasaron más de 12 h o cambió el saldo. Cada anuncio gasta una dirección del keypool: `backup-ecoin.sh` antes y después (`ECOIN-PROTOCOL.md` §9) | `+0..1` |
+| todos | `ubiAllocation` | **debe ser 0**: solo lo es si la **época del mes ya está abierta** antes de subir (`épocas=` en la foto). Si no lo está, la abriría la versión nueva con sus reglas: irreversible y distinto; decídelo con el custodio antes | `0` |
+| todos | `(cifrado)` | **debe ser 0**: los avisos automáticos del backend (el «bot político», el de empleo, recordatorios) se disparan con cualquier petición, también la del healthcheck, y se envían **a sí mismos un mensaje cifrado**. En un nodo de soporte van silenciados por config (`inboxMutedBots`, `HUB-PROTOCOL.md` §2). Si aparece uno, esa lista está incompleta o el nodo corre una versión que aún no la entiende | `0` |
 
-- `oasisVersion=+1` por nodo, **también el pub**. `+0` significa que no subió de versión (imagen
-  vieja, o un estado que ya había pasado por la nueva: `restore` antes de repetir).
-- En el pub, cualquier otra cosa es una desviación: algo arrancó un backend sobre su `.ssb`.
-- `pubAvailability=+0..1` solo con el motor encendido: al arrancar relee su último anuncio y vuelve
-  a anunciar si pasaron más de 12 h o cambió el saldo. Cada anuncio gasta una dirección del
-  keypool: `backup-ecoin.sh` antes y después (`ECOIN-PROTOCOL.md` §9).
-- **Al subir a 1.2.2, `about=+1` en HUB y en cada bot** (una sola vez): el backend público anuncia
-  `visibilityPrefs.phone = "off"`. No sale al arrancar sino con el primer refresco de fondo tras
-  atender peticiones, así que el `check` hecho justo después de recrear no lo ve: se declara como
-  `about=+0..1` en ese `check` y como `about=+1` en el de cierre (`HUB-PROTOCOL.md` §14).
-- **Desde 1.2.3, `about=+0..1` en el bot** (y en el cliente) en cada recreación, también en la
-  misma versión (§0.4, `clearnetSince`). En el HUB no: es público y no corre esa sincronización.
-- **Desde 1.2.6, `karmaScore=+0..1` en HUB y en cada bot**, al subir y en cualquier `check`
-  separado más de 24 h del anterior. Upstream movió `getUserEngagementScore` de `GET /activity` al
-  refresco de fondo, que además arranca solo a los 5 s: todo backend publica su `karmaScore` si el
-  valor cambió (o nunca lo publicó) y han pasado 24 h del último. Un nodo que nunca publicó uno lo
-  publica al subir (`+1`). Aceptado por el custodio en el ciclo 1.2.8 (WP-O138, H4); el pub en
-  modo `server` no carga el backend y no lo publica.
-- `ubiAllocation` no se nombra: debe ser 0. Solo es 0 si la **época del mes ya está abierta** antes
-  de subir (`épocas=` en la foto). Si no lo está, la abriría la versión nueva con sus reglas:
-  irreversible y distinto; decídelo con el custodio antes.
+- `oasisVersion=+0` significa que el nodo no subió de versión (imagen vieja, o un estado que ya
+  había pasado por la nueva: `restore` antes de repetir).
+- En el pub, cualquier otra cosa es una desviación: algo arrancó un backend sobre su `.ssb`. El pub
+  en modo `server` no carga el backend: ni `karmaScore`, ni `about`, ni cifrados.
+- Un nodo que **nunca** publicó un tipo `+0..1` lo publica al subir (`+1`): sigue dentro del rango.
 
-- `(cifrado)` no se nombra: debe ser 0. El backend trae avisos automáticos (el «bot político», el
-  de empleo, recordatorios) que se disparan con cualquier petición, también la del healthcheck, y
-  se envían **a sí mismos un mensaje cifrado**. En un nodo de soporte van silenciados por config
-  (`inboxMutedBots`, desde 1.1.10; `HUB-PROTOCOL.md` §2). Si aparece un cifrado, esa lista está
-  incompleta o el nodo corre una versión que aún no la entiende.
-
-**U6 en local, invite completo (desde el ciclo 1.2.3).** `test-invite.sh` solo tiene modo host;
+**U6 en local, invite completo.** `test-invite.sh` solo tiene modo host;
 en local se hace con un **nodo desechable** de la imagen nueva, sin volúmenes, en la red del
 compose: `$G snapshot u6` · invite de un uso en el pub (`invite.create({ uses: 1, external:
 '<dominio.con.punto>' })` por `ssb-client` dentro del contenedor del pub) y reescribir el host a
@@ -389,9 +386,16 @@ Salida esperada: `accept: true`, el pub como par `connected`, y el pub publica *
 
 **Cuándo medir.** Un nodo no publica todo «al arrancar»: el sbot anuncia versión a los 7 s, el motor
 hace su primer tick a los 15 s, y los avisos automáticos esperan a la primera petición con los
-índices listos (más de un minuto). `upgrade-gates.sh up` espera 90 s con una petición en medio. En
-el host, el `check` que cuenta es el que se hace **al menos 5 minutos después** de recrear el
-último nodo, y se repite en el cierre (`snapshot post`).
+índices listos. Nadie cuenta ese tiempo a mano: `up` termina en cuanto el nodo está `healthy` y
+`check <tag> --wait` lo espera **midiendo**: repite la foto cada `--every` s (20) hasta que el delta
+coincide con el esperado **y** ningún `seq` cambió en los últimos `--stable` s (60); es verde solo
+por estabilidad, nunca por tiempo. Una desviación firme (tipo no esperado, `+N` por encima del
+rango, feed o dirección cambiados, errores en el log) corta en la primera vuelta; al agotar `--max`
+(600) sin alcanzar el esperado → DESVIACIÓN (rc 1); si la foto no cuadra → NO MEDIBLE (rc 3).
+`--min-age N` hace PREMATURA (NO MEDIBLE) la medida de un nodo recreado hace menos de N s; con
+`--wait`, el bucle espera a cumplirlo. En `--remote` vale 300 por defecto: en el host el `check`
+que cuenta es el que el propio script da por maduro, no el que el operador hace «a los 5 minutos»;
+se repite en el cierre (`snapshot post`). En `--local` vale 0.
 
 `check` exige además que el feed de cada nodo sea el mismo, que `Δsequence` == suma de Δ por tipo
 (cifrados incluidos) y que el sbot vivo dé el mismo `sequence`. Si eso no cuadra responde
@@ -405,7 +409,25 @@ cuadran: se repite la foto.
 
 **Lo que el ensayo local no reproduce.** El `Dockerfile` y el entrypoint del host pueden no ser
 los del repo (§0.3, «Deriva»). Por eso la imagen que se construye **en** el host se prueba allí
-con un contenedor efímero antes de recrear ningún nodo (§4, paso 6).
+con el mismo humo (`upgrade-gates.sh --remote smoke`) antes de recrear ningún nodo (§4, paso 6).
+
+**Variables de los gates.** Todas opcionales; el valor entre paréntesis es el que rige si no se
+definen.
+
+| Variable / opción | Qué fija | Dónde |
+|---|---|---|
+| `GATE_UP_TIMEOUT` (300) | segundos que `up` espera a `healthy` antes de fallar | `up` |
+| `GATE_SETTLE` (sin definir) | **opt-in**: si se define, `up` duerme esos segundos tras `healthy`. Por defecto no duerme: la espera la hace `check --wait` | `up` |
+| `GATE_WAIT_MAX` / `--max` (600) · `GATE_WAIT_EVERY` / `--every` (20) · `GATE_STABLE` / `--stable` (60) | tope, cadencia y ventana de estabilidad de `check --wait` | `check` |
+| `GATE_MIN_AGE` / `--min-age` (300 en `--remote`, 0 en `--local`) | edad mínima del nodo desde su `StartedAt` para que la foto no sea PREMATURA | `check` |
+| `GATE_SMOKE_MAX` / `--max` (120) | segundos que `smoke` espera al socket del sbot y a `GET /c` = 200 | `smoke` |
+| `GATE_WORST_PATHS` | lista de rutas de `worst` (por defecto `/banking /transfers /shops /market /school`) | `worst` |
+| `GATE_RSS_MODULE` (`feed`) | módulo del RSS (`/c/rss/<módulo>`) que `hub --strict` pide | `hub` |
+| `HUB_CACHE_CONTAINER` (`oasis-pub-hub-cache`) | contenedor de la caché desde el que `hub` pide al backend por dentro | `hub` |
+| `GATE_NODES` | qué nodos entran en la foto (la base y la medida deben llevar los **mismos**; `../AGENTES.md` §4) | `snapshot`, `check` |
+| `expect.conf` | delta por defecto de `check` (una línea por nodo); `--expect` explícito manda | `check` |
+| `--from-tsv <tsv>` · `--skip <secciones>` | `--check` sobre un TSV ya generado (segundos, no minutos) · secciones que el diff no genera | `upgrade-behaviour-diff.sh` |
+| `start_interval: 3s` (compose local) | cadencia del healthcheck de pub, HUB y bot **durante `start_period`**: `up` ve el `healthy` en segundos. Exige Docker Engine ≥ 25 en la máquina que corre el compose (`docker version`, el comando exacto en el bloque de arranque de esta sección) | compose |
 
 ## 4. Deploy por rol (host)
 
@@ -426,10 +448,10 @@ R="bash devops/scripts/upgrade-gates.sh --remote"                     # en la m�
 | 2 | **Disco** | retirar el rollback del ciclo **anterior** (tag de imagen, `src.old*`, tgz) · `docker image prune -f` · `docker builder prune -f`. Cada rebuild deja ~3 GB | |
 | 3 | **Rollback de este ciclo** | `docker tag <imagen>:latest <imagen>:<ver-vieja>` · `tar -czf <datos>/src-<ver-vieja>.tgz src` | |
 | 4 | **Subir `src/`** | ver abajo | |
-| 5 | **Lo demás que viaja** (§3.2) que sea inocuo en la versión vieja: se sube y se aplica **ahora**, con los nodos todavía en la versión vieja, y se comprueba | p. ej. plantilla nginx: a un temporal del host · `nginx -t` en un contenedor desechable · in place · `$C up -d --no-deps --force-recreate hub-cache` · `$R hub` · salud de **todos** los vhosts del edge | |
-| 6 | **Build y humo** | `$C build oasis-pub` (el pub sigue sirviendo) · humo de la imagen nueva (abajo) · si cambia el motor, **ensayo de migración** (abajo) · `df -h /` | |
-| 7 | **Pub** | si cambia el motor: `$C stop oasis-pub` y tgz en frío de su `ssb-data` (se queda en el host) · `$C up -d --no-deps oasis-pub` · esperar a `healthy` (la migración ocurre antes de abrir el sbot) · `$R check pre --expect 'pub:oasisVersion=+1'` · invite · `/public/status` | **GO-2** (el pub se reinicia y publica `oasisVersion`; si cambia el motor, **sin retorno**) |
-| 8 | **HUB** | sus configs in place · si cambia el motor, parar y tgz en frío · `$C up -d --no-deps oasis-hub` · `$R check …` · `hub-disk.sh prune-cache` · `$R hub --strict` (en ese orden: la caché guarda 404 de las rutas que la versión vieja no tenía) · ficheros del sitio que cambien: **uno a uno**, tras comprobar que el vivo es el del repo (`deploy-site.sh` sincroniza el sitio entero con `--delete`) | **GO-3** (publica `oasisVersion`) |
+| 5 | **Lo demás que viaja** (§3.2) que sea inocuo en la versión vieja: se sube y se aplica **ahora**, con los nodos todavía en la versión vieja, y se comprueba | p. ej. plantilla nginx: a un temporal del host · `nginx -t` en un contenedor desechable · in place · `$C up -d --no-deps --force-recreate hub-cache` · `$R hub` · salud de **todos** los vhosts del edge. Si viaja el compose: antes, Docker Engine del host ≥ 25 (`docker version`; §3.2, §3.4) | |
+| 6 | **Build y humo** | `$C build oasis-pub` (el pub sigue sirviendo) · `$R smoke <imagen>:latest` (abajo) · si cambia el motor, **ensayo de migración** (abajo) · `df -h /` | |
+| 7 | **Pub** | si cambia el motor: `$C stop oasis-pub` y tgz en frío de su `ssb-data` (se queda en el host) · `$C up -d --no-deps oasis-pub` · esperar a `healthy` (la migración ocurre antes de abrir el sbot) · `$R check pre --wait --expect 'pub:oasisVersion=+1'` (`--min-age` 300 por defecto en `--remote`: la foto madura la impone el script) · invite · `/public/status` | **GO-2** (el pub se reinicia y publica `oasisVersion`; si cambia el motor, **sin retorno**) |
+| 8 | **HUB** | sus configs in place · si cambia el motor, parar y tgz en frío · `$C up -d --no-deps oasis-hub` · `$R check … --wait` · `hub-disk.sh prune-cache` · `$R hub --strict` (en ese orden: la caché guarda 404 de las rutas que la versión vieja no tenía) · ficheros del sitio que cambien: **uno a uno**, tras comprobar que el vivo es el del repo (`deploy-site.sh` sincroniza el sitio entero con `--delete`) | **GO-3** (publica `oasisVersion`) |
 | 9 | **Bot de cartera** | plantilla in place y render (**con `sudo` en el host**: el destino es de otro uid y está a 400) · motor encendido: `hub-wallet.sh pause` (lo recrea en la versión nueva con el motor **apagado**) · `$R check …` (misma dirección, `wallet` sin cambios) · y entonces `hub-wallet.sh on --yes` · `$R check …` · `backup-ecoin.sh`. Motor apagado: `$C up -d --no-deps oasis-wallet-bot` · `$R check …` | **GO-4a** (`oasisVersion`) · **GO-4b** (encender: `pubAvailability`) |
 | 9b | **Snapshot del pub** | no hay paso: lo reconstruye el propio pub desde que arranca (`OASIS_PUB_SNAPSHOT_HOURS`, `HUB-PROTOCOL.md` §13). Comprobar: `pub-snapshot.sh status` a los pocos minutos · `[snapshot]` en el log del pub · `$R check …` (construir no publica) | la **primera** vez que una instancia lo ofrece: GO (servicio nuevo desde el pub) |
 | 10 | **Cierre** | `$R snapshot post` · `deploy-status.sh` · `capacity.sh` · `deploy-log.sh` (abajo) · ficha de instancia | |
@@ -439,22 +461,15 @@ mientras no se recrea, cada nodo sigue en la versión vieja. `ecoind` no depende
 Oasis y **no se recrea**.
 
 **Paso 6, humo de la imagen.** El `Dockerfile` y el entrypoint del host pueden no ser los del repo
-(§0.3): la imagen que se acaba de construir **allí** se prueba allí, antes de recrear a nadie, en
-un contenedor que no toca nada: sin red, sin volúmenes (identidad y `.ssb` desechables dentro del
-contenedor) y que se borra al acabar.
-
-```bash
-IMG=<imagen>:latest
-docker run --rm --network none --entrypoint sh $IMG -c 'grep -m1 "\"version\"" /app/src/server/package.json; node --check /app/src/backend/backend.js && echo ok'
-for mode in server backend; do
-  cid=$(docker run -d --network none -e OASIS_SKIP_AI_MODEL=true -e OASIS_PUBLIC=true -e OASIS_OPEN=false -e HOME=/home/oasis -e SSB_PATH=/home/oasis/.ssb $IMG $mode)
-  sleep 45
-  docker inspect -f '{{.State.Status}}' $cid                                             # running
-  docker logs $cid 2>&1 | grep -a -E 'Version: |parche|EROFS|Cannot find module|Error'  # versión nueva, 3 parches (patcheado o ya parcheado), ningún error
-  [ $mode = backend ] && docker exec $cid curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/c   # 200
-  docker rm -f $cid
-done
-```
+(§0.3): la imagen que se acaba de construir **allí** se prueba allí, antes de recrear a nadie, con
+`$R smoke <imagen>:latest` (`--max 120`). Corre en el host en contenedores efímeros que no tocan
+nada (`--network none`, sin volúmenes: identidad y `.ssb` desechables dentro, borrados al acabar) y
+comprueba lo mismo que U2: versión nueva, `node --check` de `backend.js`, `clearnet_view.js` y
+`SSB_server.js`, `find / -xdev -name secret` = 0, sin `.env*`, `volumes-*`, `src.old`, `devops/` ni
+`client/` en `/app` (lo que el `.dockerignore` del host debe excluir, abajo), modo `server` hasta que
+existe el socket del sbot, modo `backend` hasta `GET /c` = 200, ≥3 parches («patcheado»/«ya
+parcheado») y 0 líneas de error en el log. Salida esperada: `SMOKE OK`; cualquier otra es
+`SMOKE: DESVIACIÓN` y no se recrea a nadie.
 
 **Paso 6, ensayo de migración (solo si cambia el motor, §0.5).** Con la imagen nueva ya construida
 y antes de recrear a nadie, se migra una **copia** del log de cada nodo en un contenedor efímero:
@@ -490,6 +505,8 @@ test -L src.new/src/server/node_modules && test -d src.new/src/base/node_modules
 grep -c $'\r' src.new/src/base/node_modules/is-map/index.js    # = 0  (un paquete con .gitattributes propio)
 grep '"url"' src.new/src/configs/snh-invite-code.json         # el dominio del pub (5.º guard)
 grep -c 'guard o-sdk (WP-O132' src.new/src/views/clearnet_view.js src.new/src/backend/backend.js   # 4 y 2 (6.º guard)
+grep -c 'guard o-sdk (WP-O135' src.new/src/backend/backend.js   # 1 (7.º guard)
+# los demás guards (/update, settings_view, blobs.max, mergeDeep): los literales de upgrade-invariants.d/pub.tsv, con grep sobre src.new/
 ls src.new/src/configs/*.json                                 # ningún JSON de estado
 # y cambiar. El destino del `mv` NO debe existir: `mv src src.old` con un src.old presente mete src DENTRO.
 test ! -e src.old-<ver-vieja> && mv src src.old-<ver-vieja> && mv src.new/src src && rmdir src.new
@@ -500,7 +517,7 @@ test ! -e src.old-<ver-vieja> && mv src src.old-<ver-vieja> && mv src.new/src sr
 (`src.old*`, `src.new*`: un `src.old` a secas no cubre `src.old-X.Y.Z`) y los env de producción de
 la carpeta del compose (`<carpeta>/.env.*`: el patrón `.env.*` solo casa en la raíz). Comprobarlo
 en la imagen construida, dentro del humo del paso 6: `ls -a` de la carpeta del compose no muestra
-ningún `.env.prod*`. En la casa estuvo entrando hasta 2026-10-01 (WP-O114).
+ningún `.env.prod*` (lo comprueba `smoke`).
 
 **Journal.** El `deploy.sh` del repo apunta el deploy al terminar; el del host es una copia vieja
 que no se usa. Tras un deploy a mano, desde la máquina operadora:
@@ -532,7 +549,7 @@ no lo confunde, y sin él nadie sabe en qué versión quedó.
   intactos.
 - **Rotar** (solo si el proyecto rota a un cap nuevo): editar en lockstep `caps.shs` +
   `autofollow.feeds` en `pub/config/ssb/config(.local)`, `src/configs/server-config.json`,
-  `docs/PUB/*.example` + `deploy.md`, `devops/hosts/<instancia>/host.env` (`EXPECTED_SHS`,
+  `docs/PUB/*.example` + `docs/PUB/deploy.md`, `devops/hosts/<instancia>/host.env` (`EXPECTED_SHS`,
   `SNH_FEED`), `pub/site/index.html` y los `ssb-config` de cada nodo de soporte
   (`pub/config/hub/ssb-config`, `pub/config/wallet-bot/ssb-config*`: rotan juntos, el follow entre
   ellos sobrevive); luego `pub-federation.sh announce` + `follow-solarnethub` + re-emitir invites.
@@ -540,8 +557,8 @@ no lo confunde, y sin él nadie sabe en qué versión quedó.
 
 ## 6. Healthcheck y rollback
 
-- **Todos los nodos**: `upgrade-gates.sh --remote check pre --expect '…'` → versión nueva, healthy,
-  mismo feed, delta declarado, sin errores en el log.
+- **Todos los nodos**: `upgrade-gates.sh --remote check pre --wait` → versión nueva, healthy,
+  mismo feed, delta declarado (`expect.conf`, §3.4), sin errores en el log.
 - **Pub**: `deploy-status.sh` → `caps.shs` OK; `pub:invite` funciona (canario del override
   `OASIS_SERVER_CONFIG_OVERRIDE`); `/public/status` da la versión nueva.
 - **HUB**: `upgrade-gates.sh --remote hub --strict`; matriz pública de `HUB-PROTOCOL.md` §4;
@@ -573,12 +590,13 @@ corrige hacia delante, y la copia en frío del paso 7 solo sirve por `RECOVERY-P
 Un upgrade se cierra con (`plan/PRACTICAS.md`): reporte en `plan/REPORTES/`, `CHANGELOG.md`,
 estado en `plan/BACKLOG.md`, journal de deploy y ficha de instancia. El **reporte** es el registro
 del ciclo y lleva, además de lo habitual, **seis cabeceras fijas** (como `## n. <cabecera>`; el
-`--check` del diff de comportamiento las exige, y el ciclo 1.2.2 se cerró sin tres de ellas):
+`--check` del diff de comportamiento las exige):
 
 1. **Estado de partida**: salida de `deploy-status.sh` y de `snapshot pre`.
 2. **Disposiciones**: una por ID del diff de comportamiento (§3.1); `--check` en verde.
 3. **Qué viaja al host** (§3.2).
-4. **Gates** U0-U7: comando y salida.
+4. **Gates** U0-U7, UM, UR, US: comando y salida (los que no aplican, en una línea: «UM/UR: el
+   ciclo no cambia el motor»).
 5. **Delta de publicación** medido en local y en el host, por nodo.
 6. **Correcciones al protocolo**: cada tropiezo es un defecto de este documento y se arregla aquí.
    Si no hubo ninguno, la sección lo dice («ninguna»): una sección que falta no se distingue de
@@ -587,18 +605,23 @@ del ciclo y lleva, además de lo habitual, **seis cabeceras fijas** (como `## n.
 Un ciclo partido en dos reportes (local y host) lleva las seis en cada uno; lo que no aplica
 (el delta del host en el reporte local) se dice en una línea.
 
-Ciclos registrados (lo que cada uno cambió en el protocolo):
+Ciclos registrados, del más reciente al más antiguo. Esta tabla es la **única** historia del
+protocolo: lo que un ciclo enseñó se escribe aquí, una vez, y el cuerpo del documento queda en
+presente.
 
 | Ciclo | Reporte | Lo que enseñó |
 |---|---|---|
-| 1.2.5 → 1.2.8 | `plan/REPORTES/WP-O138-upgrade-oasis-1.2.8.md` (local y host: mismo delta) | Una llamada que **cambia de sitio** no es una línea del diff: upstream movió la publicación del `karmaScore` de una página de GUI al refresco de fondo y U3 lo destapó en el HUB (`karmaScore=+0..1` desde 1.2.6). El humo de U2 cazó la identidad real del bot retro dentro de la imagen local (`volumes-real/` sin excluir): el humo comprueba 0 `secret`. Índice nuevo de db2 (`oasisActivity`) que no es migración. El reequilibrio de RBU entre pubs pierde su tope por época (leído; decisión antes de la dote). En Windows el overlay y el diff tardan más de 5 minutos cada uno |
+| 1.2.8 → 1.3.0 | WP-O141 (en curso) | Primer ciclo con el protocolo v3 (WP-O140): `check --wait` en vez de esperas fijas, `smoke` en U2 y en el host, delta por defecto en `expect.conf`, `--check --from-tsv`, `start_interval` en los healthchecks. Lo que enseñe se apunta aquí al cerrar |
+| 1.2.5 → 1.2.8 | `plan/REPORTES/WP-O138-upgrade-oasis-1.2.8.md` (local y host: mismo delta) | Una llamada que **cambia de sitio** no es una línea del diff: upstream movió la publicación del `karmaScore` de una página de GUI al refresco de fondo y U3 lo destapó en el HUB (`karmaScore=+0..1` desde 1.2.6; aceptado por el custodio, H4). El humo de U2 cazó la identidad real del bot retro dentro de la imagen local (el primer build se llevó `volumes-real/`, que `.dockerignore` no excluía): el humo comprueba 0 `secret`. Índice nuevo de db2 (`oasisActivity`) que no es migración. El reequilibrio de RBU entre pubs pierde su tope por época (leído; decisión antes de la dote). En Windows el overlay y el diff tardan más de 5 minutos cada uno. Al cierre, el bot retro queda deprecated (D-O36) |
+| 1.2.3 → 1.2.5 | `plan/REPORTES/WP-O135-upgrade-oasis-1.2.5.md` (local y host: mismo delta; la 1.2.4 queda dentro del salto) | **Séptimo guard** (D-O31): desde 1.2.4 `/c/blob` sirve solo los blobs que el HUB ya tiene; el guard vuelve a pedir a la red los de la lista blanca. Desde 1.2.4 `config-manager.js` lee `oasis-config.json` en `~/.ssb/oasis/`: el bind del compose pasa al directorio de estado y el compose entra en la tabla de derivados (§3.2); por eso U0 se levanta con el compose **desplegado**: con el compose nuevo y la imagen vieja, el HUB habría arrancado con la config por defecto de la imagen (sin `inboxMutedBots`) y la línea base no habría sido «como el host». Upstream publicó tres commits «Oasis release 1.2.5» el mismo día: vale el último (§1). La base del `check` debe llevar los **mismos nodos** que la medida: no se retira un nodo entre foto y foto. Dos piezas nuevas en el inventario (config del nodo, token de admin). El bot retro no se subió en el host: se mudó a la máquina operadora como nodo real (D-O33) y Campamento se deshizo (115 tombstones con `seed-tombstone.js`; `TEMPLATE-PROTOCOL.md` §9, `HUB-PROTOCOL.md` §11) |
 | 1.2.3 (mismo ciclo) | `plan/REPORTES/WP-O132-visor-idioma-tema.md` | Sexto guard, el primero en una vista: idioma y tema del visor `/c` por petición (scope), selector de tema por `?theme=`. Se midió un cruce de idiomas real en el host (6 de 18 páginas) que el gate antiguo (2 idiomas) no veía; el gate pasa a 6 idiomas. Recrear solo el HUB en la misma versión no publica nada |
-| 1.2.2 → 1.2.3 | `plan/REPORTES/WP-O127` (mejoras previas) · `WP-O128-upgrade-oasis-1.2.3.md` (local) | Lo que se afirmaba de memoria se mide: `NEW_REF` por commit «release», audit de parches en seco (la copia del fork del parcheador era la de 1.2.1), instancia de `host.env`, seis cabeceras. Una disposición leída («el bot publica un `about` al subir») salió falsa en U3: `syncClearnetSince` falla a los 3 s y lo reintenta en cada arranque (`about=+0..1` también en la misma versión). U6 completo en local con nodo desechable. El diff colapsa activos (10 922 teselas no son 10 922 disposiciones) |
-| 1.0.8 → 1.1.2 | `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md` · `HUB-PROTOCOL.md` §5.5 | primer ciclo con el HUB activo: `/c/assets`, rutas de detalle nuevas |
-| 1.1.2 → 1.1.4 | `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`, `WP-O106-aplicacion-vps-1.1.4.md` · `ECOIN-PROTOCOL.md` §5.4 | `state-manager.js` y la mudanza de estado; quinto guard; `git archive` y CRLF |
-| 1.2.1 → 1.2.2 | `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md` (local, host y cliente) | Una disposición «acción de GUI» leída del código era falsa: el gate U5 destapó que HUB y bots publican un `about` de visibilidad con el primer refresco de fondo (`about=+0..1` en el `check` inmediato, `+1` en el de cierre). El sbot trae un plugin que hace de centralita: se acota por config, sin guard (`HUB-PROTOCOL.md` §14, `phone.tsv`). En el cliente, de ≤ 1.1.x a ≥ 1.2 hay cambio de motor |
+| 1.2.2 → 1.2.3 | `plan/REPORTES/WP-O127` (mejoras previas) · `WP-O128-upgrade-oasis-1.2.3.md` (local) | Lo que se afirmaba de memoria se mide: `NEW_REF` por commit «release», audit de parches en seco (la copia del fork del parcheador era la de 1.2.1 y nadie lo había notado), instancia de `host.env`, seis cabeceras. Una disposición leída («el bot publica un `about` al subir») salió falsa en U3: `syncClearnetSince` falla a los 3 s y lo reintenta en cada arranque (`about=+0..1` también en la misma versión). Primer U6 completo en local con nodo desechable. El diff colapsa activos (10 922 teselas no son 10 922 disposiciones) |
+| 1.2.1 → 1.2.2 | `plan/REPORTES/WP-O124-upgrade-oasis-1.2.2.md` (local, host y cliente) | Una disposición «acción de GUI» leída del código era falsa: el gate U5 destapó que HUB y bots publican un `about` de visibilidad (`visibilityPrefs.phone = "off"`) con el primer refresco de fondo tras atender peticiones, **una sola vez al subir a 1.2.2** (`about=+0..1` en el `check` inmediato, `+1` en el de cierre). El sbot trae un plugin que hace de centralita: se acota por config, sin guard (`HUB-PROTOCOL.md` §14, `phone.tsv`). En el cliente, de ≤ 1.1.x a ≥ 1.2 hay cambio de motor. Su reporte se cerró sin tres de las seis cabeceras: desde el ciclo siguiente el `--check` las exige |
 | 1.1.10 → 1.2.1 | `plan/REPORTES/WP-O119-medida-db2.md`, `WP-O120-upgrade-oasis-1.2.1.md` (local), `WP-O121-capacidad.md`, `WP-O122-snapshots-pub.md`, `WP-O123-aplicacion-vps-1.2.1.md` (host: mismo delta que en local) · D-O27 | cambio de motor (flume → db2): migración de un solo sentido, sin rollback tras migrar; la medida daba 0 en silencio sobre el log nuevo; dependencias vendorizadas en `src/base` y un build que no instala nada; snapshots que nuestro pub sirve pero no construía; caché de blobs sin techo en un backend público |
-| 1.1.4 → 1.1.10 | `plan/REPORTES/WP-O112-protocolo-upgrade.md` (este protocolo), `WP-O113-upgrade-oasis-1.1.10.md` (local), `WP-O114-aplicacion-vps-1.1.10.md` (host: mismo delta que en local) | el protocolo no medía comportamiento ni publicación. Todo nodo anuncia su versión (`oasisVersion`), también al volver atrás. Idioma por visitante en `/c` (D-O25). Avisos automáticos que se envían cifrados a uno mismo (`inboxMutedBots`). `GET /wallet` republica la dirección en un bot con el motor encendido. El primer `GET /banking` publica la dirección. El modelo de IA cambia bajo el mismo nombre |
+| 1.1.4 → 1.1.10 | `plan/REPORTES/WP-O112-protocolo-upgrade.md` (reescritura de este protocolo), `WP-O113-upgrade-oasis-1.1.10.md` (local), `WP-O114-aplicacion-vps-1.1.10.md` (host: mismo delta que en local) | El protocolo anterior comprobaba lo barato (que los guards siguen puestos) y no lo caro: no medía comportamiento ni publicación; se reescribió. Todo nodo anuncia su versión (`oasisVersion`), también al volver atrás. Idioma por visitante en `/c` (D-O25). Avisos automáticos que se envían cifrados a uno mismo (`inboxMutedBots`). `GET /wallet` republica la dirección en un bot con el motor encendido. El primer `GET /banking` publica la dirección. El modelo de IA cambia bajo el mismo nombre. En el host, el `.env.prod` de la carpeta del compose entraba en la imagen hasta la aplicación de este ciclo (2026-10-01): el patrón `.env.*` del `.dockerignore` solo casa en la raíz (§4) |
+| 1.1.2 → 1.1.4 | `plan/REPORTES/WP-O105-upgrade-oasis-1.1.4.md`, `WP-O106-aplicacion-vps-1.1.4.md` · `ECOIN-PROTOCOL.md` §5.4 | `state-manager.js` y la mudanza de estado; quinto guard; `git archive` y CRLF |
+| 1.0.8 → 1.1.2 | `plan/REPORTES/WP-O97-upgrade-oasis-1.1.2.md` · `HUB-PROTOCOL.md` §5.5 | primer ciclo con el HUB activo: `/c/assets`, rutas de detalle nuevas |
+| 0.8.3 → 0.8.8 → 0.9.6 → 1.0.8 | sin reporte de ciclo (anteriores a este protocolo; `CHANGELOG.md`) | Del 0.9.6 → 1.0.8 salió la receta v0 del HUB (proxy al backend del pub), retirada después (D-O13): historia en `HUB-PROTOCOL.md` §0 |
 
 ## 8. HUB clearnet — ver `HUB-PROTOCOL.md`
 
@@ -606,12 +629,5 @@ Desde 1.0.x el pub puede servir un **HUB web de solo lectura** en `/c` con el co
 los habitantes que hayan activado *Clearnet* en su perfil (`clearnet.md`). **En Docker no basta con
 Caddy**: nuestro modo `server` arranca solo `SSB_server.js`, mientras que `oasis.sh server` de
 upstream arranca sbot + `backend.js --public`. Cómo lo resolvemos, cómo se activa, cómo se mantiene
-en disco y qué cambia en cada upgrade está en **`HUB-PROTOCOL.md`**.
-
-Historia, para no repetirla: la receta que vivió aquí (ciclo 1.0.8) proxyaba **al backend del pub**
-con un modo `server-hub` del entrypoint y enrutaba `/qr/*`. Se **retiró** el 2026-09-13 (D-O13) por
-la v2: el HUB es un **nodo de soporte** con identidad propia en su propio contenedor
-(`command: ["backend"]`, misma imagen, sin rebuild), el sbot del pub no se toca y `/qr/*` queda
-fuera. Siguen valiendo, y están recogidos allí, los hechos del proxy: `/assets/*` entero colisiona
-con la landing, `--allow-host` es obligatorio para `/clearnet`, las URLs de nuestro feed llevan
-`%40%2F` sin decodificar y `/c/blob/*` es inmutable.
+en disco, qué cambia en cada upgrade y la historia de la receta anterior (v0, retirada por D-O13)
+está en **`HUB-PROTOCOL.md`** (§0, §2, §5).

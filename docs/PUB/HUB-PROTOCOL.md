@@ -34,7 +34,7 @@ los upgrades** el HUB web de solo lectura de Oasis (`/c`, 23 tipos de contenido 
 | Cuándo | Hito | Dónde queda |
 |---|---|---|
 | Oasis 1.0.x | Upstream añade el HUB clearnet: `/c`, modo `--public`, opt-in por habitante | `./clearnet.md` (doc upstream) |
-| Ciclo 0.9.6→1.0.8 | Receta v0 en `UPGRADE-PROTOCOL.md` §8: proxy de Caddy **al backend del pub** con un modo `server-hub` del entrypoint (sbot + backend en el mismo contenedor). Nunca activada | retirada; queda como historia en §8 |
+| Ciclo 0.9.6→1.0.8 | Receta v0 (vivió en `UPGRADE-PROTOCOL.md` §8): proxy de Caddy **al backend del pub** con un modo `server-hub` del entrypoint (sbot + backend en el mismo contenedor). Nunca activada | retirada; historia al pie de esta tabla |
 | 2026-09-13 · v1 | Plan «Sala 04»: backend dentro del contenedor del pub, supervisor sbot+backend, rebuild de ~3 GB, riesgo R0 (el getter de `SSB_server.js` podía crear un segundo sbot sobre el mismo `.ssb`) | `ARCHIVO/DISCO/oasis-clearweb/v1.md` |
 | 2026-09-13 · v2 | Tres correcciones del custodio: **a)** el sbot del pub no se toca · **b)** el HUB es otra cuenta SSB en contenedor propio · **c)** estado y caché en el volumen de datos con utilidad de control. Revisión adversarial F1-F20 | `v2.md`, `dosier/` |
 | ⏳ | Deploy WP-O46 (gates locales G1-G7 → VPS) | §10 de este doc + journal |
@@ -46,6 +46,14 @@ propio, `node backend.js` es un nodo SSB completo en un solo proceso. Lo que en 
 era el riesgo R0 es en la v2 el mecanismo.
 
 Tabla completa v1↔v2: `dosier/08-v1-vs-v2.md`.
+
+**Historia de la v0, para no repetirla.** La receta que vivió en `UPGRADE-PROTOCOL.md` §8 (ciclo
+0.9.6→1.0.8) proxyaba **al backend del pub** con un modo `server-hub` del entrypoint y enrutaba
+`/qr/*`. Se **retiró** el 2026-09-13 (D-O13) por la v2: el HUB es un **nodo de soporte** con
+identidad propia en su propio contenedor (`command: ["backend"]`, misma imagen, sin rebuild), el
+sbot del pub no se toca y `/qr/*` queda fuera. Siguen valiendo los hechos del proxy, recogidos en
+§2 y §4: `/assets/*` entero colisiona con la landing, `--allow-host` es obligatorio para
+`/clearnet`, las URLs de nuestro feed llevan `%40%2F` sin decodificar y `/c/blob/*` es inmutable.
 
 ## 1. Invariantes (lo que todo cambio futuro debe conservar)
 
