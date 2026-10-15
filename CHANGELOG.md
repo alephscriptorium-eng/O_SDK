@@ -5,6 +5,26 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — El cliente cablea la config viva de Oasis ≥ 1.2.4 (WP-O145, 2026-10-15)
+
+Preparación del cliente real para 1.2.2 → 1.3.0 (misma imagen que el pub, WP-O141). Desde 1.2.4 `config-manager.js` lee
+y escribe `~/.ssb/oasis/oasis-config.json` y de `src/configs/oasis-config.json` solo copia una vez; el symlink de WP-O103
+daba dos verdades (medido en el drill de 1.2.5). Ahora **la config viva es ese fichero** (en el host
+`volumes-dev/ssb-data/oasis/oasis-config.json`, 600, regular: `saveConfig` escribe por `rename`), y
+`volumes-dev/client-state/oasis-config.json` queda como **legado de solo lectura** (sembró la viva una vez; se retira en
+un WP posterior). Drill con identidad desechable en verde; **el cliente real sigue en 1.2.2** hasta el GO.
+
+- `docker-entrypoint.sh`: `persist_client_state` siembra la viva (default de la imagen + legado, gana el legado) o la
+  funde (default + viva, gana lo vivo), en todos los modos (también `server`, para `sync-only.sh`); repone el default en
+  `src/configs` si quedó un enlace; con backend `OASIS_CONFIG_FILE` apunta a la viva, así `wire_wallet_config` («el
+  entorno manda») y `setup_oasis_config` escriben donde lee la GUI. HUB y bot no cambian (bind `:ro` en el sitio nuevo).
+- `client:ecoin:verify`: V4 lee la viva; V5 exige viva regular a 600, `src/configs` sin enlace, legado presente.
+- CLIENT-PROTOCOL §4 reescrito (dónde vive la config, receta con retag antes del build y copia en frío, **delta
+  declarado del cliente** `oasisVersion+1 about+1 karmaScore+0..1` medido con `count-feed-type.js`, salto de motor ya
+  pasado); §6 salvedad al volver por retag a ≤ 1.2.3; §8.3/§8.4/§8.8; drill D10-D14.
+- **Secreto**: la viva lleva `wallet.user/pass` y viaja con cualquier copia de `ssb-data` (el backup de la GUI la
+  excluye: `NOT_BACKED_UP`, `src/models/backup_model.js`).
+
 ### Fixed — Restos del host tras O143 (WP-O144, 2026-10-15)
 
 El entrypoint llevaba un `\r` literal dentro de las comillas de un `tr -d` (l.393-394): ahora `tr -d ' \n\r'`, sin bytes
