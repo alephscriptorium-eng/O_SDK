@@ -1,0 +1,19 @@
+# Invariantes del enlace de los nodos de soporte con el pub (WP-O143, D-O38; docs/PUB/HUB-PROTOCOL.md §2,
+# docs/PUB/UPGRADE-PROTOCOL.md §0.2). Columnas separadas por TAB: mínimo	fichero	cadena literal (grep -F)	de qué depende la pieza.
+# Dos clases de fila: lo de UPSTREAM de lo que cuelga la garantía (si cambia, el keepalive o la capa pub pueden dejar de
+# bastar: repetir el drill de caída, §3.4) y lo que el fork AÑADE (si falta, el overlay o un build se comieron la pieza).
+1	src/base/node_modules/ssb-conn/lib/conn-scheduler.js	this.maintainConnections(4, isNotRoom	upstream: 4 plazas salientes para pares que no son room; es el cupo que deja fuera al pub de la casa cuando lo llenan externos
+1	src/base/node_modules/ssb-conn/lib/conn-scheduler.js	.filter((p) => !p[1].inbound)	upstream (parche «ssb-conn inbound limits»): las conexiones ENTRANTES no gastan cupo; la capa pub (el pub recuerda a sus nodos) se apoya en esto
+2	src/base/node_modules/ssb-conn/lib/conn-scheduler.js	this.ssb.oasisPeerRank	upstream: el ranking decide a quién conectar y a quién expulsar en la rotación; no hay par prioritario (por eso existe el keepalive)
+1	src/base/node_modules/ssb-conn/lib/conn-scheduler.js	.populatePubs) === false	upstream: la clave conn.populatePubs que los ssb-config de HUB y bot ponen a false (no descubrir pubs nuevos)
+1	src/base/node_modules/ssb-conn-hub/lib/index.js	inbound: !isClient	upstream (parche): el campo inbound que la sonda lee y el cupo respeta
+1	src/server/network_pause.js	server.oasisPeerRank = peerRank	upstream: dónde nace el ranking (versión al día, seguidos compartidos, total)
+2	src/server/network_pause.js	{ key, type: 'pub', autoconnect: true }	upstream (syncPeerBook): cómo entran los seeds y gossip.json en la libreta: candidatos al cupo, sin prioridad
+1	src/server/network_pause.js	autoconnect !== false	upstream (syncPeerBook): con pub:true marca autoconnect a todo pub conocido; es lo que llena las plazas del bot tras cada «on»
+1	scripts/patch-node-modules.js	ssb-conn inbound limits	upstream: el parche que saca las entrantes del cupo; si desaparece, la capa pub deja de bastar
+1	docker-entrypoint.sh	start_pub_link()	fork: el keepalive del enlace en los nodos de soporte (OASIS_PUB_LINK_*)
+2	docker-entrypoint.sh	[pub-link]	fork: la marca del keepalive en el log (solo en cambios de estado); smoke y §6 la buscan
+2	pub/tools/pub-link.js	'--ensure'	fork: la acción que el keepalive y «link» ejecutan (conecta solo si falta; 0 publicaciones)
+1	pub/tools/ssb-probe.js	linkState	fork: el campo plano que lib-node.sh lee para pub_link (connected|absent|?)
+1	pub/config/hub/ssb-config	"populatePubs": false	fork: el HUB no descubre pubs nuevos (D-O38)
+1	pub/config/wallet-bot/ssb-config.engine-on	"populatePubs": false	fork: el bot tampoco, con el motor encendido (la variante que más candidatos marca)
