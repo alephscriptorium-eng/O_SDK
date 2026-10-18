@@ -580,6 +580,14 @@ Banking → UBI, «Claim UBI» deja de dar 403. Un reclamo es **un mensaje `ubiC
 de al lado, «Refuse UBI», renuncia a la del mes y tampoco se deshace. Tras pulsar, la página puede no
 refrescarse: cuenta el mensaje en el feed antes de volver a pulsar.
 
+### 8.11 En qué interfaz escucha el sbot del cliente (Oasis ≥ 1.3.2)
+
+Desde 1.3.2 `src/server/ssb_config.js` solo fija el `host` de las conexiones entrantes cuando el nodo es pub (`0.0.0.0`) o
+cuando `lanBroadcasting` está apagado (`127.0.0.1`); con `pub: false` y `lanBroadcasting: true` (el default del cliente) lo
+deja sin fijar y multiserver elige. **Medido en el drill de WP-O146**: el sbot escucha en `[::]:8008` (todas las interfaces,
+`/proc/net/tcp6`) y la GUI en `0.0.0.0:3001`; el puerto publicado por el compose sigue respondiendo. Antes era `0.0.0.0:8008`.
+No es una desviación ni cambia el puente de loopback (§8.10). HUB y bot no lo notan: su `ssb-config` lleva `host: "0.0.0.0"`.
+
 ## 9. Piezas
 
 | Pieza | Fichero |

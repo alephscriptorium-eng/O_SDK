@@ -5,6 +5,19 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Upgrade a Oasis 1.3.2 (WP-O146, 2026-10-18; en local, pendiente de GO para el host)
+
+Overlay limpio de `src/` en `a44bce44` («Oasis release 1.3.2»; la 1.3.1 queda dentro) con los 7 guards repuestos (3-way limpio en
+`backend.js`, `ssb_config.js` y `settings_view.js`; invariante de 7 ficheros), `scripts/patch-node-modules.js` sincronizado
+(`pendiente=0`). Gates locales U0-U7 y US en verde: pub, HUB y bot publican `oasisVersion+1` y nada más (dos veces), U6 con
+invite completo (pub `contact+1`) y drill del cliente (`oasisVersion+1`, 16 PASS). Qué trae 1.3.2 para el fork: la centralita
+del pub retransmite **vídeo** (`relayVideo`, misma política `relay`/`roomMax` que el audio; se apaga con `phone.video: false`
+en el `ssb-config` del pub: decisión del custodio); `bindHost` de `ssb_config.js` deja a multiserver elegir la interfaz cuando
+`pub: false` y `lanBroadcasting` (HUB y bot fijan `host`; el cliente escucha en `::`, medido); `karmaScore` se muda a
+`karma_model.js` con el mismo temporizador; dos ficheros de estado nuevos (`viewer_hidden.json`, `nextcloud-account.json`).
+Protocolo: U0 repite la foto base hasta que cuadre (el bot con el motor encendido anuncia al arrancar); un `deps +` vendorizado
+sobre `ssb-*` dispara U6. Reporte `plan/REPORTES/WP-O146-upgrade-oasis-1.3.2.md`.
+
 ### Changed — El cliente cablea la config viva de Oasis ≥ 1.2.4 (WP-O145, 2026-10-15)
 
 Preparación del cliente real para 1.2.2 → 1.3.0 (misma imagen que el pub, WP-O141). Desde 1.2.4 `config-manager.js` lee
