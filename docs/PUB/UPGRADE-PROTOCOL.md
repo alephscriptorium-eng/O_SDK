@@ -543,7 +543,9 @@ bash devops/scripts/deploy-log.sh --target pub --host <dominio> --version X.Y.Z 
 **Preservar siempre** (bind mounts): el `.ssb` de cada nodo (`secret` = identidad, `flume`, `blobs`,
 `conn.json`, `oasis/**`) y `ai-models`. **Landing**: no se toca; lee versión y ciclo en vivo.
 
-**Cliente** (`docker-compose.yml`, modo `full`): después del host y con otro GO si la identidad es
+**Cliente** (`docker-compose.yml`, modo `full`): **antes de nada, mira si está cerrado** (`volumes-dev/ssb-data/IDENTIDAD-MUDADA`,
+`../CLIENT-PROTOCOL.md` §7.1: la identidad se mudó; subirlo publicaría con ella y bifurcaría el feed; en la demo lo está desde
+2026-10-18, D-O39). Si no, después del host y con otro GO si la identidad es
 real. `docker tag o-sdk-oasis-client o-sdk-oasis-client:<ver-vieja>` → `npm run build && docker
 compose up -d oasis-client`. Detalle, importación de identidad y sbot puro: `../CLIENT-PROTOCOL.md` §4.
 También se apunta en el journal (`deploy-log.sh --target client --host localhost --version X.Y.Z

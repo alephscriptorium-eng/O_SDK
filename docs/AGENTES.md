@@ -84,7 +84,10 @@ son como son: `plan/DECISIONES.md`.
    en `volumes-real/` (no en `volumes-dev/`) y **no se arranca, no se recrea, no se sube de versión y no
    se ofrece como pendiente**: ni `docker start`, ni `compose up` (§3). Ningún gate lo copia, repone ni recrea (`upgrade-gates.sh` lo excluye de `backup`/`restore`/`up`
    y del `GATE_NODES` por defecto) y **no se mide**: medirlo exigiría arrancarlo. Tampoco se borra.
-   `volumes-real/` va en `.dockerignore`: un build local no se lleva esa identidad a la imagen (§4).
+   `volumes-real/` va en `.dockerignore`: un build local no se lleva esa identidad a la imagen (§4). **Y el cliente real de esa
+   máquina está cerrado (D-O39, 2026-10-18)**: su identidad se mudó; `volumes-dev/ssb-data/IDENTIDAD-MUDADA`, los scripts
+   del cliente y un override local de Compose impiden arrancarlo o subirlo (`CLIENT-PROTOCOL.md` §7.1). No se levanta el
+   cerrojo sin una decisión escrita del custodio.
 
 ## 3. Acciones irreversibles y su puerta
 

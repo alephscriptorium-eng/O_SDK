@@ -286,6 +286,33 @@ Los volúmenes con nombre son **punteros** a directorios bind: borrarlos no borr
 directorio físico de origen se conserva como backup frío (solo lectura) hasta decisión del custodio;
 sus `*.nul-damaged-bak` (5,7 GB) son los primeros candidatos a borrar.
 
+### 7.1 Cerrojo de identidad mudada
+
+Si el `secret` de un cliente **se muda** a otra máquina (o a otro sitio de esta), este cliente no puede volver a
+arrancar: dos instancias vivas de la misma identidad, o arrancar una con un log más corto que el de la red,
+**bifurcan el feed** (`AGENTES.md` §3, `RECOVERY-PROTOCOL.md` §4, `HUB-PROTOCOL.md` §11 «mudanza o baja»). Tampoco se
+sube de versión (publicaría un `oasisVersion` con esa identidad) ni se le importa nada encima. Cómo se deja cerrado,
+de forma que un agente o una persona que llegue después **no pueda** arrancarlo por descuido:
+
+1. **Marcador en los datos**: `volumes-dev/ssb-data/IDENTIDAD-MUDADA` (texto: fecha, decisión, dónde vive ahora la
+   identidad, cómo se levanta). Está dentro del bind: viaja con cualquier copia de `ssb-data` y lo verá el entrypoint
+   cuando el cerrojo pase a la imagen (siguiente ciclo; hoy el entrypoint no lo mira).
+2. **Scripts**: `client/scripts/lib/identity-lock.sh` (`client_identity_lock_check`), llamado al empezar por `setup.sh`,
+   `sync-only.sh`, `import-identity.sh` y `ecoin-init.sh`: con el marcador presente imprimen su contenido y salen con
+   **78**. `OASIS_IDENTITY_LOCK_OVERRIDE=1` lo salta a sabiendas (queda dicho en la salida).
+3. **Compose**: un `docker-compose.override.yml` **local, no versionado** (`.gitignore`) que Compose carga solo junto a
+   `docker-compose.yml`: para `oasis-client` sustituye `entrypoint`/`command` por el aviso y `exit 78`, sin healthcheck
+   y sin `restart`. Así `docker compose up oasis-client` crea un contenedor que **no arranca Oasis**, y un
+   `docker start oasis-client` posterior vuelve a dar el aviso. El drill (`-f` explícitos) no lo carga; `npm run build`
+   no se ve afectado. El contenedor anterior se retira con `docker compose rm -sf oasis-client` (los datos son binds y
+   volúmenes nombrados: no se tocan; es el mismo paso que HUB §11 da al origen de una mudanza).
+4. **Registro**: asiento en `plan/DECISIONES.md`, fila en la ficha de instancia, y el aviso en `UPGRADE-PROTOCOL.md` §4
+   («Cliente») para que ningún ciclo lo suba.
+
+Se levanta solo cuando la mudanza está resuelta (una única instancia, con el log del destino al día): se borra el
+override, se borra el marcador y se recrea el contenedor. En la demo, el cliente real de la máquina operadora está
+**bloqueado desde 2026-10-18** (D-O39): ficha de instancia §5.
+
 ## 8. ECOin en el cliente
 
 > **Estado · en `main` desde el 2026-09-18 (WP-O103).** Ensayado de punta a punta con una identidad
