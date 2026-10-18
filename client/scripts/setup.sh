@@ -6,6 +6,7 @@
 # o-sdk-client-ecoin-data (client/scripts/ecoin-init.sh), que este script ni crea ni toca.
 set -euo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/identity-lock.sh"; client_identity_lock_check   # cerrojo de identidad mudada (CLIENT-PROTOCOL §7, D-O39)
 
 mkdir -p volumes-dev/{ssb-data,ai-models,logs,client-state}
 

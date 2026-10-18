@@ -108,3 +108,8 @@ ARCHIVO/DISCO/26sm-exported/vista-previa/.chrome-profile/
 !src/base/node_modules/
 !src/base/**/node_modules/
 !src/base/**
+
+# Override local de Compose (se carga solo, no se versiona): instancia, no método. Hoy sirve de cerrojo del
+# cliente real de la máquina operadora (CLIENT-PROTOCOL §7, D-O39).
+docker-compose.override.yml
+compose.override.yml

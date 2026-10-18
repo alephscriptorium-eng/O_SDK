@@ -24,7 +24,8 @@ const normalizeTags = (raw) => {
   return String(raw).split(",").map(t => t.trim()).filter(Boolean)
 }
 const normalizeStatus = (v) => (STATUSES.includes(String(v || "").toUpperCase()) ? String(v).toUpperCase() : "OPEN")
-const blobRef = (v) => (BLOB_ID.test(safeText(v)) ? safeText(v) : "")
+const SEALED_REF = /^\/blob\/sealed\/%26[A-Za-z0-9%]+\.sha256\?k=[0-9a-f]{64}&t=[^\s"<>]*$/
+const blobRef = (v) => (BLOB_ID.test(safeText(v)) || SEALED_REF.test(safeText(v)) ? safeText(v) : "")
 const asP = (fn, ...args) => new Promise((resolve, reject) => fn(...args, (err, v) => err ? reject(err) : resolve(v)))
 const rpcValue = (fn, ...args) => new Promise((resolve) => {
   try {
@@ -774,6 +775,12 @@ module.exports = ({ cooler, tribeCrypto, roomCrypto, tribesModel }) => {
       const ph = await phone()
       if (!ph || typeof ph.silence !== "function") return null
       return asP(ph.silence, { id, on: !!flag })
+    },
+
+    async camera(flag) {
+      const ph = await phone()
+      if (!ph || typeof ph.camera !== "function") return null
+      return asP(ph.camera, !!flag)
     },
 
     async recStart() {

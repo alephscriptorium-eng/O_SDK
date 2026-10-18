@@ -842,6 +842,7 @@ a.create-button {
 
 .peers-list .block-info-table,
 .peers-technical-block .block-info-table,
+.viewer-hidden-block .block-info-table,
 .parliament-rows-table,
 .gov-overview {
   display: block !important;
@@ -853,6 +854,7 @@ a.create-button {
 }
 .peers-list .block-info-table tbody,
 .peers-technical-block .block-info-table tbody,
+.viewer-hidden-block .block-info-table tbody,
 .parliament-rows-table tbody,
 .gov-overview tbody {
   display: block !important;
@@ -861,11 +863,13 @@ a.create-button {
 .gov-overview thead,
 .parliament-rows-table thead { display: none !important; }
 .peers-list .block-info-table tr:first-child,
-.peers-technical-block .block-info-table tr:first-child {
+.peers-technical-block .block-info-table tr:first-child,
+.viewer-hidden-block .block-info-table tr:first-child {
   display: none !important;
 }
 .peers-list .block-info-table tr,
 .peers-technical-block .block-info-table tr,
+.viewer-hidden-block .block-info-table tr,
 .parliament-rows-table tbody tr,
 .gov-overview tbody tr {
   display: block !important;
@@ -879,6 +883,7 @@ a.create-button {
 }
 .peers-list .block-info-table td,
 .peers-technical-block .block-info-table td,
+.viewer-hidden-block .block-info-table td,
 .parliament-rows-table tbody td,
 .gov-overview tbody td {
   display: flex !important;
@@ -895,6 +900,7 @@ a.create-button {
 }
 .peers-list .block-info-table td::before,
 .peers-technical-block .block-info-table td::before,
+.viewer-hidden-block .block-info-table td::before,
 .parliament-rows-table tbody td::before,
 .gov-overview tbody td::before {
   content: attr(data-label);
@@ -908,8 +914,10 @@ a.create-button {
   white-space: nowrap !important;
   word-break: normal !important;
 }
-.peers-technical-block .block-info-table td[data-label=""] { justify-content: center !important; }
-.peers-technical-block .block-info-table td[data-label=""]::before { content: none !important; }
+.peers-technical-block .block-info-table td[data-label=""],
+.viewer-hidden-block .block-info-table td[data-label=""] { justify-content: center !important; }
+.peers-technical-block .block-info-table td[data-label=""]::before,
+.viewer-hidden-block .block-info-table td[data-label=""]::before { content: none !important; }
 .peers-list .block-info-table td .peer-key,
 .peers-technical-block .block-info-table td .peer-key { text-align: right !important; }
 .phone-history td.phone-dir,
@@ -1204,6 +1212,23 @@ a.create-button {
   align-items: center !important;
   gap: 8px 6px !important;
   padding: 8px 8px 4px !important;
+  min-height: 60px !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 900 !important;
+  box-sizing: border-box !important;
+}
+.oasis-nav-side-toggle ~ .header + * ,
+.oasis-nav-side-toggle ~ .header ~ .update-banner:first-of-type {
+  margin-top: 0 !important;
+}
+body:has(.oasis-nav-side-toggle) {
+  padding-top: 64px !important;
+}
+body:has(:is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select):focus) .oasis-nav-side-toggle ~ .header {
+  position: absolute !important;
 }
 .oasis-nav-side-toggle ~ .header .top-bar-left,
 .oasis-nav-side-toggle ~ .header .top-bar-right,
@@ -1375,6 +1400,7 @@ a.create-button {
 .oasis-nav-side-toggle ~ .header .top-bar-right nav {
   position: fixed !important;
   bottom: 0 !important;
+  height: 66px !important;
   width: 50% !important;
   flex: none !important;
   z-index: 900 !important;

@@ -28,6 +28,7 @@ export MSYS_NO_PATHCONV=1
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
+. "$SCRIPT_DIR/lib/identity-lock.sh"; client_identity_lock_check   # cerrojo de identidad mudada (CLIENT-PROTOCOL §7, D-O39)
 
 SSB="$REPO_ROOT/volumes-dev/ssb-data"
 CTR="oasis-sync-only"

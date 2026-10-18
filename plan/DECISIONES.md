@@ -579,6 +579,20 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   `pub/docker-compose.pub.yml`, `pub/config/{hub,wallet-bot}/ssb-config*`,
   `devops/scripts/upgrade-invariants.d/link.tsv`; fichas de instancia §5.
 
+- **D-O39 · 2026-10-18 · El cliente real de la máquina operadora queda cerrado: su identidad se ha mudado y
+  no se arranca ni se sube de versión hasta que la mudanza esté resuelta.** Dicho por el custodio el
+  2026-10-18 durante el ciclo 1.3.2 (WP-O146): «el cliente real no se toca; la identidad de ese cliente ha sido
+  movida; gate para que no se upgrade o arranque, y bloqueo si alguien intenta arrancar». Dónde vive ahora la
+  identidad: «pendiente: lo apunta el custodio en la ficha de instancia». Por qué un cerrojo y no una nota: dos
+  instancias vivas de la misma identidad, o arrancar una con un log más corto que el de la red, bifurcan el feed
+  (AGENTES §3), y el upgrade publicaría un `oasisVersion` con ella. Mecanismo (método, `CLIENT-PROTOCOL.md` §7.1):
+  marcador `IDENTIDAD-MUDADA` dentro del bind de `ssb-data`; `client/scripts/lib/identity-lock.sh` en `setup`,
+  `sync-only`, `import-identity` y `ecoin-init` (salida 78); `docker-compose.override.yml` local (no versionado) que
+  sustituye el arranque de `oasis-client` por el aviso y `exit 78`; contenedor anterior retirado con
+  `docker compose rm -sf` (datos intactos). Pendiente para el siguiente ciclo: que el entrypoint mire el marcador
+  (así el cerrojo viaja en la imagen). El cliente queda en 1.3.0 (WP-O145); `UPGRADE-PROTOCOL.md` §4 lo dice. Se
+  levanta solo con otra decisión escrita. Aplicación: WP-O146.
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |
