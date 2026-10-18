@@ -52,7 +52,9 @@ arranque entre la lectura del log y la del sbot; repetida a los 64 s, cuadra: §
 |---|---|
 | `98829171` | Overlay limpio `git rm -r src && git checkout a44bce44 -- src/`, tal cual upstream. Se conservan `blockchain-cycle.json` y los guards de `updater.js`, `invite-codes.json` y `clearnet_view.js` (upstream no los tocó: `git diff --shortstat 37e0fc93 a44bce44` vacío en los tres). `scripts/patch-node-modules.js` sincronizado (upstream añade el parche de `ssb-invite-client`) |
 | `3fb0fce0` | Guards repuestos en los tres ficheros que upstream sí cambió (`backend.js` +578/−184, `ssb_config.js` +2/−2, `settings_view.js` +298/−195): `git apply --3way` del diff de guards de 1.3.0, **limpio en los tres** |
-| (este) | reporte, backlog, CHANGELOG, §7 del protocolo |
+| `39aead60` | reporte (tramo local), backlog, CHANGELOG, §7 del protocolo, correcciones U0/U6, CLIENT §8.11 |
+| `d3432424` | **Cerrojo de identidad mudada del cliente real (D-O39)**: `client/scripts/lib/identity-lock.sh` en `setup`/`sync-only`/`import-identity`/`ecoin-init`, `.gitignore` del override local, CLIENT §7.1, UPGRADE §4, AGENTES §2.9, ficha §5 |
+| (este) | §9 aplicación en el host, cierre |
 
 Verificación de invariantes (UPGRADE §2), tras `3fb0fce0`: `git diff a44bce44 --stat -- src/` = **7 ficheros** (113+/33−);
 `-- src/base` vacío; `-- scripts/patch-node-modules.js` vacío; `src/server/node_modules` modo `120000`; `node --check` ok en
@@ -168,9 +170,12 @@ Tiempo del camino feliz local (U0+U3+U5+U7, sin build ni diff): ≈ 7 min. Overl
 `clearnetSince`; `pubAvailability`: el bot lo publicó en U0, al arrancar la línea base, 12 h después del anterior: queda en la
 base, no en el delta). U6: pub `contact+1` (el invite, solo porque se usó). Cliente (drill): `oasisVersion+1`, nada más.
 
-**Host**: pendiente (§9). Delta declarado para el host: `expect.conf` (pub `oasisVersion=+1`; HUB `oasisVersion=+1,karmaScore=+0..1`;
+**Host** (`pre132` 10:03:09Z → `post132` 10:48:49Z): pub `oasisVersion+1` (26 → 27) · HUB `oasisVersion+1` (23 → 24) · bot
+`oasisVersion+1` (92 → 93). Ni `karmaScore`, ni `about`, ni `pubAvailability` (motor apagado y encendido en el ciclo; 12 h sin cumplir
+desde el último anuncio), ni `ubiAllocation` (la época 2026-10 ya estaba abierta), ni cifrados. **Mismo delta que en local.** Delta
+declarado para el host: `expect.conf` (pub `oasisVersion=+1`; HUB `oasisVersion=+1,karmaScore=+0..1`;
 bot `oasisVersion=+1,karmaScore=+0..1,about=+0..1,pubAvailability=+0..1`); el bot lleva el motor encendido desde el 15 a las 14:56Z.
-**Cliente real** (CLIENT §4.3): `oasisVersion=+1`, `about=+0..1`, `karmaScore=+0..1`, `wallet=0`, `pub-invites=0`.
+**Cliente real**: **no se sube** (D-O39, §9.2): queda en 1.3.0 y cerrado.
 
 ## 7. Correcciones al protocolo
 
@@ -188,8 +193,56 @@ bot `oasisVersion=+1,karmaScore=+0..1,about=+0..1,pubAvailability=+0..1`); el bo
 
 ## 8. Seguimiento
 
-- DECISIÓN del custodio: política de vídeo de la centralita del pub (`phone.video`) antes de GO-2.
-- Cliente real: tras el host, CLIENT §4.2 (retag `:1.3.0`, copia en frío con el cliente parado, `npm run build`, `up -d`, medir
-  el delta con `count-feed-type.js`, `ecoin:verify`, `pub-feed-seq`).
+- Vídeo de la centralita: el custodio decidió **dejarlo activo** (2026-10-18); el `ssb-config` del pub no cambia.
+- Cliente real: **cerrado** (D-O39, §9.2); no se sube. Siguiente ciclo: que el entrypoint mire `IDENTIDAD-MUDADA` en `$SSB_PATH`
+  para que el cerrojo viaje en la imagen (hoy lo aplican los scripts y el override local). Falta que el custodio apunte en la ficha
+  dónde vive ahora la identidad.
+- Merge de `upgrade/oasis-1.3.2` a `main`: pendiente de GO.
 - Backups viejos en `/srv/oasis` (`*.bak-o128/o135/o138`, `cold-o123`, ≈ 3 GB) fuera de la máquina: no es de este ciclo, sigue
   pendiente desde WP-O128.
+
+## 9. Aplicación en el host (2026-10-18 UTC)
+
+GO del custodio para el ciclo entero («GO-1, puedes hacerlo todo seguido»), con parada ante cualquier salida distinta de la
+esperada. Una orden por paso; tras cada orden que puede abortar por precondición (`hub-wallet.sh on`) se leyó su salida antes
+de seguir. Estado de partida: §1 y foto `pre132` (remote, 10:03:09Z): pub 1.3.0 `server` seq 26 · HUB 1.3.0 `backend` seq 23 ·
+bot 1.3.0 `backend` seq 92 (`pubAvailability=56`, `ubiAllocation=16`, `wallet=1`, motor encendido), los tres «cuadra · sbot=»,
+arrancados hace 2,7 días, `enlace-pub=connected(out)` en HUB y bot. `/` 42 %, `/srv/oasis` 41 %, `sudo -n` ok.
+
+| # | Paso | Hecho | Puerta |
+|---|---|---|---|
+| 1 | Backups | pub → `devops/backups/oasis-pub/20261018T100401Z` (archivo de `ssb-data`); `wallet.dat` → `devops/backups/ecoin/20261018T100730Z` (86 016 B, sha256 `1c260c6c…`, hot). En el host `oasis-hub.bak-o146-2026-10-18.tgz` (2,55 GB: esta vez entró `http-cache`, que WP-O141 no llevaba) y `oasis-wallet-bot.bak-o146-2026-10-18.tgz` (179 MB), root 600. **Tropiezo**: el primer guion de los tgz pasó a segundo plano por el tope de 600 s de la sesión y su salida se perdió; al comprobar, faltaba el del bot (el guion no había llegado a él): se repitió solo ese. Entrypoint: sha del vivo `bf5756a4…` = blob `dfc86d28` (ok) → `.bak-o146-2026-10-18` → `cat >` in place con el de HEAD → `9bd76f89…`, 0 CR. `.dockerignore` del host no se toca (§4) | **GO-1** |
+| 2 | Disco | 0 contenedores sobre `:1.2.8` → `rm` de `src.old-1.2.8` y `src-1.2.8.tgz`, `rmi :1.2.8` (`28b8db7a`), `image prune` 0 B, `builder prune` 1,03 GB; `/` 42 % → 36 % | |
+| 3 | Rollback | `oasis-pub-scriptorium:1.3.0` = `8639c5f9` (= `latest`) · `/srv/oasis/src-1.3.0.tgz` (94 MB, 600) | |
+| 4 | `src/` | `git archive` LF de `upgrade/oasis-1.3.2` → `src.new` (24 145 ficheros, 287 MB). Antes del `mv`: 1.3.2, 0 CR en `backend.js` e `is-map`, enlace a `src/base` + `ssb-db2`, 5.º guard (`url` de la entrada 0 = dominio del pub), 6.º (4 + 2), 7.º (1), `blobs.max 50`, `mergeDeep`, 0 `git reset --hard`, solo 4 JSON en `configs/`, `src.old-1.3.0` no existía. `mv src src.old-1.3.0` · `src/` = 1.3.2 | |
+| 5 | Lo demás que viaja | nada (el entrypoint entró en el paso 1; `phone.video` se deja activo por decisión del custodio) | |
+| 6 | Build y humo | `compose build oasis-pub` → `latest` = `96a5a32c` (1,06 GB), `:1.3.0` = `8639c5f9`; `/` 40 %. `$R smoke oasis-pub-scriptorium:latest` → **`SMOKE OK`** a la primera: 1.3.2, `node --check` ×3, enlace a `src/base`, **0 `secret`**, 0 `.env` reales, `server` socket a los 2 s, `backend` `GET /c` 200 a los 2 s y `start_pub_link`, 3 parches ×2, 0 errores ×2 | |
+| 7 | Pub (10:24:56Z) | `up -d --no-deps --no-build oasis-pub` → `healthy` a los **4 s** (imagen `96a5a32c`; log: `Version: 1.3.2`, parches, sin errores). `$R check pre132 --wait --max 900 --expect 'pub:oasisVersion=+1 hub:karmaScore=+0..1 bot:karmaScore=+0..1,pubAvailability=+0..1'` → `prematuro` hasta los 300 s → **`GATE OK` (318 s)**: pub `oasisVersion+1` (26 → 27), HUB Δ0, bot Δ0, enlaces `connected`. `/public/status` → `1.3.2`, `running`, `healthy`, invite presente (121 caracteres, no copiado) | **GO-2** |
+| 8 | HUB (10:30:46Z) | `oasis-config.json` y `ssb-config` del host = repo (sha). `up -d --no-deps --no-build oasis-hub` → `healthy` a los **16 s** (1.3.2, parches, «Admin access» presente y no copiado, `Media cache limit: 2048 MB`). `$R check pre132 --wait` (HUB `+1`, bot aún 1.3.0 declarado sin `oasisVersion`) → **`GATE OK` (315 s)**: **HUB `oasisVersion+1`** (23 → 24) y nada más. `hub-disk.sh prune-cache` (2,09 GB → 0, `nginx -s reload`) · `$R hub --strict` contra `https://pub.escrivivir.co` → **`GATE OK`**, 16 ok: MISS→HIT, una CSP, idioma «es» estable, **0 cruces en 18 peticiones de 6 idiomas**, tema por `?theme=`, 157 enlaces con `lang` y 166 con `theme`, sitemap 179 URLs https, RSS 36 + 3 | **GO-3** |
+| 9a | Bot (10:36:50Z) | plantilla y los dos `ssb-config` del host = repo (sha): sin render. `hub-wallet.sh pause` → 1.3.2 con `pub=false`, `healthy`; `status`: `wallet=1`, cartera `EYdruX…` (la misma), saldo 0, `pares: 5 · pub: connected out`, `ecoind` healthy (blocks 62178). `$R check pre132 --wait --expect '… bot:oasisVersion=+1,karmaScore=+0..1,about=+0..1'` → **`GATE OK` (287 s)**: **bot `oasisVersion+1`** (92 → 93), `motor: pub=true → pub=false`, nada más | **GO-4a** |
+| 9b | Motor (10:42:39Z) | `hub-wallet.sh on --yes` → `ready` en verde (pub `CONNECTED`; aviso de siempre: saldo ≤ 500, la época 2026-10 ya estaba abierta) → recreado con `pub=true`, `healthy`, «PUB engine on», `pares: 5 · pub: connected out`, cartera `EYdruX…`, saldo 0. `$R check pre132 --wait` (delta vigente completo, `expect.conf`) → **`GATE OK` (286 s)**: bot `oasisVersion+1` (el de 9a), **sin `pubAvailability` nuevo**, sin `about`, sin `ubiAllocation`; pub y HUB sin cambios. `backup-ecoin.sh` después (hot, 86 016 B, sha256 `50616f54…`) | **GO-4b** |
+| 10 | Cierre (10:48Z) | `snapshot post132`: pub 27 · HUB 24 · bot 93, los tres «cuadra · sbot=» · journal `1.3.2`, `server+hub+wallet-engine-on` (10:49:30Z, `gitSha d3432424`) · `deploy-status.sh`: tres nodos **1.3.2 `healthy` «imagen al día»**, `src/` 1.3.2, entrypoint y compose **iguales que HEAD** (deriva solo en `.dockerignore`, esperada), restos = el rollback de este ciclo (`src.old-1.3.0`, `src-1.3.0.tgz`, `:1.3.0`), HUB y bot `connected out`, pub **VERDE** en el directorio (ciclo 6), `/` 40 %, `/srv/oasis` 41 %, `hub-disk` OK, `capacity` 0 avisos | |
+
+Pub sin sbot ≈ 4 s; HUB ≈ 16 s; bot ≈ 0 s (healthcheck con `start_interval`). **Nada publicado con identidad real fuera de lo
+declarado.** El bot retro sigue deprecated y parado (D-O36).
+
+### 9.1 Tiempos
+
+GO-1 (10:03Z) → cierre (10:49Z): **46 min**, de los que 4 × ≈ 5 min son los `--min-age 300` de los `check` remotos y ≈ 8 min los
+tgz del paso 1 (2,7 GB). El build en el host, 45 s (caché).
+
+### 9.2 Cliente real: cerrado, no se sube (D-O39)
+
+El custodio decidió que el cliente real de la máquina operadora **no se toca**: su identidad se ha mudado a otro sitio (destino
+pendiente de apuntar en la ficha). En vez de subirlo, se cerró (`d3432424`, CLIENT §7.1), con prueba:
+
+| Qué | Comando | Salida |
+|---|---|---|
+| marcador | `volumes-dev/ssb-data/IDENTIDAD-MUDADA` (803 B) | presente, dentro del bind |
+| contenedor anterior | `docker compose rm -sf oasis-client` | retirado; `o-sdk_oasis-ssb-data-dev` y `o-sdk-client-ecoin-data` intactos, `secret` presente |
+| `compose up` | `docker compose up -d --no-deps oasis-client` (override local cargado: `config` lleva `exit 78`) | `Exited (78)` a los 3 s; log: «BLOQUEADO (D-O39, 2026-10-18): la identidad de este cliente se ha mudado…» |
+| `docker start` | `docker start oasis-client` | `Exited (78)` a los 2 s, mismo aviso |
+| scripts | `setup.sh` · `sync-only.sh status` | «BLOQUEADO: la identidad de este cliente se ha mudado (D-O39)…» + el marcador; rc 78 |
+| drill | `-f docker-compose.yml -f client/docker-compose.drill.yml` | no carga el override: el drill de §5 sigue valiendo |
+
+Pendiente para el siguiente ciclo: el cerrojo en el entrypoint (`$SSB_PATH/IDENTIDAD-MUDADA`), para que viaje en la imagen.
