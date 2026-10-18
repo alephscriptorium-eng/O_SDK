@@ -583,7 +583,7 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   no se arranca ni se sube de versión hasta que la mudanza esté resuelta.** Dicho por el custodio el
   2026-10-18 durante el ciclo 1.3.2 (WP-O146): «el cliente real no se toca; la identidad de ese cliente ha sido
   movida; gate para que no se upgrade o arranque, y bloqueo si alguien intenta arrancar». Dónde vive ahora la
-  identidad: <pendiente: lo apunta el custodio en la ficha de instancia>. Por qué un cerrojo y no una nota: dos
+  identidad: «pendiente: lo apunta el custodio en la ficha de instancia». Por qué un cerrojo y no una nota: dos
   instancias vivas de la misma identidad, o arrancar una con un log más corto que el de la red, bifurcan el feed
   (AGENTES §3), y el upgrade publicaría un `oasisVersion` con ella. Mecanismo (método, `CLIENT-PROTOCOL.md` §7.1):
   marcador `IDENTIDAD-MUDADA` dentro del bind de `ssb-data`; `client/scripts/lib/identity-lock.sh` en `setup`,
