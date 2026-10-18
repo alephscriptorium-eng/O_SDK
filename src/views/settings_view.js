@@ -2,13 +2,16 @@ const { form, button, div, h2, h3, p, section, select, option, input, br, a, lab
 const fs = require('fs');
 const path = require('path');
 const { getConfig } = require('../configs/config-manager.js');
-const { template, selectedLanguage, i18n, setLanguage, INBOX_BOT_ORDER, inboxBotLabel, THEMES } = require('./main_views');
+const { template, selectedLanguage, i18n, setLanguage, INBOX_BOT_ORDER, inboxBotLabel, THEMES, userLink } = require('./main_views');
 const i18nBase = require("../client/assets/translations/i18n");
+const moment = require("../server/node_modules/moment");
 const { WORKFLOWS, currentWorkflow } = require('../models/workflows_model');
 const { renderVerificationReport, renderRebuildReport } = require('./backup_view');
 
 const snhUrl = "https://wiki.solarnethub.com/socialnet/overview";
 const BLOB_CACHE_OPTIONS = [512, 1024, 2048, 5120, 10240, 0];
+const plainLabel = (s) => String(s || '').replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\s+/g, ' ').trim();
+const hiddenAt = (at) => at ? moment(at).format("YYYY/MM/DD HH:mm") : "—";
 const sizeLabel = (bytes) => {
   let value = Number(bytes) || 0;
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -29,7 +32,8 @@ const getThemeConfig = () => {
   }
 };
 
-const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, fediverseAccount, telegramAccount = null, telegramLogin = null, peertubeAccount = null, verification = null, rebuild = null }) => {
+const settingsView = (params) => {
+  const { version, aiPrompt, aiExportCount = 0, blobCache = null, fediverseAccount, telegramAccount = null, telegramLogin = null, peertubeAccount = null, nextcloudAccount = null, verification = null, rebuild = null } = params;
   const currentThemeConfig = getThemeConfig();
   const theme = currentThemeConfig.themes?.current || "Dark-SNH";
   const currentConfig = getConfig();
@@ -40,7 +44,9 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
   const walletUser = currentConfig.wallet.user;
   const walletFee = currentConfig.wallet.fee;
   const currentWish = ['mutuals', 'only-lan', 'local'].includes(currentConfig.wish) ? currentConfig.wish : 'whole';
-  const currentPmVisibility = currentConfig.pmVisibility === 'mutuals' ? 'mutuals' : 'whole';
+  const currentPmVisibility = ['mutuals', 'following'].includes(currentConfig.pmVisibility) ? currentConfig.pmVisibility : 'whole';
+  const currentMentionsVisibility = ['mutuals', 'following'].includes(currentConfig.mentionsVisibility) ? currentConfig.mentionsVisibility : 'whole';
+  const viewerHidden = (() => { try { const vf = require('../models/viewer_filters'); return { muted: vf.mutedList(), hidden: vf.hiddenList() }; } catch (_) { return { muted: [], hidden: [] }; } })();
   const currentPhone = currentConfig.phone && typeof currentConfig.phone === 'object' ? currentConfig.phone : {};
 
   const themeElements = THEMES.map(([value, name]) => option({ value, ...(theme === value ? { selected: true } : {}) }, name));
@@ -98,20 +104,16 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
             d.files ? row(i18n.updateFilesLabel, `${d.files} · +${d.insertions} −${d.deletions}`) : null,
             d.origin ? row(i18n.updateOriginLabel, span({ class: "bank-address-code" }, d.origin)) : null
           ),
-          p("Upstream Oasis updates are available. For this Dockerized deployment, update from the host repository and rebuild the container. In-app auto-update is disabled.")
+          form({ action: "/update", method: "post" },
+            button({ type: "submit", class: "filter-btn" }, `\u2B07 OASIS${updateInfo.version ? ` ${updateInfo.version}` : ''}`)
+          )
         )
       )
     );
   }
 
-  return template(
-    i18n.settings,
-    section(
-      div({ class: "tags-header module-header-line" },
-        h2(i18n.settings),
-        p(i18n.settingsDescription)
-      )
-    ),
+  const filter = params.filter === 'multiverse' && modOn('fediverse') ? 'multiverse' : params.filter === 'content' ? 'content' : 'oasis';
+  const oasisParts = [
     updatePanel,
     section({ id: "language" },
       div({ class: "tags-header" },
@@ -178,22 +180,6 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
           br(),
           br(),
           button({ type: "submit" }, i18n.setTheme)
-        )
-      )
-    ),
-    section({ id: "wish" },
-      div({ class: "tags-header" },
-        h2(i18n.settingsWishTitle),
-        p(i18n.settingsWishDesc),
-        form(
-          { action: "/settings/wish", method: "POST" },
-          select({ name: "wish" },
-            option({ value: "whole", ...(currentWish === "whole" ? { selected: true } : {})}, i18n.settingsWishWhole),
-            option({ value: "mutuals", ...(currentWish === "mutuals" ? { selected: true } : {})}, i18n.settingsWishMutuals),
-            option({ value: "only-lan", ...(currentWish === "only-lan" ? { selected: true } : {})}, i18n.settingsWishOnlyLan || "Only LAN"),
-            option({ value: "local", ...(currentWish === "local" ? { selected: true } : {})}, i18n.settingsWishLocal || "Local")
-          ), br(), br(),
-          button({ type: "submit" }, i18n.saveSettings)
         )
       )
     ),
@@ -276,48 +262,10 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
       )
      )
     ),
-    blobCache ? section({ id: "blobcache" },
-      div({ class: "tags-header" },
-        h2(i18n.settingsBlobCacheTitle),
-        p(i18n.settingsBlobCacheDesc),
-        blobCache.usage ? p({ class: "blob-cache-usage" }, strong(`${i18n.settingsBlobCacheUsage}: `), `${sizeLabel(blobCache.usage.bytes)} · ${blobCache.usage.count} ${i18n.settingsBlobCacheFiles}`) : null,
-        blobCache.cleaned !== null ? p({ class: "blob-cache-notice" }, String(i18n.settingsBlobCacheCleaned).replace('{n}', String(blobCache.cleaned)).replace('{size}', sizeLabel(blobCache.freed))) : null,
-        form(
-          { action: "/settings/blob-cache", method: "POST" },
-          label({ for: "blob_cache_mb" }, i18n.settingsBlobCacheLimit),
-          br(),
-          select({ id: "blob_cache_mb", name: "blob_cache_mb" }, ...BLOB_CACHE_OPTIONS.map(mb => option({ value: String(mb), ...(mb === blobCache.maxMB ? { selected: true } : {}) }, blobCacheOptionLabel(mb)))),
-          br(), br(),
-          button({ type: "submit" }, i18n.saveSettings),
-          blobCache.maxMB > 0 ? button({ type: "submit", formaction: "/settings/blob-cache/collect", class: "blob-cache-clean-btn" }, i18n.settingsBlobCacheCleanNow) : null
-        )
-      )
-    ) : null,
-    section({ id: "replication" },
-      div({ class: "tags-header" },
-        h2(i18n.settingsReplicationTitle || 'Replication'),
-        p(i18n.settingsReplicationDesc || 'Configure the number of hops your peer follows out from your own feed when replicating content.'),
-        form(
-          { action: "/settings/replication", method: "POST" },
-          label({ for: "replication_hops" }, i18n.settingsReplicationHopsLabel || 'Hops'),
-          br(),
-          input({
-            type: "number",
-            id: "replication_hops",
-            name: "hops",
-            min: 0,
-            max: 6,
-            value: currentHops
-          }),
-          br(), br(),
-          button({ type: "submit" }, i18n.saveSettings)
-        )
-      )
-    ),
     section({ id: "lan" },
       div({ class: "tags-header" },
         h2(i18n.settingsLanTitle || 'LAN Broadcasting'),
-        p(i18n.settingsLanDesc || 'Periodically announce this peer to other Oasis instances on the same local network. Disable to stop UDP broadcasts.'),
+        p(i18n.settingsLanDesc || 'Periodically announce this peer to other Oasis instances on the same local network.'),
         form(
           { action: "/settings/lan-broadcasting", method: "POST" },
           label({ for: "lanBroadcasting", class: "lan-checkbox-label" },
@@ -336,20 +284,6 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
         )
       )
     ),
-    section({ id: "pm-visibility" },
-      div({ class: "tags-header" },
-        h2(i18n.settingsPmVisibilityTitle),
-        p(i18n.settingsPmVisibilityDesc),
-        form(
-          { action: "/settings/pm-visibility", method: "POST" },
-          select({ name: "pmVisibility" },
-            option({ value: "whole", ...(currentPmVisibility === "whole" ? { selected: true } : {})}, i18n.settingsPmVisibilityWhole),
-            option({ value: "mutuals", ...(currentPmVisibility === "mutuals" ? { selected: true } : {})}, i18n.settingsPmVisibilityMutuals)
-          ), br(), br(),
-          button({ type: "submit" }, i18n.saveSettings)
-        )
-      )
-    ),
     modOn('phone') ? section({ id: "phone" },
       div({ class: "tags-header" },
         h2(i18n.phoneTitle),
@@ -361,30 +295,11 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
             option({ value: "mutuals", ...(!currentPhone.dnd && currentPhone.visibility === "mutuals" ? { selected: true } : {})}, i18n.settingsPmVisibilityMutuals),
             option({ value: "dnd", ...(currentPhone.dnd ? { selected: true } : {})}, i18n.phoneDnd)
           ), br(), br(),
-          button({ type: "submit" }, i18n.saveSettings)
-        )
-      )
-    ) : null,
-    modOn('inbox') ? section({ id: "inbox-bots" },
-      div({ class: "tags-header" },
-        h2(i18n.settingsInboxBotsTitle),
-        p(i18n.settingsInboxBotsDesc),
-        form(
-          { action: "/settings/inbox-bots", method: "POST" },
-          ...INBOX_BOT_ORDER.map(bot =>
-            label({ for: `inbox-bot-${bot}`, class: "lan-checkbox-label inbox-bot-label" },
-              input({
-                type: "checkbox",
-                id: `inbox-bot-${bot}`,
-                name: "bots",
-                value: bot,
-                class: "lan-checkbox-input",
-                checked: (Array.isArray(currentConfig.inboxMutedBots) && currentConfig.inboxMutedBots.includes(bot)) ? undefined : true
-              }),
-              span({ class: "lan-checkbox-text" }, inboxBotLabel(bot))
-            )
-          ),
-          br(),
+          label(i18n.settingsPhoneVideo), br(),
+          select({ name: "video" },
+            option({ value: "on", ...(currentPhone.video !== false ? { selected: true } : {}) }, i18n.settingsPhoneVideoOn),
+            option({ value: "off", ...(currentPhone.video === false ? { selected: true } : {}) }, i18n.settingsPhoneVideoOff)
+          ), br(), br(),
           button({ type: "submit" }, i18n.saveSettings)
         )
       )
@@ -409,97 +324,6 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
           button({ type: "submit" }, i18n.walletConfiguration),
           walletUser ? " " : null,
           walletUser ? button({ type: "submit", class: "delete-btn", formaction: "/settings/wallet/disconnect", attrs: { formmethod: "POST" } }, i18n.walletDisconnectButton) : null
-        )
-      )
-    ) : null,
-    modOn('fediverse') ? section(
-      { id: "multiverse" },
-      div({ class: "tags-header" },
-        h2(i18n.fediverseSettingsTitle),
-        div({ class: "fediverse-network" },
-          h3("Mastodon"),
-          fediverseAccount
-            ? (() => {
-                const host = String(fediverseAccount.instance || "").replace(/^https?:\/\//, "");
-                const profileUrl = `${fediverseAccount.instance}/@${fediverseAccount.acct}`;
-                const link = (txt) => a({ href: profileUrl, target: "_blank", rel: "noopener noreferrer" }, txt);
-                return form(
-                  { action: "/settings/fediverse/disconnect", method: "POST" },
-                  p(
-                    `${i18n.fediverseConnectedAs}: `,
-                    link(`${fediverseAccount.acct}@${host}`)
-                  ),
-                  button({ type: "submit" }, i18n.fediverseDisconnect)
-                );
-              })()
-            : form(
-                { action: "/settings/fediverse", method: "POST" },
-                label({ for: "fediverse_instance" }, i18n.fediverseInstanceLabel), br(),
-                input({ type: "text", id: "fediverse_instance", name: "instance", placeholder: "mastodon.social", required: true }), br(),
-                label({ for: "fediverse_token" }, i18n.fediverseTokenLabel), br(),
-                input({ type: "password", id: "fediverse_token", name: "token", autocomplete: "off", required: true }), br(),
-                button({ type: "submit" }, i18n.fediverseConnect)
-              )
-        ),
-        div({ class: "fediverse-network" },
-          h3("Telegram"),
-          telegramAccount
-            ? form(
-                { action: "/settings/telegram/disconnect", method: "POST" },
-                p(`${i18n.fediverseConnectedAs}: `, strong(telegramAccount.displayName || ""), telegramAccount.username ? span(` (@${telegramAccount.username})`) : ""),
-                br(),
-                button({ type: "submit" }, i18n.fediverseDisconnect)
-              )
-            : telegramLogin && telegramLogin.step === "code"
-              ? form(
-                  { action: "/settings/telegram/code", method: "POST" },
-                  br(),
-                  p(i18n.telegramCodeHelp),
-                  input({ type: "text", id: "telegram_code", name: "code", autocomplete: "off", inputmode: "numeric", placeholder: "12345", required: true }), br(), br(),
-                  button({ type: "submit" }, i18n.telegramVerify),
-                  " ",
-                  button({ type: "submit", formaction: "/settings/telegram/cancel", class: "delete-btn" }, i18n.telegramCancel)
-                )
-              : telegramLogin && telegramLogin.step === "password"
-                ? form(
-                    { action: "/settings/telegram/password", method: "POST" },
-                    br(),
-                    p(i18n.telegramPasswordHelp),
-                    input({ type: "password", id: "telegram_password", name: "password", autocomplete: "off", required: true }), br(), br(),
-                    button({ type: "submit" }, i18n.telegramVerify),
-                    " ",
-                    button({ type: "submit", formaction: "/settings/telegram/cancel", class: "delete-btn" }, i18n.telegramCancel)
-                  )
-                : form(
-                    { action: "/settings/telegram/start", method: "POST" },
-                    label({ for: "telegram_api_id" }, i18n.telegramApiIdLabel), br(),
-                    input({ type: "text", id: "telegram_api_id", name: "apiId", inputmode: "numeric", placeholder: "12345678", required: true }), br(),
-                    label({ for: "telegram_api_hash" }, i18n.fediverseTokenLabel), br(),
-                    input({ type: "password", id: "telegram_api_hash", name: "apiHash", autocomplete: "off", placeholder: "0123456789abcdef0123456789abcdef", required: true }), br(),
-                    label({ for: "telegram_phone" }, i18n.telegramPhoneLabel), br(),
-                    input({ type: "tel", id: "telegram_phone", name: "phone", placeholder: "+34 60000000", required: true }), br(), br(),
-                    button({ type: "submit" }, i18n.fediverseConnect)
-                  )
-        )
-        ,
-        div({ class: "fediverse-network" },
-          h3("PeerTube"),
-          peertubeAccount
-            ? form(
-                { action: "/settings/peertube/disconnect", method: "POST" },
-                p(`${i18n.fediverseConnectedAs}: `, a({ href: peertubeAccount.channelUrl || peertubeAccount.profileUrl, target: "_blank", rel: "noopener noreferrer" }, peertubeAccount.handle)),
-                button({ type: "submit" }, i18n.fediverseDisconnect)
-              )
-            : form(
-                { action: "/settings/peertube", method: "POST" },
-                label({ for: "peertube_instance" }, i18n.fediverseInstanceLabel), br(),
-                input({ type: "text", id: "peertube_instance", name: "instance", placeholder: "peertube.example.org", required: true }), br(),
-                label({ for: "peertube_username" }, i18n.peertubeUsernameLabel), br(),
-                input({ type: "text", id: "peertube_username", name: "username", autocomplete: "off", required: true }), br(),
-                label({ for: "peertube_password" }, i18n.peertubePasswordLabel), br(),
-                input({ type: "password", id: "peertube_password", name: "password", autocomplete: "off", required: true }), br(),
-                button({ type: "submit" }, i18n.fediverseConnect)
-              )
         )
       )
     ) : null,
@@ -539,6 +363,287 @@ const settingsView = ({ version, aiPrompt, aiExportCount = 0, blobCache = null, 
         )
       )
     )
+  ];
+  const contentParts = [
+    section({ id: "wish" },
+      div({ class: "tags-header" },
+        h2(i18n.settingsWishTitle),
+        p(i18n.settingsWishDesc),
+        form(
+          { action: "/settings/wish", method: "POST" },
+          select({ name: "wish" },
+            option({ value: "whole", ...(currentWish === "whole" ? { selected: true } : {})}, i18n.settingsWishWhole),
+            option({ value: "mutuals", ...(currentWish === "mutuals" ? { selected: true } : {})}, i18n.settingsWishMutuals),
+            option({ value: "only-lan", ...(currentWish === "only-lan" ? { selected: true } : {})}, i18n.settingsWishOnlyLan || "Only LAN"),
+            option({ value: "local", ...(currentWish === "local" ? { selected: true } : {})}, i18n.settingsWishLocal || "Local")
+          ), br(), br(),
+          button({ type: "submit" }, i18n.saveSettings)
+        )
+      )
+    ),
+    section({ id: "replication" },
+      div({ class: "tags-header" },
+        h2(i18n.settingsReplicationTitle || 'Replication'),
+        p(i18n.settingsReplicationDesc || 'Configure the number of hops your peer follows out from your own feed when replicating content.'),
+        form(
+          { action: "/settings/replication", method: "POST" },
+          label({ for: "replication_hops" }, i18n.settingsReplicationHopsLabel || 'Hops'),
+          br(),
+          input({
+            type: "number",
+            id: "replication_hops",
+            name: "hops",
+            min: 0,
+            max: 6,
+            value: currentHops
+          }),
+          br(), br(),
+          button({ type: "submit" }, i18n.saveSettings)
+        )
+      )
+    ),
+    blobCache ? section({ id: "blobcache" },
+      div({ class: "tags-header" },
+        h2(i18n.settingsBlobCacheTitle),
+        p(i18n.settingsBlobCacheDesc),
+        blobCache.usage ? p({ class: "blob-cache-usage" }, strong(`${i18n.settingsBlobCacheUsage}: `), `${sizeLabel(blobCache.usage.bytes)} · ${blobCache.usage.count} ${i18n.settingsBlobCacheFiles}`) : null,
+        blobCache.cleaned !== null ? p({ class: "blob-cache-notice" }, String(i18n.settingsBlobCacheCleaned).replace('{n}', String(blobCache.cleaned)).replace('{size}', sizeLabel(blobCache.freed))) : null,
+        form(
+          { action: "/settings/blob-cache", method: "POST" },
+          label({ for: "blob_cache_mb" }, i18n.settingsBlobCacheLimit),
+          br(),
+          select({ id: "blob_cache_mb", name: "blob_cache_mb" }, ...BLOB_CACHE_OPTIONS.map(mb => option({ value: String(mb), ...(mb === blobCache.maxMB ? { selected: true } : {}) }, blobCacheOptionLabel(mb)))),
+          br(), br(),
+          button({ type: "submit" }, i18n.saveSettings),
+          blobCache.maxMB > 0 ? button({ type: "submit", formaction: "/settings/blob-cache/collect", class: "blob-cache-clean-btn" }, i18n.settingsBlobCacheCleanNow) : null
+        )
+      )
+    ) : null,
+    section({ id: "pm-visibility" },
+      div({ class: "tags-header" },
+        h2(i18n.settingsPmVisibilityTitle),
+        p(i18n.settingsPmVisibilityDesc),
+        form(
+          { action: "/settings/pm-visibility", method: "POST" },
+          select({ name: "pmVisibility" },
+            option({ value: "whole", ...(currentPmVisibility === "whole" ? { selected: true } : {})}, i18n.settingsPmVisibilityWhole),
+            option({ value: "following", ...(currentPmVisibility === "following" ? { selected: true } : {})}, i18n.settingsPmVisibilityFollowing),
+            option({ value: "mutuals", ...(currentPmVisibility === "mutuals" ? { selected: true } : {})}, i18n.settingsPmVisibilityMutuals)
+          ), br(), br(),
+          button({ type: "submit" }, i18n.saveSettings)
+        )
+      )
+    ),
+    section({ id: "mentions-visibility" },
+      div({ class: "tags-header" },
+        h2(i18n.settingsMentionsVisibilityTitle),
+        p(i18n.settingsMentionsVisibilityDesc),
+        form(
+          { action: "/settings/mentions-visibility", method: "POST" },
+          select({ name: "mentionsVisibility" },
+            option({ value: "whole", ...(currentMentionsVisibility === "whole" ? { selected: true } : {})}, i18n.settingsPmVisibilityWhole),
+            option({ value: "following", ...(currentMentionsVisibility === "following" ? { selected: true } : {})}, i18n.settingsPmVisibilityFollowing),
+            option({ value: "mutuals", ...(currentMentionsVisibility === "mutuals" ? { selected: true } : {})}, i18n.settingsPmVisibilityMutuals)
+          ), br(), br(),
+          button({ type: "submit" }, i18n.saveSettings)
+        )
+      )
+    ),
+    modOn('inbox') ? section({ id: "inbox-bots" },
+      div({ class: "tags-header" },
+        h2(i18n.settingsInboxBotsTitle),
+        p(i18n.settingsInboxBotsDesc),
+        form(
+          { action: "/settings/inbox-bots", method: "POST" },
+          ...INBOX_BOT_ORDER.map(bot =>
+            label({ for: `inbox-bot-${bot}`, class: "lan-checkbox-label inbox-bot-label" },
+              input({
+                type: "checkbox",
+                id: `inbox-bot-${bot}`,
+                name: "bots",
+                value: bot,
+                class: "lan-checkbox-input",
+                checked: (Array.isArray(currentConfig.inboxMutedBots) && currentConfig.inboxMutedBots.includes(bot)) ? undefined : true
+              }),
+              span({ class: "lan-checkbox-text" }, inboxBotLabel(bot))
+            )
+          ),
+          br(),
+          button({ type: "submit" }, i18n.saveSettings)
+        )
+      )
+    ) : null,
+    section({ id: "hidden" },
+      div({ class: "tags-header" },
+        h2(i18n.settingsHiddenTitle),
+        p(i18n.settingsHiddenDesc),
+        p(strong(`${i18n.settingsMutedLabel} (${viewerHidden.muted.length})`)),
+        viewerHidden.muted.length
+          ? div({ class: "viewer-hidden-block" }, table({ class: "block-info-table" },
+              tr(
+                td({ class: "card-label" }, i18n.inhabitantProfileTitle),
+                td({ class: "card-label" }, i18n.date),
+                td({ class: "card-label" }, "")
+              ),
+              ...viewerHidden.muted.map(m => tr(
+                td({ "data-label": i18n.inhabitantProfileTitle }, userLink(m.id)),
+                td({ "data-label": i18n.date }, hiddenAt(m.at)),
+                td({ "data-label": "" }, form({ action: `/unmute/${encodeURIComponent(m.id)}`, method: "POST" },
+                  input({ type: "hidden", name: "returnTo", value: "/settings?filter=content#hidden" }),
+                  button({ type: "submit", class: "filter-btn" }, i18n.unmute)))
+              ))
+            ))
+          : p({ class: "muted" }, i18n.settingsMutedEmpty),
+        p(strong(`${i18n.settingsHiddenLabel} (${viewerHidden.hidden.length})`)),
+        viewerHidden.hidden.length
+          ? div({ class: "viewer-hidden-block" }, table({ class: "block-info-table" },
+              tr(
+                td({ class: "card-label" }, i18n.settingsTabContent),
+                td({ class: "card-label" }, i18n.date),
+                td({ class: "card-label" }, "")
+              ),
+              ...viewerHidden.hidden.map(h => tr(
+                td({ "data-label": i18n.settingsTabContent }, h.href ? a({ href: h.href }, plainLabel(h.label) || h.id) : span(plainLabel(h.label) || h.id)),
+                td({ "data-label": i18n.date }, hiddenAt(h.at)),
+                td({ "data-label": "" }, form({ action: `/unhide/${encodeURIComponent(h.id)}`, method: "POST" },
+                  input({ type: "hidden", name: "returnTo", value: "/settings?filter=content#hidden" }),
+                  button({ type: "submit", class: "filter-btn" }, i18n.unhideContent)))
+              ))
+            ))
+          : p({ class: "muted" }, i18n.settingsHiddenEmpty)
+      )
+    ),
+  ];
+  const multiverseParts = modOn('fediverse') ? [
+    section({ id: "mastodon" },
+      div({ class: "tags-header" },
+        h2("Mastodon"),
+        fediverseAccount
+          ? (() => {
+              const host = String(fediverseAccount.instance || "").replace(/^https?:\/\//, "");
+              const profileUrl = `${fediverseAccount.instance}/@${fediverseAccount.acct}`;
+              const link = (txt) => a({ href: profileUrl, target: "_blank", rel: "noopener noreferrer" }, txt);
+              return form(
+                { action: "/settings/fediverse/disconnect", method: "POST" },
+                p(
+                  `${i18n.fediverseConnectedAs}: `,
+                  link(`${fediverseAccount.acct}@${host}`)
+                ),
+                button({ type: "submit" }, i18n.fediverseDisconnect)
+              );
+            })()
+          : form(
+              { action: "/settings/fediverse", method: "POST" },
+              label({ for: "fediverse_instance" }, i18n.fediverseInstanceLabel), br(),
+              input({ type: "text", id: "fediverse_instance", name: "instance", placeholder: "mastodon.social", required: true }), br(),
+              label({ for: "fediverse_token" }, i18n.fediverseTokenLabel), br(),
+              input({ type: "password", id: "fediverse_token", name: "token", autocomplete: "off", required: true }), br(),
+              button({ type: "submit" }, i18n.fediverseConnect)
+            )
+      )
+    ),
+    section({ id: "telegram" },
+      div({ class: "tags-header" },
+        h2("Telegram"),
+        telegramAccount
+          ? form(
+              { action: "/settings/telegram/disconnect", method: "POST" },
+              p(`${i18n.fediverseConnectedAs}: `, strong(telegramAccount.displayName || ""), telegramAccount.username ? span(` (@${telegramAccount.username})`) : ""),
+              br(),
+              button({ type: "submit" }, i18n.fediverseDisconnect)
+            )
+          : telegramLogin && telegramLogin.step === "code"
+            ? form(
+                { action: "/settings/telegram/code", method: "POST" },
+                br(),
+                p(i18n.telegramCodeHelp),
+                input({ type: "text", id: "telegram_code", name: "code", autocomplete: "off", inputmode: "numeric", placeholder: "12345", required: true }), br(), br(),
+                button({ type: "submit" }, i18n.telegramVerify),
+                " ",
+                button({ type: "submit", formaction: "/settings/telegram/cancel", class: "delete-btn" }, i18n.telegramCancel)
+              )
+            : telegramLogin && telegramLogin.step === "password"
+              ? form(
+                  { action: "/settings/telegram/password", method: "POST" },
+                  br(),
+                  p(i18n.telegramPasswordHelp),
+                  input({ type: "password", id: "telegram_password", name: "password", autocomplete: "off", required: true }), br(), br(),
+                  button({ type: "submit" }, i18n.telegramVerify),
+                  " ",
+                  button({ type: "submit", formaction: "/settings/telegram/cancel", class: "delete-btn" }, i18n.telegramCancel)
+                )
+              : form(
+                  { action: "/settings/telegram/start", method: "POST" },
+                  label({ for: "telegram_api_id" }, i18n.telegramApiIdLabel), br(),
+                  input({ type: "text", id: "telegram_api_id", name: "apiId", inputmode: "numeric", placeholder: "12345678", required: true }), br(),
+                  label({ for: "telegram_api_hash" }, i18n.fediverseTokenLabel), br(),
+                  input({ type: "password", id: "telegram_api_hash", name: "apiHash", autocomplete: "off", placeholder: "0123456789abcdef0123456789abcdef", required: true }), br(),
+                  label({ for: "telegram_phone" }, i18n.telegramPhoneLabel), br(),
+                  input({ type: "tel", id: "telegram_phone", name: "phone", placeholder: "+34 60000000", required: true }), br(), br(),
+                  button({ type: "submit" }, i18n.fediverseConnect)
+                )
+      )
+    ),
+    section({ id: "peertube" },
+      div({ class: "tags-header" },
+        h2("PeerTube"),
+        peertubeAccount
+          ? form(
+              { action: "/settings/peertube/disconnect", method: "POST" },
+              p(`${i18n.fediverseConnectedAs}: `, a({ href: peertubeAccount.channelUrl || peertubeAccount.profileUrl, target: "_blank", rel: "noopener noreferrer" }, peertubeAccount.handle)),
+              button({ type: "submit" }, i18n.fediverseDisconnect)
+            )
+          : form(
+              { action: "/settings/peertube", method: "POST" },
+              label({ for: "peertube_instance" }, i18n.fediverseInstanceLabel), br(),
+              input({ type: "text", id: "peertube_instance", name: "instance", placeholder: "peertube.example.org", required: true }), br(),
+              label({ for: "peertube_username" }, i18n.peertubeUsernameLabel), br(),
+              input({ type: "text", id: "peertube_username", name: "username", autocomplete: "off", required: true }), br(),
+              label({ for: "peertube_password" }, i18n.peertubePasswordLabel), br(),
+              input({ type: "password", id: "peertube_password", name: "password", autocomplete: "off", required: true }), br(),
+              button({ type: "submit" }, i18n.fediverseConnect)
+            )
+      )
+    )
+    ,
+    section({ id: "nextcloud" },
+      div({ class: "tags-header" },
+        h2("Nextcloud"),
+        nextcloudAccount
+          ? form(
+              { action: "/settings/nextcloud/disconnect", method: "POST" },
+              p(`${i18n.fediverseConnectedAs}: `, a({ href: nextcloudAccount.server, target: "_blank", rel: "noopener noreferrer" }, `${nextcloudAccount.user}@${String(nextcloudAccount.server).replace(/^https?:\/\//, "")}`), ` (${nextcloudAccount.folder})`),
+              button({ type: "submit" }, i18n.fediverseDisconnect)
+            )
+          : form(
+              { action: "/settings/nextcloud", method: "POST" },
+              label({ for: "nextcloud_server" }, i18n.nextcloudServerLabel), br(),
+              input({ type: "text", id: "nextcloud_server", name: "server", placeholder: "cloud.example.org", required: true }), br(),
+              label({ for: "nextcloud_user" }, i18n.nextcloudUserLabel), br(),
+              input({ type: "text", id: "nextcloud_user", name: "user", autocomplete: "off", required: true }), br(),
+              label({ for: "nextcloud_password" }, i18n.peertubePasswordLabel), br(),
+              input({ type: "password", id: "nextcloud_password", name: "password", autocomplete: "off", required: true }), br(),
+              label({ for: "nextcloud_folder" }, i18n.nextcloudFolderLabel), br(),
+              input({ type: "text", id: "nextcloud_folder", name: "folder", placeholder: "Oasis" }), br(),
+              button({ type: "submit" }, i18n.fediverseConnect)
+            )
+      )
+    )
+  ] : [];
+  return template(
+    i18n.settings,
+    section(
+      div({ class: "tags-header module-header-line" },
+        h2(i18n.settings),
+        p(i18n.settingsDescription)
+      ),
+      div({ class: "mode-buttons-row" },
+        a({ class: filter === 'oasis' ? 'filter-btn active' : 'filter-btn', href: '/settings?filter=oasis' }, String(i18n.linkBoxOasis).toUpperCase()),
+        a({ class: filter === 'content' ? 'filter-btn active' : 'filter-btn', href: '/settings?filter=content' }, String(i18n.settingsTabContent).toUpperCase()),
+        modOn('fediverse') ? a({ class: filter === 'multiverse' ? 'filter-btn active' : 'filter-btn', href: '/settings?filter=multiverse' }, String(i18n.multiverse).toUpperCase()) : null
+      )
+    ),
+    ...(filter === 'multiverse' ? multiverseParts : filter === 'content' ? contentParts : oasisParts)
   );
 };
 
