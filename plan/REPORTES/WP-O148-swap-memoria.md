@@ -109,6 +109,11 @@ Ninguno, medido: `StartedAt` de los 9 contenedores idéntico antes y después (n
   1,5 × pico ≈ 1024m. **Hecho con GO** (18:45Z): `docker update --memory 1024m --memory-swap 1024m oasis-pub-hub` (sin reinicio:
   `StartedAt` igual; 645 MiB / 1 GiB = 63 %) y en `.env.prod` (backup `.bak-o148b-2026-10-25`, 600) `OASIS_HUB_MEM_LIMIT=1024m` y
   `OASIS_HUB_NODE_OPTIONS=--max-old-space-size=716` para el siguiente recreate (el heap vivo sigue en 512 hasta entonces). ECOIN §7 al día.
+- **Redimensionado hecho por el custodio** (Gandi, 18:49Z): **1 CPU · 2 GB** (no 3). Foto post a los 3 min del arranque: 9 contenedores
+  `Up` y healthy; pub, HUB y bot 1.3.8, imagen al día, enlaces `connected` ×2, directorio VERDE; 1957 MiB de RAM, 1124 usados,
+  810 disponibles; swap 2047 MiB activa con 256 KB usados, swappiness 10; HUB 274 MiB / 1 GiB (los límites de `docker update`
+  sobreviven al reinicio); carga 1,3 en 1 CPU (reindexado de arranque); 0 OOM desde el boot; `verify` 43 pass / 0 fail; `capacity`
+  0 avisos; `capacity.jsonl` +1. Los nodos arrancan de cero: el HUB tardará horas en volver a su régimen (645 MiB antes del reinicio).
 - Swap usada a las 24 h y tras el redimensionado (foto del custodio): si en reposo pasa de `CAP_SWAP_PCT`, bajar un límite
   siguiendo HUB §7, no subir el swap.
 - node-red y verdaccio (≈ 270 MiB) viven en el mismo host y no son de este repo (`scriptorium-vps`): decisión del custodio

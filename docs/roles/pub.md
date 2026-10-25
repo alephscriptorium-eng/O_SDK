@@ -70,7 +70,8 @@ Lee docs/roles/pub.md y el protocolo del HUB.
 ## Qué necesitas tener
 
 - Un servidor con Linux y acceso por SSH. El método está medido en Debian 13 con 2 CPU y 4 GB de memoria;
-  con el swap que crea la base (2 GB) aguanta 3 GB. Con 2 GB vive en swap: no.
+  con el swap que crea la base (2 GB) aguanta 3 GB. Con 2 GB arranca y sirve (Scriptorium, 2026-10-25), pero va
+  al borde: la swap usada a las 24 h (`capacity.sh`) dice si cabe.
 - Tu clave SSH. El agente la usa desde `devops/.ssh/`, que queda fuera de git; no la imprime.
 - Un dominio, o al menos una IP fija. Con dominio hay certificado y web; con IP sola basta para que
   los clientes se conecten.
