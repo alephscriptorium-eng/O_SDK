@@ -106,7 +106,9 @@ Ninguno, medido: `StartedAt` de los 9 contenedores idéntico antes y después (n
 ## 9. Seguimiento
 
 - **HUB al 82 % de 768m** en la foto pre y post (recreado hoy en O147; el mismo contenedor que el OOM mató el 22-oct). HUB §7 pide
-  1,5 × pico ≈ 1024m: decisión del custodio; se aplica como en ECOIN §7 (`docker update` + `OASIS_HUB_MEM_LIMIT` y `--max-old-space-size` en `.env.prod`).
+  1,5 × pico ≈ 1024m. **Hecho con GO** (18:45Z): `docker update --memory 1024m --memory-swap 1024m oasis-pub-hub` (sin reinicio:
+  `StartedAt` igual; 645 MiB / 1 GiB = 63 %) y en `.env.prod` (backup `.bak-o148b-2026-10-25`, 600) `OASIS_HUB_MEM_LIMIT=1024m` y
+  `OASIS_HUB_NODE_OPTIONS=--max-old-space-size=716` para el siguiente recreate (el heap vivo sigue en 512 hasta entonces). ECOIN §7 al día.
 - Swap usada a las 24 h y tras el redimensionado (foto del custodio): si en reposo pasa de `CAP_SWAP_PCT`, bajar un límite
   siguiendo HUB §7, no subir el swap.
 - node-red y verdaccio (≈ 270 MiB) viven en el mismo host y no son de este repo (`scriptorium-vps`): decisión del custodio

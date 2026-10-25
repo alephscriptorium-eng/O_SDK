@@ -396,10 +396,10 @@ y podar antes (`docker image prune -f && docker builder prune -f`).
 |---|---|---|
 | `oasis-pub-ecoin` | 512m · `cpus 0.75` | `-maxconnections=16` |
 | `oasis-pub-wallet-bot` | 768m · `cpus 1.0` | `--max-old-space-size=512` |
-| `oasis-pub-hub` | **1536m → 768m** | medido 205-252 MiB; `docker update --memory 768m --memory-swap 768m oasis-pub-hub` en vivo + `OASIS_HUB_MEM_LIMIT=768m` (y `OASIS_HUB_NODE_OPTIONS=--max-old-space-size=512`) en `.env.prod` para el siguiente recreate. `pub/config/hub/oasis-config.json` **no se toca** |
+| `oasis-pub-hub` | **1536m → 768m → 1024m** | 2026-10-25 (WP-O148 §9): 645 MiB tras el recreate de 1.3.8 (84 % de 768, el contenedor que el OOM mató el 22-oct) → `docker update --memory 1024m --memory-swap 1024m oasis-pub-hub` en vivo + `OASIS_HUB_MEM_LIMIT=1024m` y `--max-old-space-size=716` (0,7 × límite, HUB §7) en `.env.prod` para el siguiente recreate. Antes: medido 205-252 MiB; `docker update --memory 768m --memory-swap 768m oasis-pub-hub` en vivo + `OASIS_HUB_MEM_LIMIT=768m` (y `OASIS_HUB_NODE_OPTIONS=--max-old-space-size=512`) en `.env.prod` para el siguiente recreate. `pub/config/hub/oasis-config.json` **no se toca** |
 | `oasis-pub-hub-cache` | 128m | sin cambios |
 | caddy + panel | ≈ 250m | sin cambios |
-| **suma de límites** | **≈ 3,4 GB** | con el pub (1024m desde WP-O121): más que la RAM del host. Cada límite lleva `memswap_limit` igual (D-O41); el swap del host (2 GB, `CAPACIDAD.md` §2) absorbe los picos |
+| **suma de límites** | **≈ 3,7 GB** | con el pub (1024m desde WP-O121): más que la RAM del host. Cada límite lleva `memswap_limit` igual (D-O41); el swap del host (2 GB, `CAPACIDAD.md` §2) absorbe los picos |
 
 **Regla de las 24 h** (la del HUB): tras 24 h de `docker stats`, `límite = ceil(1,5 · pico)` para
 `ecoin` y para el bot. El pico de `ecoind` es el **sync inicial**: medirlo en G6 y en el paso 6.
