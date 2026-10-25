@@ -1,4 +1,4 @@
-const { a, img, video, audio, span, strong, em, u, s: strike, code, div, textarea } = require("../server/node_modules/hyperaxe");
+const { a, img, video, audio, span, strong, em, u, s: strike, code, div, textarea, object } = require("../server/node_modules/hyperaxe");
 const i18nBase = require("../client/assets/translations/i18n");
 const { WIKILINK_RE, slugify, linkTarget } = require("../models/wiki_model");
 
@@ -55,6 +55,7 @@ const INTERNAL_PATHS = [
 ];
 const INTERNAL_PATH_SET = new Set(INTERNAL_PATHS);
 const SSB_ID_RE = /^(?:%[A-Za-z0-9+/=]{20,}\.sha256|@[A-Za-z0-9+/=]{20,}\.ed25519|&[A-Za-z0-9+/=]{20,}\.sha256)$/;
+const INTERNAL_PATH_RE = /(^|[\s(\[])(\/([A-Za-z][A-Za-z0-9-]*)\/((?:%|@|&)[A-Za-z0-9+/=]{20,}\.(?:sha256|ed25519)))(?=$|[\s)\]!,.;:])/g;
 
 const internalTargetOf = (url) => {
   let parsed = null;
@@ -120,6 +121,9 @@ function renderStyledText(value, opts = {}) {
     const name = bareMentionName(m[2]);
     if (name) allMatches.push({ index: m.index + m[1].length, length: name.length + 1, type: 'bare-mention', name });
   }
+  for (const m of text.matchAll(INTERNAL_PATH_RE)) {
+    if (INTERNAL_PATH_SET.has(m[3].toLowerCase())) allMatches.push({ index: m.index + m[1].length, length: m[2].length, type: 'internal-path', kind: m[3].toLowerCase(), id: m[4], href: m[2] });
+  }
   for (const m of text.matchAll(MSG_REF_RE)) push(m, { type: 'msg-ref', id: m[0] });
   for (const m of text.matchAll(MD_LINK_RE)) push(m, { type: 'md-link', label: m[1], href: m[2] });
   for (const m of text.matchAll(BOLD_RE)) push(m, { type: 'bold', body: m[1] });
@@ -182,6 +186,8 @@ function renderStyledText(value, opts = {}) {
       result.push(em(...inner(m.body)));
     } else if (m.type === 'inline-code') {
       result.push(code({ class: 'rt-code' }, m.body));
+    } else if (m.type.startsWith('blob-') && typeof opts.blobAvailable === 'function' && !opts.blobAvailable(m.blob)) {
+      result.push('');
     } else if (m.type === 'blob-image') {
       const imageSrc = blobHref(m.blob);
       if (opts.zoomImages) {
@@ -202,7 +208,20 @@ function renderStyledText(value, opts = {}) {
       result.push(audio({ controls: true, class: 'post-audio', src: blobHref(m.blob) }));
     } else if (m.type === 'blob-pdf') {
       const i18n = getI18n();
-      result.push(a({ href: blobHref(m.blob), class: 'post-pdf', target: '_blank', rel: 'noopener noreferrer' }, m.name || i18n.pdfFallbackLabel || 'PDF'));
+      const pdfLabel = m.name || i18n.pdfFallbackLabel || 'PDF';
+      const clearnet = String(opts.blobPrefix || '').startsWith('/c/');
+      let lang = '';
+      try { lang = clearnet ? ((require('../models/typed_log').requestScope.getStore() || {}).cnLang || '') : ''; } catch (_) {}
+      const fid = require('./pdf_view').frameIdOf(blobHref(m.blob));
+      const query = new URLSearchParams({ src: blobHref(m.blob), title: String(m.name || ''), ...(lang ? { lang } : {}), fid });
+      const holder = (src, cls) => span({ class: 'pdf-holder' },
+        object({ id: fid, data: src, type: 'text/html', class: cls, title: pdfLabel, 'aria-label': pdfLabel }, ''),
+        a({ href: '#', class: 'pdf-unmax', title: i18n.pdfClose || 'Close' }, '✕'));
+      result.push(clearnet
+        ? holder(`/c/pdf/embed?${query}`, 'cn-pdf-frame')
+        : opts.blobPrefix
+          ? a({ href: blobHref(m.blob), class: 'post-pdf', target: '_blank', rel: 'noopener noreferrer' }, pdfLabel)
+          : holder(`/pdf/embed?${query}`, 'pdf-frame'));
     } else if (m.type === 'blob-file') {
       result.push(a({ href: blobHref(m.blob), class: 'post-pdf', target: '_blank', rel: 'noopener noreferrer' }, m.name || m.blob.slice(1, 9)));
     } else if (m.type === 'md-mention') {
@@ -217,6 +236,10 @@ function renderStyledText(value, opts = {}) {
       result.push(external
         ? (linksOn ? a({ href: m.href, class: 'styled-link', target: '_blank', rel: 'noopener noreferrer' }, ...inner(m.label)) : plain(m.label))
         : (internalOn ? a({ href: m.href, class: 'styled-link' }, ...inner(m.label)) : m.label));
+    } else if (m.type === 'internal-path') {
+      result.push(linksOn && internalOn
+        ? a({ href: m.href, class: 'internal-link' }, span({ class: 'internal-link-kind' }, m.kind.toUpperCase()), span({ class: 'internal-link-id' }, shortInternalId(m.id)))
+        : plain(m.href));
     } else if (m.type === 'url') {
       const schemeMatch = m.text.match(/^(https?):\/\//i);
       const href = schemeMatch ? `${schemeMatch[1].toLowerCase()}://${m.text.slice(schemeMatch[0].length)}` : `https://${m.text}`;

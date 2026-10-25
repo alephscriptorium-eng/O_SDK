@@ -25,6 +25,13 @@ const writeStateFile = (file, data) => {
 };
 let configCache = { at: 0, cfg: null };
 const CONFIG_TTL_MS = 2000;
+const CONNECTIONS_MIN = 5;
+const CONNECTIONS_MAX = 30;
+const CONNECTIONS_DEFAULT = 10;
+const connectionsOf = (value) => {
+  const n = Math.round(Number(value));
+  return value === undefined || value === null || value === '' || !Number.isFinite(n) ? CONNECTIONS_DEFAULT : Math.min(CONNECTIONS_MAX, Math.max(CONNECTIONS_MIN, n));
+};
 const writeConfigFile = (data) => { configCache = { at: 0, cfg: null }; return writeStateFile(configFilePath, data); };
 const readJsonFile = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return null; } };
 const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -154,6 +161,7 @@ const readConfig = () => {
   const configData = fs.readFileSync(configFilePath);
   const cfg = JSON.parse(configData);
   if (!['whole', 'mutuals', 'only-lan', 'local'].includes(cfg.wish)) cfg.wish = 'whole';
+  cfg.connections = connectionsOf(cfg.connections);
   if (!['whole', 'mutuals', 'following'].includes(cfg.pmVisibility)) cfg.pmVisibility = 'whole';
   if (!['whole', 'mutuals', 'following'].includes(cfg.mentionsVisibility)) cfg.mentionsVisibility = 'whole';
   if (!cfg.phone || typeof cfg.phone !== 'object') cfg.phone = {};
@@ -161,11 +169,12 @@ const readConfig = () => {
   if (typeof cfg.ux === 'string') cfg.ux = { current: cfg.ux };
   if (!cfg.ux || typeof cfg.ux !== 'object') cfg.ux = { current: 'blocks' };
   if (cfg.ux.current === 'menus') cfg.ux.current = 'blocks';
-  if (cfg.ux.current !== 'blocks' && cfg.ux.current !== 'ainav' && cfg.ux.current !== 'chats' && cfg.ux.current !== 'feed' && cfg.ux.current !== 'phone') cfg.ux.current = 'blocks';
+  if (cfg.ux.current !== 'blocks' && cfg.ux.current !== 'ainav' && cfg.ux.current !== 'chats' && cfg.ux.current !== 'feed' && cfg.ux.current !== 'phone' && cfg.ux.current !== 'rooms') cfg.ux.current = 'blocks';
   if (cfg.ux.current === 'ainav' && cfg.modules && cfg.modules.aiNavMod !== 'on') cfg.ux.current = 'blocks';
   if (cfg.ux.current === 'chats' && cfg.modules && cfg.modules.chatsMod !== 'on') cfg.ux.current = 'blocks';
   if (cfg.ux.current === 'phone' && cfg.modules && cfg.modules.phoneMod === 'off') cfg.ux.current = 'blocks';
   if (cfg.ux.current === 'feed' && cfg.modules && cfg.modules.feedMod === 'off') cfg.ux.current = 'blocks';
+  if (cfg.ux.current === 'rooms' && cfg.modules && cfg.modules.roomsMod === 'off') cfg.ux.current = 'blocks';
   if (!cfg.blobCache || typeof cfg.blobCache !== 'object' || !Number.isFinite(Number(cfg.blobCache.maxMB))) cfg.blobCache = { maxMB: 0 };
   if (!Number.isFinite(Number(cfg.blobCache.pubMaxMB))) cfg.blobCache.pubMaxMB = 0;
   if (cfg.modules && typeof cfg.modules === 'object') {
@@ -190,4 +199,8 @@ module.exports = {
   saveServerConfig,
   readInviteCodes,
   defaultInvite,
+  CONNECTIONS_MIN,
+  CONNECTIONS_MAX,
+  CONNECTIONS_DEFAULT,
+  connectionsOf,
 };

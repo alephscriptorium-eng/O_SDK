@@ -1,8 +1,17 @@
 const { form, button, div, h2, p, section, input, label, br, a, span, table, thead, tbody, tr, th, td, textarea, select, option, ul, li, img } = require('../server/node_modules/hyperaxe');
 const RAW_HTML = Symbol.for('oasis.rawHtml');
 const moment = require("../server/node_modules/moment");
-const { template, i18n, userLink, paged } = require('./main_views');
+const { template, i18n, userLink, paged, renderEngagement, renderCardTop, hereAt } = require('./main_views');
 const { renderStyledText } = require('../backend/renderStyledText');
+const { renderCommentsSection } = require('./comments_view');
+
+const commentsBlock = (comments, item, returnTo, title) => {
+  const root = item && item.rootId;
+  const commentsNode = root && comments instanceof Map ? renderCommentsSection({ action: `/parliament/comments/${encodeURIComponent(root)}`, comments: comments.get(root) || [], returnTo }) : null;
+  return renderEngagement(root || (item && item.id), null, commentsNode, { href: returnTo, title, author: item && (item.author || item.proposer) });
+};
+
+const parliamentTop = (item, href, date) => renderCardTop(null, href, { author: item.proposer, date: date || item.createdAt });
 
 const { seatPositions } = require('../models/parliament_model').hemicycle;
 
@@ -274,30 +283,20 @@ const GovernmentCard = (g, meta, hemicycle = null, seatsMode = 'election', house
     hemicycle
       ? renderHemicycle(hemicycle, { mode: seatsMode, baseHref: '/parliament?filter=government', houseNames })
       : div({ class: 'method-image-centered' }, img({ src: methodImageSrc(methodKey), alt: methodLabel })),
-    div(
-      { class: 'table-wrap' },
-      applyEl(table, { class: 'table table--centered gov-overview' }, [
-        thead(tr(
-          th(i18n.parliamentGovMethod),
-          th(i18n.parliamentThPresented || 'CANDIDATURES'),
-          th(i18n.parliamentPoliciesProposal || 'LAWS PROPOSAL'),
-          th(i18n.parliamentPoliciesApproved || 'LAWS APPROVED'),
-          th(i18n.parliamentPoliciesDeclined || 'LAWS DECLINED'),
-          th(i18n.parliamentPoliciesDiscarded || 'LAWS DISCARDED'),
-          th(i18n.parliamentPoliciesRevocated || 'LAWS REVOCATED'),
-          th(i18n.parliamentEfficiency || '% EFFICIENCY')
-        )),
-        tbody(tr(
-          td(methodLabel),
-          td(String(g.presented || 0)),
-          td(String(g.proposed || 0)),
-          td(String(g.approved || 0)),
-          td(String(g.declined || 0)),
-          td(String(g.discarded || 0)),
-          td(String(g.revocated || 0)),
-          td(`${String(g.efficiency || 0)} %`)
-        ))
-      ])
+    table({ class: 'tribe-info-table parliament-overview-table' },
+      ...[
+        [i18n.parliamentGovMethod, methodLabel],
+        [i18n.parliamentThPresented || 'CANDIDATURES', String(g.presented || 0)],
+        [i18n.parliamentPoliciesProposal || 'LAWS PROPOSAL', String(g.proposed || 0)],
+        [i18n.parliamentPoliciesApproved || 'LAWS APPROVED', String(g.approved || 0)],
+        [i18n.parliamentPoliciesDeclined || 'LAWS DECLINED', String(g.declined || 0)],
+        [i18n.parliamentPoliciesDiscarded || 'LAWS DISCARDED', String(g.discarded || 0)],
+        [i18n.parliamentPoliciesRevocated || 'LAWS REVOCATED', String(g.revocated || 0)],
+        [i18n.parliamentEfficiency || '% EFFICIENCY', `${String(g.efficiency || 0)} %`]
+      ].map(([labelText, value]) => tr(
+        td({ class: 'tribe-info-label' }, labelText),
+        td({ class: 'tribe-info-value' }, value)
+      ))
     ),
     (g.powerType === 'tribe' || g.powerType === 'inhabitant')
       ? div(
@@ -432,7 +431,7 @@ const CandidaturesTable = (candidatures) => {
       td({ class: 'nowrap', 'data-label': i18n.parliamentThMethod }, c.method),
       td({ 'data-label': i18n.parliamentThKarma }, c.targetType === 'inhabitant' ? String(c.karma || 0) : '-'),
       td({ 'data-label': i18n.parliamentThSupports }, span({ class: 'candidature-votes-count' }, String(c.votes || 0))),
-      td({ 'data-label': '' }, form({ method: 'POST', action: `/parliament/candidatures/${encodeURIComponent(c.id)}/vote` }, button({ class: 'vote-btn' }, i18n.parliamentVoteBtn)))
+      td({ 'data-label': '' }, form({ method: 'POST', action: `/parliament/candidatures/${encodeURIComponent(c.id)}/vote` }, input({ type: 'hidden', name: 'returnTo', value: hereAt(c.id) || '' }), button({ class: 'vote-btn' }, i18n.parliamentVoteBtn)))
     );
   });
   return div(
@@ -461,12 +460,12 @@ const ProposalForm = () =>
       label(i18n.parliamentProposalTitle), br(),
       input({ type: 'text', name: 'title', maxlength: '100', required: true }), br(), br(),
       label(i18n.parliamentProposalDescription), br(),
-      textarea({ name: 'description', rows: 5, maxlength: 1000 }), br(), br(),
+      textarea({ name: 'description', rows: 5 }), br(), br(),
       button({ type: 'submit', class: 'create-button' }, i18n.parliamentProposalPublish)
     )
   );
 
-const ProposalsList = (proposals) => {
+const ProposalsList = (proposals, comments = null) => {
   if (!proposals || !proposals.length) return null;
   const cards = proposals.map(pItem => {
     const titleNode = pItem && pItem.voteId
@@ -477,17 +476,7 @@ const ProposalsList = (proposals) => {
       : (i18n.parliamentProposalOnTrackNo || 'BELOW THRESHOLD');
     return div(
       { class: 'card' },
-      br(),
-      div(
-        { class: 'card-field' },
-        span({ class: 'card-label' }, i18n.parliamentThProposalDate.toUpperCase() + ': '),
-        span({ class: 'card-value' }, fmt(pItem.createdAt))
-      ),
-      div(
-        { class: 'card-field' },
-        span({ class: 'card-label' }, i18n.parliamentLawProposer.toUpperCase() + ': '),
-        span({ class: 'card-value' }, userLink(pItem.proposer))
-      ),
+      parliamentTop(pItem, '/parliament?filter=proposals'),
       div(
         { class: 'card-field' },
         span({ class: 'card-label' }, i18n.parliamentGovMethod.toUpperCase() + ': '),
@@ -538,7 +527,8 @@ const ProposalsList = (proposals) => {
             { method: 'GET', action: `/votes/${encodeURIComponent(pItem.voteId)}` },
             button({ type: 'submit', class: 'buy-btn' }, i18n.parliamentVoteAction)
           )
-        : null
+        : null,
+      commentsBlock(comments, pItem, '/parliament?filter=proposals', pItem.title || '')
     );
   });
   return div(
@@ -553,13 +543,12 @@ const FutureLawsList = (rows) => {
   const cards = rows.map(pItem =>
     div(
       { class: 'card' },
-      br(),
+      parliamentTop(pItem, '/parliament?filter=proposals'),
       div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.parliamentGovMethod.toUpperCase() + ': '), span({ class: 'card-value' }, pItem.method)),
-      div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.parliamentThProposalDate.toUpperCase() + ': '), span({ class: 'card-value' }, fmt(pItem.createdAt))),
-      div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.parliamentLawProposer.toUpperCase() + ': '), span({ class: 'card-value' }, userLink(pItem.proposer))),
       h2(pItem.title || ''),
       p(...renderStyledText(pItem.description || '')),
-      ...campaignBlock(pItem)
+      ...campaignBlock(pItem),
+      commentsBlock(null, pItem, '/parliament?filter=proposals', pItem.title || '')
     )
   );
   return div(
@@ -590,7 +579,7 @@ const RevocationForm = (laws = []) =>
       ),
       br(), br(),
       label(i18n.parliamentRevocationReasons), br(),
-      textarea({ name: 'reasons', rows: 4, maxlength: 1000 }),
+      textarea({ name: 'reasons', rows: 4 }),
       br(), br(),
       button({ type: 'submit', class: 'create-button' }, i18n.parliamentRevocationPublish || 'Publish Revocation')
     )
@@ -607,20 +596,7 @@ const RevocationsList = (revocations) => {
       : (i18n.parliamentProposalOnTrackNo || 'BELOW THRESHOLD');
     return div(
       { class: 'card' },
-      br(),
-      div(
-        { class: 'card-field' },
-        span({ class: 'card-label' }, i18n.parliamentThProposalDate.toUpperCase() + ': '),
-        span({ class: 'card-value' }, fmt(pItem.createdAt))
-      ),
-      div(
-        { class: 'card-field' },
-        span({ class: 'card-label' }, i18n.parliamentLawProposer.toUpperCase() + ': '),
-        span(
-          { class: 'card-value' },
-          userLink(pItem.proposer)
-        )
-      ),
+      parliamentTop(pItem, '/parliament?filter=revocations'),
       div(
         { class: 'card-field' },
         span({ class: 'card-label' }, i18n.parliamentGovMethod + ': '),
@@ -671,7 +647,8 @@ const RevocationsList = (revocations) => {
             { method: 'GET', action: `/votes/${encodeURIComponent(pItem.voteId)}` },
             button({ type: 'submit', class: 'buy-btn' }, i18n.parliamentVoteAction)
           )
-        : null
+        : null,
+      commentsBlock(null, pItem, '/parliament?filter=revocations', pItem.title || pItem.lawTitle || '')
     );
   });
   return div(
@@ -686,12 +663,11 @@ const FutureRevocationsList = (rows) => {
   const cards = rows.map(pItem =>
     div(
       { class: 'card' },
-      br(),
+      parliamentTop(pItem, '/parliament?filter=revocations'),
       pItem.method ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.parliamentGovMethod.toUpperCase() + ': '), span({ class: 'card-value' }, pItem.method)) : null,
-      div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.parliamentThProposalDate.toUpperCase() + ': '), span({ class: 'card-value' }, fmt(pItem.createdAt))),
-      div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.parliamentLawProposer.toUpperCase() + ': '), span({ class: 'card-value' }, userLink(pItem.proposer))),
       h2(pItem.title || pItem.lawTitle || ''),
-      p(pItem.reasons || '')
+      p(pItem.reasons || ''),
+      commentsBlock(null, pItem, '/parliament?filter=revocations', pItem.title || pItem.lawTitle || '')
     )
   );
   return div(
@@ -731,7 +707,7 @@ const LawsStats = (laws = [], revocatedCount = 0) => {
   );
 };
 
-const LawsList = (laws) => {
+const LawsList = (laws, comments = null) => {
   if (!laws || !laws.length) return NoLaws();
   const cards = laws.map(l => {
     const total = Number((l.votes && (l.votes.total || l.votes.TOTAL)) || 0);
@@ -740,14 +716,13 @@ const LawsList = (laws) => {
     const showMetricsFlag = showVoteMetrics(l.method);
     return div(
       { class: 'card' },
-      br(),
+      parliamentTop(l, '/parliament?filter=laws', l.enactedAt),
       div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentGovMethod + ': ').toUpperCase()), span({ class: 'card-value' }, l.method)),
-      div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentLawEnacted + ': ').toUpperCase()), span({ class: 'card-value' }, fmt(l.enactedAt))),
-      div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.parliamentLawProposer.toUpperCase() + ': '), span({ class: 'card-value' }, userLink(l.proposer))),
       h2(l.question || ''),
       p(l.description || ''),
       showMetricsFlag ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentVotesNeeded + ': ').toUpperCase()), span({ class: 'card-value' }, String(needed))) : null,
-      showMetricsFlag ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentVotesSlashTotal + ': ').toUpperCase()), span({ class: 'card-value' }, `${yes}/${total}`)) : null
+      showMetricsFlag ? div({ class: 'card-field' }, span({ class: 'card-label' }, (i18n.parliamentVotesSlashTotal + ': ').toUpperCase()), span({ class: 'card-value' }, `${yes}/${total}`)) : null,
+      commentsBlock(comments, l, '/parliament?filter=laws', l.question || '')
     );
   });
   return div(
@@ -1009,12 +984,12 @@ const CandidaturesSection = (governmentCard, candidatures, leaderMeta, electionQ
   );
 };
 
-const ProposalsSection = (governmentCard, proposals, futureLaws, canPropose) => {
+const ProposalsSection = (governmentCard, proposals, futureLaws, canPropose, comments = null) => {
   const has = proposals && proposals.length > 0;
   const fl = FutureLawsList(futureLaws || []);
   if (!has && canPropose) return div(h2(i18n.parliamentGovernmentCard), GovHeader(governmentCard || {}), ProposalForm(), fl);
   if (!has && !canPropose) return div(h2(i18n.parliamentGovernmentCard), GovHeader(governmentCard || {}), NoProposals(), fl);
-  return div(h2(i18n.parliamentGovernmentCard), GovHeader(governmentCard || {}), ProposalForm(), ProposalsList(paged(proposals)), fl);
+  return div(h2(i18n.parliamentGovernmentCard), GovHeader(governmentCard || {}), ProposalForm(), ProposalsList(paged(proposals), comments), fl);
 };
 
 const RevocationsSection = (governmentCard, laws, revocations, futureRevocations) =>
@@ -1055,7 +1030,8 @@ const parliamentView = async (state) => {
     revocationsEnactedCount,
     historicalMetas = {},
     leadersMetas = {},
-    inhabitantsTotal
+    inhabitantsTotal,
+    comments = null
   } = state;
 
   const fallbackGov = {
@@ -1084,7 +1060,7 @@ const parliamentView = async (state) => {
   const LawsSectionWrap = () =>
     div(
       LawsStats(laws || [], revocationsEnactedCount || 0),
-      LawsList(paged(laws || []))
+      LawsList(paged(laws || []), comments)
     );
 
   return template(
@@ -1100,7 +1076,7 @@ const parliamentView = async (state) => {
     section(
       filter === 'government' ? GovernmentCard(gov, powerMeta, hemicycle || null, seatsMode || 'election', houseNames || {}) : null,
       filter === 'candidatures' ? CandidaturesSection(gov, candidatures, leaderMeta, electionQuorum) : null,
-      filter === 'proposals' ? ProposalsSection(gov, proposals, futureLaws, canPropose) : null,
+      filter === 'proposals' ? ProposalsSection(gov, proposals, futureLaws, canPropose, comments) : null,
       filter === 'laws' ? LawsSectionWrap() : null,
       filter === 'revocations' ? RevocationsSection(gov, laws, revocations, futureRevocations) : null,
       filter === 'historical' ? div(HistoricalGovsSummary(historical || []), HistoricalList(paged(historical || []), historicalMetas)) : null,

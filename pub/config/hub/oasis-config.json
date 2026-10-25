@@ -107,6 +107,7 @@
     "podcasts",
     "campaigns",
     "logistics",
+    "social",
     "reminders"
   ]
 }

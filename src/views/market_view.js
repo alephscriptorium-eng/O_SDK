@@ -1,25 +1,28 @@
 const { div, h2, p, section, button, form, a, span, textarea, br, input, label, select, option, img, table, tr, th, td, progress, video, audio, hr } = require("../server/node_modules/hyperaxe")
 const { renderZoomableImage } = require("./gallery_view")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderSpreadEditWarning, renderOpinionsVoting, renderEngagement , renderContentActions, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, renderWalletChip, contentDeleteAction, paged } = require("./main_views")
-const { renderReachChip, renderClearnetSelector, renderClearnetSwitch } = require("./clearnet_view")
+const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadEditWarning, renderOpinionsVoting, renderEngagement, renderCardTop, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, renderWalletChip, contentDeleteAction, paged, renderEditedChip, renderMediaLockNote, renderDetailShare, hasRelation, renderRelationFilters } = require("./main_views")
+const { renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderEncryptedChip } = require("./clearnet_view")
 const opinionCategories = require("../backend/opinion_categories")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderStyledText } = require("../backend/renderStyledText")
-const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel, renderMapEmbedWithZoom } = require("./maps_view")
+const { renderMapEmbedWithZoom } = require("./maps_view")
 
-const renderMediaBlob = (value, fallbackSrc = null, attrs = {}) => {
+const renderMediaBlob = (value, fallbackSrc = null, attrs = {}, zoom = true) => {
   if (!value) return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
   const s = String(value).trim()
   if (!s) return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
-  if (s.startsWith('&')) return renderZoomableImage(`/blob/${encodeURIComponent(s)}`, { imgClass: attrs.class || 'post-image', alt: attrs.alt || '' })
+  const picture = (src) => zoom
+    ? renderZoomableImage(src, { imgClass: attrs.class || 'post-image', alt: attrs.alt || '' })
+    : img({ loading: 'lazy', src, class: attrs.class || 'post-image', alt: attrs.alt || '' })
+  if (s.startsWith('&')) return picture(`/blob/${encodeURIComponent(s)}`)
   const mVideo = s.match(/\[video:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
   if (mVideo) return video({ controls: true, class: attrs.class || 'post-video', src: `/blob/${encodeURIComponent(mVideo[1])}`, preload: 'metadata' })
   const mAudio = s.match(/\[audio:[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
   if (mAudio) return audio({ controls: true, class: attrs.class || 'post-audio', src: `/blob/${encodeURIComponent(mAudio[1])}` })
   const mImg = s.match(/!\[[^\]]*\]\(\s*(&[^)\s]+\.sha256)\s*\)/)
-  if (mImg) return renderZoomableImage(`/blob/${encodeURIComponent(mImg[1])}`, { imgClass: attrs.class || 'post-image', alt: attrs.alt || '' })
+  if (mImg) return picture(`/blob/${encodeURIComponent(mImg[1])}`)
   return fallbackSrc ? img({ src: fallbackSrc, ...attrs }) : null
 }
 
@@ -173,15 +176,6 @@ const renderMarketOwnerActions = (item, returnTo) => {
   const cur = normStatus(item.status || "FOR SALE")
   const canChange = cur !== "SOLD" && cur !== "DISCARDED"
   const out = []
-  if (canUpdate) {
-    out.push(
-      form(
-        { method: "GET", action: `/market/edit/${encodeURIComponent(item.id)}` },
-        input({ type: "hidden", name: "returnTo", value: returnTo }),
-        button({ class: "update-btn", type: "submit" }, i18n.marketActionsUpdate)
-      )
-    )
-  }
   if (canChange) {
     out.push(
       form(
@@ -205,6 +199,7 @@ const marketChipFor = (filter, list) => (mode) => {
   if (!Array.isArray(list)) return true;
   if (mode === "recent") return list.length > 0;
   if (mode === "mine") return list.some((e) => String(e.seller) === String(userId));
+  if (mode === "supported" || mode === "replicated") return hasRelation(mode, list);
   if (mode === "exchange") return list.some((e) => e.item_type === "exchange" && e.status === "FOR SALE");
   if (mode === "auctions") return list.some((e) => e.item_type === "auction" && e.status === "FOR SALE");
   if (mode === "mybids") return list.some(isMyBidItem);
@@ -233,6 +228,12 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
       break
     case "mine":
       filtered = list.filter((e) => e.seller === userId)
+      break
+    case "supported":
+      filtered = list.filter((e) => e.isSupported)
+      break
+    case "replicated":
+      filtered = list.filter((e) => e.isReplicated)
       break
     case "exchange":
       filtered = list.filter((e) => e.item_type === "exchange" && e.status === "FOR SALE")
@@ -308,6 +309,7 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterAll).toUpperCase()),
           ...(marketChipVisible("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterRecent).toUpperCase())] : []),
           ...(marketChipVisible("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(filter, marketChipVisible),
           ...(marketChipVisible("exchange") ? [button({ type: "submit", name: "filter", value: "exchange", class: filter === "exchange" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterItems).toUpperCase())] : []),
           ...(marketChipVisible("auctions") ? [button({ type: "submit", name: "filter", value: "auctions", class: filter === "auctions" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterAuctions).toUpperCase())] : []),
           ...(marketChipVisible("mybids") ? [button({ type: "submit", name: "filter", value: "mybids", class: filter === "mybids" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterMyBids).toUpperCase())] : []),
@@ -403,12 +405,12 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
               br(),
               label(i18n.marketItemDescription),
               br(),
-              textarea({ maxlength: "5000", name: "description", id: "description", placeholder: i18n.marketItemDescriptionPlaceholder, rows: "6", required: true }, (itemEdit && itemEdit.description) || params.description || ""),
+              textarea({ name: "description", id: "description", placeholder: i18n.marketItemDescriptionPlaceholder, rows: "6", required: true }, (itemEdit && itemEdit.description) || params.description || ""),
               br(),
               br(),
               label(i18n.marketCreateFormImageLabel),
               br(),
-              input({ type: "file", name: "image", id: "image" }),
+              (filter === "edit" && renderMediaLockNote(itemEdit)) || input({ type: "file", name: "image", id: "image" }),
               br(),
               br(),
               label(i18n.marketItemStatus),
@@ -431,7 +433,6 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
               input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: itemEdit?.mapUrl || "" }),
               br(),
               br(),
-              ...(reach === "PUBLIC" ? [renderClearnetSelector(itemEdit.clearnet === true || String(itemEdit.clearnet || "") === "1", i18n), br()] : []),
               label(i18n.marketItemPrice),
               br(),
               input({ type: "number", name: "price", id: "price", value: (itemEdit && itemEdit.price) || params.price || "", required: true, step: "0.000001", min: "0.000001" }),
@@ -467,7 +468,8 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
                 ...(itemEdit && [true, "1", "on", "true"].includes([].concat(itemEdit.includesShipping).pop()) ? { checked: true } : {})
               }),
               br(),br(),
-              button({ type: "submit" }, filter === "edit" ? i18n.marketUpdateButton : i18n.marketCreateButton)
+              ...(reach === "PUBLIC" ? [renderClearnetSelector(itemEdit.clearnet === true || String(itemEdit.clearnet || "") === "1", i18n), br()] : []),
+              button({ type: "submit" }, filter === "edit" ? i18n.save : i18n.marketCreateButton)
             )
           )
         : div(
@@ -475,32 +477,34 @@ exports.marketView = async (items, filter, itemToEdit = null, params = {}) => {
             filtered.length > 0
               ? paged(filtered).map((item) => {
                   const isOwner = String(item.seller) === String(userId)
+                  const itemHref = `/market/${encodeURIComponent(item.id)}`
 
                   return div({ class: "tribe-card market-tribe-card" },
-                    div({ class: "tribe-card-image-wrapper" },
-                      a({ href: `/market/${encodeURIComponent(item.id)}` },
-                        renderMediaBlob(item.image, '/assets/images/default-market.png', { class: 'tribe-card-hero-image' })
-                      )
-                    ),
-                    div({ class: "card-header activity-card-header" },
-                      span(),
-                      renderContentActions(item.id, `/market/${encodeURIComponent(item.id)}`, { spread: (params.spreadMap && params.spreadMap.get(item.id)) || null, author: item.seller, favKind: 'market', isFavorite: item.isFavorite, reportTitle: item.title, returnTo, deleteAction: isOwner ? contentDeleteAction('market', item.id) : undefined })
-                    ),
-                    div({ class: "tribe-card-body" },
-                      div({ class: "shop-title-row" },
-                        h2({ class: "tribe-card-title" }, a({ href: `/market/${encodeURIComponent(item.id)}` }, item.title))
-                      ),
-                      renderStarRating(item.opinions, Array.isArray(item.opinions_inhabitants) ? item.opinions_inhabitants.length : 0),
-                      div({ class: "card-chips-row" },
+                    renderCardTop(item.id, itemHref, {
+                      date: item.createdAt,
+                      chips: [
                         String(item.visibility || "PUBLIC").toUpperCase() === "HIDDEN" ? renderVisibilityChip("HIDDEN", i18n) : null,
-                        renderStateChip("encrypted", "", String(item.item_type || "").toUpperCase()),
+                        renderStateChip("whole", "", String(item.item_type || "").toUpperCase()),
                         item.item_status ? renderStateChip("whole", "", String(item.item_status).toUpperCase()) : null,
-                        item.includesShipping ? renderStateChip("mutuals", "📦", String(i18n.marketItemIncludesShipping || "Shipping").replace(/\?$/, "").toUpperCase()) : null,
+                        item.includesShipping ? renderStateChip("whole", "📦", String(i18n.marketItemIncludesShipping || "Shipping").replace(/\?$/, "").toUpperCase()) : null,
                         item.industry ? a({ href: `/industry/${encodeURIComponent(item.industry)}` }, renderStateChip("whole", "🏭", String(i18n.industryTitle || "Industry").toUpperCase())) : null,
                         renderLifespanChip(item.lifetime, i18n),
                         item.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref("market", item.title, item.id)) : null
+                      ],
+                      spread: (params.spreadMap && params.spreadMap.get(item.id)) || null, author: item.seller, favKind: 'market', isFavorite: item.isFavorite, reportTitle: item.title, returnTo, deleteAction: isOwner ? contentDeleteAction('market', item.id) : undefined
+                    }),
+                    div({ class: "tribe-card-image-wrapper" },
+                      a({ href: itemHref },
+                        renderMediaBlob(item.image, '/assets/images/default-market.png', { class: 'tribe-card-hero-image' }, false)
+                      )
+                    ),
+                    div({ class: "tribe-card-body" },
+                      div({ class: "shop-title-row" },
+                        h2({ class: "tribe-card-title" }, a({ href: itemHref }, item.title))
                       ),
-                      div({ class: "price-chip" }, `${item.price} ECO`)
+                      renderStarRating(item.opinions, Array.isArray(item.opinions_inhabitants) ? item.opinions_inhabitants.length : 0),
+                      div({ class: "price-chip" }, `${item.price} ECO`),
+                      null
                     )
                   )
                 })
@@ -537,6 +541,7 @@ exports.singleMarketView = async (item, filter, comments = [], params = {}) => {
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterAll).toUpperCase()),
           ...(marketChipVisible("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterRecent).toUpperCase())] : []),
           ...(marketChipVisible("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(filter, marketChipVisible),
           ...(marketChipVisible("exchange") ? [button({ type: "submit", name: "filter", value: "exchange", class: filter === "exchange" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterItems).toUpperCase())] : []),
           ...(marketChipVisible("auctions") ? [button({ type: "submit", name: "filter", value: "auctions", class: filter === "auctions" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterAuctions).toUpperCase())] : []),
           ...(marketChipVisible("mybids") ? [button({ type: "submit", name: "filter", value: "mybids", class: filter === "mybids" ? "filter-btn active" : "filter-btn" }, String(i18n.marketFilterMyBids).toUpperCase())] : []),
@@ -555,9 +560,9 @@ exports.singleMarketView = async (item, filter, comments = [], params = {}) => {
         const chips = [
           renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref("market", item.title, item.id) : null),
           isHidden ? renderVisibilityChip("HIDDEN", i18n) : null,
-          renderStateChip("encrypted", "", String(item.item_type || "").toUpperCase()),
+          renderStateChip("whole", "", String(item.item_type || "").toUpperCase()),
           item.item_status ? renderStateChip("whole", "", String(item.item_status).toUpperCase()) : null,
-          item.includesShipping ? renderStateChip("mutuals", "📦", String(i18n.marketItemIncludesShipping || "Shipping").replace(/\?$/, "").toUpperCase()) : null,
+          item.includesShipping ? renderStateChip("whole", "📦", String(i18n.marketItemIncludesShipping || "Shipping").replace(/\?$/, "").toUpperCase()) : null,
           item.industry ? a({ href: `/industry/${encodeURIComponent(item.industry)}` }, renderStateChip("whole", "🏭", String(i18n.industryTitle || "Industry").toUpperCase())) : null,
           renderLifespanChip(item.lifetime, i18n),
           renderEcoTax(item.msgSize, item.id)
@@ -573,7 +578,6 @@ exports.singleMarketView = async (item, filter, comments = [], params = {}) => {
             td({ class: "tribe-info-label" }, labelText),
             td({ class: "tribe-info-value" }, valueNode)
           ))
-        pushRow(i18n.marketItemSeller, userLink(item.seller))
         if (item.shopId && item.shopTitle) pushRow(i18n.marketShopLabel || "Shop", a({ href: `/shops/${encodeURIComponent(item.shopId)}`, class: "user-link" }, item.shopTitle))
         if (item.deadline) pushRow(i18n.marketItemAvailable, moment(item.deadline).format("YYYY/MM/DD HH:mm"))
 
@@ -595,35 +599,44 @@ exports.singleMarketView = async (item, filter, comments = [], params = {}) => {
           : null
 
         const marketActions = String(item.seller) === String(userId) ? renderMarketOwnerActions(item, `/market/${encodeURIComponent(item.id)}`) : []
+        const statusRow = String(item.seller) === String(userId)
+          ? (() => {
+              const cur = normStatus(item.status || "FOR SALE")
+              const statusText = cur === "SOLD" ? i18n.marketFilterSold : cur === "DISCARDED" ? i18n.marketFilterDiscarded : i18n.marketFilterForSale
+              return div({ class: "tribe-side-actions housing-status-row" },
+                span({ class: "card-label" }, `${i18n.statusLabel}: `),
+                renderStateChip(cur === "FOR SALE" ? "mutuals" : cur === "SOLD" ? "hidden" : "closed", cur === "FOR SALE" ? "👁" : cur === "SOLD" ? "✓" : "✗", statusText),
+                ...marketActions
+              )
+            })()
+          : null
+        const canUpdateItem = String(item.seller) === String(userId) && item.status !== "SOLD" && item.status !== "DISCARDED" && !(Array.isArray(item.auctions_poll) && item.auctions_poll.length)
 
         const itemSide = div({ class: "tribe-side" },
-          div({ class: "card-header activity-card-header" },
-            renderContentActions(item.id, `/market/${encodeURIComponent(item.id)}`, { spread: params.spreads || null, author: item.seller, favKind: 'market', isFavorite: item.isFavorite, reportTitle: item.title, returnTo: `/market/${encodeURIComponent(item.id)}`, deleteAction: String(item.seller) === String(userId) ? contentDeleteAction('market', item.id) : undefined })
-          ),
+          renderCardTop(item.id, `/market/${encodeURIComponent(item.id)}`, { arrow: false, date: item.createdAt, chips, bylineExtra: [renderEditedChip(item.id, item.rootId)], spread: params.spreads || null, author: item.seller, favKind: 'market', isFavorite: item.isFavorite, reportTitle: item.title, returnTo: `/market/${encodeURIComponent(item.id)}`, editAction: canUpdateItem ? `/market/edit/${encodeURIComponent(item.id)}?returnTo=${encodeURIComponent(`/market/${encodeURIComponent(item.id)}`)}` : undefined, deleteAction: String(item.seller) === String(userId) ? contentDeleteAction('market', item.id) : undefined }),
           div({ class: "shop-title-row" },
             h2({ class: "tribe-card-title" }, item.title)
           ),
           renderStarRating(item.opinions, Array.isArray(item.opinions_inhabitants) ? item.opinions_inhabitants.length : 0),
-          chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
           String(item.seller) === String(userId) ? renderClearnetSwitch("market", item.rootId || item.id, isClearnet) : null,
-          renderMediaBlob(item.image, "/assets/images/default-market.png"),
-          div({ class: "price-chip" }, `${item.price} ECO`),
-          renderStockBar(item.stock, maxStock),
-          table({ class: "tribe-info-table jobs-info-table" }, ...infoRows),
+          renderDetailShare(item.id, `/market/${encodeURIComponent(item.id)}`, item.title, null, null, null, item.seller || item.author),
           tagsNode,
-          visibilityRow,
-          marketActions.length ? div({ class: "tribe-side-actions" }, ...marketActions) : null
+          statusRow,
+          visibilityRow
         )
 
         const itemMain = div({ class: "tribe-main" },
+          renderMediaBlob(item.image, "/assets/images/default-market.png"),
+          renderStockBar(item.stock, maxStock),
+          renderCountdownField(item),
           item.description
             ? div({ class: "job-section" },
                 h2({ class: "job-section-title" }, i18n.marketItemDescription),
                 p({ class: "tribe-side-description" }, ...renderStyledText(item.description))
               )
             : null,
-          renderCountdownField(item),
-          item.mapUrl ? div({ class: "job-section" }, renderMapEmbedWithZoom(params.mapData, item.mapUrl, `/market/${encodeURIComponent(item.id)}`, params.zoom)) : null,
+          infoRows.length ? table({ class: "tribe-info-table jobs-info-table" }, ...infoRows) : null,
+          showBuy ? null : div({ class: "price-chip" }, `${item.price} ECO`),
           item.item_type === "auction"
             ? div(
                 { class: "auction-info job-section" },
@@ -648,22 +661,49 @@ exports.singleMarketView = async (item, filter, comments = [], params = {}) => {
                   : null
               )
             : null,
+          item.mapUrl ? div({ class: "job-section" }, renderMapEmbedWithZoom(params.mapData, item.mapUrl, `/market/${encodeURIComponent(item.id)}`, params.zoom)) : null,
           showBuy
             ? div(
-                { class: "market-item actions" },
+                { class: "job-section buy-box" },
                 form(
                   { method: "POST", action: `/market/buy/${encodeURIComponent(item.id)}`, class: "market-buy-form" },
                   input({ type: "hidden", name: "returnTo", value: "/inbox?filter=sent" }),
+                  div({ class: "title-with-chip" }, label(i18n.shopBuyDeliveryAddress), renderEncryptedChip(i18n)),
+                  textarea({ name: "deliveryAddress", rows: 3, placeholder: i18n.shopBuyDeliveryAddressPlaceholder, ...(item.includesShipping ? { required: true } : {}) }),
+                  br(),
+                  label(i18n.shopBuyContact),
+                  br(),
+                  input({ type: "text", name: "contact", placeholder: i18n.shopBuyContactPlaceholder }),
+                  br(),
+                  label(i18n.shopBuyNotes),
+                  br(),
+                  textarea({ name: "notes", rows: 2, placeholder: i18n.shopBuyNotesPlaceholder }),
+                  br(),
+                  div({ class: "price-chip" }, `${item.price} ECO`),
+                  br(),
+                  br(),
                   button({ class: "buy-btn", type: "submit" }, i18n.marketActionsBuy)
                 )
+              )
+            : null,
+          Array.isArray(params.orders) && params.orders.length
+            ? div({ class: "job-section" },
+                h2({ class: "job-section-title" }, i18n.shopOrdersTitle),
+                ...params.orders.map(o => div({ class: "shop-order-card card-section" },
+                  div({ class: "card-chips-row" }, renderEncryptedChip(i18n)),
+                  div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopOrderBuyer}:`), userLink(o.buyer)),
+                  o.deliveryAddress ? div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopBuyDeliveryAddress}:`), span({ class: "card-value" }, String(o.deliveryAddress))) : null,
+                  o.contact ? div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopBuyContact}:`), span({ class: "card-value" }, String(o.contact))) : null,
+                  o.notes ? div({ class: "card-field" }, span({ class: "card-label" }, `${i18n.shopBuyNotes}:`), span({ class: "card-value" }, String(o.notes))) : null,
+                  p({ class: "card-footer" }, span({ class: "date-link" }, moment(o.ts).format("YYYY/MM/DD HH:mm")))
+                ))
               )
             : null,
           renderEngagement(item.id,
             String(item.seller) !== String(userId) && item.purchasedByViewer
               ? renderOpinionsVoting("/market/opinions", item.id, item.opinions, returnTo, item.opinions_inhabitants)
               : null,
-            renderMarketCommentsSection(item.id, returnTo, comments)
-          )
+            renderMarketCommentsSection(item.id, returnTo, comments))
         )
 
         return div({ class: "tribe-details" }, itemSide, itemMain)

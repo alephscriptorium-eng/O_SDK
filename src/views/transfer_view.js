@@ -1,6 +1,6 @@
 const { hr, div, h2, p, section, button, form, a, input, br, span, label, select, option, progress, table, tr, td } = require("../server/node_modules/hyperaxe")
 const { getConfig } = require('../configs/config-manager.js');
-const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, renderWalletChip, contentDeleteAction, paged, renderCreatedRows } = require("./main_views")
+const { template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderCardTop, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, renderWalletChip, contentDeleteAction, paged, renderEditedChip, renderMediaLockNote, renderDetailShare, hasRelation, renderRelationFilters } = require("./main_views")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
@@ -84,50 +84,12 @@ const formatBlockSize = (bytes) => {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`
 }
 
-const renderBlockInfoCard = (block) => {
-  if (!block || !block.id) return null
-  return div(
-    { class: "transfer-block-card" },
-    div({ class: "card-field" },
-      span({ class: "card-label" }, `${i18n.blockchainBlockID || "Block ID"}: `),
-      span({ class: "card-value" },
-        a({ href: `/blockexplorer/block/${encodeURIComponent(block.id)}` }, block.id)
-      )
-    )
-  )
-}
-
-const renderConfirmationsBar = (confirmedCount, required) => {
-  const req = Math.max(1, Number(required || 2))
-  const cc = Math.max(0, Number(confirmedCount || 0))
-  return div(
-    { class: "confirmations-block" },
-    div({ class: "card-field" },
-      span({ class: "card-label" }, `${i18n.transfersConfirmations}: `),
-      span({ class: "card-value" }, `${cc}/${req}`)
-    ),
-    progress({ class: "confirmations-progress", value: cc, max: req })
-  )
-}
-
-const renderOwnerActions = (transfer, returnTo) => {
-  const canEdit = transfer.from === userId && String(transfer.status || "").toUpperCase() === "UNCONFIRMED"
-  if (!canEdit) return []
-  return [
-    form(
-      { method: "GET", action: `/transfers/edit/${encodeURIComponent(transfer.id)}` },
-      input({ type: "hidden", name: "returnTo", value: returnTo }),
-      button({ type: "submit", class: "update-btn" }, i18n.transfersUpdateButton)
-    )
-  ]
-}
-
 const renderTransferStatusChip = (status) => {
   const up = String(status || "").toUpperCase()
   const variant =
-    up === "CLOSED" ? "mutuals" :
+    up === "CLOSED" ? "hidden" :
     up === "DISCARDED" ? "closed" :
-    "whole"
+    "pending"
   const icon = up === "CLOSED" ? "✓" : up === "DISCARDED" ? "✗" : "↻"
   return renderStateChip(variant, icon, i18n[statusKey(up)] || up)
 }
@@ -145,7 +107,7 @@ const transferTitle = (t) => {
 }
 
 const renderTransferCategoryChip = (cat) =>
-  renderStateChip("encrypted", "", categoryLabel(cat))
+  renderStateChip("whole", "", categoryLabel(cat))
 
 const generateTransferCard = (transfer, filter, params = {}) => {
   const confirmedBy = safeArr(transfer.confirmedBy)
@@ -160,7 +122,7 @@ const generateTransferCard = (transfer, filter, params = {}) => {
 
   const chips = [
     renderTransferStatusChip(transfer.status),
-    isUbi ? renderStateChip("mutuals", "", "UBI") : null,
+    isUbi ? renderStateChip("whole", "", "UBI") : null,
     isExpired ? renderStateChip("closed", "⏰", i18n.transfersExpiredBadge) : null,
     renderLifespanChip(transfer.lifetime, i18n)
   ].filter(Boolean)
@@ -171,25 +133,22 @@ const generateTransferCard = (transfer, filter, params = {}) => {
 
   const isOwn = transfer.from && String(transfer.from) === String(userId)
   const canDelete = isOwn && String(transfer.status || "").toUpperCase() === "UNCONFIRMED" && !isExpired && confirmedCount < required
+  const transferHref = `/transfers/${encodeURIComponent(transfer.id)}`
   return div({ class: "trending-card transfer-card" + (isOwn ? " own-content" : "") },
-    div(
-      { class: "card-header activity-card-header" },
-      span(),
-      renderContentActions(transfer.id, `/transfers/${encodeURIComponent(transfer.id)}`, { spread: params.spreadMap && params.spreadMap.get(transfer.id) || null, author: transfer.from, favKind: 'transfers', isFavorite: transfer.isFavorite, reportTitle: transfer.concept, returnTo, deleteAction: canDelete ? contentDeleteAction('transfer', transfer.id) : undefined })
-    ),
+    renderCardTop(transfer.id, transferHref, { date: transfer.createdAt, chips, spread: params.spreadMap && params.spreadMap.get(transfer.id) || null, author: transfer.from, favKind: 'transfers', isFavorite: transfer.isFavorite, reportTitle: transfer.concept, returnTo, deleteAction: canDelete ? contentDeleteAction('transfer', transfer.id) : undefined }),
     div({ class: "card-section transfer-card-body" },
       div({ class: "shop-title-row" },
         h2({ class: "tribe-card-title" },
-          a({ href: `/transfers/${encodeURIComponent(transfer.id)}` }, transferTitle(transfer))
+          a({ href: transferHref }, transferTitle(transfer))
         )
       ),
-      chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
       !isUbi && dl && dl.isValid()
         ? p({ class: "time-chip" }, dl.format("YYYY/MM/DD HH:mm"))
         : null,
       cat !== "TRUST"
         ? div({ class: "tribe-card-members" }, span({ class: "price-chip" }, fmtAmountWithUnit(transfer)))
-        : null
+        : null,
+      null
     )
   )
 }
@@ -201,6 +160,7 @@ const trChipFor = (normalizedFilter, censusT) => (mode) => {
   if (!Array.isArray(censusT)) return true;
   const stT = (t) => String(t.status || "").toUpperCase()
   if (mode === "mine") return censusT.some(t => t.from === userId || t.to === userId)
+  if (mode === "supported" || mode === "replicated") return hasRelation(mode, censusT)
   if (mode === "recent") return censusT.length > 0
   if (mode === "mine-pending") return censusT.some(t => (t.from === userId || t.to === userId) && String(t.status || "").toUpperCase() === "UNCONFIRMED")
   if (mode === "mine-confirmed") return censusT.some(t => (t.from === userId || t.to === userId) && String(t.status || "").toUpperCase() === "CLOSED")
@@ -233,6 +193,8 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
   let filtered =
     normalizedFilter === "recent"      ? list.filter(t => (Date.parse(t.createdAt || "") || 0) >= Date.now() - 86400000) :
     normalizedFilter === "mine"        ? list.filter(t => t.from === userId || t.to === userId) :
+    normalizedFilter === "supported"   ? list.filter(t => t.isSupported) :
+    normalizedFilter === "replicated"  ? list.filter(t => t.isReplicated) :
     normalizedFilter === "mine-pending" ? list.filter(t => (t.from === userId || t.to === userId) && String(t.status || "").toUpperCase() === "UNCONFIRMED") :
     normalizedFilter === "mine-confirmed" ? list.filter(t => (t.from === userId || t.to === userId) && String(t.status || "").toUpperCase() === "CLOSED") :
     normalizedFilter === "ubi"         ? list.filter(t => safeArr(t.tags).some(tag => String(tag).toUpperCase() === "UBI")) :
@@ -272,6 +234,8 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
   const isForm = normalizedFilter === "create" || normalizedFilter === "edit"
   const transferToEdit = normalizedFilter === "edit" ? (list.find(t => t.id === transferId) || {}) : (params.prefill || {})
   const returnToForForm = buildReturnTo("all", {})
+  const opinionLock = normalizedFilter === "edit" ? renderMediaLockNote(transferToEdit) : null
+  const ro = opinionLock ? { readonly: true } : {}
   const validCategories = ["ECONOMIC", "TIME", "TRUST"]
   const paramCategoryRaw = safeText(params.category || "").toUpperCase()
   const selectedCategory =
@@ -302,6 +266,7 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
           button({ type: "submit", name: "filter", value: "all", class: normalizedFilter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.transfersFilterAll).toUpperCase()),
           ...(trChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: normalizedFilter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.transfersFilterRecent).toUpperCase())] : []),
           ...(trChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: normalizedFilter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.transfersFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(normalizedFilter, trChip),
           ...(trChip("ubi") ? [button({ type: "submit", name: "filter", value: "ubi", class: normalizedFilter === "ubi" ? "filter-btn active" : "filter-btn" }, String(i18n.transfersFilterUBI).toUpperCase())] : []),
           ...(trChip("economic") ? [button({ type: "submit", name: "filter", value: "economic", class: normalizedFilter === "economic" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterEconomic || (i18n.transfersCategoryEconomic || "ECONOMIC"))] : []),
           ...(trChip("time") ? [button({ type: "submit", name: "filter", value: "time", class: normalizedFilter === "time" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterTime || (i18n.transfersCategoryTime || "TIME"))] : []),
@@ -352,7 +317,8 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
               normalizedFilter === "create" ? input({ type: "hidden", name: "category", value: selectedCategory }) : null,
               label(i18n.transfersToUser),
               br(),
-              input({ type: "text", name: "to", required: true, pattern: "^@[A-Za-z0-9+/]+={0,2}\\.ed25519$", title: i18n.transfersToUserValidation, value: transferToEdit.to || "" }),
+              input({ type: "text", name: "to", required: true, pattern: "^@[A-Za-z0-9+/]+={0,2}\\.ed25519$", title: i18n.transfersToUserValidation, value: transferToEdit.to || "", ...ro }),
+              opinionLock,
               br(),
               label(i18n.transfersConcept),
               br(),
@@ -376,7 +342,7 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
                 : [
                     label(`${i18n.transfersAmount} (${amountUnitLabel})`),
                     br(),
-                    input({ type: "number", name: "amount", step: "0.000001", required: true, min: "0.000001", value: transferToEdit.amount || "" }),
+                    input({ type: "number", name: "amount", step: "0.000001", required: true, min: "0.000001", value: transferToEdit.amount || "", ...ro }),
                     renderEcoValueChip(),
                     br(), br()
                   ],
@@ -390,7 +356,7 @@ exports.transferView = async (transfers, filter, transferId, params = {}) => {
               input({ type: "text", name: "tags", value: safeArr(transferToEdit.tags).join(", ") }),
               br(),
               br(),
-              button({ type: "submit" }, normalizedFilter === "edit" ? i18n.transfersUpdateButton : i18n.transfersCreateButton)
+              button({ type: "submit" }, normalizedFilter === "edit" ? i18n.save : i18n.transfersCreateButton)
             )
           )
         : section(
@@ -448,7 +414,7 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
   const otherParty = transfer.from === userId ? transfer.to : transfer.from
   const chips = [
     renderTransferStatusChip(transfer.status),
-    isUbi ? renderStateChip("mutuals", "", "UBI") : null,
+    isUbi ? renderStateChip("whole", "", "UBI") : null,
     isExpired ? renderStateChip("closed", "⏰", i18n.transfersExpiredBadge) : null,
     renderLifespanChip(transfer.lifetime, i18n)
   ].filter(Boolean)
@@ -465,14 +431,8 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
     ))
   }
   const canEdit = transfer.from === userId && String(transfer.status || "").toUpperCase() === "UNCONFIRMED"
-  if (canEdit) {
-    sideActions.push(form({ method: "GET", action: `/transfers/edit/${encodeURIComponent(transfer.id)}` },
-      input({ type: "hidden", name: "returnTo", value: returnTo }),
-      button({ type: "submit", class: "update-btn" }, i18n.transfersUpdateButton)
-    ))
-  }
   const canDelete = canEdit && !isExpired && confirmedCount < required
-  const exportActions = div({ class: "doc-export-actions" },
+  const exportActions = div({ class: "doc-export-actions transfer-export-actions" },
     form({ method: "GET", action: `/transfers/contract/${encodeURIComponent(transfer.id)}`, class: "transfer-contract-form" },
       button({ type: "submit", class: "filter-btn" }, i18n.transfersExportContract)
     ),
@@ -487,66 +447,57 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
       td({ class: "tribe-info-label" }, labelText),
       td({ class: "tribe-info-value" }, valueNode)
     ))
+  const confirmedList = confirmedBy.filter(Boolean)
   pushRow(i18n.transfersFrom, userLink(transfer.from))
   pushRow(i18n.transfersTo, userLink(transfer.to))
-  if (cat !== "TRUST") pushRow(i18n.transfersAmount, fmtAmountWithUnit(transfer))
+  pushRow(i18n.transfersConcept, transfer.concept || "")
   pushRow(i18n.transfersCategory || "Category", categoryLabel(cat))
-  if (!isUbi) pushRow(i18n.transfersDeadline, dl && dl.isValid() ? dl.format("YYYY/MM/DD HH:mm") : "")
   pushRow(i18n.transfersStatus, i18n[statusKey(transfer.status)] || String(transfer.status || ""))
+  if (cat !== "TRUST") pushRow(i18n.transfersAmount, fmtAmountWithUnit(transfer))
+  if (!isUbi) pushRow(i18n.transfersDeadline, dl && dl.isValid() ? dl.format("YYYY/MM/DD HH:mm") : "")
+  pushRow(i18n.transfersConfirmations, [
+    `${confirmedCount}/${required}`,
+    confirmedList.length ? div({ class: "card-assigned-list" }, ...confirmedList.map(id => userLink(id))) : null
+  ])
+
+  const updatedAt = transfer.updatedAt ? moment(transfer.updatedAt) : null
+  const showUpdated = updatedAt && updatedAt.isValid() && updatedAt.valueOf() !== new Date(transfer.createdAt).getTime()
 
   const transferSide = div({ class: "tribe-side" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(transfer.id, `/transfers/${encodeURIComponent(transfer.id)}`, {
-        spread: params.spreads || null,
-        author: transfer.from,
-        favKind: 'transfers',
-        isFavorite: transfer.isFavorite,
-        returnTo,
-        reportTitle: transfer.concept,
-        deleteAction: canDelete ? contentDeleteAction('transfer', transfer.id) : undefined
-      })
-    ),
+    renderCardTop(transfer.id, `/transfers/${encodeURIComponent(transfer.id)}`, { arrow: false,
+      date: transfer.createdAt,
+      chips,
+      bylineExtra: [
+        renderEditedChip(transfer.id, transfer.rootId),
+        showUpdated ? span({ class: "card-byline-time" }, `${i18n.jobsUpdatedAt}: ${updatedAt.format("YYYY/MM/DD HH:mm")}`) : null
+      ],
+      spread: params.spreads || null,
+      author: transfer.from,
+      favKind: 'transfers',
+      isFavorite: transfer.isFavorite,
+      returnTo,
+      reportTitle: transfer.concept,
+      editAction: canEdit ? `/transfers/edit/${encodeURIComponent(transfer.id)}?returnTo=${encodeURIComponent(returnTo)}` : undefined,
+      deleteAction: canDelete ? contentDeleteAction('transfer', transfer.id) : undefined
+    }),
     div({ class: "shop-title-row" },
       h2({ class: "tribe-card-title" }, transferTitle(transfer))
     ),
-    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-    table({ class: "tribe-info-table" }, ...renderCreatedRows(transfer.createdAt, transfer.from, transfer.updatedAt)),
-    tagsNode,
-    div({ class: "tribe-card-members" },
-      span({ class: "tribe-members-count" }, `${i18n.transfersConfirmations}: ${confirmedCount}/${required}`)
-    ),
-    params.block && params.block.id
-      ? div({ class: "card-field" },
-          span({ class: "card-label" }, `${i18n.blockchainBlockID || "Block ID"}: `),
-          span({ class: "card-value" }, a({ class: "user-link", href: `/blockexplorer/block/${encodeURIComponent(params.block.id)}` }, params.block.id))
-        )
-      : null,
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
-    exportActions
+    renderDetailShare(transfer.id, `/transfers/${encodeURIComponent(transfer.id)}`, transfer.concept, null, null, null, transfer.from),
+    tagsNode
   )
 
-  const confirmedList = Array.isArray(transfer.confirmedBy) ? transfer.confirmedBy.filter(Boolean) : []
-
   const transferMain = div({ class: "tribe-main" },
-    div({ class: "job-section" },
-      h2({ class: "job-section-title" }, i18n.transfersConcept),
-      p({ class: "tribe-side-description" }, transfer.concept || "")
-    ),
-    div({ class: "job-section" },
-      h2({ class: "job-section-title" }, i18n.transfersConfirmations),
-      p({ class: "tribe-side-description" }, `${confirmedCount}/${required}`),
-      confirmedList.length
-        ? div({ class: "card-assigned-list" }, ...confirmedList.map(id => userLink(id)))
-        : null
-    ),
+    table({ class: "tribe-info-table" }, ...infoRows),
+    exportActions,
+    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
     renderEngagement(transfer.id,
       renderOpinionsVoting('/transfers/opinions', transfer.id, transfer.opinions, returnTo, transfer.opinions_inhabitants),
       renderSharedCommentsSection({
         action: `/transfers/${encodeURIComponent(transfer.id)}/comments`,
         comments: params.comments || [],
         returnTo
-      })
-    )
+      }))
   )
 
   return template(
@@ -563,6 +514,7 @@ exports.singleTransferView = async (transfer, filter, params = {}) => {
           button({ type: "submit", name: "filter", value: "all", class: normalizedFilter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.transfersFilterAll).toUpperCase()),
           ...(trChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: normalizedFilter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.transfersFilterRecent).toUpperCase())] : []),
           ...(trChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: normalizedFilter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.transfersFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(normalizedFilter, trChip),
           ...(trChip("ubi") ? [button({ type: "submit", name: "filter", value: "ubi", class: normalizedFilter === "ubi" ? "filter-btn active" : "filter-btn" }, String(i18n.transfersFilterUBI).toUpperCase())] : []),
           ...(trChip("economic") ? [button({ type: "submit", name: "filter", value: "economic", class: normalizedFilter === "economic" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterEconomic || (i18n.transfersCategoryEconomic || "ECONOMIC"))] : []),
           ...(trChip("time") ? [button({ type: "submit", name: "filter", value: "time", class: normalizedFilter === "time" ? "filter-btn active" : "filter-btn" }, i18n.transfersFilterTime || (i18n.transfersCategoryTime || "TIME"))] : []),

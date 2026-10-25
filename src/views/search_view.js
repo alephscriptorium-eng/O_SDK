@@ -1,6 +1,6 @@
-const { form, button, div, h2, p, section, input, label, select, option, img, audio: audioHyperaxe, video: videoHyperaxe, table, hr, hd, br, td, tr, th, a, span } = require("../server/node_modules/hyperaxe");
+const { form, button, div, h2, p, section, input, label, select, option, img, audio: audioHyperaxe, video: videoHyperaxe, table, br, td, tr, th, a, span } = require("../server/node_modules/hyperaxe");
 const RAW_HTML = Symbol.for('oasis.rawHtml');
-const { template, i18n, userLink, renderContentActions, renderModuleStats, CONTENT_FAV_KIND, CONTENT_SPREADABLE, CONTENT_TORRENTABLE, paged, currentPerPage, LIST_PAGE_SIZES, pageSizeLabel } = require('./main_views');
+const { template, i18n, userLink, renderCardTop, renderShareButton, renderCommentsPill, renderOpinionsPill, renderCardMetaRow, renderModuleStats, CONTENT_FAV_KIND, CONTENT_SPREADABLE, CONTENT_TORRENTABLE, paged, currentPerPage, LIST_PAGE_SIZES, pageSizeLabel, renderPdfDocument, renderSupportButton, hereAt } = require('./main_views');
 const moment = require("../server/node_modules/moment");
 const { renderStyledHtml, safeExternalHref } = require('../backend/renderStyledText');
 const { renderStyledText } = require('../backend/renderStyledText');
@@ -18,7 +18,10 @@ const industryStatusLabel = (status) => {
 };
 
 
-const renderSearchForm = ({ action, query = "", queryName = "query", hidden = [] } = {}) => {
+const SEARCH_SCOPES = ["", "mine", "supported", "replicated"];
+const searchScopeLabel = (scope) => String(scope === "mine" ? i18n.searchScopeMine : scope === "supported" ? i18n.searchScopeSupported : scope === "replicated" ? i18n.searchScopeReplicated : i18n.allButton).toUpperCase();
+
+const renderSearchForm = ({ action, query = "", queryName = "query", hidden = [], withScope = false, scope = "" } = {}) => {
   const searchInput = input({ id: "search_query", name: queryName, required: false, type: "search", value: query, placeholder: i18n.searchPlaceholder });
   searchInput.setAttribute("minlength", 3);
   const resultCount = currentPerPage();
@@ -49,6 +52,12 @@ const renderSearchForm = ({ action, query = "", queryName = "query", hidden = []
           td({ class: 'card-label' }, label({ for: "search_query" }, i18n.searchQueryLabel || "Query")),
           td(searchInput)
         ),
+        withScope ? tr(
+          td({ class: 'card-label' }, label({ for: "search_scope" }, i18n.searchScopeLabel)),
+          td(select({ id: "search_scope", name: "scope", class: "input-select search-select" },
+            SEARCH_SCOPES.map(sc => option({ value: sc, ...(String(scope || "") === sc ? { selected: true } : {}) }, searchScopeLabel(sc)))
+          ))
+        ) : null,
         tr(
           td({ class: 'card-label' }, label({ for: "results-per-page" }, i18n.searchPerPageLabel || "Results per page")),
           td(resultsPerPageSelect)
@@ -62,7 +71,7 @@ const renderSearchForm = ({ action, query = "", queryName = "query", hidden = []
 };
 exports.renderSearchForm = renderSearchForm;
 
-const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = [], hashtag = null, results = {}, spreadMap = null, favIndex = null }) => {
+const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = [], hashtag = null, results = {}, resultCounts = null, spreadMap = null, favIndex = null, scope = "" }) => {
 
   const contentTypes = [
     "post", "about", "curriculum", "tribe", "market", "transfer", "feed", "votes",
@@ -138,7 +147,6 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
     }
   };
 
-  let hasDocument = false;
 
   const blobImg = (value) => {
     if (!value) return null;
@@ -211,8 +219,8 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         const votesList = content.votes && typeof content.votes === 'object'
           ? Object.entries(content.votes).map(([option, count]) => ({ option, count }))
           : [];
+        const voteOptionLabel = (opt) => { const k = String(opt).split('_').map((x) => x.charAt(0) + x.slice(1).toLowerCase()).join(''); return i18n['voteOption' + k] || i18n['vote' + k] || opt; };
         return div({ class: 'search-vote' },
-          br(),
           content.question ? div({ class: 'card-field' },
             span({ class: 'card-label' }, i18n.voteQuestionLabel + ':' ),
             span({ class: 'card-value' }, content.question)
@@ -229,12 +237,18 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
             span({ class: 'card-label' }, i18n.voteTotalVotes + ':' ),
             span({ class: 'card-value' }, content.totalVotes !== undefined ? content.totalVotes : '0')
           ),
-          br(),
           votesList.length > 0 ? div({ class: 'card-votes' },
-            table(
-              tr(...votesList.map(({ option }) => th(i18n[option] || option))),
-              tr(...votesList.map(({ count }) => td(count)))
-            )
+            process.env.OASIS_MOBILE === '1'
+              ? table({ class: 'block-info-table vote-results-table' },
+                  ...votesList.map(({ option, count }) => tr(
+                    td({ class: 'card-label' }, voteOptionLabel(option)),
+                    td({ class: 'card-value' }, String(count))
+                  ))
+                )
+              : table(
+                  tr(...votesList.map(({ option }) => th(voteOptionLabel(option)))),
+                  tr(...votesList.map(({ count }) => td(count)))
+                )
           ) : null
         );
     case 'tribe':
@@ -299,11 +313,7 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
           br(),
           content.description ? div({ class: 'card-field' }, span({ class: 'card-value' }, content.description)) : null,
           br(),
-          div({
-            id: `pdf-container-${content.key || content.url}`,
-            class: 'pdf-viewer-container',
-            'data-pdf-url': `/blob/${encodeURIComponent(content.url)}`
-          }),
+          renderPdfDocument(`/blob/${encodeURIComponent(content.url)}`, { title: content.title }),
           br(),
           content.tags && content.tags.length
             ? div({ class: 'card-tags' }, content.tags.map(tag =>
@@ -627,83 +637,68 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
     }
   };
 
-  const typeLabel = (type) => String(i18n['type' + String(type || '').charAt(0).toUpperCase() + String(type || '').slice(1)] || type || '').toUpperCase();
-  const totalResults = Object.values(results).reduce((n, msgs) => n + (Array.isArray(msgs) ? msgs.length : 0), 0);
+  const typeLabel = (type) => String((type === 'comment' ? i18n.typeComment : i18n['type' + String(type || '').charAt(0).toUpperCase() + String(type || '').slice(1)]) || type || '').toUpperCase();
+  const counts = resultCounts && typeof resultCounts === 'object'
+    ? resultCounts
+    : Object.fromEntries(Object.entries(results).map(([t, msgs]) => [t, Array.isArray(msgs) ? msgs.length : 0]));
+  const totalResults = Object.values(counts).reduce((n, c) => n + (Number(c) || 0), 0);
+  const searchBase = `/search?query=${encodeURIComponent(hashtag ? `#${hashtag}` : String(query || ''))}${scope ? `&scope=${encodeURIComponent(scope)}` : ''}`;
   const resultStats = renderModuleStats(totalResults,
-    Object.entries(results)
-      .map(([type, msgs]) => ({ label: typeLabel(type), count: Array.isArray(msgs) ? msgs.length : 0 }))
-      .sort((x, y) => y.count - x.count || x.label.localeCompare(y.label)));
+    Object.entries(counts)
+      .map(([t, count]) => ({ label: typeLabel(t), count: Number(count) || 0, href: `${searchBase}&type=${encodeURIComponent(t)}`, active: types.includes(t) }))
+      .sort((x, y) => y.count - x.count || x.label.localeCompare(y.label)),
+    null,
+    { totalHref: searchBase, totalActive: types.length === 0 });
   const pageGroups = paged(Object.entries(results).flatMap(([key, msgs]) => msgs.map((msg) => [key, msg])))
     .reduce((acc, [key, msg]) => { (acc[key] = acc[key] || []).push(msg); return acc; }, {});
   const resultSection = Object.entries(results).length > 0
     ? Object.entries(pageGroups).map(([key, msgs]) =>
       div(
         { class: "search-result-group" },
+        h2({ class: "job-section-title search-group-title" }, (() => {
+          const type = String((msgs[0] && msgs[0].value && msgs[0].value.content && msgs[0].value.content.type) || key || '');
+          return String(i18n['type' + type.charAt(0).toUpperCase() + type.slice(1)] || type).toUpperCase();
+        })()),
         ...msgs.map((msg) => {
           const content = msg.value.content || {};
-          const created = moment(msg.timestamp).format("YYYY/MM/DD HH:mm");
-          if (content.type === 'document') hasDocument = true;
           const contentHtml = renderContentHtml(content);
-          let author;
-          let authorUrl = '#';
-          if (content.type === 'market') {
-            author = content.seller || i18n.anonymous || "Anonymous";
-            authorUrl = `/author/${encodeURIComponent(content.seller)}`;
-          } else if (content.type === 'event') {
-            author = content.organizer || i18n.anonymous || "Anonymous";
-            authorUrl = `/author/${encodeURIComponent(content.organizer)}`;
-          } else if (content.type === 'transfer') {
-            author = content.from || i18n.anonymous || "Anonymous";
-            authorUrl = `/author/${encodeURIComponent(content.from)}`;
-          } else if (content.type === 'post' || content.type === 'about') {
-            author = msg.value.author || i18n.anonymous || "Anonymous";
-            authorUrl = `/author/${encodeURIComponent(msg.value.author)}`;
-          } else if (content.type === 'report') {
-            author = content.author || i18n.anonymous || "Anonymous";
-            authorUrl = `/author/${encodeURIComponent(content.author || 'Anonymous')}`;
-          } else if (content.type === 'votes') {
-            author = content.createdBy || i18n.anonymous || "Anonymous";
-            authorUrl = `/author/${encodeURIComponent(content.createdBy || 'Anonymous')}`;
-          } else if (content.type === 'shop' || content.type === 'shopProduct' || content.type === 'chat' || content.type === 'gameScore') {
-            author = content.author || content.player || msg.value.author || i18n.anonymous || "Anonymous";
-            authorUrl = `/author/${encodeURIComponent(content.author || content.player || msg.value.author || 'Anonymous')}`;
-          } else {
-            author = content.author;
-            authorUrl = `/author/${encodeURIComponent(content.author || 'Anonymous')}`;
-          }
+          const bylineAuthor = content.type === 'market' ? content.seller
+            : content.type === 'event' ? content.organizer
+            : content.type === 'transfer' ? content.from
+            : content.type === 'post' || content.type === 'about' ? msg.value.author
+            : content.type === 'votes' ? content.createdBy
+            : content.type === 'shop' || content.type === 'shopProduct' || content.type === 'chat' || content.type === 'gameScore' ? (content.author || content.player || msg.value.author)
+            : content.author;
 
           const contentId = msg.key;
           const isOwn = msg.value.author && String(msg.value.author) === String(userId);
+          const viewHref = getViewDetailsActionForSearch(content.type, contentId, content);
+          const shareTitle = content.title || content.question || content.concept || '';
 
           return div({ class: 'trending-card search-card' + (isOwn ? ' own-content' : '') }, [
-            div({ class: 'card-header activity-card-header' },
-              div({ class: 'card-chips-row' },
+            renderCardTop(contentId, viewHref, {
+              date: msg.timestamp || msg.value.timestamp,
+              bylineAuthor: typeof bylineAuthor === 'string' && bylineAuthor.startsWith('@') ? bylineAuthor : undefined,
+              chips: [div({ class: 'card-chips-row' },
                 span({ class: 'pm-exposition-chip pm-exposition-whole' },
                   span({ class: 'pm-exposition-text' }, String(i18n['type' + String(content.type || '').charAt(0).toUpperCase() + String(content.type || '').slice(1)] || content.type || '').toUpperCase())
                 )
-              ),
-              renderContentActions(contentId, getViewDetailsActionForSearch(content.type, contentId, content), {
-                author: msg.value.author,
-                reportTitle: content.title || content.question || content.concept || '',
-                spread: CONTENT_SPREADABLE.has(content.type) ? ((spreadMap instanceof Map && spreadMap.get(contentId)) || null) : undefined,
-                ...(CONTENT_TORRENTABLE.has(content.type) && typeof content.url === 'string' && content.url.startsWith('&')
-                  ? { torrentFrom: { blobId: content.url, name: content.title || content.fileName || '' } }
-                  : {}),
-                ...(CONTENT_FAV_KIND[content.type]
-                  ? { favKind: CONTENT_FAV_KIND[content.type], isFavorite: favIndex instanceof Map ? favIndex.get(String(contentId)) === CONTENT_FAV_KIND[content.type] : false, returnTo: `/search?query=${encodeURIComponent(hashtag ? `#${hashtag}` : String(query || ''))}` }
-                  : {})
-              })
-            ),
+              )],
+              author: msg.value.author,
+              reportTitle: shareTitle,
+              spread: CONTENT_SPREADABLE.has(content.type) ? ((spreadMap instanceof Map && spreadMap.get(contentId)) || null) : undefined,
+              replicated: msg.isReplicated === true,
+              ...(CONTENT_TORRENTABLE.has(content.type) && typeof content.url === 'string' && content.url.startsWith('&')
+                ? { torrentFrom: { blobId: content.url, name: content.title || content.fileName || '' } }
+                : {}),
+              ...(key !== 'comment' && CONTENT_FAV_KIND[content.type]
+                ? { favKind: CONTENT_FAV_KIND[content.type], isFavorite: favIndex instanceof Map ? favIndex.get(String(contentId)) === CONTENT_FAV_KIND[content.type] : false, returnTo: `/search?query=${encodeURIComponent(hashtag ? `#${hashtag}` : String(query || ''))}` }
+                : {})
+            }),
             div({ class: 'card-section search-card-body' },
-              contentHtml,
-              author
-                ? p({ class: 'card-footer' },
-                 span({ class: 'date-link' }, `${created}`),
-                 (authorUrl && authorUrl !== '#' && authorUrl.startsWith('/author/'))
-                   ? userLink(decodeURIComponent(authorUrl.replace(/^\/author\//, '')))
-                   : a({ href: authorUrl, class: 'user-link' }, `${author}`)
-              ): null
-            )
+              contentHtml
+            ),
+            renderCardMetaRow(renderOpinionsPill(contentId, viewHref), renderCommentsPill(contentId, viewHref), renderShareButton(contentId, viewHref, shareTitle), renderSupportButton(msg.value.author, null, hereAt(contentId)))
           ]);
         })
       )
@@ -719,19 +714,13 @@ const searchView = ({ messages = [], blobs = {}, query = "", type = "", types = 
         h2(i18n.searchTitle),
         p(hashtag ? i18n.hashtagDescription : i18n.searchDescriptionLabel)
       ),
-      renderSearchForm({ action: "/search", query })
+      renderSearchForm({ action: "/search", query, withScope: true, scope })
     ),
     section(
       resultStats ? div({ class: 'filters activity-filter-chips activity-toolbar-row search-stats-row' }, resultStats) : null,
       resultSection
     )
   );
-
-  if (hasDocument) {
-    html += `
-      <script type="module" src="/js/pdf-viewer.js?v=102"></script>
-    `;
-  }
 
   return html;
 };

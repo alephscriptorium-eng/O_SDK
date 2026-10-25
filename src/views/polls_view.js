@@ -1,9 +1,9 @@
 const { div, h2, p, section, button, form, a, input, label, span, textarea, br, table, tr, td } = require("../server/node_modules/hyperaxe");
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { template, i18n, userLink, renderOpinionsVoting, renderEngagement, renderSpreadButton, renderContentActions, renderStateChip, renderLifespanChip, renderSpreadEditWarning, renderModuleStatsBy, moduleIsEmpty, contentDeleteAction, paged, renderCreatedRows } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, renderEngagement, renderCardTop, renderStateChip, renderLifespanChip, renderSpreadEditWarning, renderModuleStatsBy, moduleIsEmpty, contentDeleteAction, paged, renderEditedChip, renderMediaLockNote, renderDetailShare, renderScheduledChip, hasRelation, hereAt } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
-const { MAX_OPTIONS, MIN_OPTIONS, MAX_OPTION_LENGTH } = require("../models/polls_model_limits");
+const { MAX_OPTIONS, MAX_OPTION_LENGTH } = require("../models/polls_model_limits");
 
 const userId = config.keys.id;
 
@@ -11,6 +11,8 @@ const FILTERS = [
   { key: "ALL", i18n: "pollFilterAll" },
   { key: "RECENT", i18n: "pollFilterRecent" },
   { key: "MINE", i18n: "pollFilterMine" },
+  { key: "SUPPORTED", i18n: "filterSupported" },
+  { key: "REPLICATED", i18n: "filterReplicated" },
   { key: "TOP", i18n: "pollFilterTop" },
   { key: "VOTED", i18n: "pollFilterVoted" },
   { key: "OPEN", i18n: "pollFilterOpen" },
@@ -43,11 +45,11 @@ const outcomeOf = (poll) => {
 };
 
 const renderStatusChip = (poll) =>
-  renderStateChip(poll.status === "OPEN" ? "whole" : "mutuals", "◆",
+  renderStateChip(poll.status === "OPEN" ? "mutuals" : "hidden", "◆",
     poll.status === "OPEN" ? i18n.pollStatusOpen : i18n.pollStatusClosed);
 
 const renderModeChips = (poll) => [
-  poll.anonymous ? renderStateChip("mutuals", "◈", i18n.pollAnonymous) : null,
+  poll.anonymous ? renderStateChip("whole", "◈", i18n.pollAnonymous) : null,
   poll.multiple ? renderStateChip("whole", "☰", i18n.pollMultiple) : null
 ].filter(Boolean);
 
@@ -67,8 +69,11 @@ const renderResults = (poll) =>
     )
   );
 
+const canVoteIn = (poll) => poll.status !== "CLOSED" && !poll.hasVoted && !poll.undecryptable && !poll.scheduledAt && !poll.readOnly;
+const renderVotedChip = (poll) => poll && poll.hasVoted && !poll.readOnly ? renderStateChip("transport", "", String(i18n.pollVotedChip).toUpperCase()) : null;
+
 const renderBallot = (poll, returnTo, basePath, extra = null) => {
-  if (poll.status === "CLOSED" || poll.hasVoted) return null;
+  if (!canVoteIn(poll)) return null;
   const inputType = poll.multiple ? "checkbox" : "radio";
   return form({ method: "POST", action: `${basePath}/vote/${encodeURIComponent(poll.id)}`, class: "poll-ballot" },
     input({ type: "hidden", name: "returnTo", value: returnTo }),
@@ -79,8 +84,7 @@ const renderBallot = (poll, returnTo, basePath, extra = null) => {
             type: inputType, name: "choices", value: opt, id: `opt-${i}-${poll.id}`,
             ...(poll.myChoices.includes(opt) ? { checked: true } : {})
           }),
-          " ",
-          `${letterOf(i)}) ${opt}`
+          span({ class: "poll-option-text" }, `${letterOf(i)}) ${opt}`)
         )
       )
     ),
@@ -91,37 +95,97 @@ const renderBallot = (poll, returnTo, basePath, extra = null) => {
   );
 };
 
-const renderPollCard = (poll, filter, spreadInfo, basePath = "/polls") => {
-  const href = `${basePath}/${encodeURIComponent(poll.id)}`;
+const renderOptionsList = (poll) =>
+  div({ class: "poll-ballot" },
+    ...poll.options.map((opt, i) =>
+      div({ class: poll.myChoices.includes(opt) ? "poll-option-row poll-option-mine" : "poll-option-row" },
+        span({ class: "poll-option-text" }, `${letterOf(i)}) ${opt}`)
+      )
+    )
+  );
+
+const renderPollInline = (poll, returnTo, idPrefix = "pi", { showCounts = true, extra = null, voteBeforeVoters = false, action = null, inputName = "choices", optionValue = (opt) => opt, labelOf = (opt) => opt, afterVoters = null } = {}) => {
+  const options = Array.isArray(poll.options) ? poll.options : [];
+  const counts = poll.counts || {};
+  const total = Number(poll.totalVoters) || 0;
+  const mine = Array.isArray(poll.myChoices) ? poll.myChoices : [];
+  const canVote = canVoteIn(poll) && options.length > 0;
+  const inputType = poll.multiple ? "checkbox" : "radio";
+  const rows = options.map((opt, i) => {
+    const id = `${idPrefix}-${i}-${poll.id}`;
+    return div({ class: mine.includes(opt) ? "poll-choice poll-choice-mine" : "poll-choice" },
+      label({ class: "poll-choice-head", ...(canVote ? { for: id } : {}) },
+        canVote ? input({ type: inputType, name: inputName, value: String(optionValue(opt, i)), id, class: "poll-choice-input" }) : null,
+        span({ class: "poll-choice-text" }, `${letterOf(i)}) ${labelOf(opt)}`),
+        showCounts ? span({ class: "poll-choice-count" }, `${counts[opt] || 0} (${pct(counts[opt], total)}%)`) : null
+      ),
+      showCounts
+        ? div({ class: "poll-bar" },
+            div({ class: `poll-bar-fill poll-bar-fill-${pctStep(counts[opt], total)} poll-hue-${i % 8}` })
+          )
+        : null
+    );
+  });
+  const votersField = div({ class: "card-field poll-inline-voters" },
+    span({ class: "card-label" }, `${i18n.pollVoters}:`),
+    span({ class: "card-value" }, String(total))
+  );
+  const voters = Array.isArray(afterVoters) && afterVoters.length ? div({ class: "poll-inline-meta" }, votersField, ...afterVoters) : votersField;
+  return div({ class: "poll-inline" },
+    canVote
+      ? form({ method: "POST", action: action || `/polls/vote/${encodeURIComponent(poll.id)}`, class: "poll-inline-form" },
+          input({ type: "hidden", name: "returnTo", value: returnTo }),
+          ...rows,
+          voteBeforeVoters
+            ? div({ class: "poll-inline-actions" },
+                button({ type: "submit", class: "poll-vote-btn" }, i18n.pollVoteButton),
+                ...(Array.isArray(extra) ? extra.filter(Boolean) : []),
+                voters
+              )
+            : div({ class: "poll-ballot-actions" },
+                button({ type: "submit", class: "filter-btn" }, i18n.pollVoteButton),
+                ...(Array.isArray(extra) ? extra.filter(Boolean) : [])
+              )
+        )
+      : div({ class: "poll-inline-form" }, ...rows),
+    canVote && voteBeforeVoters ? null : voters
+  );
+};
+
+const renderPollResultsField = (poll) =>
+  div({ class: "card-field poll-inline-voters" },
+    span({ class: "card-label" }, `${i18n.voteResults}:`),
+    span({ class: "card-value vote-outcome vote-outcome-none" }, outcomeOf(poll))
+  );
+
+const renderPollCard = (poll, filter, spreadInfo, basePath = "/polls", cardReturnTo = null) => {
+  const href = `${basePath || "/polls"}/${encodeURIComponent(poll.id)}`;
   const isOwn = String(poll.author) === String(userId);
   const chips = [
     renderStatusChip(poll),
     ...renderModeChips(poll),
+    renderVotedChip(poll),
     poll.deadline
-      ? renderStateChip(poll.status === "OPEN" ? "whole" : "mutuals", "◷", `${i18n.pollDeadline}: ${moment(poll.deadline).format("YYYY/MM/DD HH:mm")}`)
+      ? renderStateChip(poll.status === "OPEN" ? "whole" : "hidden", "◷", `${i18n.pollDeadline}: ${moment(poll.deadline).format("YYYY/MM/DD HH:mm")}`)
       : null,
     renderLifespanChip(poll.lifetime, i18n)
   ].filter(Boolean);
   return div({ class: "tribe-card poll-card" + (isOwn ? " own-content" : "") },
-    div({ class: "card-header activity-card-header" },
-      span(),
-      renderContentActions(poll.id, href, { spread: spreadInfo || null, author: poll.author, favKind: 'polls', isFavorite: poll.isFavorite, reportTitle: poll.question, deleteAction: isOwn ? contentDeleteAction('poll', poll.id) : undefined })
-    ),
+    poll.scheduledAt ? renderCardTop(poll.id, href, { date: poll.createdAt, chips: [renderScheduledChip(poll.scheduledAt)], author: poll.author, report: false, hide: false, arrow: basePath === null ? false : undefined, deleteAction: isOwn ? `/polls/scheduled/delete/${encodeURIComponent(poll.id)}` : undefined }) : renderCardTop(poll.id, href, { date: poll.createdAt, chips, spread: spreadInfo || null, author: poll.author, favKind: 'polls', isFavorite: poll.isFavorite, reportTitle: poll.question, deleteAction: isOwn ? contentDeleteAction('poll', poll.id) : undefined }),
     div({ class: "tribe-card-body" },
       div({ class: "shop-title-row" },
         h2({ class: "tribe-card-title" }, a({ href }, poll.question))
       ),
-      chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-      div({ class: "tribe-card-members" },
-        span({ class: "tribe-members-count" }, `${i18n.pollVoters}: ${poll.totalVoters}`)
-      )
+      renderPollInline(poll, hereAt(poll.id) || cardReturnTo || href, "pc", { voteBeforeVoters: true, afterVoters: poll.undecryptable ? null : [renderPollResultsField(poll)] })
     )
   );
 };
 
 const renderCreateForm = (poll = null, params = {}) => {
   const isEdit = !!poll;
-  const action = isEdit ? `/polls/update/${encodeURIComponent(poll.id)}` : "/polls/create";
+  const action = isEdit && poll.scheduledAt ? `/polls/scheduled/update/${encodeURIComponent(poll.id)}` : isEdit ? `/polls/update/${encodeURIComponent(poll.id)}` : "/polls/create";
+  const lock = isEdit ? renderMediaLockNote(poll) : null;
+  const ro = lock ? { readonly: true } : {};
   return section(
     params.spreadWarning || null,
     div({ class: "div-center audio-form" },
@@ -129,7 +193,7 @@ const renderCreateForm = (poll = null, params = {}) => {
       form({ method: "POST", action },
         label(i18n.pollQuestion),
         br(),
-        input({ type: "text", name: "question", required: true, maxlength: "300", value: isEdit ? poll.question : "", placeholder: i18n.pollQuestionPlaceholder }),
+        input({ type: "text", name: "question", required: true, maxlength: "300", value: isEdit ? poll.question : "", placeholder: i18n.pollQuestionPlaceholder, ...ro }),
         br(), br(),
         label(i18n.pollOptions),
         br(),
@@ -137,8 +201,10 @@ const renderCreateForm = (poll = null, params = {}) => {
           name: "options",
           rows: String(MAX_OPTIONS),
           required: true,
-          maxlength: String(MAX_OPTIONS * (MAX_OPTION_LENGTH + 1))
+          maxlength: String(MAX_OPTIONS * (MAX_OPTION_LENGTH + 1)),
+          ...ro
         }, isEdit ? poll.options.join("\n") : ""),
+        lock,
         br(),
         div({ class: "poll-switch" },
           input({ type: "hidden", name: "anonymous", value: "0" }),
@@ -167,7 +233,8 @@ const renderCreateForm = (poll = null, params = {}) => {
         br(),
         input({ type: "text", name: "tags", value: isEdit ? poll.tags.join(", ") : "" }),
         br(), br(),
-        button({ type: "submit", class: "create-button" }, isEdit ? i18n.pollUpdateButton : i18n.pollPublishButton)
+        ...(isEdit && !poll.scheduledAt ? [] : [label(i18n.publishAtLabel), br(), input({ type: "datetime-local", name: "publishAt", min: moment().format("YYYY-MM-DDTHH:mm"), value: isEdit ? moment(poll.scheduledAt).format("YYYY-MM-DDTHH:mm") : "", ...(isEdit ? { required: true } : {}) }), br(), br()]),
+        button({ type: "submit", class: "create-button" }, isEdit ? i18n.save : i18n.pollPublishButton)
       )
     )
   );
@@ -190,6 +257,7 @@ const renderFilterBar = (filter, q, showSearch = true, items = null, censusList 
     if (m === filter) return true;
     if (m === "TOP") return censusPl.length > 0;
     if (m === "MINE") return censusPl.some(pl => String(pl.author || pl.createdBy) === String(userId));
+    if (m === "SUPPORTED" || m === "REPLICATED") return hasRelation(m.toLowerCase(), censusPl);
     if (m === "RECENT") return censusPl.length > 0;
     if (m === "VOTED") return censusPl.some(pl => pl.hasVoted || safeArr(pl.myChoices).length > 0);
     if (m === "OPEN" || m === "CLOSED") return censusPl.some(pl => String(pl.status || "OPEN").toUpperCase() === m);
@@ -236,17 +304,18 @@ exports.pollsView = async (polls = [], filter = "ALL", params = {}) => {
     renderFilterBar(mode, params.q, true, polls, params.censusList),
     section(
       polls.length
-        ? div({ class: "jobs-grid" }, ...paged(polls).map(pl => renderPollCard(pl, mode, spreadMap.get(pl.id))))
+        ? div({ class: "jobs-grid" }, ...paged(polls).map(pl => renderPollCard(pl, mode, spreadMap.get(pl.id), "/polls", `/polls?filter=${encodeURIComponent(mode)}${params.q ? `&q=${encodeURIComponent(params.q)}` : ""}`)))
         : div({ class: "no-content-box" }, p({ class: "no-content" }, i18n.pollsNoItems))
     )
   );
 };
 
 exports.singlePollView = async (poll, comments = [], params = {}) => {
+  if (poll.scheduledAt) return template(poll.question, section(div({ class: "tags-header module-header-line" }, h2(i18n.pollsTitle), p(i18n.pollsDescription))), section(renderPollCard(poll, params.filter, null, null), String(poll.author) === String(userId) ? div({ class: "tribe-side-actions" }, form({ method: "GET", action: "/polls" }, input({ type: "hidden", name: "filter", value: "EDIT" }), input({ type: "hidden", name: "id", value: poll.id }), button({ type: "submit", class: "update-btn" }, i18n.pollUpdateButton))) : null));
   const basePath = "/polls";
   const href = `${basePath}/${encodeURIComponent(poll.id)}`;
   const isOwn = String(poll.author) === String(userId);
-  const chips = [renderStatusChip(poll), ...renderModeChips(poll), renderLifespanChip(poll.lifetime, i18n)].filter(Boolean);
+  const chips = [renderStatusChip(poll), ...renderModeChips(poll), renderVotedChip(poll), renderLifespanChip(poll.lifetime, i18n)].filter(Boolean);
 
   const infoRows = [];
   const pushRow = (labelText, valueNode) =>
@@ -255,63 +324,56 @@ exports.singlePollView = async (poll, comments = [], params = {}) => {
       td({ class: "tribe-info-value" }, valueNode)
     ));
   if (poll.deadline) pushRow(i18n.pollDeadline, moment(poll.deadline).format("YYYY/MM/DD HH:mm"));
-  pushRow(i18n.pollOutcome, outcomeOf(poll));
 
   const tagsNode = poll.tags.length
     ? div({ class: "card-tags" }, poll.tags.map(tag =>
         a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: "tag-link" }, `#${tag}`)))
     : null;
 
-  const ownerActions = isOwn && poll.totalVoters === 0 && poll.status === "OPEN"
-    ? div({ class: "tribe-side-actions" },
-        form({ method: "GET", action: "/polls" },
-          input({ type: "hidden", name: "filter", value: "EDIT" }),
-          input({ type: "hidden", name: "id", value: poll.id }),
-          button({ type: "submit", class: "update-btn" }, i18n.pollUpdateButton)
-        )
+  const editAction = isOwn && poll.totalVoters === 0 && poll.status === "OPEN" ? `/polls?filter=EDIT&id=${encodeURIComponent(poll.id)}` : undefined;
+
+  const statusRow = isOwn
+    ? div({ class: "tribe-side-actions housing-status-row" },
+        span({ class: "card-label" }, `${i18n.pollStatusLabel}: `),
+        renderStatusChip(poll),
+        poll.status === "OPEN"
+          ? form({ method: "POST", action: `/polls/close/${encodeURIComponent(poll.id)}` },
+              button({ type: "submit", class: "status-btn project-control-btn" }, i18n.pollCloseButton)
+            )
+          : null
       )
     : null;
 
   const pollSide = div({ class: "tribe-side" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(poll.id, href, { spread: params.spreads || null, author: poll.author, favKind: 'polls', isFavorite: poll.isFavorite, returnTo: href, reportTitle: poll.question, deleteAction: isOwn ? contentDeleteAction('poll', poll.id) : undefined })
-    ),
+    renderCardTop(poll.id, href, { arrow: false, date: poll.createdAt, chips, bylineExtra: [renderEditedChip(poll.tipId, poll.rootId)], spread: params.spreads || null, author: poll.author, favKind: 'polls', isFavorite: poll.isFavorite, returnTo: href, reportTitle: poll.question, editAction, deleteAction: isOwn ? contentDeleteAction('poll', poll.id) : undefined }),
     div({ class: "shop-title-row" }, h2({ class: "tribe-card-title" }, poll.question)),
-    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-    table({ class: "tribe-info-table jobs-info-table" }, ...infoRows, ...renderCreatedRows(poll.createdAt, poll.author)),
+    renderDetailShare(poll.id, href, poll.question, null, null, null, poll.author),
     tagsNode,
-    div({ class: "tribe-card-members" },
-      span({ class: "tribe-members-count" }, `${i18n.pollVoters}: ${poll.totalVoters}`)
-    ),
-    isOwn
-      ? div({ class: "tribe-side-actions housing-status-row" },
-          span({ class: "card-label" }, `${i18n.pollStatusLabel}: `),
-          renderStatusChip(poll),
-          poll.status === "OPEN"
-            ? form({ method: "POST", action: `/polls/close/${encodeURIComponent(poll.id)}` },
-                button({ type: "submit", class: "status-btn project-control-btn" }, i18n.pollCloseButton)
-              )
-            : null
-        )
-      : null,
-    ownerActions
+    statusRow
   );
 
   const pollMain = div({ class: "tribe-main" },
+    infoRows.length ? table({ class: "tribe-info-table jobs-info-table" }, ...infoRows) : null,
     div({ class: "job-section" },
-      h2({ class: "job-section-title" }, i18n.pollOutcome),
-      renderBallot(poll, href, basePath),
+      h2({ class: "job-section-title" }, i18n.pollParticipation),
+      div({ class: "tribe-card-members" },
+        span({ class: "tribe-members-count" }, `${i18n.pollVoters}: ${poll.totalVoters}`)
+      )
+    ),
+    div({ class: "job-section" },
+      h2({ class: "job-section-title" }, i18n.voteResults),
+      p({ class: "poll-outcome-line" },
+        span({ class: "vote-outcome vote-outcome-none" }, outcomeOf(poll))
+      ),
       renderResults(poll)
     ),
-    poll.votersHidden
-      ? null
-      : (poll.voters.length
-          ? div({ class: "card-assigned-list" }, ...poll.voters.map(v => userLink(v)))
-          : null),
-    poll.tribeId ? null : renderEngagement(poll.id,
-      renderOpinionsVoting('/polls/opinions', poll.id, poll.opinions, href, poll.opinions_inhabitants),
-      renderComments(poll, comments, basePath)
-    )
+    div({ class: "job-section" },
+      h2({ class: "job-section-title" }, `${i18n.pollChoicesLabel}:`),
+      renderBallot(poll, href, basePath) || renderOptionsList(poll)
+    ),
+    renderEngagement(poll.id,
+      poll.tribeId ? null : renderOpinionsVoting('/polls/opinions', poll.id, poll.opinions, href, poll.opinions_inhabitants),
+      poll.tribeId ? null : renderComments(poll, comments, basePath))
   );
 
   return template(
@@ -323,6 +385,9 @@ exports.singlePollView = async (poll, comments = [], params = {}) => {
 };
 
 exports.renderPollCard = renderPollCard;
+exports.renderPollInline = renderPollInline;
+exports.renderPollResultsField = renderPollResultsField;
+exports.renderVotedChip = renderVotedChip;
 exports.renderResults = renderResults;
 exports.renderBallot = renderBallot;
 exports.outcomeOf = outcomeOf;

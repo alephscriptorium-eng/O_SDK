@@ -1,7 +1,7 @@
-const { div, h2, p, section, button, form, a, textarea, br, input, table, tr, th, td, img, video: videoHyperaxe, audio: audioHyperaxe, span, details, summary} = require("../server/node_modules/hyperaxe");
+const { div, h2, p, section, button, form, a, br, input, table, tr, th, td, video: videoHyperaxe, audio: audioHyperaxe, span, details, summary } = require("../server/node_modules/hyperaxe");
 const RAW_HTML = Symbol.for('oasis.rawHtml');
 const moment = require("../server/node_modules/moment");
-const { template, i18n, userLink, renderSpreadButton, renderContentActions, renderVotesSummary, renderModuleStats, renderCardMetaRow, renderTorrentDownload, renderTorrentSourceDownload, renderFileDownloads, torrentDownloadHref, CONTENT_FAV_KIND, CONTENT_TORRENTABLE, paged } = require('./main_views');
+const { template, i18n, renderCardTop, renderShareButton, renderVotesSummary, renderModuleStats, renderCardMetaRow, renderCommentsSummary, commentsOpenHref, renderTorrentDownload, renderTorrentSourceDownload, renderFileDownloads, torrentDownloadHref, CONTENT_FAV_KIND, CONTENT_TORRENTABLE, paged, renderPdfDocument, hasRelation, RELATION_FILTERS, relationFilterLabel, renderSupportButton, hereAt } = require('./main_views');
 const { renderStyledHtml, safeExternalHref } = require('../backend/renderStyledText');
 const { renderZoomableImage } = require('./gallery_view');
 const { config } = require('../server/SSB_server.js');
@@ -12,14 +12,14 @@ const { sanitizeHtml } = require('../backend/sanitizeHtml');
 const userId = config.keys.id;
 
 const capFirst = (s) => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1);
-const typeLabel = (type) => i18n['type' + capFirst(type)] || type;
+const typeLabel = (type) => i18n['type' + capFirst(type)] || require('./activity_view').rootTypeLabel(type) || type;
 
 const filterButton = (mode, currentFilter) =>
   form({ method: 'GET', action: '/trending' },
     input({ type: 'hidden', name: 'filter', value: mode }),
     button(
       { type: 'submit', class: currentFilter === mode ? 'filter-btn active' : 'filter-btn' },
-      String(i18n[mode + 'Button'] || typeLabel(mode)).toUpperCase()
+      RELATION_FILTERS.includes(mode.toLowerCase()) ? relationFilterLabel(mode.toLowerCase()) : String(i18n[mode + 'Button'] || typeLabel(mode)).toUpperCase()
     )
   );
 
@@ -28,7 +28,6 @@ const voteLabelFor = (cat) =>
 
 const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new Map(), params = {}) => {
   const c = item.value.content;
-  const created = moment(item.value.timestamp).format("YYYY/MM/DD HH:mm");
 
   let contentHtml;
 
@@ -111,7 +110,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
       div({ class: 'card-section document' },
         t ? div({ class: 'card-field' }, span({ class: 'card-label' }, i18n.documentTitleLabel + ':'), span({ class: 'card-value' }, t)) : "",
         description ? [span({ class: 'card-label' }, i18n.documentDescriptionLabel + ":"), p(...renderStyledText(description))] : null,
-        div({ id: `pdf-container-${item.key}`, class: 'pdf-viewer-container', 'data-pdf-url': `/blob/${encodeURIComponent(url)}` })
+        renderPdfDocument(`/blob/${encodeURIComponent(url)}`, { title: t })
       )
     );
   } else if (c.type === 'industry') {
@@ -251,32 +250,35 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
     logisticsRoute: 'logistics',
     poll: 'polls',
     schoolCourse: 'school/course',
+    wikiPage: 'wiki',
+    map: 'maps',
+    job: 'jobs',
     industryBlueprint: 'industry/blueprint'
   };
   const detailHref = detailPaths[c.type]
     ? `/${detailPaths[c.type]}/${encodeURIComponent(item.key)}`
     : `/thread/${encodeURIComponent(item.key)}`;
   const isOwn = item.value.author && String(item.value.author) === String(userId);
+  const commentTotal = params.commentCounts instanceof Map ? (params.commentCounts.get(item.key) || 0) : 0;
+  const shareTitle = c.title || c.question || c.concept || c.contentWarning || '';
 
   return div(
     { class: 'trending-card' + (isOwn ? ' own-content' : '') },
-    div(
-      { class: 'card-header activity-card-header' },
-      span({ class: 'pm-exposition-chip pm-exposition-whole' },
+    renderCardTop(item.key, detailHref, {
+      date: item.value.timestamp,
+      chips: [span({ class: 'pm-exposition-chip pm-exposition-whole' },
         span({ class: 'pm-exposition-text' }, String(typeLabel(c.type) || '').toUpperCase())
-      ),
-      renderContentActions(item.key, detailHref, {
-        spread: spreadMap.get(item.key) || null,
-        author: item.value.author,
-        reportTitle: c.title || c.question || c.concept || c.contentWarning || '',
-        ...(CONTENT_TORRENTABLE.has(c.type) && typeof c.url === 'string' && c.url.startsWith('&')
-          ? { torrentFrom: { blobId: c.url, name: c.title || c.fileName || '' } }
-          : {}),
-        ...(CONTENT_FAV_KIND[c.type]
-          ? { favKind: CONTENT_FAV_KIND[c.type], isFavorite: params.favIndex instanceof Map ? params.favIndex.get(String(item.key)) === CONTENT_FAV_KIND[c.type] : false, returnTo: params.returnTo }
-          : {})
-      })
-    ),
+      )],
+      spread: spreadMap.get(item.key) || null,
+      author: item.value.author,
+      reportTitle: shareTitle,
+      ...(CONTENT_TORRENTABLE.has(c.type) && typeof c.url === 'string' && c.url.startsWith('&')
+        ? { torrentFrom: { blobId: c.url, name: c.title || c.fileName || '' } }
+        : {}),
+      ...(CONTENT_FAV_KIND[c.type]
+        ? { favKind: CONTENT_FAV_KIND[c.type], isFavorite: params.favIndex instanceof Map ? params.favIndex.get(String(item.key)) === CONTENT_FAV_KIND[c.type] : false, returnTo: params.returnTo }
+        : {})
+    }),
     div(
       { class: 'card-section trending-card-body' },
       contentHtml
@@ -284,7 +286,7 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
     renderVotesSummary(c.opinions),
     renderCardMetaRow(
       details({ class: 'opinions-voting-collapse' },
-        summary({ class: 'opinions-summary' },
+        summary({ class: Object.values(c.opinions || {}).some(n => Number(n) > 0) ? 'opinions-summary engage-on' : 'opinions-summary' },
           span({ class: 'opinions-summary-icon' }, 'ꔍ'),
           span({ class: 'opinions-summary-count' }, `(${Object.values(c.opinions || {}).reduce((s, n) => s + (Number(n) || 0), 0)})`)),
         div(
@@ -299,11 +301,9 @@ const renderTrendingCard = (item, votes, categories, seenTitles, spreadMap = new
           )
         )
       ),
-      p(
-        { class: 'card-footer' },
-        span({ class: 'date-link' }, `${created}`),
-        userLink(item.value.author)
-      )
+      renderCommentsSummary(commentsOpenHref(detailHref, commentTotal), commentTotal),
+      renderShareButton(item.key, detailHref, shareTitle),
+      renderSupportButton(item.value && item.value.author, null, hereAt(item.key))
     )
   );
 };
@@ -312,12 +312,13 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
   const seenDocumentTitles = new Set();
   const title = i18n.trendingTitle;
 
-  const baseFilters = ['ALL', 'RECENT', 'MINE', 'TOP'];
+  const baseFilters = ['ALL', 'RECENT', 'MINE', 'SUPPORTED', 'REPLICATED', 'TOP'];
   const contentFilters = [
     ['votes', 'event', 'task', 'report'],
     ['feed', 'post', 'project', 'industry', 'shopProduct', 'transfer'],
     ['audio', 'bookmark', 'document', 'file', 'image', 'torrent', 'video'],
-    ['podcast', 'podcastEpisode', 'campaign', 'logisticsRoute']
+    ['podcast', 'podcastEpisode', 'campaign', 'logisticsRoute'],
+    ['wikiPage', 'map', 'industryBlueprint', 'job']
   ];
 
   let filteredItems = items.filter(item => {
@@ -327,9 +328,12 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
   const censusItems = Array.isArray(allItems) ? allItems : filteredItems;
   const presentTypes = new Set(censusItems.map(item => (item.value?.content || item.content || {}).type).filter(Boolean));
   const emptyTrend = censusItems.length === 0 && !String(q || '').trim();
+  const shownBase = baseFilters.filter(mode => !RELATION_FILTERS.includes(mode.toLowerCase()) || mode === filter || hasRelation(mode.toLowerCase(), censusItems));
 
   if (filter === 'MINE') {
     filteredItems = filteredItems.filter(item => item.value.author === userId);
+  } else if (filter === 'SUPPORTED' || filter === 'REPLICATED') {
+    filteredItems = filteredItems.filter(item => filter === 'SUPPORTED' ? item.isSupported : item.isReplicated);
   } else if (filter === 'RECENT') {
     const now = Date.now();
     filteredItems = filteredItems.filter(item => now - item.value.timestamp < 24 * 60 * 60 * 1000);
@@ -369,12 +373,11 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
         categories,
         seenDocumentTitles,
         spreadMap,
-        { favIndex: params.favIndex, returnTo: `/trending?filter=${encodeURIComponent(filter)}` }
+        { favIndex: params.favIndex, commentCounts: params.commentCounts, returnTo: `/trending?filter=${encodeURIComponent(filter)}` }
       )
     )
     .filter(Boolean);
 
-  const hasDocument = filteredItems.some(item => item.value.content.type === 'document');
 
   let html = template(
     title,
@@ -382,7 +385,7 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
       header,
       emptyTrend ? null : div(
         { class: 'mode-buttons' },
-        div({ class: 'column' }, baseFilters.map(mode => filterButton(mode, filter))),
+        div({ class: 'column' }, shownBase.map(mode => filterButton(mode, filter))),
         ...contentFilters.map(row => {
           const visible = row.filter(mode => presentTypes.has(mode) || (mode === 'votes' && presentTypes.has('poll')));
           return visible.length ? div({ class: 'column' }, visible.map(mode => filterButton(mode, filter))) : null;
@@ -405,12 +408,6 @@ exports.trendingView = (items, filter, categories = opinionCategories, spreadMap
       )
     )
   );
-
-  if (hasDocument) {
-    html += `
-      <script type="module" src="/js/pdf-viewer.js?v=102"></script>
-    `;
-  }
 
   return html;
 };

@@ -1,8 +1,8 @@
 const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, video, table, tr, td, hr } = require("../server/node_modules/hyperaxe")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
 const { renderReachChip, renderClearnetSelector, renderClearnetSwitch } = require("./clearnet_view")
-const { clearnetItemHref, template, i18n, renderOpenClosedChip, renderStateChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderOpinionsVoting, renderEngagement, renderSpreadEditWarning, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, contentDeleteAction, paged, renderCreatedRows } = require("./main_views")
-const { blobUrl, blobIdOf, isVideoEntry, imagesOf, renderMediaThumb, renderPhotoGallery, renderGalleryFields } = require("./gallery_view")
+const { clearnetItemHref, template, i18n, userLink, renderOpenClosedChip, renderStateChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderCardTop, renderOpinionsVoting, renderEngagement, renderSpreadEditWarning, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, contentDeleteAction, paged, renderEditedChip, renderDetailShare, hasRelation } = require("./main_views")
+const { blobUrl, blobIdOf, isVideoEntry, imagesOf, renderPhotoGallery, renderGalleryFields } = require("./gallery_view")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderStyledText } = require("../backend/renderStyledText")
@@ -15,6 +15,8 @@ const FILTERS = [
   { key: "ALL", i18n: "housingFilterAll" },
   { key: "RECENT", i18n: "housingFilterRecent" },
   { key: "MINE", i18n: "housingFilterMine" },
+  { key: "SUPPORTED", i18n: "filterSupported" },
+  { key: "REPLICATED", i18n: "filterReplicated" },
   { key: "TOP", i18n: "housingFilterTop" },
   { key: "REQUESTED", i18n: "housingFilterRequested" },
   { key: "SALE", i18n: "housingFilterSale" },
@@ -94,9 +96,9 @@ const renderStatusChip = (status) => {
   })
 }
 
-const renderRequestedChip = () => renderStateChip("whole", "★", i18n.housingRequestedBadge || "REQUESTED")
+const renderRequestedChip = () => renderStateChip("transport", "★", i18n.housingRequestedBadge || "REQUESTED")
 
-const renderInfoTable = (item) => {
+const renderInfoTable = (item, opts = {}) => {
   const rows = []
   const pushRow = (labelText, valueNode, valueClass) =>
     rows.push(tr(
@@ -115,7 +117,14 @@ const renderInfoTable = (item) => {
     const mapNode = renderMapLocationVisitLabel(item.mapUrl)
     if (mapNode) pushRow(i18n.mapLocationTitle || "Map", mapNode)
   }
-  return table({ class: "tribe-info-table housing-info-table" }, ...rows, ...renderCreatedRows(item.createdAt, item.author))
+  if (opts.includeRequests) {
+    const requesters = safeArr(item.requests).filter(Boolean)
+    pushRow(i18n.housingRequests, [
+      String(item.requestCount || 0),
+      requesters.length ? div({ class: "card-assigned-list" }, ...requesters.map(id => userLink(id))) : null
+    ])
+  }
+  return table({ class: "tribe-info-table housing-info-table" }, ...rows)
 }
 
 const today = () => moment().format("YYYY-MM-DD")
@@ -132,16 +141,6 @@ const renderStatusRow = (item, returnTo) => {
         isOpen ? (i18n.housingSetClosed || "Close") : (i18n.housingSetOpen || "Reopen"))
     )
   )
-}
-
-const renderOwnerActions = (item, returnTo) => {
-  if (String(item.author) !== String(userId)) return []
-  return [
-    form({ method: "GET", action: `/housing/edit/${encodeURIComponent(item.id)}` },
-      input({ type: "hidden", name: "returnTo", value: returnTo }),
-      button({ class: "update-btn", type: "submit" }, i18n.housingUpdateButton)
-    )
-  ]
 }
 
 const renderRequestToggle = (item, returnTo) => {
@@ -179,11 +178,9 @@ const renderHousingList = (items, filter, params = {}) => {
         item.clearnet === true && clearnetEligible(item) ? renderReachChip(true, i18n, housingClearnetHref(item)) : null
       ].filter(Boolean)
 
+      const itemHref = `/housing/${encodeURIComponent(item.id)}`
       return div({ class: "trending-card housing-card" + (isOwn ? " own-content" : "") },
-        div({ class: "card-header activity-card-header" },
-          span(),
-          renderContentActions(item.id, `/housing/${encodeURIComponent(item.id)}`, { spread: params.spreadMap && params.spreadMap.get(item.id) || null, author: item.author, favKind: 'housing', isFavorite: item.isFavorite, reportTitle: item.title, returnTo, deleteAction: isOwn ? contentDeleteAction("housing", item.id) : null })
-        ),
+        renderCardTop(item.id, itemHref, { date: item.createdAt, chips, spread: params.spreadMap && params.spreadMap.get(item.id) || null, author: item.author, favKind: 'housing', isFavorite: item.isFavorite, reportTitle: item.title, returnTo, deleteAction: isOwn ? contentDeleteAction("housing", item.id) : null }),
         div({ class: "card-section housing-card-body" },
           clip || (cover && isVideoEntry(cover))
             ? div({ class: "tribe-card-image-wrapper housing-card-video" },
@@ -191,7 +188,7 @@ const renderHousingList = (items, filter, params = {}) => {
               )
             : cover
               ? div({ class: "tribe-card-image-wrapper" },
-                  a({ href: `/housing/${encodeURIComponent(item.id)}` },
+                  a({ href: itemHref },
                     img({ src: blobUrl(blobIdOf(cover), 256), class: "tribe-card-hero-image", alt: "" })
                   )
                 )
@@ -199,10 +196,9 @@ const renderHousingList = (items, filter, params = {}) => {
           div({ class: "tribe-card-body" },
             div({ class: "shop-title-row" },
               h2({ class: "tribe-card-title" },
-                a({ href: `/housing/${encodeURIComponent(item.id)}` }, safeText(item.title) || i18n.housingTitle)
+                a({ href: itemHref }, safeText(item.title) || i18n.housingTitle)
               )
             ),
-            chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
             renderStarRating(item.opinions, safeArr(item.opinions_inhabitants).length),
             div({ class: "price-chip" }, priceLabel(item)),
             safeText(item.place)
@@ -219,7 +215,8 @@ const renderHousingList = (items, filter, params = {}) => {
                   span({ class: "card-label" }, `${i18n.galleryPhotos}: `),
                   span({ class: "card-value" }, String(imagesOf(item).length))
                 )
-              : null
+              : null,
+            null
           )
         )
       )
@@ -285,12 +282,12 @@ const renderHousingForm = (item = {}, mode = "create", maxImages = MAX_IMAGES, s
       ...renderGalleryFields(item, isEdit, maxImages),
       label(i18n.housingDescription),
       br(),
-      textarea({ maxlength: "5000", name: "description", rows: "6", required: true, placeholder: i18n.housingDescriptionPlaceholder }, item.description || ""),
+      textarea({ name: "description", rows: "6", required: true, placeholder: i18n.housingDescriptionPlaceholder }, item.description || ""),
       br(),
       br(),
       label(i18n.housingRules),
       br(),
-      textarea({ maxlength: "5000", name: "rules", rows: "4", placeholder: i18n.housingRulesPlaceholder }, item.rules || ""),
+      textarea({ name: "rules", rows: "4", placeholder: i18n.housingRulesPlaceholder }, item.rules || ""),
       br(),
       br(),
       label(i18n.housingPlace),
@@ -340,7 +337,7 @@ const renderHousingForm = (item = {}, mode = "create", maxImages = MAX_IMAGES, s
       br(),
       br(),
       ...(showClearnet ? [renderClearnetSelector(item.clearnet === true || String(item.clearnet || "") === "1", i18n), br()] : []),
-      button({ type: "submit" }, isEdit ? i18n.housingUpdateButton : i18n.housingCreateButton)
+      button({ type: "submit" }, isEdit ? i18n.save : i18n.housingCreateButton)
     )
   )
 }
@@ -350,6 +347,7 @@ const housingChip = (censusH, filter, x) => {
   if (m === filter) return true
   if (m === "TOP") return censusH.length > 0
   if (m === "MINE") return censusH.some(h => String(h.author) === String(userId))
+  if (m === "SUPPORTED" || m === "REPLICATED") return hasRelation(m.toLowerCase(), censusH)
   if (m === "RECENT") return censusH.length > 0
   if (m === "REQUESTED") return censusH.some(h => safeArr(h.requests).includes(userId))
   if (m === "SALE" || m === "RENT" || m === "COUCHSURFING") return censusH.some(h => String(h.housing_type || "").toUpperCase() === m)
@@ -441,14 +439,12 @@ exports.singleHousingView = async (item, filter = "ALL", comments = [], params =
     requested ? renderRequestedChip() : null,
     renderLifespanChip(item.lifetime, i18n),
     renderEcoTax(item.msgSize, item.id),
-    renderReachChip(isClearnet, i18n, isClearnet ? housingClearnetHref(item) : null),
-    isAuthor && canClearnet ? renderClearnetSwitch("housing", item.rootId || item.id, isClearnet) : null
+    renderReachChip(isClearnet, i18n, isClearnet ? housingClearnetHref(item) : null)
   ].filter(Boolean)
 
   const sideActions = []
   const requestToggle = renderRequestToggle(item, returnTo)
   if (requestToggle) sideActions.push(requestToggle)
-  const ownerActions = renderOwnerActions(item, returnTo)
 
   const nextVisibility = item.visibility === "PUBLIC" ? "HIDDEN" : "PUBLIC"
   const isHidden = item.visibility === "HIDDEN"
@@ -467,26 +463,17 @@ exports.singleHousingView = async (item, filter = "ALL", comments = [], params =
       )
     : null
 
-  const cover = imagesOf(item)[0]
   const housingSide = div({ class: "tribe-side" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(item.id, `/housing/${encodeURIComponent(item.id)}`, { spread: params.spreads || null, author: item.author, favKind: 'housing', isFavorite: item.isFavorite, reportTitle: item.title, returnTo, deleteAction: isAuthor ? contentDeleteAction("housing", item.id) : null })
-    ),
+    renderCardTop(item.id, `/housing/${encodeURIComponent(item.id)}`, { arrow: false, date: item.createdAt, chips, bylineExtra: [renderEditedChip(item.id, item.rootId)], spread: params.spreads || null, author: item.author, favKind: 'housing', isFavorite: item.isFavorite, reportTitle: item.title, returnTo, editAction: isAuthor ? `/housing/edit/${encodeURIComponent(item.id)}?returnTo=${encodeURIComponent(returnTo)}` : undefined, deleteAction: isAuthor ? contentDeleteAction("housing", item.id) : null }),
     div({ class: "shop-title-row" },
       h2({ class: "tribe-card-title" }, safeText(item.title) || i18n.housingTitle)
     ),
-    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
+    isAuthor && canClearnet ? renderClearnetSwitch("housing", item.rootId || item.id, isClearnet) : null,
     renderStarRating(item.opinions, voters.length),
-    cover && !isVideoEntry(cover) ? img({ src: blobUrl(blobIdOf(cover), 256), class: "tribe-detail-image", alt: "" }) : null,
-    renderInfoTable(item),
-    div({ class: "tribe-card-members" },
-      span({ class: "tribe-members-count" }, `${i18n.housingRequests}: ${item.requestCount || 0}`)
-    ),
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
+    renderDetailShare(item.id, `/housing/${encodeURIComponent(item.id)}`, item.title, null, null, null, item.author),
+    renderTags(item.tags),
     renderStatusRow(item, returnTo),
-    ownerActions.length ? div({ class: "tribe-side-actions owner-actions" }, ...ownerActions) : null,
-    visibilityRow,
-    renderTags(item.tags)
+    visibilityRow
   )
 
   const renderSection = (titleText, bodyText) =>
@@ -501,13 +488,14 @@ exports.singleHousingView = async (item, filter = "ALL", comments = [], params =
     renderPhotoGallery(item),
     renderSection(i18n.housingDescription, item.description),
     renderSection(i18n.housingRules, item.rules),
+    renderInfoTable(item, { includeRequests: true }),
     item.mapUrl ? div({ class: "job-section" }, renderMapEmbed(params.mapData, item.mapUrl)) : null,
+    sideActions.length ? div({ class: "tribe-side-actions detail-action-row" }, ...sideActions) : null,
     renderEngagement(item.id,
       !isAuthor && item.everRequestedByViewer
         ? renderOpinionsVoting("/housing/opinions", item.id, item.opinions, returnTo, voters)
         : null,
-      renderCommentsSection(item.id, returnTo, comments)
-    )
+      renderCommentsSection(item.id, returnTo, comments))
   )
 
   return template(

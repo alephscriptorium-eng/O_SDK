@@ -593,6 +593,26 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   (así el cerrojo viaja en la imagen). El cliente queda en 1.3.0 (WP-O145); `UPGRADE-PROTOCOL.md` §4 lo dice. Se
   levanta solo con otra decisión escrita. Aplicación: WP-O146.
 
+- **D-O40 · 2026-10-25 · Un guard se retira cuando upstream cubre lo que perseguía: el séptimo guard (`/c/blob`,
+  D-O31) se retira en 1.3.8. Recuento vigente: 6 guards en 6 ficheros, invariante de 7 ficheros.** Propuesto por el
+  agente en el ciclo 1.3.8 (WP-O147) y **refrendado por el custodio el 2026-10-25** («sí las decisiones. Go entero»),
+  junto con (a) y (b) de abajo. Hechos medidos: desde 1.3.3 `backend.js`, en
+  `.get("/c/blob/:cnBlobId")`, hace `getLocal` y, si el blob falta, `wantClearnetBlob` (lo pide a la red en segundo plano,
+  con reintento acotado; además pre-pide al indexar los blobs de todo objeto clearnet) y `sendPendingContent`
+  (`Cache-Control: no-store`; SVG «todavía no disponible» para una `<img>`, 404 si no). La `location /c/blob/` de nginx no
+  ignora `Cache-Control`: el «pendiente» no se cachea. Cubre D-O31 («un blob que el HUB no tiene nunca saldría en `/c`») sin
+  colgar la petición hasta 30 s por blob en un backend público, que es lo que hacía el guard. Regla que fija
+  (UPGRADE §2): antes de reponer un guard sobre un fichero que upstream cambió, contrastar el cambio con el asiento que
+  creó el guard; si lo cubre, retirar con asiento, medir lo de upstream en el `.tsv` y cambiar la frase canónica en la
+  misma rama. Supera D-O31 en lo que al guard se refiere (la lista blanca `clearnetBlobAllowed` de upstream sigue siendo
+  el criterio) y el recuento de D-O37 (b). Aplicación: commits `6936bcc7`, `bfd54998`; `hub.tsv`; UPGRADE §2 y §4;
+  AGENTES §4; HUB-PROTOCOL §2 (fila de disco); AGENTS.md, README, PRÁCTICAS §3.3, `roles/mantener.md`.
+  En el mismo GO el custodio decide dos novedades de 1.3.8 que **no** son guards (reporte WP-O147 §8): (a) el guardián de
+  feeds (`feed_guard.js`: repara solo un feed bifurcado, borrando y republicando; sin interruptor) se acepta tal cual, con la
+  sonda `feed-guard-status.js` tras cada recreación; (b) las salas en clearnet (opt-in del autor) se permiten con la
+  `location` de nginx sin búfer. Si decide lo contrario: (a) guard de entorno `OASIS_FEED_GUARD=off` (un fichero más en
+  el invariante); (b) `return 404` en esa `location`.
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |

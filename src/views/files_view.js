@@ -1,8 +1,8 @@
-const { form, button, div, h2, h3, p, section, input, br, a, span, textarea, select, label, option, table, tr, th, td, progress, strong } = require("../server/node_modules/hyperaxe");
+const { form, button, div, h2, h3, p, section, input, br, a, span, textarea, select, label, option, table, tr, th, td } = require("../server/node_modules/hyperaxe");
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { renderReachChip, renderClearnetSelector, renderClearnetSwitch } = require('./clearnet_view');
+const { renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderLicenseSelect, renderLicenseChip } = require('./clearnet_view');
 
-const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip , renderSpreadEditWarning, renderContentActions, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged } = require("./main_views");
+const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, renderSpreadButton, renderEcoTax, renderLifespanChip, renderSpreadEditWarning, renderCardTop, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged, formatSize, renderMediaLockNote, renderEditedChip, renderDetailShare, hasRelation, renderRelationFilters } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderStyledText, safeExternalHref } = require("../backend/renderStyledText");
@@ -32,22 +32,6 @@ const renderTags = (tags) => {
     : null;
 };
 
-const renderFileOwnerActions = (filter, fileObj, params = {}) => {
-  const returnTo = buildReturnTo(filter, params);
-  const isAuthor = String(fileObj.author) === String(userId);
-  const hasOpinions = Object.keys(fileObj.opinions || {}).length > 0;
-
-  if (!isAuthor || hasOpinions) return [];
-
-  return [
-    form(
-      { method: "GET", action: `/files/edit/${encodeURIComponent(fileObj.key)}` },
-      input({ type: "hidden", name: "returnTo", value: returnTo }),
-      button({ class: "update-btn", type: "submit" }, i18n.fileUpdateButton)
-    )
-  ];
-};
-
 const renderFileCommentsSection = (fileId, comments = [], returnTo = null) => {
   return renderSharedCommentsSection({
     action: `/files/${encodeURIComponent(fileId)}/comments`,
@@ -62,13 +46,6 @@ const blobSha256Hex = (blobId) => {
   try { return Buffer.from(m[1], "base64").toString("hex"); } catch (_) { return ""; }
 };
 
-const formatSize = (bytes) => {
-  const n = Number(bytes) || 0;
-  if (n === 0) return "—";
-  if (n < 1024) return n + " B";
-  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
-  return (n / (1024 * 1024)).toFixed(1) + " MB";
-};
 
 const spreadInfoOf = (t, spreadMap) => (spreadMap instanceof Map && spreadMap.get(t.key)) || null;
 const renderFileSeeds = (t, spreadMap) => {
@@ -97,8 +74,8 @@ const renderFileTable = exports.renderFileTable = (files, filter, params = {}) =
         td(moment(t.createdAt).format("YYYY/MM/DD HH:mm")),
         td(t.title || "", t.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('files', t.title, t.key)) : null),
         td(formatSize(t.size)),
-        td({ class: "torrent-spread-cell" }, renderFileSeeds(t, params.spreadMap)),
-        td({ class: "torrent-spread-cell" }, renderFileSpread(t, params.spreadMap)),
+        td({ class: "torrent-spread-cell torrent-seeds-cell", 'data-label': i18n.seedsLabel }, span({ class: "torrent-seeds-count" }, renderFileSeeds(t, params.spreadMap))),
+        td({ class: "torrent-spread-cell torrent-seed-action-cell" }, renderFileSpread(t, params.spreadMap)),
         td(
           form(
             { method: "GET", action: `/files/${encodeURIComponent(t.key)}` },
@@ -133,13 +110,14 @@ const renderNextcloudForm = (returnTo) => div(
     br(),
     span(i18n.fileDescriptionLabel),
     br(),
-    textarea({ maxlength: "5000", name: "description", placeholder: i18n.fileDescriptionPlaceholder, rows: "4" }),
+    textarea({ name: "description", placeholder: i18n.fileDescriptionPlaceholder, rows: "4" }),
     br(),
     span(i18n.fileTagsLabel),
     br(),
     input({ type: "text", name: "tags", placeholder: i18n.fileTagsPlaceholder }),
     br(),
     br(),
+    ...renderLicenseSelect(undefined, i18n),
     renderClearnetSelector(false, i18n), br(),
     button({ type: "submit" }, i18n.nextcloudUploadButton)
   )
@@ -162,7 +140,7 @@ const renderFileForm = (filter, fileId, fileToEdit, params = {}) => {
       tribeId ? input({ type: "hidden", name: "tribeId", value: tribeId }) : null,
       span(i18n.fileFileLabel),
       br(),
-      input({ type: "file", name: "file", required: filter !== "edit" }),
+      (filter === "edit" && renderMediaLockNote(fileToEdit)) || input({ type: "file", name: "file", required: filter !== "edit" }),
       br(),
       br(),
       span(i18n.fileTitleLabel),
@@ -171,7 +149,7 @@ const renderFileForm = (filter, fileId, fileToEdit, params = {}) => {
       br(),
       span(i18n.fileDescriptionLabel),
       br(),
-      textarea({ maxlength: "5000", name: "description", placeholder: i18n.fileDescriptionPlaceholder, rows: "4" }, fileToEdit?.description || ""),
+      textarea({ name: "description", placeholder: i18n.fileDescriptionPlaceholder, rows: "4" }, fileToEdit?.description || ""),
       br(),
       span(i18n.fileTagsLabel),
       br(),
@@ -183,8 +161,9 @@ const renderFileForm = (filter, fileId, fileToEdit, params = {}) => {
       }),
       br(),
       br(),
+      ...renderLicenseSelect(fileToEdit?.license, i18n),
       ...(clearnetAllowed ? [renderClearnetSelector(filter === "edit" ? !!fileToEdit?.clearnet : false, i18n), br()] : []),
-      button({ type: "submit" }, filter === "edit" ? i18n.fileUpdateButton : i18n.fileCreateButton)
+      button({ type: "submit" }, filter === "edit" ? i18n.save : i18n.fileCreateButton)
     )
   );
 };
@@ -194,6 +173,7 @@ const mediaChipFor = (filter, censusM) => (mode) => {
   if (!Array.isArray(censusM)) return true;
   if (mode === "top") return censusM.length > 0;
   if (mode === "mine") return censusM.some((x) => String(x.author) === String(userId));
+  if (mode === "supported" || mode === "replicated") return hasRelation(mode, censusM);
   if (mode === "recent") return censusM.length > 0;
   if (mode === "favorites") return censusM.some((x) => x.isFavorite);
   if (mode === "bcs") return censusM.some((x) => String(x.title || "").toUpperCase().startsWith("BCS-"));
@@ -228,6 +208,7 @@ exports.filesView = async (files, filter = "all", fileId = null, params = {}) =>
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.fileFilterAll).toUpperCase()),
           ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.fileFilterRecent).toUpperCase())] : []),
           ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.fileFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(filter, mediaChip),
           ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.fileFilterFavorites).toUpperCase()
@@ -291,16 +272,29 @@ exports.singleFileView = async (fileObj, filter = "all", comments = [], params =
     fileObj.sizeBytes ? renderEcoTax(fileObj.sizeBytes, fileObj.key) : null
   ].filter(Boolean);
 
-  const ownerActions = renderFileOwnerActions(filter, fileObj, { q, sort });
-  const sideActions = [];
-  for (const a of ownerActions) sideActions.push(a);
 
   const tagsNode = renderTags(fileObj.tags);
+  const href = `/files/${encodeURIComponent(fileObj.key)}`;
+  const createdTs = fileObj.createdAt ? new Date(fileObj.createdAt).getTime() : NaN;
+  const updatedTs = fileObj.updatedAt ? new Date(fileObj.updatedAt).getTime() : NaN;
+  const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
 
-  const detailActions = div({ class: "card-header activity-card-header" },
-    renderContentActions(fileObj.key, `/files/${encodeURIComponent(fileObj.key)}`, {
-      spreadTitle: i18n.seedAction,
+  const fileSide = div({ class: "tribe-side" },
+    renderCardTop(fileObj.key, href, { arrow: false,
       author: fileObj.author,
+      date: fileObj.createdAt,
+      chips: [
+        fileObj.tribeId && fileObj.cipher ? renderEncryptedChip(i18n) : renderTransportChip(i18n),
+        clearnetAllowed ? renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('files', fileObj.title, fileObj.key) : null) : null,
+        fileObj.tribeId ? null : renderLicenseChip(fileObj.license),
+        ...chips
+      ],
+      bylineExtra: [
+        renderEditedChip(fileObj.key, fileObj.rootId),
+        showUpdated ? span({ class: "votations-comment-date" }, `${i18n.fileUpdatedAt}: ${moment(fileObj.updatedAt).format("YYYY/MM/DD HH:mm")}`) : null
+      ],
+      spreadTitle: i18n.seedAction,
+      editAction: String(fileObj.author) === String(userId) ? `/files/edit/${encodeURIComponent(fileObj.key)}?returnTo=${encodeURIComponent(buildReturnTo(filter, { q, sort }))}` : undefined,
       deleteAction: String(fileObj.author) === String(userId) ? contentDeleteAction("file", fileObj.key) : null,
       favKind: 'files',
       ...(fileObj.url && fileObj.url.startsWith("&") ? { torrentFrom: { blobId: fileObj.url, name: fileObj.fileName || fileObj.title } } : {}),
@@ -308,26 +302,19 @@ exports.singleFileView = async (fileObj, filter = "all", comments = [], params =
       spread: params.spreads || null,
       returnTo,
       reportTitle: fileObj.title
-    })
-  );
-
-  const fileSide = div({ class: "tribe-side" },
+    }),
     div({ class: "shop-title-row" },
       title ? h2({ class: "tribe-card-title" }, title) : null,
-      fileObj.tribeId && fileObj.cipher ? renderEncryptedChip(i18n) : renderTransportChip(i18n),
-      clearnetAllowed ? renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('files', fileObj.title, fileObj.key) : null) : null,
       clearnetAllowed && isAuthor ? renderClearnetSwitch('files', fileObj.rootId || fileObj.key, isClearnet) : null
     ),
-    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-    safeText(fileObj.description)
-      ? p({ class: "tribe-side-description" }, ...renderStyledText(fileObj.description))
-      : null,
+    renderDetailShare(fileObj.key, href, fileObj.title, null, null, null, fileObj.author),
     tagsNode,
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
   );
 
   const fileMain = div({ class: "tribe-main" },
-    detailActions,
+    safeText(fileObj.description)
+      ? div({ class: "job-section" }, h2({ class: "job-section-title" }, i18n.description), p({ class: "tribe-side-description" }, ...renderStyledText(fileObj.description)))
+      : null,
     fileObj.url && fileObj.url.startsWith("&")
       ? div({ class: "torrent-download" },
           div({ class: "torrent-oasis torrent-detail-section" },
@@ -367,27 +354,9 @@ exports.singleFileView = async (fileObj, filter = "all", comments = [], params =
             )
           )
         : p(i18n.fileNoFile),
-    (() => {
-      const createdTs = fileObj.createdAt ? new Date(fileObj.createdAt).getTime() : NaN;
-      const updatedTs = fileObj.updatedAt ? new Date(fileObj.updatedAt).getTime() : NaN;
-      const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
-
-      return p(
-        { class: "card-footer" },
-        span({ class: "date-link" }, `${moment(fileObj.createdAt).format("YYYY/MM/DD HH:mm")}`),
-        userLink(fileObj.author),
-        showUpdated
-          ? span(
-              { class: "votations-comment-date" },
-              ` | ${i18n.fileUpdatedAt}: ${moment(fileObj.updatedAt).format("YYYY/MM/DD HH:mm")}`
-            )
-          : null
-      );
-    })(),
-    fileObj.tribeId ? null : renderEngagement(fileObj.key,
-      renderOpinionsVoting('/files/opinions', fileObj.key, fileObj.opinions, returnTo, fileObj.opinions_inhabitants),
-      renderFileCommentsSection(fileObj.key, comments, returnTo)
-    )
+    renderEngagement(fileObj.key,
+      fileObj.tribeId ? null : renderOpinionsVoting('/files/opinions', fileObj.key, fileObj.opinions, returnTo, fileObj.opinions_inhabitants),
+      fileObj.tribeId ? null : renderFileCommentsSection(fileObj.key, comments, returnTo))
   );
 
   return template(
@@ -405,6 +374,7 @@ exports.singleFileView = async (fileObj, filter = "all", comments = [], params =
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.fileFilterAll).toUpperCase()),
           ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.fileFilterRecent).toUpperCase())] : []),
           ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.fileFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(filter, mediaChip),
           ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.fileFilterFavorites).toUpperCase()

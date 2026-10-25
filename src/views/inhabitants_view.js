@@ -57,7 +57,7 @@ function resolvePhoto(photoField, size = 256) {
 }
 
 const filterLabel = (mode) =>
-  String(i18n[mode + 'Button'] || i18n[mode + 'SectionTitle'] || mode).toUpperCase();
+  String(i18n[mode + 'Button'] || i18n[mode + 'SectionTitle'] || i18n[String(mode).toLowerCase() + 'Button'] || i18n[String(mode).toLowerCase() + 'SectionTitle'] || mode).toUpperCase();
 
 const generateFilterButtons = (filters, currentFilter, labelOf = filterLabel) =>
   filters.map(mode =>
@@ -160,11 +160,6 @@ const renderInhabitantCard = (user, filter, currentUserId, fediverseConfigured) 
     fediverseHandle: typeof raw.fediverseHandle === 'string' ? raw.fediverseHandle : ''
   };
   return div({ class: 'trending-card inhabitants-card' + (isMe ? ' own-content' : '') },
-    div(
-      { class: 'card-header activity-card-header' },
-      span(),
-      renderContentActions(user.id, `/inhabitant/${encodeURIComponent(user.id)}`, { author: user.id })
-    ),
     div({ class: 'card-section inhabitants-card-body' },
       div({ class: 'inhabitant-card' },
     div({ class: 'inhabitant-left' },

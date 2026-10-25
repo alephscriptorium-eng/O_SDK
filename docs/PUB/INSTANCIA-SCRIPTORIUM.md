@@ -46,9 +46,10 @@ nombre puede cambiar.
 | 3 | `retro.escrivivir.co` | retro (secretaría de plantillas) · scriptorium | activaba plantillas de organización (`TEMPLATE-PROTOCOL.md` §4.5): tribus, salas, calendarios, listas, wikis, mapas, bloque a bloque y con permiso; custodia las claves de las tribus que creó; **modo `server`, sin ruta pública**. Avatar: logo «Scriptorium Skins» 512×512 (blob `&q4Mkl/fcUGNELIrsmVyMBBdZsCXxyh5LmGN/XovlHDg=.sha256`) | **deprecated** (D-O36, 2026-10-12); identidad conservada y apagada en `volumes-real/oasis-retro-bot/` de la máquina operadora (contenedor local `oasis-pub-retro-bot`, parado); no corre en el host (estuvo en `/srv/oasis/oasis-retro-bot` del 2026-10-08 al 2026-10-10, D-O33). No se arranca, no se recrea, no se sube de versión, no siembra; la identidad no se borra | `@fJG3E7UKNlYVh0Aoc89LKPAAQsKNfy4iMaJtdVH0I8I=.ed25519` | 2026-10-08 (WP-O131) |
 
 Dirección ECOin del bot 2 (pública, para la dote): `EYdruXgDVQGhBpSsns83VA1BmDfAKBP4Lc`.
-Última subida registrada en el journal: Oasis 1.3.0 en pub, HUB y bot 2, 2026-10-15 (WP-O141). El estado
+Última subida registrada en el journal: Oasis 1.3.8 en pub, HUB y bot 2, 2026-10-25 (WP-O147). El estado
 presente se mide: `deploy-status.sh`. En esa subida el pub y el HUB publicaron solo su `oasisVersion`; el bot 2,
-`oasisVersion` y un `karmaScore`. Lo que publicó cada nodo en los ciclos anteriores: `UPGRADE-PROTOCOL.md` §7 y sus
+`oasisVersion` y un `karmaScore`. Desde 1.3.8 los tres nodos llevan el guardián de feeds de upstream (`feed_guard.js`): tras
+cada recreación se mide con `devops/scripts/feed-guard-status.js` (`lastRepair: null`). Lo que publicó cada nodo en los ciclos anteriores: `UPGRADE-PROTOCOL.md` §7 y sus
 reportes.
 Desde 1.2.6 HUB y bots publican solos su `karmaScore` cuando cambia, como mucho uno al día (aceptado por el
 custodio, UPGRADE §3.4). El pub hace de centralita de Phone y Rooms, acotada (`phone` en su ssb-config: relé

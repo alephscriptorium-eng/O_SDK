@@ -4,11 +4,13 @@ const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink }
 
 const moment = require("../server/node_modules/moment");
 const { renderLicenseChip, renderLicenseSelect, renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderTribeOriginChip } = require('./clearnet_view');
-const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderStateChip, renderContentActions, renderSpreadEditWarning, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged, blobUrlOf } = require("./main_views");
+const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, renderEcoTax, renderLifespanChip, renderCardTop, renderCardByline, renderSpreadEditWarning, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged, blobUrlOf, renderMediaLockNote, renderEditedChip, renderDetailShare, hasRelation, renderRelationFilters } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
 const { renderStyledText } = require("../backend/renderStyledText")
 const { renderMapLocationVisitLabel, renderMapEmbed } = require("./maps_view");
-const { renderZoomableImage } = require("./gallery_view");
+const { renderZoomableImage, renderDownloadButton, downloadHref } = require("./gallery_view");
+const LIST_THUMB = 640;
+const thumbOf = (url) => String(url || "").startsWith("&") ? `/image/${LIST_THUMB}/${encodeURIComponent(url)}?fit=inside` : null;
 
 const userId = config.keys.id;
 
@@ -41,25 +43,18 @@ const renderImageMedia = (imgObj, filter, params = {}) => {
   return imgObj?.url
     ? div(
         { class: "image-container image-container-row" },
-        renderZoomableImage(src, { alt: imgObj.title || "", imgClass: "post-image" })
+        renderZoomableImage(src, { alt: imgObj.title || "", imgClass: "post-image", thumb: thumbOf(imgObj.url) })
       )
     : p(i18n.imageNoFile);
 };
 
-const renderImageOwnerActions = (filter, imgObj, params = {}) => {
-  const returnTo = buildReturnTo(filter, params);
-  const isAuthor = String(imgObj.author) === String(userId);
-  const hasOpinions = Object.keys(imgObj.opinions || {}).length > 0;
-
-  if (!isAuthor || hasOpinions) return [];
-
-  return [
-    form(
-      { method: "GET", action: `/images/edit/${encodeURIComponent(imgObj.key)}` },
-      input({ type: "hidden", name: "returnTo", value: returnTo }),
-      button({ class: "update-btn", type: "submit" }, i18n.imageUpdateButton)
-    )
-  ];
+const renderImageUpdated = (imgObj) => {
+  const createdTs = imgObj.createdAt ? new Date(imgObj.createdAt).getTime() : NaN;
+  const updatedTs = imgObj.updatedAt ? new Date(imgObj.updatedAt).getTime() : NaN;
+  const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
+  return showUpdated
+    ? span({ class: "votations-comment-date" }, `${i18n.imageUpdatedAt}: ${moment(imgObj.updatedAt).format("YYYY/MM/DD HH:mm")}`)
+    : null;
 };
 
 const renderImageList = exports.renderImageList = (images, filter, params = {}) => {
@@ -68,55 +63,37 @@ const renderImageList = exports.renderImageList = (images, filter, params = {}) 
     ? images.map((imgObj) => {
         const commentCount = typeof imgObj.commentCount === "number" ? imgObj.commentCount : 0;
         const title = safeText(imgObj.title);
+        const href = `/images/${encodeURIComponent(imgObj.key)}`;
 
         const isOwn = imgObj.author && String(imgObj.author) === String(userId);
-        const headerActions = typeof params.headerActions === "function"
-          ? params.headerActions(imgObj)
+        const byline = {
+          author: imgObj.author,
+          date: imgObj.createdAt,
+          chips: [
+            imgObj.tribeOrigin ? renderTribeOriginChip(imgObj.tribeOrigin) : imgObj.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('images', imgObj.title, imgObj.key)) : null,
+            renderLicenseChip(imgObj.license),
+            ...(typeof params.titleChips === "function" ? params.titleChips(imgObj) : []),
+            renderLifespanChip(imgObj.lifetime, i18n)
+          ],
+          bylineExtra: [renderImageUpdated(imgObj)]
+        };
+        const header = typeof params.headerActions === "function"
+          ? div({ class: "card-header activity-card-header card-top" }, renderCardByline(byline), params.headerActions(imgObj))
           : imgObj.tribeOrigin
-            ? renderContentActions(null, imgObj.tribeOrigin.href)
-            : renderContentActions(imgObj.key, `/images/${encodeURIComponent(imgObj.key)}`, { spread: (params.spreadMap && params.spreadMap.get(imgObj.key)) || params.spreads || null, author: imgObj.author, favKind: 'images', torrentFrom: { blobId: imgObj.url, name: imgObj.title }, isFavorite: imgObj.isFavorite, reportTitle: imgObj.title, returnTo, deleteAction: isOwn ? contentDeleteAction("image", imgObj.key) : null });
-        const titleHref = typeof params.headerActions === "function" ? null : imgObj.tribeOrigin ? imgObj.tribeOrigin.href : `/images/${encodeURIComponent(imgObj.key)}`;
-        const engagement = typeof params.engagement === "function"
-          ? params.engagement(imgObj)
-          : imgObj.tribeOrigin ? null : renderEngagement(imgObj.key,
-            renderOpinionsVoting('/images/opinions', imgObj.key, imgObj.opinions, returnTo, imgObj.opinions_inhabitants),
-            renderCommentsLink({ href: `/images/${encodeURIComponent(imgObj.key)}`, count: commentCount })
-          );
+            ? renderCardTop(imgObj.key, imgObj.tribeOrigin.href, { ...byline, spread: (params.spreadMap && params.spreadMap.get(imgObj.key)) || null, reportTitle: imgObj.title })
+            : renderCardTop(imgObj.key, href, { ...byline, spread: (params.spreadMap && params.spreadMap.get(imgObj.key)) || params.spreads || null, favKind: 'images', torrentFrom: { blobId: imgObj.url, name: imgObj.title }, isFavorite: imgObj.isFavorite, reportTitle: imgObj.title, returnTo, deleteAction: isOwn ? contentDeleteAction("image", imgObj.key) : null });
+        const titleHref = typeof params.headerActions === "function" ? null : imgObj.tribeOrigin ? imgObj.tribeOrigin.href : href;
+        const engagement = typeof params.engagement === "function" ? params.engagement(imgObj) : null;
         return div(
           { class: "trending-card image-card" + (isOwn ? " own-content" : "") },
-          div(
-            { class: "card-header activity-card-header" },
-            span(),
-            headerActions
-          ),
+          header,
           div(
             { class: "card-section image-card-body" },
-            div({ class: "shop-title-row" }, title ? h2(titleHref ? a({ href: titleHref, class: "card-title-link" }, title) : title) : null, imgObj.tribeOrigin ? renderTribeOriginChip(imgObj.tribeOrigin) : imgObj.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('images', imgObj.title, imgObj.key)) : null, renderLicenseChip(imgObj.license), ...(typeof params.titleChips === "function" ? params.titleChips(imgObj) : [])),
-            imgObj.lifetime ? div({ class: "card-chips-row" },
-              imgObj.lifetime ? renderLifespanChip(imgObj.lifetime, i18n) : null
-            ) : null,
+            title ? div({ class: "shop-title-row" }, h2(titleHref ? a({ href: titleHref, class: "card-title-link" }, title) : title)) : null,
             renderImageMedia(imgObj, filter, params),
             ...(typeof params.bodyExtra === "function" ? params.bodyExtra(imgObj) : []),
-            engagement,
             renderMapLocationVisitLabel(imgObj.mapUrl),
-            br(),
-            (() => {
-              const createdTs = imgObj.createdAt ? new Date(imgObj.createdAt).getTime() : NaN;
-              const updatedTs = imgObj.updatedAt ? new Date(imgObj.updatedAt).getTime() : NaN;
-              const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
-
-              return p(
-                { class: "card-footer" },
-                span({ class: "date-link" }, `${moment(imgObj.createdAt).format("YYYY/MM/DD HH:mm")}`),
-                userLink(imgObj.author),
-                showUpdated
-                  ? span(
-                      { class: "votations-comment-date" },
-                      ` | ${i18n.imageUpdatedAt}: ${moment(imgObj.updatedAt).format("YYYY/MM/DD HH:mm")}`
-                    )
-                  : null
-              );
-            })()
+            engagement
           )
         );
       })
@@ -140,7 +117,7 @@ const renderImageForm = (filter, imageId, imageToEdit, params = {}) => {
       input({ type: "hidden", name: "returnTo", value: returnTo }),
       label(i18n.imageFileLabel),
       br(),
-      input({ type: "file", name: "image", required: filter !== "edit" }),
+      (filter === "edit" && renderMediaLockNote(imageToEdit)) || input({ type: "file", name: "image", accept: "image/*", required: filter !== "edit" }),
       br(),
       br(),
       imageToEdit?.url
@@ -152,7 +129,7 @@ const renderImageForm = (filter, imageId, imageToEdit, params = {}) => {
       br(),
       label(i18n.imageDescriptionLabel),
       br(),
-      textarea({ maxlength: "5000", name: "description", placeholder: i18n.imageDescriptionPlaceholder, rows: "4" }, imageToEdit?.description || ""),
+      textarea({ name: "description", placeholder: i18n.imageDescriptionPlaceholder, rows: "4" }, imageToEdit?.description || ""),
       br(),
       label(i18n.mapLocationTitle || "Map Location"),
       br(),
@@ -166,7 +143,7 @@ const renderImageForm = (filter, imageId, imageToEdit, params = {}) => {
       br(),
       renderClearnetSelector(filter === "edit" ? !!imageToEdit?.clearnet : false, i18n),
       br(),
-      button({ type: "submit" }, filter === "edit" ? i18n.imageUpdateButton : i18n.imageCreateButton)
+      button({ type: "submit" }, filter === "edit" ? i18n.save : i18n.imageCreateButton)
     )
   );
 };
@@ -187,12 +164,18 @@ const renderGallery = (images) => {
 };
 
 const renderLightbox = (images) =>
-  images.map((imgObj) => {
+  images.map((imgObj, i) => {
     const src = imgObj.url ? blobUrlOf(imgObj.url) : "";
+    const idOf = (o) => `img-${encodeURIComponent(o.key)}`;
+    const prev = images[i - 1];
+    const next = images[i + 1];
     return div(
-      { id: `img-${encodeURIComponent(imgObj.key)}`, class: "lightbox" },
-      a({ href: `#img-${encodeURIComponent(imgObj.key)}-src`, class: "lightbox-close" }, "×"),
-      img({ src, class: "lightbox-image", alt: imgObj.title || "" })
+      { id: idOf(imgObj), class: "lightbox" },
+      src ? a({ href: downloadHref(src), class: "lightbox-download", title: i18n.fileShareDownload || "Download" }, "⤓") : null,
+      a({ href: `#${idOf(imgObj)}-src`, class: "lightbox-close" }, "×"),
+      prev ? a({ href: `#${idOf(prev)}`, class: "lightbox-prev", title: "←" }, "‹") : null,
+      next ? a({ href: `#${idOf(next)}`, class: "lightbox-next", title: "→" }, "›") : null,
+      img({ src, class: "lightbox-image", alt: imgObj.title || "", loading: "lazy" })
     );
   });
 
@@ -210,6 +193,7 @@ const mediaChipFor = (filter, censusM) => (mode) => {
   if (mode === "top") return censusM.some((x) => !x.tribeOrigin);
   if (mode === "gallery") return censusM.length > 0;
   if (mode === "mine") return censusM.some((x) => String(x.author) === String(userId));
+  if (mode === "supported" || mode === "replicated") return hasRelation(mode, censusM);
   if (mode === "recent") return censusM.length > 0;
   if (mode === "favorites") return censusM.some((x) => x.isFavorite);
   if (mode === "bcs") return censusM.some((x) => String(x.title || "").toUpperCase().startsWith("BCS-"));
@@ -244,6 +228,7 @@ exports.imageView = async (images, filter = "all", imageId = null, params = {}) 
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterAll).toUpperCase()),
           ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterRecent).toUpperCase())] : []),
           ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(filter, mediaChip),
           ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.imageFilterFavorites).toUpperCase()
@@ -310,74 +295,51 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
     imageObj.sizeBytes ? renderEcoTax(imageObj.sizeBytes, imageObj.key) : null
   ].filter(Boolean);
 
-  const ownerActions = renderImageOwnerActions(filter, imageObj, { q, sort });
-  const sideActions = [];
-  for (const a of ownerActions) sideActions.push(a);
 
   const tagsNode = renderTags(imageObj.tags);
+  const href = `/images/${encodeURIComponent(imageObj.key)}`;
 
-  const detailActions = div({ class: "card-header activity-card-header" },
-    renderContentActions(imageObj.key, `/images/${encodeURIComponent(imageObj.key)}`, {
+  const imageSide = div({ class: "tribe-side" },
+    renderCardTop(imageObj.key, href, { arrow: false,
       author: imageObj.author,
+      date: imageObj.createdAt,
+      chips: [
+        renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('images', imageObj.title, imageObj.key) : null),
+        renderLicenseChip(imageObj.license),
+        ...chips
+      ],
+      bylineExtra: [renderEditedChip(imageObj.key, imageObj.rootId), renderImageUpdated(imageObj)],
+      editAction: String(imageObj.author) === String(userId) ? `/images/edit/${encodeURIComponent(imageObj.key)}?returnTo=${encodeURIComponent(buildReturnTo(filter, { q, sort }))}` : undefined,
       deleteAction: String(imageObj.author) === String(userId) ? contentDeleteAction("image", imageObj.key) : null,
       favKind: 'images', torrentFrom: { blobId: imageObj.url, name: imageObj.title },
       isFavorite: imageObj.isFavorite,
       spread: params.spreads || null,
       returnTo,
       reportTitle: imageObj.title
-    })
-  );
-
-  const imageSide = div({ class: "tribe-side" },
+    }),
     div({ class: "shop-title-row" },
       title ? h2({ class: "tribe-card-title" }, title) : null,
-      renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('images', imageObj.title, imageObj.key) : null),
-      isAuthor ? renderClearnetSwitch('images', imageObj.rootId || imageObj.key, isClearnet) : null,
-      renderLicenseChip(imageObj.license)
+      isAuthor ? renderClearnetSwitch('images', imageObj.rootId || imageObj.key, isClearnet) : null
     ),
-    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-    safeText(imageObj.description)
-      ? p({ class: "tribe-side-description" }, ...renderStyledText(imageObj.description))
-      : null,
+    renderDetailShare(imageObj.key, href, imageObj.title, null, null, null, imageObj.author),
     tagsNode,
     renderMapEmbed(params.mapData, imageObj.mapUrl),
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
   );
 
   const imageMain = div({ class: "tribe-main" },
-    detailActions,
+    safeText(imageObj.description)
+      ? div({ class: "job-section" }, h2({ class: "job-section-title" }, i18n.description), p({ class: "tribe-side-description" }, ...renderStyledText(imageObj.description)))
+      : null,
     imageObj?.url
       ? div(
           { class: "image-container" },
-          img({
-            src: blobUrlOf(imageObj.url),
-            alt: imageObj.title || "",
-            class: "media-preview",
-            loading: "lazy"
-          })
+          renderZoomableImage(blobUrlOf(imageObj.url), { alt: imageObj.title || "", imgClass: "media-preview", full: true }),
+          renderDownloadButton(blobUrlOf(imageObj.url), imageObj.title || "")
         )
       : p(i18n.imageNoFile),
-    (() => {
-      const createdTs = imageObj.createdAt ? new Date(imageObj.createdAt).getTime() : NaN;
-      const updatedTs = imageObj.updatedAt ? new Date(imageObj.updatedAt).getTime() : NaN;
-      const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
-
-      return p(
-        { class: "card-footer" },
-        span({ class: "date-link" }, `${moment(imageObj.createdAt).format("YYYY/MM/DD HH:mm")}`),
-        userLink(imageObj.author),
-        showUpdated
-          ? span(
-              { class: "votations-comment-date" },
-              ` | ${i18n.imageUpdatedAt}: ${moment(imageObj.updatedAt).format("YYYY/MM/DD HH:mm")}`
-            )
-          : null
-      );
-    })(),
     renderEngagement(imageObj.key,
       renderOpinionsVoting('/images/opinions', imageObj.key, imageObj.opinions, returnTo, imageObj.opinions_inhabitants),
-      renderImageCommentsSection(imageObj.key, comments, returnTo)
-    )
+      renderImageCommentsSection(imageObj.key, comments, returnTo))
   );
 
   return template(
@@ -392,9 +354,11 @@ exports.singleImageView = async (imageObj, filter = "all", comments = [], params
         form(
           { method: "GET", action: "/images", class: "ui-toolbar ui-toolbar--filters" },
           input({ type: "hidden", name: "sort", value: sort }),
-          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterAll).toUpperCase()),          ...(mediaChip("favorites") ? [button(
+          button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterAll).toUpperCase()),
           ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterRecent).toUpperCase())] : []),
           ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.imageFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(filter, mediaChip),
+          ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.imageFilterFavorites).toUpperCase()
           )] : []),

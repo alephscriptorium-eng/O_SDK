@@ -1,7 +1,8 @@
 const { div, h2, h3, p, section, button, form, a, span, textarea, br, input, label, select, option, table, tr, td, th, details, summary, datalist, progress, hr } = require("../server/node_modules/hyperaxe")
 const RAW_HTML = Symbol.for('oasis.rawHtml');
 const moment = require("../server/node_modules/moment");
-const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderContentActions, renderOpinionsVoting, renderEngagement, renderInviteQrCard, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, renderWalletChip, contentDeleteAction, paged } = require("./main_views")
+const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderCardTop, renderOpinionsVoting, renderEngagement, renderInviteQrCard, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, renderWalletChip, contentDeleteAction, paged, renderPdfDocument, renderEditedChip, renderMediaLockNote, renderDetailShare, RELATION_FILTERS, relationFilterLabel } = require("./main_views")
+const { renderCommentsSection } = require("./comments_view")
 const opinionCategories = require("../backend/opinion_categories")
 const { config } = require("../server/SSB_server.js")
 const { renderStyledText, renderStyledHtml } = require("../backend/renderStyledText")
@@ -50,10 +51,10 @@ const buildReturnTo = (filter, params = {}) => {
 const renderModeButtons = (currentFilter, emptyMod = false, modesAvail = null) =>
   div({ class: "tribe-mode-buttons" },
     ...(emptyMod ? [] : [
-    ["all", "recent", "mine", "top", "applied", "open", "favorites"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
+    ["all", "recent", "mine", "supported", "replicated", "top", "applied", "open", "favorites"].filter(f => f === "all" || f === currentFilter || (modesAvail && (RELATION_FILTERS.includes(f) ? modesAvail[f] === true : modesAvail[f] !== false))).map(f =>
       form({ method: "GET", action: "/school" },
         input({ type: "hidden", name: "filter", value: f }),
-        button({ type: "submit", class: currentFilter === f ? "filter-btn active" : "filter-btn" }, i18n[`schoolFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase())
+        button({ type: "submit", class: currentFilter === f ? "filter-btn active" : "filter-btn" }, (RELATION_FILTERS.includes(f) ? relationFilterLabel(f) : i18n[`schoolFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase()))
       )
     ),
     ]),
@@ -65,20 +66,20 @@ const renderModeButtons = (currentFilter, emptyMod = false, modesAvail = null) =
 
 const renderPriceChip = (course) =>
   isFree(course)
-    ? renderStateChip("mutuals", "✓", i18n.schoolFree)
+    ? renderStateChip("whole", "✓", i18n.schoolFree)
     : span({ class: "price-chip" }, `${Number(course.price).toFixed(2)} ECO`)
 
 const renderCourseChips = (course, subscription = null) =>
   div({ class: "card-chips-row" },
     course.visibility === "INVITE" ? renderStateChip("whole", "\uD83D\uDD11", i18n.chatStatusInviteOnly) : null,
     course.status === "CLOSED"
-      ? renderStateChip("closed", "✗", i18n.schoolClosed)
-      : renderStateChip("mutuals", "✓", i18n.schoolOngoing),
+      ? renderStateChip("hidden", "✗", i18n.schoolClosed)
+      : renderStateChip("pending", "✓", i18n.schoolOngoing),
     renderPriceChip(course),
     course.clearnet === true && clearnetEligible(course) ? renderReachChip(true, i18n, clearnetItemHref('school', course.title, course.id)) : null,
     subscription
       ? (subscription.in
-          ? renderStateChip("mutuals", "\u2709", i18n.subscriptionOn)
+          ? renderStateChip("transport", "\u2709", i18n.subscriptionOn)
           : renderStateChip("closed", "\u2709", i18n.subscriptionOff))
       : null
   )
@@ -87,18 +88,20 @@ const renderCourseCard = (course, filter, params = {}) => {
   const url = `/school/course/${encodeURIComponent(course.id)}`
   const isOwn = String(course.author) === String(userId)
   return div({ class: "tribe-card" },
-    div({ class: "card-header activity-card-header" },
-      span(),
-      renderContentActions(course.id, url, {
-        spread: (params.spreadMap && params.spreadMap.get(course.id)) || null,
-        author: course.author,
-        favKind: 'school',
-        isFavorite: course.isFavorite,
-        reportTitle: course.title,
-        returnTo: buildReturnTo(filter, params),
-        deleteAction: isOwn ? contentDeleteAction('schoolCourse', course.id) : undefined
-      })
-    ),
+    renderCardTop(course.id, url, {
+      date: course.createdAt,
+      chips: [renderCourseChips(course, params.subscriptions && (String(course.author) === String(userId) || safeArr(course.students).includes(userId)) ? { in: params.subscriptions.mine.has(course.rootId || course.id) || String(course.author) === String(userId) } : null)],
+      spread: (params.spreadMap && params.spreadMap.get(course.id)) || null,
+      author: course.author,
+      favKind: 'school',
+      isFavorite: course.isFavorite,
+      reportTitle: course.title,
+      returnTo: buildReturnTo(filter, params),
+      deleteAction: isOwn ? contentDeleteAction('schoolCourse', course.id) : undefined
+    }),
+    course.startDate ? div({ class: "tribe-card-members" },
+      span({ class: "tribe-members-count" }, `${i18n.schoolStartDate}: ${moment(course.startDate).format("YYYY/MM/DD HH:mm")}`)
+    ) : null,
     div({ class: "tribe-card-image-wrapper" },
       a({ href: url },
         renderMediaBlob(course.image, '/assets/images/default-avatar.png', { class: 'tribe-card-hero-image' })
@@ -107,14 +110,11 @@ const renderCourseCard = (course, filter, params = {}) => {
     div({ class: "tribe-card-body" },
       h2({ class: "tribe-card-title" }, a({ href: url }, course.title)),
       renderStarRating(course.opinions, safeArr(course.opinions_inhabitants).length),
-      renderCourseChips(course, params.subscriptions && (String(course.author) === String(userId) || safeArr(course.students).includes(userId)) ? { in: params.subscriptions.mine.has(course.rootId || course.id) || String(course.author) === String(userId) } : null),
       course.description ? p({ class: "tribe-card-description" }, ...renderStyledText(course.description)) : null,
       div({ class: "tribe-card-members" },
         span({ class: "tribe-members-count" }, `${i18n.schoolStudents}: ${course.students.length}`)
       ),
-      course.startDate ? div({ class: "tribe-card-members" },
-        span({ class: "tribe-members-count" }, `${i18n.schoolStartDate}: ${moment(course.startDate).format("YYYY/MM/DD HH:mm")}`)
-      ) : null
+      null
     )
   )
 }
@@ -145,9 +145,9 @@ const renderCourseForm = (filter, course = {}, params = {}) => {
       label(i18n.title), br,
       input({ type: "text", name: "title", maxlength: "120", required: true, placeholder: i18n.schoolCourseTitlePlaceholder, value: course.title || "" }), br(),
       label(i18n.description), br,
-      textarea({ name: "description", rows: 5, required: true, maxlength: "2000", placeholder: i18n.schoolCourseDescriptionPlaceholder }, course.description || ""), br,
+      textarea({ name: "description", rows: 5, required: true, placeholder: i18n.schoolCourseDescriptionPlaceholder }, course.description || ""), br,
       label(i18n.blogImage), br,
-      input({ type: "file", name: "image", accept: "image/*" }), br(), br(),
+      (isEdit && renderMediaLockNote(course)) || input({ type: "file", name: "image", accept: "image/*" }), br(), br(),
       label(i18n.schoolTags), br,
       input({ type: "text", name: "tags", placeholder: i18n.schoolTagsPlaceholder, value: Array.isArray(course.tags) ? course.tags.join(", ") : (course.tags || "") }), br,
       ...(reach === "PAID"
@@ -265,7 +265,7 @@ const renderTeacherPanel = (course, certificates, returnTo, lessons = [], exams 
       form({ method: "POST", action: `/school/lesson/add/${encodeURIComponent(course.id)}` },
         input({ type: "hidden", name: "returnTo", value: returnTo }),
         input({ type: "text", name: "title", maxlength: "120", required: true, placeholder: i18n.schoolLessonTitlePlaceholder }), br(),
-        textarea({ name: "text", rows: 5, required: true, maxlength: "4000", placeholder: i18n.schoolLessonTextPlaceholder }), br,
+        textarea({ name: "text", rows: 5, required: true, placeholder: i18n.schoolLessonTextPlaceholder }), br,
         label(i18n.schoolLessonUnit), br,
         input({ type: "text", name: "unit", maxlength: "60", placeholder: i18n.schoolLessonUnitPlaceholder }), br(),
         label(i18n.schoolLessonOrder), br,
@@ -395,43 +395,50 @@ exports.singleCourseView = async (course, lessons = [], certificates = [], param
   const myCompleted = lessons.filter(lesson => lesson.completed).length
   const nextLesson = isStudent ? lessons.find(l => !l.locked && !l.completed) : null
 
+  const subscriptionOpts = (params.subscription && (isTeacher || isStudent)) ? { target: course.rootId || course.id, scope: "school", subscribed: params.subscription.subscribed === true, count: params.subscription.count, isOwner: isTeacher, returnTo } : null
   const courseSide = div({ class: "tribe-side" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(course.id, returnTo, { spread: params.spreads || null, author: course.author, favKind: 'school', isFavorite: course.isFavorite, returnTo, reportTitle: course.title, deleteAction: isTeacher ? contentDeleteAction('schoolCourse', course.id) : undefined })
-    ),
+    renderCardTop(course.id, returnTo, { arrow: false,
+      date: course.createdAt,
+      chips: [
+        course.visibility === "INVITE" ? renderStateChip("whole", "\uD83D\uDD11", i18n.chatStatusInviteOnly) : null,
+        course.status === "CLOSED"
+          ? renderStateChip("hidden", "✗", i18n.schoolClosed)
+          : renderStateChip("pending", "✓", i18n.schoolOngoing),
+        renderPriceChip(course),
+        renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('school', course.title, course.id) : null),
+        courseApproved ? renderStateChip("mutuals", "🎓", i18n.schoolApproved) : null,
+        params.subscription && (isTeacher || isStudent)
+          ? ((isTeacher || params.subscription.subscribed === true)
+              ? renderStateChip("transport", "\u2709", i18n.subscriptionOn)
+              : renderStateChip("closed", "\u2709", i18n.subscriptionOff))
+          : null
+      ],
+      bylineExtra: [renderEditedChip(course.id, course.rootId)],
+      spread: params.spreads || null,
+      author: course.author,
+      favKind: 'school',
+      isFavorite: course.isFavorite,
+      returnTo,
+      reportTitle: course.title,
+      subscription: subscriptionOpts,
+      editAction: isTeacher ? `/school?filter=edit&courseId=${encodeURIComponent(course.id)}` : undefined,
+      leaveAction: !isTeacher && (isStudent || myPending) ? `/school/unenroll/${encodeURIComponent(course.id)}` : undefined,
+      deleteAction: isTeacher ? contentDeleteAction('schoolCourse', course.id) : undefined
+    }),
     h2({ class: "tribe-card-title" }, course.title),
     renderStarRating(course.opinions, safeArr(course.opinions_inhabitants).length),
-    div({ class: "card-chips-row" },
-      course.visibility === "INVITE" ? renderStateChip("whole", "\uD83D\uDD11", i18n.chatStatusInviteOnly) : null,
-      course.status === "CLOSED"
-        ? renderStateChip("closed", "✗", i18n.schoolClosed)
-        : renderStateChip("mutuals", "✓", i18n.schoolOngoing),
-      renderPriceChip(course),
-      renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('school', course.title, course.id) : null),
-      isTeacher && canClearnet ? renderClearnetSwitch('school', course.rootId || course.id, isClearnet) : null,
-      courseApproved ? renderStateChip("mutuals", "🎓", i18n.schoolApproved) : null,
-      params.subscription && (isTeacher || isStudent)
-        ? ((isTeacher || params.subscription.subscribed === true)
-            ? renderStateChip("mutuals", "\u2709", i18n.subscriptionOn)
-            : renderStateChip("closed", "\u2709", i18n.subscriptionOff))
-        : null
-    ),
+    isTeacher && canClearnet ? renderClearnetSwitch('school', course.rootId || course.id, isClearnet) : null,
     renderMediaBlob(course.image, '/assets/images/default-avatar.png', { class: 'tribe-detail-image' }),
+    renderDetailShare(course.id, returnTo, course.title, subscriptionOpts, null, null, course.author),
     course.description ? p({ class: "tribe-side-description" }, ...renderStyledText(course.description)) : null,
-    table({ class: "tribe-info-table" },
-      tr(
-        td({ class: "tribe-info-label" }, i18n.schoolCreatedAt),
-        td({ class: "tribe-info-value", colspan: "3" }, moment(course.createdAt).format("YYYY/MM/DD HH:mm"))
-      ),
-      course.startDate ? tr(
-        td({ class: "tribe-info-label" }, i18n.schoolStartDate),
-        td({ class: "tribe-info-value", colspan: "3" }, moment(course.startDate).format("YYYY/MM/DD HH:mm"))
-      ) : null,
-      tr(
-        td({ class: "tribe-info-label" }, i18n.schoolTeacher),
-        td({ class: "tribe-info-value", colspan: "3" }, userLink(course.author))
-      )
-    ),
+    course.startDate
+      ? table({ class: "tribe-info-table" },
+          tr(
+            td({ class: "tribe-info-label" }, i18n.schoolStartDate),
+            td({ class: "tribe-info-value", colspan: "3" }, moment(course.startDate).format("YYYY/MM/DD HH:mm"))
+          )
+        )
+      : null,
     div({ class: "tribe-card-members" },
       span({ class: "tribe-members-count" }, `${i18n.schoolStudents}: ${course.students.length}`)
     ),
@@ -452,7 +459,7 @@ exports.singleCourseView = async (course, lessons = [], certificates = [], param
       ? (myPending
           ? div({ class: "school-pending-block" },
               div({ class: "tribe-side-actions school-pending-row" },
-                renderStateChip("closed", "⧖", i18n.schoolPendingPayment)
+                renderStateChip("pending", "⧖", i18n.schoolPendingPayment)
               ),
               myPending.transferId
                 ? div({ class: "doc-export-actions" },
@@ -508,16 +515,6 @@ exports.singleCourseView = async (course, lessons = [], certificates = [], param
             : null
         )
       : null,
-    params.subscription && (isTeacher || isStudent)
-      ? renderSubscriptionBox({
-          target: course.rootId || course.id,
-          scope: "school",
-          subscribed: params.subscription.subscribed === true,
-          count: params.subscription.count,
-          isOwner: isTeacher,
-          returnTo
-        })
-      : null,
     safeArr(course.tags).length
       ? div({ class: "tribe-side-tags" }, safeArr(course.tags).map(tag => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: "tag-link" }, `#${tag}`)))
       : null,
@@ -525,28 +522,12 @@ exports.singleCourseView = async (course, lessons = [], certificates = [], param
       ? div({ class: "tribe-side-actions shop-visibility-row" },
           span({ class: "card-label" }, `${i18n.schoolStatus}: `),
           course.status === "CLOSED"
-            ? renderStateChip("closed", "✗", i18n.schoolClosed)
-            : renderStateChip("mutuals", "✓", i18n.schoolOngoing),
+            ? renderStateChip("hidden", "✗", i18n.schoolClosed)
+            : renderStateChip("pending", "✓", i18n.schoolOngoing),
           form({ method: "POST", action: `/school/status/${encodeURIComponent(course.id)}`, class: "inline-form" },
             input({ type: "hidden", name: "returnTo", value: returnTo }),
             input({ type: "hidden", name: "status", value: course.status === "CLOSED" ? "ONGOING" : "CLOSED" }),
             button({ type: "submit", class: "tribe-action-btn" }, course.status === "CLOSED" ? i18n.schoolReopenCourse : i18n.schoolCloseCourse)
-          )
-        )
-      : null,
-    isTeacher
-      ? div({ class: "tribe-side-actions owner-actions" },
-          form({ method: "GET", action: "/school" },
-            input({ type: "hidden", name: "filter", value: "edit" }),
-            input({ type: "hidden", name: "courseId", value: course.id }),
-            button({ type: "submit", class: "tribe-action-btn" }, i18n.chatUpdate)
-          )
-        )
-      : null,
-    !isTeacher && (isStudent || myPending)
-      ? div({ class: "tribe-side-actions owner-actions" },
-          form({ method: "POST", action: `/school/unenroll/${encodeURIComponent(course.id)}` },
-            button({ type: "submit", class: "tribe-action-btn danger-btn" }, i18n.schoolUnenrollButton)
           )
         )
       : null
@@ -741,8 +722,10 @@ exports.singleCourseView = async (course, lessons = [], certificates = [], param
             isStudent && !isTeacher
               ? renderOpinionsVoting('/school/opinions', course.id, course.opinions, returnTo, course.opinions_inhabitants)
               : null,
-            null
-          )
+            null),
+          Array.isArray(params.comments)
+            ? renderCommentsSection({ action: `/school/course/${encodeURIComponent(course.rootId || course.id)}/comments`, comments: params.comments, returnTo: `/school/course/${encodeURIComponent(course.rootId || course.id)}` })
+            : null
         )
       )
     )
@@ -763,9 +746,10 @@ exports.clearnetCourseView = async (course, lessons = []) => {
 .cn-course-section h2{color:var(--fg);font-size:18px;text-transform:uppercase;letter-spacing:2px;margin:24px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 .cn-course-section p{color:var(--fg-soft);white-space:pre-wrap;line-height:1.6;font-size:15px}
 .cn-lesson{background:var(--bg-sub);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:12px}
-.cn-lesson h3{color:var(--fg);margin:0 0 8px 0;font-size:16px}
-.cn-lesson p{color:var(--fg-soft);white-space:pre-wrap;line-height:1.6;font-size:14px;margin:0}
-.cn-lesson-date{color:var(--fg-dim);font-size:12px;margin-top:8px}
+.cn-lesson-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin:0 0 8px 0}
+.cn-lesson h3{color:var(--fg);margin:0;font-size:16px}
+.cn-lesson-text{color:var(--fg-soft);line-height:1.6;font-size:14px;margin:0}
+.cn-lesson-date{color:var(--fg-dim);font-size:12px}
 `
   const body = `
   <h1 class="cn-course-title">${title}</h1>
@@ -780,9 +764,8 @@ exports.clearnetCourseView = async (course, lessons = []) => {
   ${desc ? `<div class="cn-course-section"><h2>${esc(i18n.description)}</h2><p>${desc}</p></div>` : ""}
   ${visibleLessons.length ? `<div class="cn-course-section"><h2>${esc(i18n.schoolLessons)} (${visibleLessons.length})</h2>${visibleLessons.map(lesson => `
   <div class="cn-lesson">
-    <h3>${esc(lesson.title || "")}</h3>
-    <p>${esc(lesson.text || "")}</p>
-    ${lesson.sessionDate ? `<div class="cn-lesson-date">📅 ${esc(new Date(lesson.sessionDate).toISOString().slice(0, 10))}</div>` : ""}
+    <div class="cn-lesson-head"><h3>${esc(lesson.title || "")}</h3>${lesson.sessionDate ? `<span class="cn-lesson-date">📅 ${esc(new Date(lesson.sessionDate).toISOString().slice(0, 10))}</span>` : ""}</div>
+    <div class="cn-lesson-text">${renderRichText(lesson.text || "")}</div>
   </div>`).join("")}</div>` : ""}
 `
   return renderClearnetPage({
@@ -805,7 +788,7 @@ const renderMaterial = (material, course, isTeacher) => {
   else if (ref && ref.length === 4) {
     const kind = ref[1], name = ref[2], blobId = ref[3]
     const url = `/blob/${encodeURIComponent(blobId)}`
-    if (kind === "pdf") body = div({ class: "pdf-viewer-container", id: `pdf-${material.id.slice(1, 9)}`, "data-pdf-url": url }, a({ href: url }, `📎 ${name || "PDF"}`))
+    if (kind === "pdf") body = renderPdfDocument(url, { title: name || "PDF", preview: true })
     else if (kind === "image") body = img({ src: url, alt: name, class: "school-material-image" })
     else if (kind === "video") body = video({ controls: true, src: url, class: "post-video", preload: 'metadata' })
     else if (kind === "audio") body = audio({ controls: true, src: url })
@@ -833,45 +816,36 @@ exports.singleLessonView = async (course, lesson, materials = [], params = {}) =
   const lessonUrl = `/school/lesson/${encodeURIComponent(course.id)}/${encodeURIComponent(lesson.id)}`
 
   const lessonSide = div({ class: "tribe-side" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(lesson.id, lessonUrl, {
-        author: lesson.author || course.author,
-        reportTitle: lesson.title || course.title,
-        returnTo: courseUrl,
-        deleteAction: String(lesson.author || course.author) === String(userId) ? `/school/lesson/delete/${encodeURIComponent(course.id)}/${encodeURIComponent(lesson.id)}` : undefined
-      })
-    ),
+    renderCardTop(lesson.id, lessonUrl, { arrow: false,
+      date: lesson.createdAt,
+      chips: [renderCourseChips(course)],
+      author: lesson.author || course.author,
+      reportTitle: lesson.title || course.title,
+      returnTo: courseUrl,
+      editAction: isTeacher ? `${lessonUrl}?edit=1` : undefined,
+      deleteAction: String(lesson.author || course.author) === String(userId) ? `/school/lesson/delete/${encodeURIComponent(course.id)}/${encodeURIComponent(lesson.id)}` : undefined
+    }),
     h2({ class: "tribe-card-title" }, a({ href: courseUrl }, course.title)),
-    renderCourseChips(course),
     renderMediaBlob(course.image, '/assets/images/default-avatar.png', { class: 'tribe-detail-image' }),
-    table({ class: "tribe-info-table" },
-      lesson.unit ? tr(
-        td({ class: "tribe-info-label" }, i18n.schoolLessonUnit),
-        td({ class: "tribe-info-value", colspan: "3" }, lesson.unit)
-      ) : null,
-      lesson.sessionDate ? tr(
-        td({ class: "tribe-info-label" }, i18n.schoolSessionDate),
-        td({ class: "tribe-info-value", colspan: "3" }, moment(lesson.sessionDate).format("YYYY/MM/DD HH:mm"))
-      ) : null,
-      tr(
-        td({ class: "tribe-info-label" }, i18n.schoolTeacher),
-        td({ class: "tribe-info-value", colspan: "3" }, userLink(course.author))
-      )
-    ),
+    renderDetailShare(lesson.id, lessonUrl, lesson.title || course.title, null, null, null, lesson.author || course.author),
+    lesson.unit || lesson.sessionDate
+      ? table({ class: "tribe-info-table" },
+          lesson.unit ? tr(
+            td({ class: "tribe-info-label" }, i18n.schoolLessonUnit),
+            td({ class: "tribe-info-value", colspan: "3" }, lesson.unit)
+          ) : null,
+          lesson.sessionDate ? tr(
+            td({ class: "tribe-info-label" }, i18n.schoolSessionDate),
+            td({ class: "tribe-info-value", colspan: "3" }, moment(lesson.sessionDate).format("YYYY/MM/DD HH:mm"))
+          ) : null
+        )
+      : null,
     isStudent
       ? div({ class: "tribe-side-actions" },
           form({ method: "POST", action: `/school/lesson/complete/${encodeURIComponent(course.id)}/${encodeURIComponent(lesson.id)}` },
             input({ type: "hidden", name: "value", value: lesson.completed ? "false" : "true" }),
             input({ type: "hidden", name: "returnTo", value: lessonUrl }),
             button({ type: "submit", class: "tribe-action-btn" }, lesson.completed ? `✓ ${i18n.schoolProgressDone}` : i18n.schoolProgressMark)
-          )
-        )
-      : null,
-    isTeacher
-      ? div({ class: "tribe-side-actions owner-actions" },
-          form({ method: "GET", action: lessonUrl },
-            input({ type: "hidden", name: "edit", value: "1" }),
-            button({ type: "submit", class: "tribe-action-btn" }, i18n.chatUpdate)
           )
         )
       : null
@@ -884,14 +858,14 @@ exports.singleLessonView = async (course, lesson, materials = [], params = {}) =
           form({ method: "POST", action: `/school/lesson/update/${encodeURIComponent(course.id)}/${encodeURIComponent(lesson.id)}` },
             label(i18n.title), br,
             input({ type: "text", name: "title", maxlength: "120", required: true, value: lesson.title || "" }), br(),
-            textarea({ name: "text", rows: 5, required: true, maxlength: "4000" }, lesson.text || ""), br,
+            textarea({ name: "text", rows: 5, required: true }, lesson.text || ""), br,
             label(i18n.schoolLessonUnit), br,
             input({ type: "text", name: "unit", maxlength: "60", value: lesson.unit || "" }), br(),
             label(i18n.schoolLessonOrder), br,
             input({ type: "number", name: "order", min: "0", step: "1", value: lesson.order != null ? String(lesson.order) : "" }), br(), br(),
             label(i18n.schoolSessionDate), br,
             input({ type: "datetime-local", name: "sessionDate", min: moment().format("YYYY-MM-DDTHH:mm"), value: lesson.sessionDate ? moment(lesson.sessionDate).format("YYYY-MM-DDTHH:mm") : "" }), br(), br(),
-            button({ type: "submit" }, i18n.chatUpdate)
+            button({ type: "submit" }, i18n.save)
           )
         )
       : div({ class: "school-lesson" },
@@ -913,11 +887,12 @@ exports.singleLessonView = async (course, lesson, materials = [], params = {}) =
             label(i18n.title), br,
             input({ type: "text", name: "caption", maxlength: "120" }), br(), br(),
             label(i18n.description), br,
-            textarea({ name: "text", rows: 3, maxlength: "2000", placeholder: i18n.schoolMaterialTextPlaceholder }), br,
+            textarea({ name: "text", rows: 3, placeholder: i18n.schoolMaterialTextPlaceholder }), br,
             button({ type: "submit" }, i18n.schoolAddMaterial)
           )
         )
-      : null
+      : null,
+    null
   )
 
   const tpl = template(
@@ -926,8 +901,7 @@ exports.singleLessonView = async (course, lesson, materials = [], params = {}) =
     section(renderModeButtons("all", false, (params && params.modesAvail) || null)),
     section(div({ class: "tribe-details" }, lessonSide, lessonMain))
   )
-  const hasPdf = safeArr(materials).some(m => !m.locked && /\[pdf:/.test(String(m.media || "")))
-  return hasPdf ? `${tpl}<script type="module" src="/js/pdf-viewer.js?v=102"></script>` : tpl
+  return tpl
 }
 
 exports.schoolInvitePage = (code) => {

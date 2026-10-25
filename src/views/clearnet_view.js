@@ -94,8 +94,29 @@ const KIND_KEYS = { audio: 'cnKindAudio', blog: 'cnKindBlog', bookmark: 'cnKindB
 const kindLabel = (kind) => cnText(KIND_KEYS[String(kind || '').toLowerCase()], String(kind || ''));
 const renderKindTag = (kind) => `<span class="cn-kind-tag">[${escapeHtml(kindLabel(kind).toUpperCase())}]</span>`;
 
+const BLOB_ID_RE = /^&([A-Za-z0-9+/=]+)\.sha256$/;
+let missingBlobHook = null;
+const onMissingBlob = (fn) => { missingBlobHook = typeof fn === 'function' ? fn : null; };
+const localBlobPaths = (hex, dir) => {
+  const base = require('path').join(dir, 'blobs', 'sha256', hex.slice(0, 2));
+  return [require('path').join(base, hex.slice(2)), require('path').join(base, hex)];
+};
+const hasLocalBlob = (blobId, dir = null) => {
+  const m = BLOB_ID_RE.exec(String(blobId || ''));
+  if (!m) return false;
+  const hex = Buffer.from(m[1], 'base64').toString('hex');
+  let present = false;
+  try {
+    const fs = require('fs');
+    present = localBlobPaths(hex, dir || require('../server/ssb_config').path).some(p => { try { return fs.statSync(p).size > 0; } catch (_) { return false; } });
+  } catch (_) { present = false; }
+  if (!present && missingBlobHook) { try { missingBlobHook(String(blobId)); } catch (_) {} }
+  return present;
+};
+
 const renderRichText = (s, { links = true, wikiLinks = null } = {}) => renderStyledHtml(s, {
   blobPrefix: '/c/blob/',
+  blobAvailable: hasLocalBlob,
   internalLinks: false,
   links,
   plainUrlClass: 'cn-url',
@@ -117,7 +138,7 @@ const blobIdOf = (v) => {
 
 const blobUrl = (v) => {
   const id = blobIdOf(v);
-  return id ? `/c/blob/${encodeURIComponent(id)}` : null;
+  return id && hasLocalBlob(id) ? `/c/blob/${encodeURIComponent(id)}` : null;
 };
 
 const renderClearnetSelector = (on = false, i18nObj = {}) =>
@@ -193,7 +214,7 @@ const LICENSES = [
   { id: 'LAL-1.3', label: 'Free Art License 1.3', name: 'Free Art License 1.3' }
 ];
 const DEFAULT_LICENSE = LICENSES[0].id;
-const LICENSED_KINDS = new Set(['wiki', 'audio', 'video', 'image', 'document']);
+const LICENSED_KINDS = new Set(['wiki', 'audio', 'video', 'image', 'document', 'file', 'torrent']);
 const licenseInfo = (id) => {
   const v = String(id || '').trim() || DEFAULT_LICENSE;
   return LICENSES.find(l => l.id === v) || null;
@@ -268,6 +289,47 @@ const renderClearnetUrlBlock = ({ baseUrl = '', path, i18nObj = {} }) => {
   );
 };
 
+const CLEARNET_ZOOM_CSS = `
+.cn-zoom{display:contents}
+.cn-zoom img{cursor:zoom-in}
+.cn-lightbox{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.9);align-items:center;justify-content:center}
+.cn-lightbox:target{display:flex}
+.cn-lightbox-link{display:flex;align-items:center;justify-content:center;width:100%;height:100%;cursor:zoom-out}
+.cn-lightbox-img{display:block;max-width:92vw;max-height:88vh;object-fit:contain}
+.cn-lightbox-full{background:#000}
+.cn-lightbox-full .cn-lightbox-img{width:100vw;height:100vh;max-width:100vw;max-height:100vh}
+.cn-lightbox-close,.cn-lightbox-fs{position:absolute;top:14px;z-index:1;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;text-decoration:none;font-size:24px;line-height:1}
+.cn-lightbox-close{right:16px}
+.cn-lightbox-fs{right:66px}
+.cn-lightbox-fs svg{display:block;width:20px;height:20px}
+`;
+const CN_FULLSCREEN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 9 4 4 9 4"/><polyline points="15 4 20 4 20 9"/><polyline points="20 15 20 20 15 20"/><polyline points="9 20 4 20 4 15"/></svg>';
+const cnZoom = (id, src, alt = '', { full = false, imgClass = '' } = {}) => {
+  const zid = `cnz-${String(id).replace(/[^A-Za-z0-9_-]/g, '')}`;
+  const a = escapeHtml(alt);
+  const u = escapeHtml(src);
+  const cls = imgClass ? ` class="${escapeHtml(imgClass)}"` : '';
+  const fs = full ? `<a class="cn-lightbox-fs" href="#${zid}-full" title="${escapeHtml(cnText('liveFullscreen', 'Full screen'))}">${CN_FULLSCREEN_ICON}</a>` : '';
+  return `<a class="cn-zoom" id="${zid}-src" href="#${zid}"><img${cls} src="${u}" alt="${a}"/></a>`
+    + `<div class="cn-lightbox" id="${zid}"><a class="cn-lightbox-close" href="#${zid}-src">×</a>${fs}<a class="cn-lightbox-link" href="#${zid}-src"><img class="cn-lightbox-img" src="${u}" alt="${a}" loading="lazy"/></a></div>`
+    + (full ? `<div class="cn-lightbox cn-lightbox-full" id="${zid}-full"><a class="cn-lightbox-close" href="#${zid}">×</a><a class="cn-lightbox-link" href="#${zid}"><img class="cn-lightbox-img" src="${u}" alt="${a}" loading="lazy"/></a></div>` : '');
+};
+const CN_ZOOM_SKIP = /\bcn-(lightbox-img|footer-logo)\b/;
+const zoomClearnetImages = (html) => {
+  let depth = 0;
+  let n = 0;
+  return String(html || '').replace(/<a\b[^>]*>|<\/a\s*>|<img\b[^>]*>/gi, (tag) => {
+    if (/^<a\b/i.test(tag)) { depth++; return tag; }
+    if (/^<\/a/i.test(tag)) { depth = Math.max(0, depth - 1); return tag; }
+    if (depth > 0) return tag;
+    const cls = (tag.match(/\sclass="([^"]*)"/i) || [])[1] || '';
+    const src = (tag.match(/\ssrc="([^"]*)"/i) || [])[1] || '';
+    if (!src || CN_ZOOM_SKIP.test(cls)) return tag;
+    const alt = (tag.match(/\salt="([^"]*)"/i) || [])[1] || '';
+    const zid = `cnz-i${++n}`;
+    return `<a class="cn-zoom" id="${zid}-src" href="#${zid}">${tag}</a><span class="cn-lightbox" id="${zid}"><a class="cn-lightbox-close" href="#${zid}-src">×</a><a class="cn-lightbox-link" href="#${zid}-src"><img class="cn-lightbox-img" src="${src}" alt="${alt}" loading="lazy"/></a></span>`;
+  });
+};
 const CLEARNET_TEXT_CSS = `
 .cn-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
 .cn-hub-priceline{margin:10px 0 0 0}
@@ -296,8 +358,11 @@ a.tag-link:hover{text-decoration:underline}
 .rt-rule{display:block;border-top:1px solid currentColor;opacity:.4;margin:10px 0}
 .rt-code{font-family:monospace;background:rgba(128,128,128,.18);padding:1px 4px;border-radius:3px;word-break:break-word}
 .rt-code-block{display:block;font-family:monospace;white-space:pre-wrap;background:rgba(128,128,128,.18);padding:10px;border-radius:5px;margin:8px 0;overflow-x:auto;word-break:break-word}
-.post-image{display:block;max-width:100%;height:auto;margin:12px 0;border:1px solid var(--border);border-radius:6px}
-.post-video,.post-audio{display:block;width:100%;max-width:100%;margin:12px 0;border-radius:6px;background:#000}
+.post-image{display:block;width:auto;max-width:100%;max-height:480px;height:auto;margin:12px auto;border:1px solid var(--border);border-radius:6px}
+.post-video{display:block;width:100%;max-width:100%;max-height:480px;margin:12px auto;border-radius:6px;background:#000}
+.post-audio{display:block;width:100%;max-width:100%;margin:12px 0}
+.cn-media-frame img{max-height:480px;width:auto;margin:0 auto}
+.cn-media-frame video{max-height:480px}
 .post-pdf{display:inline-block;margin:8px 0;padding:8px 14px;background:var(--bg-sub);border:1px solid var(--border);border-radius:6px;color:var(--fg);text-decoration:none}
 .post-pdf:hover{border-color:var(--fg)}
 `;
@@ -357,6 +422,8 @@ const getCurrentTheme = () => {
 const getCurrentPalette = () => THEME_PALETTES[getCurrentTheme()] || THEME_PALETTES['Dark-SNH'];
 
 const buildBaseCss = (p) => `
+.cn-pdf-frame{display:block;width:100%;max-width:100%;height:80vh;min-height:520px;border:0;margin:0 0 1rem 0;background:transparent}
+.pending-media{display:flex;align-items:center;justify-content:center;min-height:120px;max-width:480px;padding:16px;border:1px dashed #8a8a8a;border-radius:10px;background:rgba(128,128,128,0.15);color:#a0a0a0;text-align:center;box-sizing:border-box;margin:8px 0}
 :root{
   --bg:${p.bg}; --bg-elev:${p.bgElev}; --bg-sub:${p.bgSub};
   --fg:${p.fg}; --fg-soft:${p.fgSoft}; --fg-dim:${p.fgDim};
@@ -381,10 +448,31 @@ footer.cn-footer .cn-footer-logo{width:56px;height:auto;display:block;margin:0 a
 footer.cn-footer .cn-footer-line{margin:3px 0}
 `;
 
-const renderClearnetPage = ({ title, ogTitle, ogDescription = '', ogImage = null, extraCss = '', body, headerExtra = '', hubFeedId = null }) => {
+const renderRssLink = (href) => `<a class="cn-rss" href="${escapeHtml(href)}" target="_blank" rel="noopener" title="RSS" aria-label="RSS"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="5.5" cy="18.5" r="2.4" fill="currentColor"/><path d="M3.5 10.5a10 10 0 0 1 10 10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M3.5 3.5a17 17 0 0 1 17 17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></a>`;
+
+const renderClearnetHubSearch = ({ type = '', query = '' } = {}) =>
+  `<form class="cn-search" method="GET" action="/c">${type ? `<input type="hidden" name="type" value="${escapeHtml(type)}"/>` : ''}<input type="text" name="q" value="${escapeHtml(query || '')}" placeholder="${escapeHtml(cnText('cnSearchPlaceholder', 'Search…'))}" autocomplete="off"/></form>`;
+
+const cnAbsolute = (href) => {
+  const base = cnScope().cnBase || '';
+  return base && /^\//.test(String(href || '')) ? `${base}${href}` : String(href || '');
+};
+const cnCanonical = (override) => {
+  const scope = cnScope();
+  if (!scope.cnBase) return '';
+  const target = override || scope.cnCanonical;
+  if (target) return cnAbsolute(target);
+  const params = new URLSearchParams(String(scope.query || ''));
+  params.delete('lang');
+  const qs = params.toString();
+  return cnAbsolute(`${scope.path || '/c'}${qs ? `?${qs}` : ''}`);
+};
+const renderClearnetPage = ({ title, ogTitle, ogDescription = '', ogImage = null, ogType = 'website', canonical = '', extraCss = '', body, headerExtra = null, hubFeedId = null, feed = '' }) => {
   const safeTitle = escapeHtml(title || 'Oasis');
   const safeOgTitle = escapeHtml(ogTitle || title || 'Oasis');
   const safeOgDesc = escapeHtml(ogDescription || '');
+  const canonicalUrl = cnCanonical(canonical);
+  const ogImageUrl = ogImage ? escapeHtml(cnAbsolute(ogImage)) : '';
   // guard o-sdk (WP-O132, D-O30): el idioma es una variable global del proceso (main_views.js) y la ruta
   // esperó (await) entre fijarlo y llegar aquí: otra petición pudo cambiarlo. Se re-afirma el de ESTA petición
   // (lo dejó el middleware en el scope) justo antes del render, que es síncrono.
@@ -403,18 +491,25 @@ const renderClearnetPage = ({ title, ogTitle, ogDescription = '', ogImage = null
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>${safeTitle}</title>
+  <meta property="og:site_name" content="Oasis HUB"/>
+  <meta property="og:type" content="${escapeHtml(ogType)}"/>
   <meta property="og:title" content="${safeOgTitle}"/>
   <meta property="og:description" content="${safeOgDesc}"/>
-  ${ogImage ? `<meta property="og:image" content="${ogImage}"/>` : ''}
+  ${ogImageUrl ? `<meta property="og:image" content="${ogImageUrl}"/>` : ''}
+  ${canonicalUrl ? `<meta property="og:url" content="${escapeHtml(canonicalUrl)}"/>\n  <link rel="canonical" href="${escapeHtml(canonicalUrl)}"/>` : ''}
+  <meta name="twitter:card" content="${ogImageUrl ? 'summary_large_image' : 'summary'}"/>
   <meta name="description" content="${safeOgDesc}"/>
   <meta name="robots" content="index, follow"/>
   <link rel="icon" href="/c/assets/images/favicon.svg"/>
-  <style>${baseCss}${CLEARNET_SEARCH_CSS}${CLEARNET_TEXT_CSS}${extraCss}
+  ${feed ? `<link rel="alternate" type="application/rss+xml" title="${safeTitle}" href="${escapeHtml(feed)}"/>` : ''}
+  <style>${baseCss}${CLEARNET_SEARCH_CSS}${CLEARNET_TEXT_CSS}${CLEARNET_ZOOM_CSS}${extraCss}
 .cn-brand-link{display:block;text-decoration:none}
 
 .cn-brand-link:hover .cn-brand{color:var(--accent)}
 .cn-brand-link:hover{text-decoration:none}
 .cn-header-extra{gap:10px}
+.cn-rss{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;background:var(--bg-sub);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;line-height:0;text-decoration:none}
+.cn-rss:hover{border-color:var(--fg);color:var(--accent);text-decoration:none}
 .cn-lang{position:relative;flex:0 0 auto;font-size:13px;outline:none}
 .cn-lang-current{display:block;cursor:pointer;background:var(--bg-sub);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-weight:600;letter-spacing:1px;user-select:none}
 .cn-lang:focus-within .cn-lang-current,.cn-lang:hover .cn-lang-current{border-color:var(--fg)}
@@ -427,9 +522,9 @@ const renderClearnetPage = ({ title, ogTitle, ogDescription = '', ogImage = null
 <body>
   <header class="cn-header">
     ${brandBlock}
-    <div class="cn-header-extra">${renderLangSelector(lang)}${renderThemeSelector(getCurrentTheme())}${propagateQuery(headerExtra || '', visitor)}</div>
+    <div class="cn-header-extra">${renderLangSelector(lang)}${renderThemeSelector(getCurrentTheme())}${renderRssLink(cnWithLang(feed || '/c/rss', langOverride))}${propagateQuery(headerExtra == null ? renderClearnetHubSearch() : headerExtra, visitor)}</div>
   </header>
-  ${propagateQuery(stripInternalAnchors(body), visitor)}
+  ${propagateQuery(stripInternalAnchors(zoomClearnetImages(body)), visitor)}
   <footer class="cn-footer">
     <a href="https://wiki.solarnethub.com" target="_blank" rel="noopener"><img class="cn-footer-logo" src="/c/assets/images/snh-oasis.jpg" alt="Oasis"/></a>
     <div class="cn-footer-line">${escapeHtml(cnText('cnSyncedPeers', 'Synced-peers'))}: [ <strong>${Number(sharedState.getSyncedPeerCount ? sharedState.getSyncedPeerCount() : 0) || 0}</strong> ]</div>
@@ -480,6 +575,64 @@ const renderClearnetPager = ({ base, params = {}, page, pages, per, total, pageP
   return `<div class="cn-pager">${sizeLinks}${info}${prev}${next}</div>`;
 };
 
+const CLEARNET_PDF_CSS = `
+.pdf-holder{display:block}
+.cn-pdf-frame:target{position:fixed;inset:0;z-index:100000;width:100vw;max-width:none;height:100vh;margin:0;background:var(--bg)}
+.pdf-unmax{display:none}
+.cn-pdf-frame:target+.pdf-unmax{display:block;position:fixed;top:10px;right:18px;z-index:100001;background:var(--bg-sub);color:var(--fg);padding:.4rem .8rem;border-radius:4px;font-size:1rem;text-decoration:none}
+html.pdf-embed-root,body.pdf-embed{height:100%}
+body.pdf-embed{max-width:none;width:auto;margin:0;padding:0;overflow:hidden;background:transparent}
+.pdf-viewer-container{box-sizing:border-box;width:100%;max-width:100%;background:var(--bg-elev);margin-bottom:1rem;padding:1rem;border-radius:6px;border:1px solid var(--border)}
+.pdf-embedded{display:flex;flex-direction:column;height:100%;margin-bottom:0}
+.pdf-canvas-wrap{display:flex;align-items:center;justify-content:center;box-sizing:border-box;height:420px;overflow:hidden}
+.pdf-wrap-scroll{display:block;overflow:auto}
+.pdf-embedded .pdf-canvas-wrap{flex:1 1 auto;height:auto;min-height:0}
+.pdf-page-image{display:block;box-sizing:border-box;width:auto;height:auto;margin:0 auto;border:1px solid var(--border);background-color:#fff}
+.pdf-z50{max-width:50%;max-height:50%}.pdf-z75{max-width:75%;max-height:75%}.pdf-z100{max-width:100%;max-height:100%}.pdf-z125{width:100%}.pdf-z150{width:150%}.pdf-z200{width:200%}.pdf-z300{width:300%}
+.pdf-viewer-container .pdf-controls{flex-shrink:0;margin-top:1rem}
+.pdf-viewer-container .pdf-controls a,.pdf-viewer-container .pdf-controls span{display:inline-block;margin:0 4px 4px 0;background-color:var(--bg-sub);color:var(--fg);border:none;padding:.4rem .8rem;font-size:1rem;line-height:1.2;text-decoration:none;cursor:pointer;border-radius:4px;transition:background-color .2s ease}
+.pdf-viewer-container .pdf-controls a:hover{background-color:var(--border)}
+.pdf-viewer-container .pdf-controls .pdf-off{opacity:.4;cursor:default}
+.pdf-message{padding:12px;color:var(--fg-soft);text-align:center}
+.pdf-maximized{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;width:100%;height:100vh;margin:0;padding:6px;border-radius:0;background:var(--bg)}
+.pdf-maximized .pdf-canvas-wrap{flex:1 1 auto;height:auto;max-height:none}
+.pdf-maximized .pdf-controls{flex-shrink:0;margin:6px 0}
+`;
+const clearnetPdfHref = (path, src, t) => {
+  const lang = cnScope().cnLang || '';
+  return `${path}?${new URLSearchParams({ src: String(src || ''), ...(t ? { title: String(t).slice(0, 200) } : {}), ...(lang ? { lang } : {}) })}`;
+};
+const renderPdfViewer = (...args) => mv().renderPdfViewer(...args);
+const renderClearnetPdfFrame = (blob, t) => {
+  if (!blob) return '';
+  const fid = require('../backend/pdf_view').frameIdOf(blob);
+  return `<span class="pdf-holder"><object id="${fid}" class="cn-pdf-frame" type="text/html" data="${escapeHtml(`${clearnetPdfHref('/c/pdf/embed', blob, t)}&fid=${fid}`)}" title="${escapeHtml(t || 'PDF')}" aria-label="${escapeHtml(t || 'PDF')}"></object><a href="#" class="pdf-unmax" title="${escapeHtml(cnText('pdfClose', 'Close'))}">✕</a></span>`;
+};
+const clearnetPdfViewer = (state, { title: t = '', back = '', embed = false } = {}) => {
+  const lang = cnScope().cnLang || '';
+  const keep = { src: state && state.src, title: t || null, back: back || null, lang: lang || null };
+  return renderPdfViewer(state, { title: t, prefix: '/c', base: embed ? '/c/pdf/embed' : '/c/pdf', keep, embed, back }).outerHTML;
+};
+const renderClearnetPdfEmbed = (state, { title: t = '', back = '' } = {}) => {
+  const lang = escapeHtml(mv().getLanguage ? mv().getLanguage() : 'en');
+  return `<!DOCTYPE html>
+<html lang="${lang}" class="pdf-embed-root">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="robots" content="noindex"/>
+  <title>${escapeHtml(t || 'PDF')}</title>
+  <style>${buildBaseCss(getCurrentPalette())}${CLEARNET_PDF_CSS}</style>
+</head>
+<body class="pdf-embed">${clearnetPdfViewer(state, { title: t, back, embed: true })}</body>
+</html>`;
+};
+const renderClearnetPdfView = (state, { title: t = '', back = '' } = {}) => renderClearnetPage({
+  title: t || 'PDF',
+  extraCss: CLEARNET_PDF_CSS,
+  body: `${back ? `<p><a class="cn-media-doc" href="${escapeHtml(back)}">← ${escapeHtml(cnText('goBack', 'Go back'))}</a></p>` : ''}<h1 class="cn-media-title">${escapeHtml(t || 'PDF')}</h1>${clearnetPdfViewer(state, { title: t, back })}`
+});
+
 const renderClearnetMediaView = ({ kind, item }) => {
   const blob = blobUrl(item.url);
   const title = escapeHtml(item.title || cnText('cnUntitled', 'Untitled'));
@@ -495,7 +648,7 @@ const renderClearnetMediaView = ({ kind, item }) => {
 .cn-media-frame audio,.cn-media-frame video{width:100%;max-width:100%;display:block;border-radius:6px;background:#000}
 .cn-media-frame .cn-media-doc{display:inline-block;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere;background:var(--bg-elev);border:1px solid var(--border);border-radius:6px;padding:10px 18px;color:var(--fg);text-decoration:none}
 .cn-media-frame .cn-media-doc:hover{border-color:var(--fg)}
-.cn-media-frame .cn-media-docs{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.cn-media-frame .cn-media-docs{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px}
 `;
   const fileKind = kind === 'document' || kind === 'torrent' || kind === 'file';
   let mediaHtml = '';
@@ -508,14 +661,16 @@ const renderClearnetMediaView = ({ kind, item }) => {
       mediaHtml = `<video controls preload="metadata" src="${blob}"></video>`;
     } else if (kind === 'file' || kind === 'torrent') {
       const dlName = (v) => String(v || '').replace(/[\\/:*?"<>|\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
-      const dlLink = (href, name) => `<a class="cn-media-doc" href="${href}?name=${encodeURIComponent(name)}" rel="noopener">⇩ ${escapeHtml(name)}</a>`;
+      const extLabel = (name) => { const m = String(name || '').match(/\.([A-Za-z0-9]{1,8})$/); return m ? m[1].toUpperCase() : 'FILE'; };
+      const dlLink = (href, name, label) => `<a class="cn-media-doc" href="${href}?name=${encodeURIComponent(name)}" rel="noopener" title="${escapeHtml(name)}">\u2B07 ${escapeHtml(label)}</a>`;
       const original = kind === 'file' ? blob : blobUrl(item.source);
       const originalName = dlName(kind === 'file' ? item.fileName : item.sourceName) || dlName(item.title) || 'file';
       const torrentBlob = kind === 'file' ? blobUrl(item.torrentUrl) : blob;
       const torrentName = `${kind === 'file' ? originalName : (dlName(item.title) || 'download').replace(/\.torrent$/i, '')}.torrent`;
-      mediaHtml = `<div class="cn-media-docs">${[original ? dlLink(original, originalName) : '', torrentBlob ? dlLink(torrentBlob, torrentName) : ''].filter(Boolean).join('')}</div>`;
+      const magnet = typeof item.magnet === 'string' && item.magnet.startsWith('magnet:?') ? `<a class="cn-media-doc" href="${escapeHtml(item.magnet)}" rel="noopener">\u2B07 ${escapeHtml(cnText('torrentMagnet', 'MAGNET'))}</a>` : '';
+      mediaHtml = `<div class="cn-media-docs">${[original ? dlLink(original, originalName, extLabel(originalName)) : '', torrentBlob ? dlLink(torrentBlob, torrentName, 'TORRENT') : '', magnet].filter(Boolean).join('')}</div>`;
     } else if (kind === 'document') {
-      mediaHtml = `<a class="cn-media-doc" href="${blob}" target="_blank" rel="noopener">⇩ ${title}</a>`;
+      mediaHtml = renderClearnetPdfFrame(blob, item.title);
     } else {
       mediaHtml = `<img src="${blob}" alt="${title}"/>`;
     }
@@ -540,13 +695,13 @@ const renderClearnetMediaView = ({ kind, item }) => {
     ogTitle: item.title || (kind ? kindLabel(kind) : 'Oasis'),
     ogDescription: item.description || '',
     ogImage: (kind === 'image') ? blob : null,
-    extraCss,
+    extraCss: kind === 'document' ? extraCss + CLEARNET_PDF_CSS : extraCss,
     body,
     hubFeedId: item.author || null
   });
 };
 
-const renderClearnetPodcastView = ({ channel }) => {
+const renderClearnetPodcastView = ({ channel, feed = '' }) => {
   const title = escapeHtml(channel.title || cnText('cnUntitled', 'Untitled'));
   const desc = renderRichText(channel.description || '');
   const cover = channel.cover && channel.cover.blobId ? blobUrl(channel.cover.blobId) : null;
@@ -573,7 +728,7 @@ const renderClearnetPodcastView = ({ channel }) => {
     return `<div class="cn-episode"><h2>#${Number(ep.number) || 0} · ${escapeHtml(ep.title || '')}</h2><div class="cn-episode-meta">${epDate}</div>${player}${ep.description ? `<p>${renderRichText(ep.description)}</p>` : ''}</div>`;
   }).join('');
   const body = `
-  <div class="cn-media-meta">${renderKindTag('podcast')}${dateStr ? `<span>📅 ${dateStr}</span>` : ''}<span>🎧 ${episodes.length}</span></div>
+  <div class="cn-media-meta">${renderKindTag('podcast')}${dateStr ? `<span>📅 ${dateStr}</span>` : ''}<span>🎧 ${episodes.length}</span>${renderClearnetLicense(channel.license)}${feed ? `<a class="cn-license" href="${escapeHtml(feed)}">RSS</a>` : ''}</div>
   <h1 class="cn-media-title">${title}</h1>
   ${cover ? (coverIsVideo ? `<video class="cn-podcast-cover" controls muted preload="metadata" src="${cover}"></video>` : `<img class="cn-podcast-cover" src="${cover}" alt="${title}"/>`) : ''}
   ${desc ? `<p class="cn-media-desc">${desc}</p>` : ''}
@@ -586,11 +741,13 @@ const renderClearnetPodcastView = ({ channel }) => {
     ogImage: cover && !coverIsVideo ? cover : null,
     extraCss,
     body,
+    feed,
     hubFeedId: channel.author || null
   });
 };
 
 module.exports = {
+  cnZoom,
   THEMES,
   kindLabel,
   renderTagChips,
@@ -617,10 +774,17 @@ module.exports = {
   renderDoubleEncryptionChip,
   renderClearnetUrlBlock,
   renderClearnetSearchForm,
+  renderClearnetHubSearch,
   renderClearnetPage,
   renderClearnetNotFound,
   CLEARNET_PAGER_CSS,
   paginateClearnet,
   renderClearnetPager,
-  renderClearnetMediaView
+  renderClearnetMediaView,
+  renderClearnetPdfEmbed,
+  renderClearnetPdfView,
+  renderClearnetPdfFrame,
+  hasLocalBlob,
+  onMissingBlob,
+  CLEARNET_PDF_CSS
 };

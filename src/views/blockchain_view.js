@@ -4,7 +4,7 @@ const moment = require("../server/node_modules/moment");
 
 const FILTER_LABELS = {
   votes: i18n.typeVotes, vote: i18n.typeVote, recent: i18n.recent, all: i18n.all,
-  mine: i18n.mine, tombstone: i18n.typeTombstone, logs: i18n.typeLog || 'LOGS', pixelia: i18n.typePixelia,
+  mine: i18n.mine, supported: i18n.filterSupported, replicated: i18n.filterReplicated, tombstone: i18n.typeTombstone, logs: i18n.typeLog || 'LOGS', pixelia: i18n.typePixelia,
   curriculum: i18n.typeCurriculum, document: i18n.typeDocument, bookmark: i18n.typeBookmark,
   feed: i18n.typeFeed, event: i18n.typeEvent, task: i18n.typeTask, report: i18n.typeReport,
   image: i18n.typeImage, audio: i18n.typeAudio, video: i18n.typeVideo, post: i18n.typePost,
@@ -15,8 +15,11 @@ const FILTER_LABELS = {
   map: i18n.typeMap, shop: i18n.typeShop, shopProduct: i18n.typeShopProduct || 'Shop Product',
   pad: i18n.typePad || 'PAD', room: i18n.typeRoom || 'ROOM', roomMember: i18n.typeRoomMember || 'ROOM PARTICIPANT', wikiPage: i18n.typeWiki || 'WIKI', emergency: i18n.typeEmergency || 'EMERGENCY', emergencyConfirm: i18n.typeEmergencyConfirm || 'EMERGENCY CONFIRM', emergencyUpdate: i18n.typeEmergencyUpdate || 'EMERGENCY UPDATE', mailingList: i18n.typeMailingList || 'MAILING LIST', logisticsRoute: i18n.typeLogisticsRoute || 'ROUTE', logisticsRating: i18n.typeLogisticsRating || 'ROUTE RATING', podcast: i18n.typePodcast || 'PODCAST', podcastEpisode: i18n.typePodcastEpisode || 'EPISODE', podcastOpinion: i18n.typePodcastOpinion || 'EPISODE OPINION', podcastPlay: i18n.typePodcastPlay || 'EPISODE PLAY', campaign: i18n.typeCampaign || 'CAMPAIGN', campaignSignature: i18n.typeCampaignSignature || 'SIGNATURE', campaignUpdate: i18n.typeCampaignUpdate || 'CAMPAIGN UPDATE', chat: i18n.typeChat || 'CHAT', gameScore: i18n.typeGameScore || 'GAME SCORE',
   calendar: i18n.typeCalendar || 'CALENDAR', torrent: i18n.typeTorrent, file: i18n.typeFile,
-  school: i18n.typeSchool || 'SCHOOL'
+  school: i18n.typeSchool || 'SCHOOL', comment: i18n.typeComment
 };
+
+const blockKind = (block) => block && block.type === 'post' && block.content && typeof block.content.root === 'string' ? 'comment' : block && block.type;
+const blockLabel = (block) => FILTER_LABELS[blockKind(block)] || blockKind(block);
 
 const BASE_FILTERS = ['all', 'recent', 'mine', 'tombstone', 'logs'];
 const CAT_BLOCK1  = ['votes', 'event', 'task', 'report', 'calendar', 'school', 'parliament', 'courts'];
@@ -65,6 +68,8 @@ const toQueryString = (filter, search = {}) => {
 const filterBlocks = (blocks, filter, userId) => {
   if (filter === 'recent') return blocks.filter(b => Date.now() - b.ts < 24*60*60*1000);
   if (filter === 'mine') return blocks.filter(b => b.author === userId);
+  if (filter === 'supported') return blocks.filter(b => b.isSupported);
+  if (filter === 'replicated') return blocks.filter(b => b.isReplicated);
   if (filter === 'all') return blocks;
   if (filter === 'banking') return blocks.filter(b => b.type === 'bankWallet' || b.type === 'bankClaim');
   if (filter === 'parliament') {
@@ -78,7 +83,7 @@ const filterBlocks = (blocks, filter, userId) => {
   if (filter === 'shop') return blocks.filter(b => b.type === 'shop' || b.type === 'shopProduct');
   if (filter === 'school') return blocks.filter(b => ['schoolCourse', 'schoolLesson', 'schoolEnroll', 'schoolCertificate'].includes(b.type));
   if (filter === 'logs') return blocks.filter(b => b.type === 'log' && b.author === userId);
-  return blocks.filter(b => b.type === filter);
+  return blocks.filter(b => blockKind(b) === filter);
 };
 
 const computeStats = (blocks) => {
@@ -87,7 +92,7 @@ const computeStats = (blocks) => {
   const byAuthor = new Map();
   for (const b of arr) {
     if (!b || !b.type) continue;
-    byType.set(b.type, (byType.get(b.type) || 0) + 1);
+    byType.set(blockKind(b), (byType.get(blockKind(b)) || 0) + 1);
     if (b.author) byAuthor.set(b.author, (byAuthor.get(b.author) || 0) + 1);
   }
   const typeBreakdown = Array.from(byType.entries())
@@ -252,7 +257,7 @@ const renderBlockDiagram = (blocks, qs) => {
     h3({ class: 'block-diagram-title' }, i18n.blockchainLatestDatagram || 'Latest Datagram'),
     ...last2.map(block => {
       const ts = moment(block.ts).format('YYYY-MM-DD HH:mm:ss');
-      const typeLabel = (FILTER_LABELS[block.type] || block.type).toUpperCase();
+      const typeLabel = blockLabel(block).toUpperCase();
       const color = TYPE_COLORS[block.type] || '#95a5a6';
       const shortId = block.id.length > 20 ? block.id.slice(0, 10) + '…' + block.id.slice(-8) : block.id;
       const shortAuthor = block.author.length > 20 ? block.author.slice(0, 10) + '…' + block.author.slice(-8) : block.author;
@@ -337,7 +342,7 @@ const renderSingleBlockView = (block, filter = 'recent', userId, search = {}, vi
   const isDatagram = viewMode === 'datagram';
 
   const blockContent = restricted
-    ? div(
+    ? div({ class: 'block-detail' },
         div({ class: 'block-single' },
           div({ class: 'block-row block-row--meta' },
             span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockID}:`),
@@ -345,7 +350,7 @@ const renderSingleBlockView = (block, filter = 'recent', userId, search = {}, vi
           ),
           div({ class: 'block-row block-row--meta' },
             span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockType}:`),
-            span({ class: 'blockchain-card-value' }, (FILTER_LABELS[block.type]||block.type).toUpperCase())
+            span({ class: 'blockchain-card-value' }, blockLabel(block).toUpperCase())
           ),
           div({ class: 'block-row block-row--meta' },
             span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockTimestamp}:`),
@@ -358,7 +363,7 @@ const renderSingleBlockView = (block, filter = 'recent', userId, search = {}, vi
       )
     : isDatagram
       ? renderBlockDiagram([block], qs)
-      : div(
+      : div({ class: 'block-detail' },
           div({ class: 'block-single' },
             div({ class: 'block-row block-row--meta' },
               span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockID}:`),
@@ -366,10 +371,10 @@ const renderSingleBlockView = (block, filter = 'recent', userId, search = {}, vi
             ),
             div({ class: 'block-row block-row--meta' },
               span({ class: 'blockchain-card-label' }, `${i18n.blockchainBlockType}:`),
-              span({ class: 'blockchain-card-value' }, (FILTER_LABELS[block.type]||block.type).toUpperCase())
+              span({ class: 'blockchain-card-value' }, blockLabel(block).toUpperCase())
             ),
             div({ class: 'block-row block-row--meta' },
-              span({ class: 'blockchain-card-label' }, `${i18n.oasisIdLabel || 'OasisID'}:`),
+              span({ class: 'blockchain-card-label' }, `${i18n.oasisIdLabel || 'Oasis ID'}:`),
               a({ href:`/author/${encodeURIComponent(block.author)}`, class:'block-author user-link' }, block.author)
             )
           ),
@@ -426,7 +431,7 @@ const renderSingleBlockView = (block, filter = 'recent', userId, search = {}, vi
           button({ type:'submit', class:'filter-btn' }, `← ${i18n.blockchainBack}`)
         ),
         !block.isTombstoned && !block.isReplaced && getViewDetailsAction(block.type, block) ?
-          a({ href:getViewDetailsAction(block.type, block), class:'btn-singleview btn-content', title:i18n.visitContent }, renderIcon('open'))
+          a({ href:getViewDetailsAction(block.type, block), class:'filter-btn' }, `${i18n.visitContent} →`)
         : (block.isTombstoned || block.isReplaced) ?
           div({ class: 'deleted-label' },
             i18n.blockchainContentDeleted || "This content has been deleted."
@@ -450,7 +455,7 @@ const renderBlockchainView = (blocks, filter, userId, search = {}, extras = {}) 
   const qs = toQueryString(filter, s);
   const censusBlocks = Array.isArray(extras && extras.censusBlocks) ? extras.censusBlocks : blocks;
   const chipVisible = (mode) => mode === filter || filterBlocks(censusBlocks, mode, userId).length > 0;
-  const baseChips = ['all', 'recent', 'mine', ...(chipVisible('tombstone') ? ['tombstone'] : []), ...(chipVisible('logs') ? ['logs'] : [])];
+  const baseChips = ['all', 'recent', 'mine', ...['supported', 'replicated'].filter(chipVisible), ...(chipVisible('tombstone') ? ['tombstone'] : []), ...(chipVisible('logs') ? ['logs'] : [])];
 
   return template(
     i18n.blockchain,
@@ -492,7 +497,6 @@ const renderBlockchainView = (blocks, filter, userId, search = {}, extras = {}) 
 	),
       div({ id: 'inspect', class: 'blockexplorer-inspect' },
         h3(i18n.bankTaxesLookupTitle || 'Inspect a block'),
-        p(i18n.bankTaxesLookupNote || 'Enter a block ID to look it up in your local feed. The inspector shows the block ID (linked to its detail page), its author, its content type, its size in bytes, its carbon footprint and its ECO tax in ECO.'),
         form({ method: 'GET', action: '/blockexplorer', class: 'blockexplorer-search-form' },
           input({ type: 'hidden', name: 'filter', value: filter }),
           div({ class: 'blockexplorer-search-row' },
@@ -550,7 +554,7 @@ const renderBlockchainView = (blocks, filter, userId, search = {}, extras = {}) 
                   table({ class:'block-info-table' },
                     tr(td({ class:'card-label' }, i18n.blockchainBlockTimestamp), td({ class:'card-value' }, moment(block.ts).format('YYYY-MM-DDTHH:mm:ss.SSSZ'))),
                     tr(td({ class:'card-label' }, i18n.blockchainBlockID),        td({ class:'card-value' }, block.id)),
-                    tr(td({ class:'card-label' }, i18n.blockchainBlockType),      td({ class:'card-value' }, (FILTER_LABELS[block.type]||block.type).toUpperCase())),
+                    tr(td({ class:'card-label' }, i18n.blockchainBlockType),      td({ class:'card-value' }, blockLabel(block).toUpperCase())),
                     tr(td({ class:'card-label' }, i18n.blockchainBlockAuthor),    td({ class:'card-value' }, a({ href:`/author/${encodeURIComponent(block.author)}`, class:'block-author user-link' }, block.author))),
                     tr(td({ class:'card-label' }, i18n.blockchainBlockCarbon || 'Carbon footprint'), td({ class:'card-value' }, formatCarbon(block.size)))
                   )

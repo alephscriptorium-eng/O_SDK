@@ -2,7 +2,7 @@
 // =============================================================================
 // upgrade-patches-audit.js — ¿qué parches de upstream trae ya lo vendorizado?
 //
-// Upstream parchea sus dependencias con `scripts/patch-node-modules.js` (lo corre
+// Upstream parchea sus dependencias con `patch-node-modules.js` (`scripts/` hasta 1.3.2, `src/patches/` después; lo corre
 // install.sh, bare metal). Desde Oasis 1.2 las dependencias vienen vendorizadas en
 // `src/base/node_modules` y el fork no corre ese script sobre el repo: lo que
 // importa es si lo vendorizado YA lleva cada parche. Hasta WP-O124 eso se
@@ -11,7 +11,7 @@
 // escribe: registra) sobre el árbol de trabajo y dice, por parche, qué pasó.
 //
 // Uso: node devops/scripts/upgrade-patches-audit.js <ref> [--tree <dir>] [--tsv]
-//   <ref>   commit de upstream cuyo scripts/patch-node-modules.js se audita (NEW_REF)
+//   <ref>   commit de upstream cuyo patch-node-modules.js se audita (NEW_REF)
 //   --tree  raíz del árbol a auditar (por defecto el repo). Dentro, `src/server/node_modules`
 //           se resuelve a `src/base/node_modules` (en Windows el enlace del checkout es un
 //           fichero de texto, y el Dockerfile lo recrea de todas formas).
@@ -52,16 +52,26 @@ if (!ref) {
   process.exit(2);
 }
 
-let script;
-try {
-  script = execFileSync('git', ['-C', repoRoot, 'show', `${ref}:scripts/patch-node-modules.js`], { encoding: 'utf8' });
-} catch (e) {
-  console.error(`no pude leer ${ref}:scripts/patch-node-modules.js: ${e.message.split('\n')[0]}`);
+// Dónde vive el script en la ref: hasta 1.3.2 `scripts/patch-node-modules.js`; desde 1.3.3
+// `src/patches/patch-node-modules.js` (viaja con el overlay). Se prueba primero la ruta nueva.
+const CANDIDATES = ['src/patches/patch-node-modules.js', 'scripts/patch-node-modules.js'];
+let script = null;
+let scriptPath = null;
+for (const c of CANDIDATES) {
+  try {
+    script = execFileSync('git', ['-C', repoRoot, 'show', `${ref}:${c}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    scriptPath = c;
+    break;
+  } catch (_) { /* siguiente candidato */ }
+}
+if (!script) {
+  console.error(`no pude leer ${ref}:{${CANDIDATES.join('|')}}`);
   process.exit(2);
 }
 
-// El script resuelve rutas con path.resolve(__dirname, '../src/...'): __dirname debe ser <tree>/scripts.
-const fakeFile = path.join(tree, 'scripts', '__upgrade-patches-audit__.js');
+// El script resuelve rutas con path.resolve(__dirname, '../server/...') (o '../src/...' en la ruta
+// vieja): __dirname debe ser la carpeta del script dentro de <tree>.
+const fakeFile = path.join(tree, path.dirname(scriptPath), '__upgrade-patches-audit__.js');
 const mapPath = (p) => {
   const abs = path.resolve(String(p));
   return abs.replace(/([\\/])src[\\/]server[\\/]node_modules([\\/])/, '$1src$1base$1node_modules$2');
@@ -123,7 +133,7 @@ const rows = probes.map((p, i) => {
   return [i + 1, st, p.file, p.msgs.join(' | ') || '-'];
 });
 if (!tsvOnly) {
-  realLog(`# parches de ${ref}:scripts/patch-node-modules.js sobre ${tree}`);
+  realLog(`# parches de ${ref}:${scriptPath} sobre ${tree}`);
   realLog('n\testado\tfichero\tmensaje');
 }
 for (const r of rows) realLog(r.join('\t'));

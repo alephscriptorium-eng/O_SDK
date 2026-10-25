@@ -30,7 +30,7 @@ config = mergeDeep(config, configData);
 
 const debug = process.argv.includes('--debug') || process.env.OASIS_DEBUG === '1' || process.env.OASIS_DEBUG === 'true';
 if (debug) {
-  config.logging = { ...(config.logging || {}), level: 'debug' };
+  config.logging = { ...(config.logging || {}), level: 'info' };
 }
 
 const overridePath = process.env.OASIS_SERVER_CONFIG_OVERRIDE;
@@ -44,6 +44,14 @@ config.blobs = config.blobs || {};
 config.blobs.max = 50 * megabyte;
 
 config.db2 = { automigrate: false, dangerouslyKillFlumeWhenMigrated: false, ...(config.db2 || {}) };
+
+const envPort = Number(process.env.ssb_port);
+if (Number.isInteger(envPort) && envPort > 0 && envPort < 65536) {
+  config.port = envPort;
+  for (const entry of (config.connections && config.connections.incoming && config.connections.incoming.net) || []) {
+    if (entry && typeof entry === 'object') entry.port = envPort;
+  }
+}
 
 const lanOn = (() => { try { return require('../configs/config-manager').getConfig().lanBroadcasting !== false; } catch (_) { return true; } })();
 const bindHost = config.pub ? '0.0.0.0' : lanOn ? null : '127.0.0.1';

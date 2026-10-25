@@ -4,11 +4,13 @@ const RAW_HTML = Symbol.for('oasis.rawHtml');
 const { renderStyledText, renderStyledHtml, escapeHtml } = require("../backend/renderStyledText");
 
 const moment = require("../server/node_modules/moment");
-const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderDocumentActions, renderInviteQrCard, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged, renderIcon } = require("./main_views");
+const { renderCommentsSection } = require("./comments_view");
+const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderLifespanChip, renderCardTop, renderSpreadEditWarning, renderDocumentActions, renderInviteQrCard, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged, renderIcon, renderOpinionsVoting, renderEditedChip, renderMediaLockNote, renderEngagement, renderDetailShare, hasRelation, renderRelationFilters } = require("./main_views");
 const { renderEncryptedChip, renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderTribeOriginChip } = require("./clearnet_view");
 const { config } = require("../server/SSB_server.js");
 const { renderMapHtml, resolveView, makeView, fitView, parseView, viewParam, parsePick, MIN_ZOOM, MAX_ZOOM } = require("../maps/map_renderer");
 const { searchPlaces, nearestPlace } = require("../maps/map_data");
+const mapIsOpen = (m) => !!m && !m.tribeId && !m.encrypted && !m.contentEncrypted && String(m.mapType || '').toUpperCase() === 'OPEN';
 
 const userId = config.keys.id;
 const safeArr = (v) => (Array.isArray(v) ? v : []);
@@ -144,11 +146,7 @@ const renderMapUrl = (mapObj) =>
 const renderMapOwnerActions = (filter, mapObj, params = {}) => {
   const returnTo = buildReturnTo(filter, params);
   if (String(mapObj.author) !== String(userId)) return [];
-  const actions = [
-    form({ method: "GET", action: `/maps/edit/${encodeURIComponent(mapObj.key)}` },
-      input({ type: "hidden", name: "returnTo", value: returnTo }),
-      button({ class: "update-btn", type: "submit" }, i18n.mapUpdateButton))
-  ];
+  const actions = [];
   const invitable = !mapObj.tribeId && mapObj.mapType === "CLOSED";
   if (invitable) {
     actions.push(form({ method: "POST", action: `/maps/generate-invite/${encodeURIComponent(mapObj.key)}` },
@@ -179,6 +177,7 @@ const renderFilters = (filter, q, emptyMod = false, chip = null, search = null) 
       button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.mapFilterAll).toUpperCase()),
       ...(!chip || chip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.mapFilterRecent).toUpperCase())] : []),
       ...(!chip || chip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.mapFilterMine).toUpperCase())] : []),
+      ...renderRelationFilters(filter, chip),
       ...(!chip || chip("favorites") ? [button({ type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" }, String(i18n.mapFilterFavorites).toUpperCase())] : []),
       ]),
       button({ type: "submit", name: "filter", value: "create", class: "create-button" }, i18n.mapCreateButton)),
@@ -246,17 +245,16 @@ const renderMapForm = (filter, mapId, mapToEdit, params = {}) => {
         input({ type: "text", name: "title", maxlength: "100", placeholder: i18n.mapTitlePlaceholder || "Map title", value: titleVal }),
         br(), br(),
         label(i18n.mapDescriptionLabel), br(),
-        textarea({ maxlength: "5000", name: "description", placeholder: i18n.mapDescriptionPlaceholder, rows: "3" }, descVal),
+        textarea({ name: "description", placeholder: i18n.mapDescriptionPlaceholder, rows: "3" }, descVal),
         br(), br(),
         label(i18n.mapTagsLabel), br(),
         input({ type: "text", name: "tags", placeholder: i18n.mapTagsPlaceholder, value: tagsValue }),
         br(), br(),
-        showClearnet ? renderClearnetSelector(clearnetOn, i18n) : null,
         label(i18n.mapMarkerLabelField), br(),
-        textarea({ maxlength: "5000", name: "markerLabel", placeholder: i18n.mapMarkerLabelPlaceholder, rows: "3" }, markerLabelVal),
+        textarea({ name: "markerLabel", placeholder: i18n.mapMarkerLabelPlaceholder, rows: "3" }, markerLabelVal),
         br(), br(),
         label(i18n.markerImageLabel || "Marker Image"), br(),
-        input({ type: "file", name: "image", accept: "image/*" }),
+        (isEdit && renderMediaLockNote(mapToEdit)) || input({ type: "file", name: "image", accept: "image/*" }),
         br(), br(),
         label(i18n.mapLatLabel), br(),
         input({ type: "text", name: "lat", placeholder: i18n.mapLatPlaceholder, value: latVal }),
@@ -279,7 +277,8 @@ const renderMapForm = (filter, mapId, mapToEdit, params = {}) => {
         }),
         div({ class: "map-form-map-slot" },
           renderMap(pickerMarkers, null, 0, { view, id: "map", nav, pickForm: formId, pickAction: stepAction })),
-        button({ type: "submit", class: "create-button" }, isEdit ? i18n.mapUpdateButton : i18n.mapCreateButton)));
+        showClearnet ? renderClearnetSelector(clearnetOn, i18n) : null,
+        button({ type: "submit", class: "create-button" }, isEdit ? i18n.save : i18n.mapCreateButton)));
 };
 
 const MARKER_FORM_ID = "add-marker-form";
@@ -324,7 +323,7 @@ const renderMarkerForm = (mapObj, returnTo, params = {}, tribeMembers = [], ctx 
       ctx.focus >= 0 ? input({ type: "hidden", name: "focus", value: String(ctx.focus) }) : null,
       pickedSpot(mkLat, mkLng),
       label(i18n.mapMarkerLabelField),
-      textarea({ maxlength: "5000", name: "label", placeholder: i18n.mapMarkerLabelPlaceholder, rows: "3" }, params.mkMarkerLabel || ""),
+      textarea({ name: "label", placeholder: i18n.mapMarkerLabelPlaceholder, rows: "3" }, params.mkMarkerLabel || ""),
       label(i18n.markerImageLabel || "Marker Image"),
       input({ type: "file", name: "image", accept: "image/*" }),
       br(), br(),
@@ -415,12 +414,9 @@ const renderMapCard = exports.renderMapCard = (mapObj, filter, params = {}) => {
   const isOwn = mapObj.author && String(mapObj.author) === String(userId);
   const href = origin ? origin.href : `/maps/${encodeURIComponent(mapObj.key)}?filter=${encodeURIComponent(filter)}`;
   return div({ class: "tribe-card" + (isOwn ? " own-content" : "") },
-    div({ class: "card-header activity-card-header" },
-      span(),
-      renderContentActions(mapObj.key, href, origin
-        ? { author: mapObj.author, reportTitle: mapObj.title }
-        : { spread: params.spreadMap && params.spreadMap.get(mapObj.key) || null, author: mapObj.author, favKind: 'maps', isFavorite: mapObj.isFavorite, reportTitle: mapObj.title, returnTo, deleteAction: isOwn ? contentDeleteAction('map', mapObj.key) : undefined })
-    ),
+    renderCardTop(mapObj.key, href, origin
+      ? { author: mapObj.author, date: mapObj.createdAt, chips, reportTitle: mapObj.title }
+      : { date: mapObj.createdAt, chips, spread: params.spreadMap && params.spreadMap.get(mapObj.key) || null, author: mapObj.author, favKind: 'maps', isFavorite: mapObj.isFavorite, reportTitle: mapObj.title, returnTo, deleteAction: isOwn ? contentDeleteAction('map', mapObj.key) : undefined }),
     div({ class: "tribe-card-image-wrapper map-card-thumb" },
       a({ href }, renderMap(thumbMarkers, null, 0, { thumb: true, singleZoom: 5 }))
     ),
@@ -428,12 +424,12 @@ const renderMapCard = exports.renderMapCard = (mapObj, filter, params = {}) => {
       div({ class: "shop-title-row" },
         h2({ class: "tribe-card-title" }, a({ href }, mapObj.title || i18n.mapAllSectionTitle))
       ),
-      chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
       p({ class: "job-meta-line" }, `📍 ${mapObj.lat.toFixed(4)}, ${mapObj.lng.toFixed(4)}`),
       safeText(mapObj.description) ? p({ class: "tribe-card-description" }, ...renderStyledText(safeText(mapObj.description))) : null,
       div({ class: "tribe-card-members" },
         span({ class: "tribe-members-count" }, `${i18n.mapMarkersTitle || "Markers"}: ${markerCount}`)
-      )
+      ),
+      null
     )
   );
 };
@@ -467,6 +463,7 @@ exports.mapsView = async (maps, filter = "all", mapId = null, params = {}) => {
   const mapsChip = (mode) => {
     if (mode === filter) return true;
     if (mode === "mine") return censusMp.some((x) => String(x.author) === String(userId));
+    if (mode === "supported" || mode === "replicated") return hasRelation(mode, censusMp);
     if (mode === "recent") return censusMp.length > 0;
     if (mode === "favorites") return censusMp.some((x) => x.isFavorite);
     return true;
@@ -522,57 +519,55 @@ exports.singleMapView = async (mapObj, filter = "all", params = {}) => {
   }) : null;
 
   const mapSide = div({ class: "tribe-side map-detail-side" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(mapObj.key, `/maps/${encodeURIComponent(mapObj.key)}`, {
-        author: mapObj.author,
-        favKind: 'maps',
-        isFavorite: mapObj.isFavorite,
-        spread: params.spreads || null,
-        returnTo,
-        reportTitle: mapObj.title,
-        deleteAction: String(mapObj.author) === String(userId) ? contentDeleteAction('map', mapObj.key) : undefined
-      })
-    ),
+    renderCardTop(mapObj.key, `/maps/${encodeURIComponent(mapObj.key)}`, { arrow: false,
+      date: mapObj.createdAt,
+      chips: [
+        renderStateChip("whole", "🗺", String(mapObj.mapType || "").toUpperCase()),
+        renderEncryptedChip(i18n),
+        renderLifespanChip(mapObj.lifetime, i18n),
+        canClearnet ? renderReachChip(isClearnet, i18n, isClearnet ? mapClearnetHref(mapObj) : null) : null
+      ],
+      bylineExtra: [
+        renderEditedChip(mapObj.key, mapObj.rootId),
+        mapObj.updatedAt && mapObj.updatedAt !== mapObj.createdAt
+          ? span({ class: "votations-comment-date" }, `${i18n.mapUpdatedAt}: ${moment(mapObj.updatedAt).format("YYYY/MM/DD HH:mm")}`)
+          : null
+      ],
+      author: mapObj.author,
+      favKind: 'maps',
+      isFavorite: mapObj.isFavorite,
+      spread: params.spreads || null,
+      returnTo,
+      reportTitle: mapObj.title,
+      editAction: String(mapObj.author) === String(userId) ? `/maps/edit/${encodeURIComponent(mapObj.key)}?returnTo=${encodeURIComponent(returnTo)}` : undefined,
+      deleteAction: String(mapObj.author) === String(userId) ? contentDeleteAction('map', mapObj.key) : undefined
+    }),
     div({ class: "shop-title-row" },
       h2({ class: "tribe-card-title" }, mapObj.title || i18n.mapAllSectionTitle)
     ),
-    div({ class: "card-chips-row" },
-      renderStateChip("whole", "🗺", String(mapObj.mapType || "").toUpperCase()),
-      renderEncryptedChip(i18n),
-      renderLifespanChip(mapObj.lifetime, i18n),
-      canClearnet ? renderReachChip(isClearnet, i18n, isClearnet ? mapClearnetHref(mapObj) : null) : null,
-      canClearnet && String(mapObj.author) === String(userId) ? renderClearnetSwitch("maps", mapObj.rootId || mapObj.key, isClearnet) : null
-    ),
-    safeText(mapObj.description) ? p({ class: "tribe-side-description" }, ...renderStyledText(safeText(mapObj.description))) : null,
-    table({ class: "tribe-info-table jobs-info-table" },
-      tr(
-        td({ class: "tribe-info-label" }, i18n.mapLatLabel),
-        td({ class: "tribe-info-value", colspan: "3" }, mapObj.lat.toFixed(6))
-      ),
-      tr(
-        td({ class: "tribe-info-label" }, i18n.mapLngLabel),
-        td({ class: "tribe-info-value", colspan: "3" }, mapObj.lng.toFixed(6))
-      ),
-      tr(
-        td({ class: "tribe-info-label" }, i18n.createdAtLabel || "Created at"),
-        td({ class: "tribe-info-value", colspan: "3" }, moment(mapObj.createdAt).format("YYYY/MM/DD HH:mm"))
-      ),
-      tr(
-        td({ class: "tribe-info-value", colspan: "4" }, userLink(mapObj.author))
-      )
-    ),
-    renderTags(mapObj.tags),
-    div({ class: "tribe-card-members" },
-      span({ class: "tribe-members-count" }, `${i18n.mapMarkersTitle || "Markers"}: ${safeArr(mapObj.markers).length + 1}`)
-    ),
-    (String(mapObj.author) !== String(userId) && !mapObj.tribeId && mapObj.mapType !== "OPEN")
-      ? div({ class: "tribe-side-actions" },
-          a({ class: "tribe-action-btn", href: "/invites?filter=others" }, i18n.tribeEnterInvite)
-        )
-      : null,
-    renderDocumentActions('maps', mapObj.key),
-    ownerActions.length ? div({ class: "tribe-side-actions owner-actions" }, ...ownerActions) : null
+    canClearnet && String(mapObj.author) === String(userId) ? renderClearnetSwitch("maps", mapObj.rootId || mapObj.key, isClearnet) : null,
+    renderDetailShare(mapObj.rootId || mapObj.key, `/maps/${encodeURIComponent(mapObj.key)}`, mapObj.title, null, null, null, mapObj.author),
+    renderTags(mapObj.tags)
   );
+
+  const mapInfo = table({ class: "tribe-info-table jobs-info-table" },
+    tr(
+      td({ class: "tribe-info-label" }, i18n.mapLatLabel),
+      td({ class: "tribe-info-value", colspan: "3" }, mapObj.lat.toFixed(6))
+    ),
+    tr(
+      td({ class: "tribe-info-label" }, i18n.mapLngLabel),
+      td({ class: "tribe-info-value", colspan: "3" }, mapObj.lng.toFixed(6))
+    )
+  );
+  const mapMembers = div({ class: "tribe-card-members" },
+    span({ class: "tribe-members-count" }, `${i18n.mapMarkersTitle || "Markers"}: ${safeArr(mapObj.markers).length + 1}`)
+  );
+  const mapInviteAction = (String(mapObj.author) !== String(userId) && !mapObj.tribeId && mapObj.mapType !== "OPEN")
+    ? div({ class: "tribe-side-actions detail-action-row" },
+        a({ class: "tribe-action-btn", href: "/invites?filter=others" }, i18n.tribeEnterInvite)
+      )
+    : null;
 
   const hiddenState = (withView) => [
     input({ type: "hidden", name: "filter", value: filter }),
@@ -607,14 +602,18 @@ exports.singleMapView = async (mapObj, filter = "all", params = {}) => {
     }));
 
   const mapMain = div({ class: "tribe-main map-detail-main" },
+    safeText(mapObj.description) ? div({ class: "job-section" }, h2({ class: "job-section-title" }, i18n.description), p({ class: "tribe-side-description" }, ...renderStyledText(safeText(mapObj.description)))) : null,
+    mapInfo,
+    mapInviteAction,
+    mapMembers,
     renderMarkersList(mapObj.markers, mapObj, { focus, view, viewHref, returnTo: pageReturnTo }),
-    p({ class: "card-footer" },
-      span({ class: "date-link" }, `${moment(mapObj.createdAt).format("YYYY/MM/DD HH:mm")}`),
-      userLink(mapObj.author),
-      mapObj.updatedAt && mapObj.updatedAt !== mapObj.createdAt
-        ? span({ class: "votations-comment-date" }, ` · ${i18n.mapUpdatedAt}: ${moment(mapObj.updatedAt).format("YYYY/MM/DD HH:mm")}`)
-        : null),
-    renderMarkerForm(mapObj, returnTo, { ...params, filter }, tribeMembers, { mkLat, mkLng, view, focus })
+    renderMarkerForm(mapObj, returnTo, { ...params, filter }, tribeMembers, { mkLat, mkLng, view, focus }),
+    renderDocumentActions('maps', mapObj.key),
+    ownerActions.length ? div({ class: "tribe-side-actions owner-actions" }, ...ownerActions) : null,
+    renderEngagement(mapObj.rootId || mapObj.key,
+      params.opinions ? renderOpinionsVoting('/maps/opinions', mapObj.rootId || mapObj.key, params.opinions.opinions, `/maps/${encodeURIComponent(mapObj.rootId || mapObj.key)}`, params.opinions.opinions_inhabitants) : null,
+      Array.isArray(params.comments) ? renderCommentsSection({ action: `/maps/${encodeURIComponent(mapObj.rootId || mapObj.key)}/comments`, comments: params.comments, returnTo: `/maps/${encodeURIComponent(mapObj.rootId || mapObj.key)}` }) : null
+    )
   );
 
   return template(mapObj.title || i18n.mapTitle,

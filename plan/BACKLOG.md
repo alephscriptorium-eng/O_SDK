@@ -924,6 +924,20 @@ Dep: WP-O141. Relación: WP-O103 (cableado de la cartera), WP-O124 (salto de mot
 
 **Estado** · ✅ 2026-10-18 **aplicado en el host** (pub, HUB y bot de cartera en 1.3.2; delta: `oasisVersion+1` por nodo y nada más, igual que en local; motor de RBU encendido al cierre; 46 min de host, GO-1…GO-4b). **Cliente real: no se sube, queda cerrado (D-O39)**: la identidad se mudó; marcador `IDENTIDAD-MUDADA`, `identity-lock.sh` en los scripts y override local de Compose (probado: `up`, `start` y scripts salen con 78). Rama `upgrade/oasis-1.3.2` (desde `main` 0d5d5e98), pendiente de merge; reporte `plan/REPORTES/WP-O146-upgrade-oasis-1.3.2.md`. `OLD_REF=37e0fc93`, `NEW_REF=a44bce44`. Sin cambio de motor. Hecho: overlay + 7 guards (3-way limpio, también en `ssb_config.js`, que upstream toca por primera vez desde 1.2.4), audit `pendiente=0`, 74 disposiciones (`--check --from-tsv` en verde, `annex` 0 rotos), U0-U7 y US en verde (`oasisVersion+1` por nodo y nada más, dos veces; U6 invite completo: pub `contact+1`; drill del cliente: `oasisVersion+1`, 16 PASS). Hallazgos de 1.3.2: la centralita del pub **retransmite vídeo** (`relayVideo`, misma política que el audio, apagable con `phone.video: false`: **DECISIÓN** antes de GO-2); `bindHost` nuevo en `ssb_config.js` (el cliente escucha en `::`; HUB y bot fijan `host`); `karmaScore` se muda a `karma_model.js` (mismo temporizador). Qué viaja al host: `src/` y `docker-entrypoint.sh` (deriva de WP-O145, inerte para los nodos del pub). **Pendiente**: GO-1…GO-4b en el host, cliente real (CLIENT §4.2), cierre (journal, §7, mantener.md). Dep: WP-O145.
 
+| **WP-O147** | **P0** | Upgrade a Oasis 1.3.8 (1.3.2 → 1.3.8; 1.3.3-1.3.7 quedan dentro del salto): pub, HUB y bot de cartera |
+
+**Estado** · ✅ 2026-10-25 **aplicado en el host** (pub, HUB y bot en 1.3.8; delta: `oasisVersion+1` por nodo y un `karmaScore` del
+bot, igual que en local salvo el nodo del karma; motor de RBU encendido al cierre; 31 min de host, GO-1…GO-4b; tres decisiones
+refrendadas: D-O40, guardián de feeds tal cual, salas en clearnet). Rama `upgrade/oasis-1.3.8` (desde `main` befb7ed6);
+reporte `plan/REPORTES/WP-O147-upgrade-oasis-1.3.8.md`. `OLD_REF=a44bce44`, `NEW_REF=09b829f8`. Sin cambio de motor. Hecho:
+overlay limpio + 6 guards (3-way: dos limpios, dos con conflictos de suma), **séptimo guard retirado** (upstream absorbe
+`/c/blob`), parcheador seguido a `src/patches/` (Dockerfile, audit, diff), audit `pendiente=0` (20 parches), 252 disposiciones
+(`--check` en verde; `annex` 0 rotos tras `link.tsv`), regen `inboxMutedBots += social`, plantilla nginx (salas en clearnet sin
+búfer, `/c/pdf/page` cacheable), sonda `feed-guard-status.js`; gates U0-U6 en verde (`oasisVersion+1` por nodo y el HUB
+`karmaScore+1`; U6 pub `contact+1`; `feedGuard` `lastRepair: null` ×3). Hallazgos de 1.3.8: `feed_guard` (repara feeds solo),
+`blob_prefetch` (el pub pide los blobs de a quien sigue), cupo de salientes de `ssb-conn` configurable (10) y ranking «quien me
+sigue primero», salas en clearnet, PDF rasterizado en el HUB (`mupdf`). U7 y US en verde. Cierre hecho (journal, §7, `mantener.md`, ficha). Dep: WP-O146.
+
 | **WP-O142** | **P2** | Generalizar `retro-seed.sh` / `retro-tombstone.sh` a cualquier bot de plantilla (`--container`) |
 
 **Estado** · ⬜.
@@ -1496,7 +1510,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-18: +WP-O102 P1 en L5 — hub-wallet del pub (ecoind + wallet-bot-2), +WP-O103 P1 en L4 — ECOin en el cliente, asiento D-O19.)
 (2026-09-19: +WP-O110 P2 en L4 — Teatro P2P con cartelera, planificado; dosier en docs/ROADMAP/p2p, asiento D-O24.)
 (2026-10-01: +WP-O112 P1, +WP-O113 P1, +WP-O114 P1 en L4 — protocolo de upgrade y ciclo 1.1.4 → 1.1.10, asiento D-O25.)
-(2026-10-15: +WP-O139 P1, +WP-O140 P0, +WP-O141 P0, +WP-O142 P2 — deuda documental, protocolo de upgrade v3, ciclo 1.3.0, scripts de plantilla genéricos; asiento D-O37. **Total real medido hoy**: `grep -c '^| \*\*WP-O' plan/BACKLOG.md` = **118** filas (P0 25 · P1 62 · P2 30 · P3 1); la tabla de arriba es la foto de la edición F2-unificada y no se recalcula. 2026-10-15, más tarde: +WP-O143 P1, +WP-O144 P1, +WP-O145 P0 → **121**. 2026-10-18: +WP-O146 P0 → **122**.)
+(2026-10-15: +WP-O139 P1, +WP-O140 P0, +WP-O141 P0, +WP-O142 P2 — deuda documental, protocolo de upgrade v3, ciclo 1.3.0, scripts de plantilla genéricos; asiento D-O37. **Total real medido hoy**: `grep -c '^| \*\*WP-O' plan/BACKLOG.md` = **118** filas (P0 25 · P1 62 · P2 30 · P3 1); la tabla de arriba es la foto de la edición F2-unificada y no se recalcula. 2026-10-15, más tarde: +WP-O143 P1, +WP-O144 P1, +WP-O145 P0 → **121**. 2026-10-18: +WP-O146 P0 → **122**. 2026-10-25: +WP-O147 P0 → **123**.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11

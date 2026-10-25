@@ -32,7 +32,7 @@ pone la pieza: el compose, la config del nodo o nginx.
 |---|---|---|---|---|
 | Log | `ssb-data/db2/log.bipf` (Oasis ≥ 1.2) o `flume/log.offset` | la replicación: todo feed a `hops` saltos | `friends.hops` y `friends.dunbar` del `ssb-config` del nodo. No se poda | bajar `hops` o `dunbar` es una decisión de red: cambia a quién se replica |
 | Índices | `ssb-data/db2/indexes`, `db2/jit` | el log | ninguno; son derivables (se regeneran borrándolos, con el nodo parado) | crecen con el log: se actúa sobre el log |
-| Blobs | `ssb-data/blobs` | la replicación y lo que pide el visor | **backend** (HUB, bots): `blobCache.pubMaxMB` en su `oasis-config.json`; lo fija `pub/scripts/regen-node-configs.js`. **pub** (solo sbot, sin recolector): `hub-disk.sh prune-blobs --node pub` | subir el techo o podar. Un blob borrado se vuelve a pedir a la red si alguien lo solicita |
+| Blobs | `ssb-data/blobs` | la replicación, lo que pide el visor y, **desde 1.3.8 en un nodo `pub: true`** (el pub; el bot con el motor encendido), el prefetch del sbot (`blob_prefetch.js`): cada blob que referencia un mensaje nuevo de un autor **al que sigue**, y al arrancar los de los últimos `ssbLogStream.limit` mensajes | **backend** (HUB, bots): `blobCache.pubMaxMB` en su `oasis-config.json`; lo fija `pub/scripts/regen-node-configs.js`. **pub** (solo sbot, sin recolector): `hub-disk.sh prune-blobs --node pub` | subir el techo o podar. Un blob borrado se vuelve a pedir a la red si alguien lo solicita |
 | Snapshots | `ssb-data/oasis/content/snapshot*.oasissn` | **pub**: su propio entrypoint, cada `OASIS_PUB_SNAPSHOT_HOURS` horas. **HUB y bots**: nadie, con `OASIS_SNAPSHOT=off` | techo `SNAPSHOT_MAX_MB` (por encima no se publica y queda el anterior). Crece con el log | subir el techo, o dejar de ofrecerlo: `OASIS_PUB_SNAPSHOT_HOURS=0` y recrear el pub |
 | Logs de la aplicación | bind de `/app/logs` | el nodo | ninguno | vaciar con el nodo parado |
 | Log de Docker | `/var/lib/docker/containers/…` | la salida del contenedor | `logging` del compose (`max-size` × `max-file`) en **todos** los servicios | un servicio sin `logging` es un aviso: no tiene techo |
@@ -59,8 +59,12 @@ Un backend trae temporizadores que tocan el disco sin que nadie lo pida:
 | Recolector de blobs | a los 5 min y cada 6 h | por encima del techo, borra los blobs ajenos menos usados de más de 24 h. Protege los propios, los fijados y los recientes | activo en HUB y bots con el techo de su config. Con el valor de upstream (`pubMaxMB = 0`) no haría nada |
 | Construcción de snapshots | a los 2 min y cada 6 h, en un backend público | carga el log **entero** en memoria, dos veces, y escribe dos ficheros | apagado con `OASIS_SNAPSHOT=off`. El del pub lo construye su entrypoint (`pub/tools/snapshot-build.js`), con memoria constante |
 | Limpieza de envíos de ficheros | a los 2 min y cada 12 h | borra los trozos de los envíos **propios** caducados | no hace nada en un nodo de soporte: no envía ficheros |
+| Guardián de feeds (`feed_guard.js`, sbot, ≥ 1.3.8) | al arrancar (valida el feed propio) y en cada conexión con un par | compara el feed propio con la copia del par; si el par tiene más cola, la adopta; si tiene **otra**, borra la cola local y **republica** (sin interruptor) | activo en pub, HUB y bots. Con un feed coherente no escribe nada: `devops/scripts/feed-guard-status.js` → `lastRepair: null` (UPGRADE §3.4, §4) |
+| Prefetch de blobs (`blob_prefetch.js`, sbot, ≥ 1.3.8) | con cada mensaje nuevo y al arrancar | `blobs.want` de lo que referencian los autores seguidos (arriba, fila de blobs) | solo con `pub: true`: el pub (sigue a sus habitantes) y el bot con el motor encendido (sigue solo al pub). Disco del pub: `capacity.sh` lo mide; `hub-disk.sh prune-blobs --node pub` lo poda |
+| Publicaciones programadas (≥ 1.3.8) | con cada `GET` de un backend **no público** | publica blogs, podcasts, eventos, encuestas y votaciones cuya fecha ha llegado (`scheduled.json`) | solo lo que alguien programó desde la GUI: en un bot, nada (U5 lo mide: Δ0) |
+| Salas en clearnet (`syncClearnetRooms`, HUB, ≥ 1.3.8) | a los 20 s y cada 60 s, solo en un backend público | se une como oyente (RPC al plugin de teléfono) a las salas cuyo autor marcó `rooms` en clearnet, y las retransmite a quien pida `/c/rooms/<id>/(live·sound)` | CPU del HUB por sala viva (mezcla de sonido en JS) y red de salida por espectador (§4). Unirse no publica |
 
-Ninguno publica en SSB.
+Ninguno publica en SSB, salvo el guardián de feeds **cuando repara** (por eso se mide) y las publicaciones programadas (solo lo programado).
 
 ## 4. Picos
 
@@ -68,6 +72,13 @@ Ninguno publica en SSB.
   libre el doble del log de cada nodo, además de la copia en frío previa.
 - **Build de la imagen**: cada reconstrucción deja capas viejas hasta la poda.
 - **Construcción del snapshot**: escribe un `.tmp` junto al fichero vigente antes de sustituirlo.
+- **Salas en clearnet** (Oasis ≥ 1.3.8, HUB): el HUB retransmite a visitantes web el audio (`wav` sin fin, ≈ 128 kbit/s)
+  o el vídeo (`multipart` JPEG, ≈ 1,6 Mbit/s) de cada sala marcada en clearnet, a hasta `CLEARNET_ROOM_WATCHERS_MAX` (50)
+  espectadores por sala: es **red de salida** del VPS (10 espectadores de vídeo ≈ 16 Mbit/s). Nginx no bufferiza ni cachea
+  esos flujos (`location` propia). Si el custodio no lo quiere, esa `location` responde 404 (UPGRADE §4).
+- **PDF en el visor** (Oasis ≥ 1.3.8, HUB): `/c/pdf/page` rasteriza páginas con `mupdf` (wasm) en **un** `worker_thread`
+  con cola, tope de memoria (`PDF_WORKER_HEAP_MB`) y 60 s por llamada: CPU del HUB por página, en serie. Nginx cachea cada
+  página 1 d por URL (el backend manda `private`; la `location` lo ignora: en `/c` solo sale contenido clearnet).
 - **Centralita del pub** (Oasis ≥ 1.2.2, `HUB-PROTOCOL.md` §14): no toca disco; gasta **red** y algo
   de memoria del pub. Cada llamada retransmitida son unos 80 kbit/s por sentido (entran y salen por
   el pub). En una sala, cada persona que habla cuesta 80 kbit/s por oyente: con el aforo fijado

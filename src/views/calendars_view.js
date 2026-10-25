@@ -1,6 +1,6 @@
-const { div, h2, h3, h4, p, section, button, form, a, span, br, hr, textarea, input, label, select, option, table, tr, td, ul, li } = require("../server/node_modules/hyperaxe")
+const { div, h2, h4, p, section, button, form, a, span, br, hr, textarea, input, label, select, option, table, tr, td } = require("../server/node_modules/hyperaxe")
 const { renderStyledText } = require("../backend/renderStyledText")
-const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadButton , renderSpreadEditWarning, renderContentActions, renderDocumentActions, renderInviteQrCard, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty, contentDeleteAction, paged } = require("./main_views")
+const { clearnetItemHref, template, i18n, userLink, renderStateChip, renderLifespanChip, renderSpreadEditWarning, renderCardTop, renderEngagement, renderDocumentActions, renderInviteQrCard, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty, contentDeleteAction, paged, renderDetailShare, RELATION_FILTERS, relationFilterLabel } = require("./main_views")
 const { renderMapEmbed } = require("./maps_view")
 const { renderEncryptedChip, renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderTribeOriginChip } = require("./clearnet_view")
 const moment = require("../server/node_modules/moment")
@@ -18,11 +18,11 @@ const renderNoteText = (text) => renderStyledText(String(text || ""))
 const renderModeButtons = (currentFilter, emptyMod = false, modesAvail = null) =>
   div({ class: "tribe-mode-buttons" },
     ...(emptyMod ? [] : [
-    ["all", "recent", "mine", "favorites", "open", "closed"].filter(f => f === "all" || f === currentFilter || (modesAvail && modesAvail[f] !== false)).map(f =>
+    ["all", "recent", "mine", "supported", "replicated", "favorites", "open", "closed"].filter(f => f === "all" || f === currentFilter || (modesAvail && (RELATION_FILTERS.includes(f) ? modesAvail[f] === true : modesAvail[f] !== false))).map(f =>
       form({ method: "GET", action: "/calendars" },
         input({ type: "hidden", name: "filter", value: f }),
         button({ type: "submit", class: currentFilter === f ? "filter-btn active" : "filter-btn" },
-          i18n[`calendarFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase())
+          (RELATION_FILTERS.includes(f) ? relationFilterLabel(f) : i18n[`calendarFilter${f.charAt(0).toUpperCase() + f.slice(1)}`] || f.toUpperCase()))
       )
     ),
     ]),
@@ -39,7 +39,7 @@ const renderStatus = (cal) => {
 
 const renderCalendarStatusChip = (cal) => {
   const isClosed = !!cal.isClosed
-  const variant = isClosed ? "closed" : "mutuals"
+  const variant = isClosed ? "hidden" : "mutuals"
   const icon = isClosed ? "\u2717" : "\u2713"
   const label = isClosed ? (i18n.calendarStatusClosed || "CLOSED") : (i18n.calendarStatusOpen || "OPEN")
   return renderStateChip(variant, icon, label)
@@ -54,20 +54,17 @@ const renderCalendarCard = exports.renderCalendarCard = (cal, spreadInfo) => {
     renderLifespanChip(cal.lifetime, i18n),
     !origin && cal.clearnet === true && clearnetEligible(cal) ? renderReachChip(true, i18n, calClearnetHref(cal)) : null,
     cal.subscriptionIn === true
-      ? renderStateChip("mutuals", "✉", i18n.subscriptionOn)
+      ? renderStateChip("transport", "✉", i18n.subscriptionOn)
       : (cal.subscriptionIn === false ? renderStateChip("closed", "✉", i18n.subscriptionOff) : null)
   ].filter(Boolean)
   return div({ class: "tribe-card" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(cal.rootId, href, origin
-        ? { author: cal.author, reportTitle: cal.title }
-        : { spread: spreadInfo || null, author: cal.author, favKind: 'calendars', isFavorite: cal.isFavorite, reportTitle: cal.title, deleteAction: String(cal.author) === String(userId) ? contentDeleteAction('calendar', cal.rootId) : undefined })
-    ),
+    renderCardTop(cal.rootId, href, origin
+      ? { author: cal.author, date: cal.createdAt, chips, reportTitle: cal.title }
+      : { date: cal.createdAt, chips, spread: spreadInfo || null, author: cal.author, favKind: 'calendars', isFavorite: cal.isFavorite, reportTitle: cal.title, deleteAction: String(cal.author) === String(userId) ? contentDeleteAction('calendar', cal.rootId) : undefined }),
     div({ class: "tribe-card-body" },
       div({ class: "shop-title-row" },
         h2({ class: "tribe-card-title" }, a({ href }, cal.title || "\u2014"))
       ),
-      chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
       cal.deadline
         ? div({ class: "card-field card-field-mb" },
             span({ class: "card-label" }, `${String(i18n.calendarDeadlineLabel).toUpperCase()}: `),
@@ -81,7 +78,8 @@ const renderCalendarCard = exports.renderCalendarCard = (cal, spreadInfo) => {
         ? null
         : div({ class: "tribe-card-members" },
             span({ class: "tribe-members-count calendar-participants-count" }, `${i18n.calendarParticipantsLabel || "Participants"}: ${cal.participants.length}`)
-          )
+          ),
+      null
     )
   )
 }
@@ -163,14 +161,14 @@ const renderCreateForm = (calendarToEdit, params) => {
             input({ type: "text", name: "firstDateLabel", placeholder: i18n.calendarDatePlaceholder || "Describe this date...", value: draft.firstDateLabel || "" }),
             br(), br(),
             span(i18n.calendarFirstNoteLabel || "Notes"), br(),
-            textarea({ maxlength: "5000", name: "firstNote", rows: "3", placeholder: i18n.calendarNotePlaceholder || "Add a note..." }, draft.firstNote || ""),
+            textarea({ name: "firstNote", rows: "3", placeholder: i18n.calendarNotePlaceholder || "Add a note..." }, draft.firstNote || ""),
             br(), br(),
             renderIntervalBlock({ min: now, max: deadlineMax || undefined }, draft.interval || "", asLocal(draft.intervalDeadline)),
             br(), br()
           ]
         : null,
       showClearnet ? renderClearnetSelector(draft.clearnet === true || String(draft.clearnet || "") === "1", i18n) : null,
-      button({ type: "submit", class: "create-button" }, isEdit ? (i18n.calendarUpdate || "Update") : (i18n.calendarCreate || "Create Calendar"))
+      button({ type: "submit", class: "create-button" }, isEdit ? i18n.save : (i18n.calendarCreate || "Create Calendar"))
     )
   )
 }
@@ -286,29 +284,54 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
     renderEncryptedChip(i18n),
     renderLifespanChip(calendar.lifetime, i18n),
     canClearnet ? renderReachChip(isClearnet, i18n, isClearnet ? calClearnetHref(calendar) : null) : null,
-    isAuthor && canClearnet ? renderClearnetSwitch("calendars", calendar.rootId, isClearnet) : null,
     (isAuthor || isParticipant)
-      ? renderStateChip(subscriptionIn ? "mutuals" : "closed", "✉", subscriptionIn ? i18n.subscriptionOn : i18n.subscriptionOff)
+      ? renderStateChip(subscriptionIn ? "transport" : "closed", "✉", subscriptionIn ? i18n.subscriptionOn : i18n.subscriptionOff)
       : null
   ].filter(Boolean)
+  const subscriptionOpts = (calendar.subscription && (isAuthor || isParticipant)) ? { target: calendar.rootId || calendar.key, scope: "calendars", subscribed: calendar.subscription.subscribed === true, count: calendar.subscription.count, isOwner: isAuthor, returnTo: shareUrl } : null
   const calSide = div({ class: "tribe-side" },
+    renderCardTop(calendar.rootId, shareUrl, { arrow: false,
+      date: calendar.createdAt,
+      chips: detailChips,
+      author: calendar.author,
+      favKind: 'calendars',
+      isFavorite: calendar.isFavorite,
+      spread: (params && params.spreads) || null,
+      returnTo: shareUrl,
+      reportTitle: calendar.title,
+      subscription: subscriptionOpts,
+      editAction: isAuthor ? `/calendars?filter=edit&id=${encodeURIComponent(calendar.rootId)}` : undefined,
+      leaveAction: !isAuthor && isParticipant ? `/calendars/leave/${encodeURIComponent(calendar.rootId)}` : undefined,
+      deleteAction: isAuthor ? contentDeleteAction('calendar', calendar.rootId) : undefined
+    }),
     div({ class: "shop-title-row" },
       h2({ class: "tribe-card-title" }, calendar.title || "\u2014")
     ),
-    detailChips.length ? div({ class: "card-chips-row" }, ...detailChips) : null,
-    table({ class: "tribe-info-table" },
-      tr(td({ class: "tribe-info-label" }, i18n.calendarCreated || "Created"), td({ class: "tribe-info-value", colspan: "3" }, moment(calendar.createdAt).format("YYYY/MM/DD HH:mm"))),
-      calendar.deadline ? tr(td({ class: "tribe-info-label" }, i18n.calendarDeadlineLabel || "Deadline"), td({ class: "tribe-info-value", colspan: "3" }, moment(calendar.deadline).format("YYYY/MM/DD HH:mm"))) : null,
-      tr(td({ class: "tribe-info-label" }, i18n.calendarStatusLabel || "Status"), td({ class: "tribe-info-value", colspan: "3" }, renderStatus(calendar))),
-      tr(td({ class: "tribe-info-value", colspan: "4" }, userLink(calendar.author)))
-    ),
-    tags,
-    renderMapEmbed(params && params.mapData, calendar.mapUrl),
-    div({ class: "tribe-card-members" },
-      span({ class: "tribe-members-count calendar-participants-count" }, `${i18n.calendarParticipantsLabel || "Participants"}: ${calendar.participants.length}`)
-    ),
-    div({ class: "tribe-side-actions calendar-invite-actions" },
-      isAuthor && calendar.status !== "OPEN"
+    renderDetailShare(calendar.rootId, shareUrl, calendar.title, subscriptionOpts, null, null, calendar.author),
+    isAuthor && canClearnet ? renderClearnetSwitch("calendars", calendar.rootId, isClearnet) : null,
+    tags
+  )
+
+  const calInfo = table({ class: "tribe-info-table" },
+    calendar.deadline ? tr(td({ class: "tribe-info-label" }, i18n.calendarDeadlineLabel || "Deadline"), td({ class: "tribe-info-value", colspan: "3" }, moment(calendar.deadline).format("YYYY/MM/DD HH:mm"))) : null,
+    tr(td({ class: "tribe-info-label" }, i18n.calendarStatusLabel || "Status"), td({ class: "tribe-info-value", colspan: "3" }, renderStatus(calendar)))
+  )
+  const calMembers = div({ class: "tribe-card-members" },
+    span({ class: "tribe-members-count calendar-participants-count" }, `${i18n.calendarParticipantsLabel || "Participants"}: ${calendar.participants.length}`)
+  )
+  const calVisitorActions = [
+    !isAuthor && !isParticipant && calendar.status === "OPEN"
+      ? form({ method: "POST", action: `/calendars/join/${encodeURIComponent(calendar.rootId)}` },
+          button({ type: "submit", class: "create-button" }, i18n.calendarJoin || "Join Calendar")
+        )
+      : null,
+    !isAuthor && !isParticipant && calendar.status !== "OPEN"
+      ? a({ class: "tribe-action-btn", href: "/invites?filter=others" }, i18n.tribeEnterInvite)
+      : null
+  ].filter(Boolean)
+  const calOwnerInvites = isAuthor
+    ? div({ class: "tribe-side-actions calendar-invite-actions" },
+      calendar.status !== "OPEN"
         ? form({ method: "POST", action: `/calendars/generate-invite/${encodeURIComponent(calendar.rootId)}` },
             button({ type: "submit", class: "tribe-action-btn" }, i18n.tribeGenerateInvite)
           )
@@ -330,42 +353,9 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
         return form({ method: "POST", action: `/calendars/open-invite/create/${encodeURIComponent(calendar.rootId)}` },
           button({ type: "submit", class: "tribe-action-btn" }, i18n.tribeOpenInvitation)
         )
-      })(),
-      !isAuthor && !isParticipant && calendar.status === "OPEN"
-        ? form({ method: "POST", action: `/calendars/join/${encodeURIComponent(calendar.rootId)}` },
-            button({ type: "submit", class: "create-button" }, i18n.calendarJoin || "Join Calendar")
-          )
-        : null,
-      !isAuthor && !isParticipant && calendar.status !== "OPEN"
-        ? a({ class: "tribe-action-btn", href: "/invites?filter=others" }, i18n.tribeEnterInvite)
-        : null,
-      !isAuthor && isParticipant
-        ? form({ method: "POST", action: `/calendars/leave/${encodeURIComponent(calendar.rootId)}` },
-            button({ type: "submit", class: "tribe-action-btn danger-btn" }, i18n.tribeLeaveButton)
-          )
-        : null
-    ),
-    (calendar.subscription && (isAuthor || isParticipant))
-      ? renderSubscriptionBox({
-          target: calendar.rootId || calendar.key,
-          scope: "calendars",
-          subscribed: calendar.subscription.subscribed === true,
-          count: calendar.subscription.count,
-          isOwner: isAuthor,
-          returnTo: shareUrl
-        })
-      : null,
-    isAuthor
-      ? div({ class: "tribe-side-actions calendar-owner-actions" },
-          form({ method: "GET", action: "/calendars" },
-            input({ type: "hidden", name: "filter", value: "edit" }),
-            input({ type: "hidden", name: "id", value: calendar.rootId }),
-            button({ type: "submit", class: "tribe-action-btn" }, i18n.calendarUpdate || "Update")
-          )
-        )
-      : null,
-    renderDocumentActions('calendars', calendar.rootId)
-  )
+      })()
+    )
+    : null
 
   const minDate = now.add(1, "minute").format("YYYY-MM-DDTHH:mm")
   const calMax = calendar.deadline ? moment(calendar.deadline).format("YYYY-MM-DDTHH:mm") : ""
@@ -383,7 +373,7 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
           isParticipant
             ? [
                 span(i18n.calendarNoteLabel), br(),
-                textarea({ maxlength: "5000", name: "text", rows: "3", placeholder: i18n.calendarNotePlaceholder || "Add a note..." }),
+                textarea({ name: "text", rows: "3", placeholder: i18n.calendarNotePlaceholder || "Add a note..." }),
                 br(), br()
               ]
             : null,
@@ -456,22 +446,16 @@ exports.singleCalendarView = async (calendar, dates, notesByDate, params) => {
     : null
 
   const calMain = div({ class: "tribe-main" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(calendar.rootId, shareUrl, {
-        author: calendar.author,
-        favKind: 'calendars',
-        isFavorite: calendar.isFavorite,
-        spread: (params && params.spreads) || null,
-        returnTo: shareUrl,
-        reportTitle: calendar.title,
-        deleteAction: isAuthor ? contentDeleteAction('calendar', calendar.rootId) : undefined
-      })
-    ),
-
+    calInfo,
+    renderMapEmbed(params && params.mapData, calendar.mapUrl),
     calNav,
     grid,
     dayNotesSection,
-    unifiedForm
+    unifiedForm,
+    calVisitorActions.length ? div({ class: "tribe-side-actions detail-action-row" }, ...calVisitorActions) : null,
+    calMembers,
+    calOwnerInvites,
+    renderDocumentActions('calendars', calendar.rootId)
   )
 
   return template(
@@ -504,8 +488,7 @@ exports.clearnetCalendarView = async (calendar, dates, notesByDate = {}) => {
   const entriesHtml = entries.map(e => {
     const notes = (notesByDate[e.key] || []).filter(n => n && String(n.text || "").trim())
     return `<div class="cn-cal-entry">
-      ${e.label ? `<div class="cn-cal-entry-label">${esc(e.label)}</div>` : ""}
-      <div class="cn-cal-dates">${e.when.map(w => `<span class="cn-detail">📅 ${fmt(w)}</span>`).join("")}</div>
+      <div class="cn-cal-entry-head">${e.label ? `<div class="cn-cal-entry-label">${esc(e.label)}</div>` : ""}<div class="cn-cal-dates">${e.when.map(w => `<span class="cn-detail">📅 ${fmt(w)}</span>`).join("")}</div></div>
       ${notes.map(n => `<p class="cn-cal-note">${renderRichText(n.text)}</p>`).join("")}
     </div>`
   }).join("")
@@ -513,7 +496,8 @@ exports.clearnetCalendarView = async (calendar, dates, notesByDate = {}) => {
 .cn-cal-title{color:var(--fg);margin:0 0 16px 0;font-size:32px;font-weight:700;word-break:break-word}
 .cn-cal-meta{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
 .cn-cal-entry{border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin:12px 0;background:var(--bg-elev)}
-.cn-cal-entry-label{color:var(--fg);font-weight:600;font-size:16px;margin-bottom:8px;word-break:break-word}
+.cn-cal-entry-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-bottom:8px}
+.cn-cal-entry-label{color:var(--fg);font-weight:600;font-size:16px;word-break:break-word}
 .cn-cal-dates{display:flex;flex-wrap:wrap;gap:6px}
 .cn-cal-note{color:var(--fg-soft);line-height:1.5;margin:10px 0 0 0;word-break:break-word}
 .cn-cal-empty{color:var(--fg-dim)}

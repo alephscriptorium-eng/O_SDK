@@ -7,7 +7,7 @@ const longText = require('../backend/long_text');
 const { versionGroups, versionEntry } = require('../backend/dedupe');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 
-module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
+module.exports = ({ cooler, padsModel, cryptoModel, tribesModel }) => {
   let ssb;
   const openSsb = async () => {
     if (!ssb) ssb = await cooler.open();
@@ -17,13 +17,13 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
   const STANDALONE_ENCRYPTED_TYPES = new Set(['chat', 'pad', 'map', 'calendar']);
 
   const tryDecryptStandalone = (content) => {
-    if (!tribeCrypto || !content || !content.encryptedPayload) return null;
+    if (!cryptoModel || !content || !content.encryptedPayload) return null;
     const rootCandidates = [content.calendarId, content.chatId, content.padId, content.mapId, content.roomId, content.parentId, content.dateId, content.rootId].filter(Boolean);
     for (const cand of rootCandidates) {
-      const keys = tribeCrypto.getKeys(cand);
+      const keys = cryptoModel.getKeys(cand);
       if (!keys || !keys.length) continue;
       try {
-        const dec = tribeCrypto.decryptContent(content, keys.map(k => [k]));
+        const dec = cryptoModel.decryptContent(content, keys.map(k => [k]));
         if (dec && !dec._undecryptable) return dec;
       } catch (_) {}
     }
@@ -31,9 +31,9 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
   };
 
   const tryDecryptTribe = async (content) => {
-    if (!tribeCrypto || !tribesModel || !content || !content.encryptedPayload || !content.tribeId) return null;
+    if (!cryptoModel || !tribesModel || !content || !content.encryptedPayload || !content.tribeId) return null;
     try {
-      const dec = await tribeCrypto.decryptFromTribe(content, tribesModel);
+      const dec = await cryptoModel.decryptFromGroup(content, tribesModel);
       if (dec && !dec._undecryptable) return dec;
     } catch (_) {}
     return null;
@@ -74,7 +74,7 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
       case 'market':
         return [content?.item_type, content?.title, content?.description, content?.price, ...(content?.tags || []), content?.status, content?.item_status, content?.deadline, content?.includesShipping, content?.seller, content?.image, content?.auctions_poll, content?.stock];
       case 'bookmark':
-        return [content?.author, content?.url, ...(content?.tags || []), content?.description, content?.category, content?.lastVisit];
+        return [content?.author, content?.title, content?.url, ...(content?.tags || []), content?.description, content?.category, content?.lastVisit];
       case 'task':
         return [content?.title, content?.description, content?.startTime, content?.endTime, content?.priority, content?.location, ...(content?.tags || []), content?.isPublic, content?.assignees?.length, content?.status, content?.author];
       case 'report':
@@ -395,10 +395,10 @@ module.exports = ({ cooler, padsModel, tribeCrypto, tribesModel }) => {
         let dec = null;
         if (c.tribeId) dec = await tryDecryptTribe(c);
         if (!dec && STANDALONE_ENCRYPTED_TYPES.has(c.type)) {
-          const keys = tribeCrypto && tribeCrypto.getKeys ? tribeCrypto.getKeys(k) : [];
+          const keys = cryptoModel && cryptoModel.getKeys ? cryptoModel.getKeys(k) : [];
           if (keys && keys.length) {
             try {
-              const out = tribeCrypto.decryptContent(c, keys.map(kk => [kk]));
+              const out = cryptoModel.decryptContent(c, keys.map(kk => [kk]));
               if (out && !out._undecryptable) dec = out;
             } catch (_) {}
           }
