@@ -15,6 +15,12 @@ OWNER_USER="${OWNER_USER:-}"
 APPLY_SSH_HARDENING="${APPLY_SSH_HARDENING:-0}"
 ASSUME_YES="${ASSUME_YES:-0}"
 SSH_HARDENING_FILE="/etc/ssh/sshd_config.d/60-oasis-pub-hardening.conf"
+# Swap de la máquina (D-O41): en el disco raíz, red de seguridad para picos. 0 = no crear.
+SWAP_FILE="${SWAP_FILE:-/swapfile}"
+SWAP_SIZE_GB="${SWAP_SIZE_GB:-2}"
+SWAPPINESS="${SWAPPINESS:-10}"
+SYSCTL_FILE="${SYSCTL_FILE:-/etc/sysctl.d/90-oasis-swap.conf}"
+ONLY_SWAP="${ONLY_SWAP:-0}"
 SUDO=()
 
 usage() {
@@ -35,11 +41,16 @@ Options:
   --owner USER                Owner of repo/data directories (default: sudo user or debian).
   --apply-ssh-hardening       Write SSH hardening config and reload sshd.
   --assume-yes                Skip interactive confirmation before formatting.
+  --swap-gb N                 Size of the swapfile on the ROOT disk (default: $SWAP_SIZE_GB; 0 = none).
+                              Also sets vm.swappiness=$SWAPPINESS in $SYSCTL_FILE (D-O41).
+  --only-swap                 Only the swapfile and sysctl, nothing else: for a host that already
+                              runs. Idempotent: an existing swapfile of that size is left alone.
   --help                      Show this help.
 
 Environment overrides:
   EXPECTED_DEBIAN_MAJOR, MOUNT_POINT, REPO_DIR, DATA_ROOT, VOLUME_DEVICE,
-  FS_LABEL, FS_TYPE, OWNER_USER, APPLY_SSH_HARDENING, ASSUME_YES.
+  FS_LABEL, FS_TYPE, OWNER_USER, APPLY_SSH_HARDENING, ASSUME_YES,
+  SWAP_FILE, SWAP_SIZE_GB, SWAPPINESS, SYSCTL_FILE.
 EOF
 }
 
@@ -113,6 +124,14 @@ parse_args() {
         ;;
       --assume-yes)
         ASSUME_YES="1"
+        ;;
+      --swap-gb)
+        shift
+        SWAP_SIZE_GB="${1:-}"
+        [[ "$SWAP_SIZE_GB" =~ ^[0-9]+$ ]] || die "--swap-gb requires an integer number of GiB (0 = none)"
+        ;;
+      --only-swap)
+        ONLY_SWAP="1"
         ;;
       --help|-h)
         usage
@@ -336,6 +355,85 @@ ensure_mounted() {
   run_root mount -a
 }
 
+# --- Swap de la máquina (D-O41) --------------------------------------------
+# Un swapfile en el disco raíz: en el VPS medido el volumen de datos tiene 20× más latencia.
+# Es red de seguridad para picos (reindexado, dos nodos a la vez), no memoria: por eso
+# swappiness bajo. Idempotente: si existe con ese tamaño y está activo, no toca nada; si
+# existe con OTRO tamaño, para (parada dura: lo decide quien opera, no el script).
+swap_active_kb() {
+  run_root awk -v f="$SWAP_FILE" '$1 == f { print $3 }' /proc/swaps 2>/dev/null || true
+}
+
+ensure_swap() {
+  local want_kb have_kb avail_kb timestamp
+
+  if [[ "$SWAP_SIZE_GB" == "0" ]]; then
+    log "Swap skipped (--swap-gb 0)."
+    return 0
+  fi
+  need_cmd mkswap
+  need_cmd swapon
+  want_kb=$((SWAP_SIZE_GB * 1024 * 1024))
+
+  if run_root test -e "$SWAP_FILE"; then
+    have_kb="$(( $(run_root stat -c %s "$SWAP_FILE") / 1024 ))"
+    if [[ "$have_kb" -ne "$want_kb" ]]; then
+      die "$SWAP_FILE exists with $((have_kb / 1024)) MiB, not ${SWAP_SIZE_GB} GiB. Decide by hand (swapoff + rm, or --swap-gb $((have_kb / 1024 / 1024)))."
+    fi
+    if [[ -n "$(swap_active_kb)" ]]; then
+      log "$SWAP_FILE already active (${SWAP_SIZE_GB} GiB)."
+    else
+      run_root chmod 600 "$SWAP_FILE"
+      run_root swapon "$SWAP_FILE" || die "swapon $SWAP_FILE failed (is it a swap area? mkswap was not re-run on an existing file)."
+      log "$SWAP_FILE existed and was activated."
+    fi
+  else
+    # Sitio en el disco raíz: el swap más 1 GiB de margen (cada rebuild del pub deja ~3 GiB; UPGRADE §4 paso 2 lo poda).
+    avail_kb="$(df -Pk / | awk 'NR == 2 { print $4 }')"
+    [[ "$avail_kb" -ge $((want_kb + 1024 * 1024)) ]] || die "Not enough free space on / for a ${SWAP_SIZE_GB} GiB swapfile (+1 GiB margin): $((avail_kb / 1024)) MiB free."
+    log "Creating $SWAP_FILE (${SWAP_SIZE_GB} GiB) on the root disk."
+    if ! run_root fallocate -l "${SWAP_SIZE_GB}G" "$SWAP_FILE" 2>/dev/null; then
+      run_root dd if=/dev/zero of="$SWAP_FILE" bs=1M count=$((SWAP_SIZE_GB * 1024)) status=none
+    fi
+    run_root chmod 600 "$SWAP_FILE"
+    run_root mkswap "$SWAP_FILE" >/dev/null
+    run_root swapon "$SWAP_FILE"
+    log "$SWAP_FILE active."
+  fi
+
+  if run_root grep -Eq "^[[:space:]]*$SWAP_FILE[[:space:]]+none[[:space:]]+swap[[:space:]]" /etc/fstab; then
+    log "/etc/fstab already contains the swap entry."
+  else
+    timestamp="$(date +%Y%m%d%H%M%S)"
+    run_root cp /etc/fstab "/etc/fstab.bak.$timestamp"
+    printf '%s none swap sw 0 0\n' "$SWAP_FILE" | run_root tee -a /etc/fstab >/dev/null
+    log "Appended swap entry to /etc/fstab (backup: /etc/fstab.bak.$timestamp)."
+  fi
+}
+
+ensure_sysctl() {
+  local want current timestamp
+
+  if [[ "$SWAP_SIZE_GB" == "0" ]]; then
+    return 0
+  fi
+  want="vm.swappiness = $SWAPPINESS"
+  if run_root test -e "$SYSCTL_FILE" && [[ "$(run_root cat "$SYSCTL_FILE" | grep -v '^#' | tr -s ' ' | sed '/^$/d')" == "$want" ]]; then
+    log "$SYSCTL_FILE already sets $want."
+  else
+    if run_root test -e "$SYSCTL_FILE"; then
+      timestamp="$(date +%Y%m%d%H%M%S)"
+      run_root cp "$SYSCTL_FILE" "$SYSCTL_FILE.bak.$timestamp"
+    fi
+    printf '# o-sdk (D-O41): el swap es red de seguridad para picos, no memoria. Solo bajo presión.\n%s\n' "$want" | run_root tee "$SYSCTL_FILE" >/dev/null
+    log "Wrote $SYSCTL_FILE ($want)."
+  fi
+  run_root sysctl -q -w "vm.swappiness=$SWAPPINESS" >/dev/null
+  current="$(cat /proc/sys/vm/swappiness)"
+  [[ "$current" == "$SWAPPINESS" ]] || die "vm.swappiness is $current after sysctl -w (expected $SWAPPINESS)."
+  log "vm.swappiness = $current (live and persistent)."
+}
+
 ensure_host_layout() {
   local owner_group
 
@@ -469,6 +567,7 @@ Layout:
   data root:   $DATA_ROOT
   owner user:  $OWNER_USER
   data device: $VOLUME_DEVICE
+  swap:        $([[ "$SWAP_SIZE_GB" == "0" ]] && echo "none" || echo "$SWAP_FILE (${SWAP_SIZE_GB} GiB, root disk), vm.swappiness=$SWAPPINESS")
 
 Next steps:
   1. Clone the repository into $REPO_DIR if it is not there yet.
@@ -485,8 +584,17 @@ main() {
   setup_sudo
   default_owner_user
 
-  need_cmd apt-get
   need_cmd awk
+  if [[ "$ONLY_SWAP" == "1" ]]; then
+    # Host vivo: solo el swap y su sysctl (D-O41). Nada de discos, paquetes, UFW ni SSH.
+    ensure_supported_os
+    ensure_swap
+    ensure_sysctl
+    log "Only-swap run complete. Verify with devops/scripts/verify-debian13-base.sh (check_swap)."
+    return 0
+  fi
+
+  need_cmd apt-get
   need_cmd install
   need_cmd systemctl
   ensure_bootstrap_prereqs
@@ -498,6 +606,8 @@ main() {
   ensure_fstab_entry
   ensure_mounted
   ensure_host_layout
+  ensure_swap
+  ensure_sysctl
   install_packages
   maybe_harden_ssh
   configure_ufw
