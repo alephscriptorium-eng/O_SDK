@@ -17,7 +17,7 @@
 | Nombre de la instancia | «tu-nombre» (una palabra, en minúsculas; da nombre a `devops/hosts/«tu-nombre»/`) |
 | Custodio | «quién responde por el pub y da el permiso en cada paso sin vuelta atrás» |
 | Pub | «pub.tu-dominio» (o la IP fija, si empiezas sin dominio) |
-| Host | «proveedor, sistema, memoria»; definición en `devops/hosts/«tu-nombre»/host.env` |
+| Host | «proveedor, sistema, CPU, memoria, swap»; definición en `devops/hosts/«tu-nombre»/host.env` |
 | Layout en el host | «carpeta del repo» · «carpeta de datos» |
 | Acceso | SSH con la clave `devops/.ssh/«nombre-de-la-clave»` (carpeta fuera de git; nombre en `KEY_FILE` de `host.env`) |
 | Nodos de Oasis | «qué contenedores corren y en qué modo»; versión de cada uno: `deploy-status.sh` |

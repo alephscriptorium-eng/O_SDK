@@ -399,12 +399,13 @@ y podar antes (`docker image prune -f && docker builder prune -f`).
 | `oasis-pub-hub` | **1536m → 768m** | medido 205-252 MiB; `docker update --memory 768m --memory-swap 768m oasis-pub-hub` en vivo + `OASIS_HUB_MEM_LIMIT=768m` (y `OASIS_HUB_NODE_OPTIONS=--max-old-space-size=512`) en `.env.prod` para el siguiente recreate. `pub/config/hub/oasis-config.json` **no se toca** |
 | `oasis-pub-hub-cache` | 128m | sin cambios |
 | caddy + panel | ≈ 250m | sin cambios |
-| **suma de límites** | **≈ 2,4 GB** | + el pub, **sin límite** |
+| **suma de límites** | **≈ 3,4 GB** | con el pub (1024m desde WP-O121): más que la RAM del host. Cada límite lleva `memswap_limit` igual (D-O41); el swap del host (2 GB, `CAPACIDAD.md` §2) absorbe los picos |
 
 **Regla de las 24 h** (la del HUB): tras 24 h de `docker stats`, `límite = ceil(1,5 · pico)` para
 `ecoin` y para el bot. El pico de `ecoind` es el **sync inicial**: medirlo en G6 y en el paso 6.
 Un OOM-kill de `ecoind` es el peor caso para BDB: por eso `stop_grace_period 60s`, el límite
-holgado y el backup previo. El pub sigue sin `mem_limit` → **WP-O47**.
+holgado y el backup previo. El pub tiene `mem_limit` desde WP-O121 (la parte de memoria de WP-O47 quedó
+cubierta ahí; su tope de disco sigue abierto).
 
 ## 8. Cartera: backup, restore, reglas
 

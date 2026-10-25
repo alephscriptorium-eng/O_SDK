@@ -5,6 +5,16 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Added — Swap y límites de memoria del host (WP-O148, 2026-10-25; aplicado en el host, Δ0)
+
+Swap de 2 GB en el disco raíz y `vm.swappiness=10` desde `bootstrap-debian13-base.sh` (`--swap-gb`; `--only-swap` para un host
+vivo); `verify-debian13-base.sh` lo comprueba (`check_swap`); `capacity.sh` mide RAM disponible, swap y `swappiness` del host y
+avisa de todo nodo con `MemorySwap ≠ Memory` (ecoin y hub-cache entran en la medida; `devops/logs/capacity.jsonl` se escribe por
+fin). Compose: `memswap_limit = mem_limit` en los seis servicios con límite y `OASIS_HUB_CACHE_MEM_LIMIT`; `OASIS_PUB_MEM_LIMIT`
+documentada en los `.env*.example`. Docs: CAPACIDAD §2 (memoria y swap del host) y §4 (reindexado), HUB §7 y ECOIN §7 corregidos
+(el pub tiene `mem_limit` desde WP-O121), fichas de instancia, `devops/README` §4-5, `roles/pub`, AGENTES §3 y §4; asiento D-O41.
+Motivo, medido: 2272 MiB usados sin swap y dos OOM-kill de cgroup, con la reducción del VPS a 3 GB / 1 CPU en el horizonte.
+
 ### Changed — Upgrade a Oasis 1.3.8 (WP-O147, 2026-10-25; aplicado en el host)
 
 Overlay limpio de `src/` en `09b829f8` («Oasis release 1.3.8»; 1.3.3-1.3.7 quedan dentro) con **6 guards** repuestos (3-way: dos

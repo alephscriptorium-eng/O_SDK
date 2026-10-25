@@ -37,13 +37,15 @@ pone la pieza: el compose, la config del nodo o nginx.
 | Logs de la aplicación | bind de `/app/logs` | el nodo | ninguno | vaciar con el nodo parado |
 | Log de Docker | `/var/lib/docker/containers/…` | la salida del contenedor | `logging` del compose (`max-size` × `max-file`) en **todos** los servicios | un servicio sin `logging` es un aviso: no tiene techo |
 | Capa del contenedor | `/tmp` (subidas, descarga de un snapshot) y `/app/src/maps/cache` | el backend | ninguno; se vacía al recrear el contenedor | recrear el nodo en la misma versión no publica nada |
-| Memoria | — | el nodo; en el pub, también la construcción del snapshot | `mem_limit` del compose en **todos** los nodos | subir el límite solo tras medir el pico; un nodo que llega al límite se reinicia |
+| Memoria | — | el nodo; en el pub, también la construcción del snapshot; tras recrear, el reindexado de db2 | `mem_limit` **y `memswap_limit` iguales** en **todos** los nodos (D-O41; sin `memswap_limit`, Docker concede además otro tanto en swap y el límite no es límite) | subir el límite solo tras medir el pico; un nodo que llega al límite se reinicia (OOM-kill de cgroup, `journalctl -k`) |
 
 ### Del host
 
 | Qué crece | Dónde | Límite | Al pasar el presupuesto |
 |---|---|---|---|
 | Disco de datos y disco raíz | — | umbral blando 75 %, duro 90 % | por encima del duro no se construye ni se despliega |
+| Memoria del host | `/proc/meminfo` (`MemAvailable`) | la RAM de la máquina. Los límites de los nodos **suman más** que ella (ECOIN §7): el reparto real lo decide el uso | presupuesto `CAP_RAM_MB` de disponible; por debajo, bajar un límite (HUB §7, orden de rebajas) o sacar del host lo que no es del pub |
+| Swap | `/swapfile` en el disco **raíz** (D-O41: en Scriptorium el volumen de datos tiene 20× más latencia, medido en `/proc/diskstats`); `vm.swappiness=10` (`/etc/sysctl.d/90-oasis-swap.conf`). Lo crea `bootstrap-debian13-base.sh` y lo comprueba `verify-debian13-base.sh` (`check_swap`) | el kernel, solo bajo presión | es red de seguridad para picos, no memoria: swap usada en reposo por encima de `CAP_SWAP_PCT` = la máquina es pequeña o un límite es alto. Sin swap, un pico mata un nodo |
 | Imágenes y caché de build | `/var/lib/docker` | se podan en cada deploy (`UPGRADE-PROTOCOL.md` §4, paso 2) | `docker image prune -f` · `docker builder prune -f` |
 | Restos de rollback | `src.old-*`, `src-*.tgz`, tags de imagen | uno por ciclo; se retiran al sustituirlos el siguiente | `UPGRADE-PROTOCOL.md` §4, paso 2 |
 | Caché HTTP del visor | bind de `/var/cache/hub` | `max_size` e `inactive` de nginx | `hub-disk.sh prune-cache` |
@@ -72,6 +74,8 @@ Ninguno publica en SSB, salvo el guardián de feeds **cuando repara** (por eso s
   libre el doble del log de cada nodo, además de la copia en frío previa.
 - **Build de la imagen**: cada reconstrucción deja capas viejas hasta la poda.
 - **Construcción del snapshot**: escribe un `.tmp` junto al fichero vigente antes de sustituirlo.
+- **Reindexado de db2** (tras recrear un nodo, o tras borrar `db2/indexes`): el heap de node sube hasta `--max-old-space-size`
+  mientras dura. Es el pico que fija `mem_limit` (1,5 × pico, HUB §7) y el que el swap del host absorbe si coinciden dos nodos.
 - **Salas en clearnet** (Oasis ≥ 1.3.8, HUB): el HUB retransmite a visitantes web el audio (`wav` sin fin, ≈ 128 kbit/s)
   o el vídeo (`multipart` JPEG, ≈ 1,6 Mbit/s) de cada sala marcada en clearnet, a hasta `CLEARNET_ROOM_WATCHERS_MAX` (50)
   espectadores por sala: es **red de salida** del VPS (10 espectadores de vídeo ≈ 16 Mbit/s). Nginx no bufferiza ni cachea
