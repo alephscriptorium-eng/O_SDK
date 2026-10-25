@@ -5,7 +5,7 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
-### Added — Swap y límites de memoria del host (WP-O148, 2026-10-25; preparado en paralelo con O147; host pendiente de GO)
+### Added — Swap y límites de memoria del host (WP-O148, 2026-10-25; aplicado en el host, Δ0)
 
 Swap de 2 GB en el disco raíz y `vm.swappiness=10` desde `bootstrap-debian13-base.sh` (`--swap-gb`; `--only-swap` para un host
 vivo); `verify-debian13-base.sh` lo comprueba (`check_swap`); `capacity.sh` mide RAM disponible, swap y `swappiness` del host y

@@ -940,7 +940,7 @@ sigue primero», salas en clearnet, PDF rasterizado en el HUB (`mupdf`). U7 y US
 
 | **WP-O148** | **P1** | Memoria del host: swap de 2 GB en el disco raíz, `swappiness` 10, `memswap_limit = mem_limit` en los nodos, medida (`capacity.sh`, `verify-debian13-base.sh`) y docs; prepara la reducción del VPS a 3 GB / 1 CPU |
 
-**Estado** · ⬜ 2026-10-25 **planificado en paralelo con WP-O147; host después de su cierre** (PRÁCTICAS §6: los pasos sobre un host
+**Estado** · ✅ 2026-10-25 **aplicado en el host** (GO por paso: swap 2 GiB activo, swappiness 10, `Memory = MemorySwap` en los cinco, compose y `.env.prod` in place, Δ0; `check_swap` 5 PASS; pendiente la medida de las 24 h y la decisión sobre el HUB al 82 % de 768m, reporte §9). Planificado en paralelo con WP-O147; host después de su cierre (PRÁCTICAS §6: los pasos sobre un host
 son secuenciales). Rama `wp/O148-swap-memoria` (desde `main` 3ca91107, merge de O147); reporte `plan/REPORTES/WP-O148-swap-memoria.md`;
 asiento D-O41. **BRIEF** · Medido el 2026-10-25 en el host (`free -m`, `docker stats`, `/proc/diskstats`, `journalctl -k`, solo
 lectura): 2 CPU, 3905 MiB, **2272 usados, 0 swap**, dos OOM-kill de cgroup (nginx de `hub-cache` el 05-oct; un backend de node al

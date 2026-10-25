@@ -79,17 +79,17 @@ Host (tras el cierre de WP-O147, con GO, un paso cada vez, parada dura):
 
 | Paso | Qué | Salida esperada | Hecho |
 |---|---|---|---|
-| 0 | `deploy-status.sh` · `capacity.sh` (foto pre) · `df -h /` · `cat /proc/sys/vm/swappiness` | VERDE; ≥ 5 G libres en `/` | «pendiente» |
-| 1 | `cp /etc/fstab /etc/fstab.bak-o148-<fecha>` · `bootstrap-debian13-base.sh --only-swap --swap-gb 2` | `swapon --show`: `/swapfile 2G`; fstab +1 línea; `swappiness` 10 | «pendiente» |
-| 2 | `docker update --memory <m> --memory-swap <m>` ×5 | `docker inspect`: `Memory = MemorySwap` en los cinco; `docker ps`: mismos `StartedAt` | «pendiente» |
-| 3 | compose y `.env.prod` in place (sha vivo = blob repo → `.bak` → `cat >`) | `sha1sum` del vivo = blob de HEAD; `docker compose config` en el host sin error | «pendiente» |
-| 4 | `verify-debian13-base.sh` · `capacity.sh` (post) · `deploy-status.sh` · `deploy-log.sh` | `check_swap` pass; sin AVISO nuevo; VERDE; journal +1 | «pendiente» |
-| 5 | a las 24 h: `capacity.sh` | swap usada en reposo ≈ 0; `capacity.jsonl` +1 | «pendiente» |
+| 0 | `deploy-status.sh` · `capacity.sh` (foto pre) · `df -h /` · `cat /proc/sys/vm/swappiness` | VERDE; ≥ 5 G libres en `/` | 18:34Z: VERDE; 3 nodos 1.3.8 healthy; deriva compose = blob de main (precondición del paso 3 ok); 14 G libres; swappiness 60; `StartedAt` ×9 anotados. **Hallazgo**: HUB al 82 % de 768m (§9) |
+| 1 | `cp /etc/fstab /etc/fstab.bak-o148-<fecha>` · `bootstrap-debian13-base.sh --only-swap --swap-gb 2` | `swapon --show`: `/swapfile 2G`; fstab +1 línea; `swappiness` 10 | 18:35Z: `/swapfile` 2047 MiB activo, 600; fstab +1 (`fstab.bak.20261025183553`); `swappiness` 10 vivo y en `sysctl.d`; `/` al 52 % |
+| 2 | `docker update --memory <m> --memory-swap <m>` ×5 | `docker inspect`: `Memory = MemorySwap` en los cinco; `docker ps`: mismos `StartedAt` | 18:36Z: `Memory = MemorySwap` en los cinco (1 GiB, 768m, 128m, 512m, 768m); `StartedAt` sin cambios |
+| 3 | compose y `.env.prod` in place (sha vivo = blob repo → `.bak` → `cat >`) | `sha1sum` del vivo = blob de HEAD; `docker compose config` en el host sin error | 18:37Z: vivo = `68f84184…` (blob de main) → `.bak-o148-2026-10-25` → escrito = `3b24e2aa…` (blob de HEAD); `.env.prod` +2 variables (backup 600); `compose config` en el host: memswap = mem ×5 |
+| 4 | `verify-debian13-base.sh` · `capacity.sh` (post) · `deploy-status.sh` · `deploy-log.sh` | `check_swap` pass; sin AVISO nuevo; VERDE; journal +1 | 18:40Z: `check_swap` 5 PASS (43 pass, 1 warn preexistente, 0 fail); `capacity`: 1 aviso (el HUB al 82 %), swap usada 0 %, `capacity.jsonl` +1; `deploy-status`: compose «igual que HEAD», enlaces `connected` ×2; `StartedAt` ×9 idénticos a la foto pre → **Δ0** |
+| 5 | a las 24 h: `capacity.sh` | swap usada en reposo ≈ 0; `capacity.jsonl` +1 | «pendiente: 2026-10-26» |
 
 ## 6. Delta de publicación
 
-Ninguno esperado: no se recrea ni reinicia ningún nodo. Se comprueba con `docker ps` (`StartedAt` sin cambios) y
-`upgrade-gates.sh check <tag> --expect 0` si el custodio lo pide.
+Ninguno, medido: `StartedAt` de los 9 contenedores idéntico antes y después (ningún nodo recreado ni reiniciado). Sin línea en
+`deploy-history.jsonl`: no hubo deploy (ni imagen ni `up`); el journal de este WP es `capacity.jsonl` (líneas pre y post).
 
 ## 7. Correcciones al protocolo
 
@@ -105,6 +105,8 @@ Ninguno esperado: no se recrea ni reinicia ningún nodo. Se comprueba con `docke
 
 ## 9. Seguimiento
 
+- **HUB al 82 % de 768m** en la foto pre y post (recreado hoy en O147; el mismo contenedor que el OOM mató el 22-oct). HUB §7 pide
+  1,5 × pico ≈ 1024m: decisión del custodio; se aplica como en ECOIN §7 (`docker update` + `OASIS_HUB_MEM_LIMIT` y `--max-old-space-size` en `.env.prod`).
 - Swap usada a las 24 h y tras el redimensionado (foto del custodio): si en reposo pasa de `CAP_SWAP_PCT`, bajar un límite
   siguiendo HUB §7, no subir el swap.
 - node-red y verdaccio (≈ 270 MiB) viven en el mismo host y no son de este repo (`scriptorium-vps`): decisión del custodio
