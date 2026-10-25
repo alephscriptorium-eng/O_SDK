@@ -245,17 +245,25 @@ for s in $SECTIONS; do
         done < "$tsv"
       done ;;
     patches)
-      head_of patches "parches de node_modules de upstream (NEW:scripts/patch-node-modules.js) ejecutados en seco sobre el árbol de trabajo: lo vendorizado debe traerlos ya"
-      if git cat-file -e "$NEW:scripts/patch-node-modules.js" 2>/dev/null; then
+      # Dónde vive el parcheador de upstream en cada ref: scripts/ hasta 1.3.2, src/patches/ desde 1.3.3.
+      pnm_in() { local c; for c in src/patches/patch-node-modules.js scripts/patch-node-modules.js; do
+        if git cat-file -e "$1:$c" 2>/dev/null; then echo "$c"; return 0; fi; done; return 1; }
+      NEW_PNM="$(pnm_in "$NEW" || true)"; OLD_PNM="$(pnm_in "$OLD" || true)"
+      head_of patches "parches de node_modules de upstream (NEW:${NEW_PNM:-patch-node-modules.js}) ejecutados en seco sobre el árbol de trabajo: lo vendorizado debe traerlos ya"
+      if [ -n "$NEW_PNM" ]; then
         node "$REPO_ROOT/devops/scripts/upgrade-patches-audit.js" "$NEW" --tsv 2>/dev/null | while IFS=$'	' read -r n st f msg; do
           case "$st" in pendiente|sin-anclaje) sg='!' ;; *) sg='=' ;; esac
           emit patches "$sg" "$f" "parche $n: $st — $msg"
         done
-        if ! git diff --quiet "$OLD" "$NEW" -- scripts/patch-node-modules.js; then
-          emit patches + "scripts/patch-node-modules.js" "upstream cambió su script de parches: sincronizar la copia del fork (UPGRADE-PROTOCOL §2) y confirmar que el entrypoint no se queda corto"
+        if [ -z "$OLD_PNM" ]; then
+          emit patches + "$NEW_PNM" "upstream estrena su script de parches: confirmar que el entrypoint no se queda corto"
+        elif [ "$OLD_PNM" != "$NEW_PNM" ]; then
+          emit patches + "$NEW_PNM" "upstream mueve su script de parches ($OLD_PNM → $NEW_PNM): quien lo llame por la ruta vieja (Dockerfile, audit) debe seguirlo; si además cambia, confirmar que el entrypoint no se queda corto"
+        elif ! git diff --quiet "$OLD:$OLD_PNM" "$NEW:$NEW_PNM"; then
+          emit patches + "$NEW_PNM" "upstream cambió su script de parches: si vive fuera de src/ sincronizar la copia del fork (UPGRADE-PROTOCOL §2) y confirmar que el entrypoint no se queda corto"
         fi
       else
-        emit patches = "scripts/patch-node-modules.js" "NEW no trae scripts/patch-node-modules.js"
+        emit patches = "patch-node-modules.js" "NEW no trae patch-node-modules.js (ni en src/patches/ ni en scripts/)"
       fi ;;
     *) echo "sección desconocida: $s (válidas: $ALL)" >&2; exit 2 ;;
   esac

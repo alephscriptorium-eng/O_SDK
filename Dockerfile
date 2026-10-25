@@ -64,8 +64,8 @@ RUN rm -rf node_modules \
 WORKDIR /app/src/AI
 RUN case "$OASIS_AI" in \
       none) echo "imagen sin pila de IA (OASIS_AI=none)" ;; \
-      nav)  npm ci --omit=optional --no-audit --no-fund && node /app/scripts/patch-node-modules.js ;; \
-      full) npm ci --no-audit --no-fund && node /app/scripts/patch-node-modules.js ;; \
+      nav)  npm ci --omit=optional --no-audit --no-fund && node /app/src/patches/patch-node-modules.js ;; \
+      full) npm ci --no-audit --no-fund && node /app/src/patches/patch-node-modules.js ;; \
       *)    echo "OASIS_AI debe ser none, nav o full (es: $OASIS_AI)" >&2; exit 1 ;; \
     esac
 
