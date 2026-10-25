@@ -45,7 +45,7 @@ server {
   proxy_cache_valid 500 502 503 504 5s;
   add_header X-Cache-Status $hub_cache_status always;
 
-  location ^~ /c/blob/ {                      # immutable del backend; ausente = hasta 30 s de want
+  location ^~ /c/blob/ {                      # immutable del backend; ausente = «pendiente» con no-store (no se cachea) mientras el HUB lo pide a la red (1.3.3+)
     limit_req zone=hub_req burst=40 nodelay;
     proxy_cache_lock_timeout 35s;
     proxy_cache_lock_age 35s;
@@ -56,6 +56,21 @@ server {
   location ~ ^/c/assets/ {                    # 1.1.2: el visor clearnet referencia /c/assets/* (mount nuevo en middleware.js)
     proxy_ignore_headers Cache-Control Expires Set-Cookie;   # koa-static manda max-age=0 -> sin esto nunca cachea
     proxy_cache_valid 200 1d;
+    proxy_pass $hub_up;
+  }
+  location ~ ^/c/rooms/[^/]+/(live|sound)$ {  # 1.3.8: salas en clearnet (opt-in del autor): el backend retransmite audio (wav sin fin)
+    limit_req zone=hub_req burst=10 nodelay;  # o vídeo (multipart) con no-store. Sin búfer ni caché: un flujo sin fin bufferizado
+    proxy_buffering off;                      # iría a un fichero temporal sin techo; y el tope por sala lo pone el backend
+    proxy_request_buffering off;              # (CLEARNET_ROOM_WATCHERS_MAX). Idle de 60 s: una sala en silencio sigue abierta.
+    proxy_cache off;
+    proxy_read_timeout 60s;
+    proxy_pass $hub_up;
+  }
+  location ~ ^/c/pdf/page$ {                  # 1.3.8: el HUB rasteriza páginas de PDF (mupdf, un worker); el backend manda
+    limit_req zone=hub_req burst=20 nodelay;  # Cache-Control: private (en la GUI sirve documentos privados), pero en /c solo
+    proxy_ignore_headers Cache-Control Expires Set-Cookie;   # sale contenido clearnet: se cachea 1 d por URL (src, p, w, r).
+    proxy_cache_valid 200 1d;
+    proxy_cache_valid 404 30s;
     proxy_pass $hub_up;
   }
   location ~ ^/c/(sitemap\.xml$|rss/) {       # 1.1.10: antes de la genérica (entre regex gana la primera)
