@@ -10,6 +10,11 @@ REPO_DIR="${REPO_DIR:-/opt/oasis-scriptorium}"
 DATA_ROOT="${DATA_ROOT:-}"
 OWNER_USER="${OWNER_USER:-}"
 STRICT_SSH="${STRICT_SSH:-0}"
+# Swap esperado (D-O41; lo crea bootstrap-debian13-base.sh). 0 = no se comprueba.
+SWAP_FILE="${SWAP_FILE:-/swapfile}"
+SWAP_SIZE_GB="${SWAP_SIZE_GB:-2}"
+SWAPPINESS="${SWAPPINESS:-10}"
+SYSCTL_FILE="${SYSCTL_FILE:-/etc/sysctl.d/90-oasis-swap.conf}"
 SUDO=()
 PASS_COUNT=0
 WARN_COUNT=0
@@ -27,6 +32,7 @@ Options:
   --data-root PATH            Persistent data root (default: <mount-point>/oasis-pub).
   --owner USER                Expected owner of repo/data directories.
   --strict-ssh                Fail if SSH password auth or root login are still enabled.
+  --swap-gb N                 Expected swapfile size in GiB on the root disk (default: $SWAP_SIZE_GB; 0 = skip).
   --help                      Show this help.
 EOF
 }
@@ -91,6 +97,14 @@ parse_args() {
         ;;
       --strict-ssh)
         STRICT_SSH="1"
+        ;;
+      --swap-gb)
+        shift
+        SWAP_SIZE_GB="${1:-}"
+        [[ "$SWAP_SIZE_GB" =~ ^[0-9]+$ ]] || {
+          printf '[%s] ERROR: --swap-gb requires an integer number of GiB\n' "$PROGRAM_NAME" >&2
+          exit 1
+        }
         ;;
       --help|-h)
         usage
@@ -398,6 +412,53 @@ summary() {
   fi
 }
 
+# Swap de la máquina (D-O41): activo, del tamaño pedido, 600, en fstab, swappiness bajo.
+check_swap() {
+  local active_kb want_kb mode current
+
+  if [[ "$SWAP_SIZE_GB" == "0" ]]; then
+    warn "swap check skipped (--swap-gb 0)."
+    return 0
+  fi
+  want_kb=$((SWAP_SIZE_GB * 1024 * 1024))
+
+  active_kb="$(run_root awk -v f="$SWAP_FILE" '$1 == f { print $3 }' /proc/swaps 2>/dev/null || true)"
+  if [[ -z "$active_kb" ]]; then
+    fail "$SWAP_FILE is not an active swap area (bootstrap-debian13-base.sh --only-swap creates it)."
+  elif [[ "$active_kb" -lt $((want_kb * 98 / 100)) ]]; then
+    fail "$SWAP_FILE is active but smaller than expected: $((active_kb / 1024)) MiB (expected ${SWAP_SIZE_GB} GiB)."
+  else
+    pass "$SWAP_FILE is active ($((active_kb / 1024)) MiB)."
+  fi
+
+  if run_root test -e "$SWAP_FILE"; then
+    mode="$(run_root stat -c %a "$SWAP_FILE")"
+    if [[ "$mode" == "600" ]]; then
+      pass "$SWAP_FILE mode is 600."
+    else
+      fail "$SWAP_FILE mode is $mode (expected 600)."
+    fi
+  fi
+
+  if run_root grep -Eq "^[[:space:]]*$SWAP_FILE[[:space:]]+none[[:space:]]+swap[[:space:]]" /etc/fstab; then
+    pass "/etc/fstab persists $SWAP_FILE."
+  else
+    fail "/etc/fstab has no entry for $SWAP_FILE."
+  fi
+
+  current="$(cat /proc/sys/vm/swappiness 2>/dev/null || echo '?')"
+  if [[ "$current" == "$SWAPPINESS" ]]; then
+    pass "vm.swappiness is $current."
+  else
+    fail "vm.swappiness is $current (expected $SWAPPINESS)."
+  fi
+  if run_root grep -Eq "^[[:space:]]*vm\.swappiness[[:space:]]*=[[:space:]]*$SWAPPINESS[[:space:]]*$" "$SYSCTL_FILE" 2>/dev/null; then
+    pass "$SYSCTL_FILE persists vm.swappiness."
+  else
+    warn "$SYSCTL_FILE does not persist vm.swappiness=$SWAPPINESS (the live value would not survive a reboot)."
+  fi
+}
+
 main() {
   parse_args "$@"
   setup_sudo
@@ -405,6 +466,7 @@ main() {
 
   check_os
   check_mount
+  check_swap
   check_layout
   check_ownership
   check_docker
