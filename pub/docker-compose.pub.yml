@@ -12,6 +12,7 @@ services:
     # Capacidad (docs/PUB/CAPACIDAD.md): el pub no tenía techo de memoria ni rotación de su log.
     # Dentro de este contenedor corre además, cada 6 h, la construcción del snapshot (ver abajo).
     mem_limit: ${OASIS_PUB_MEM_LIMIT:-1024m}
+    memswap_limit: ${OASIS_PUB_MEM_LIMIT:-1024m}   # = mem_limit: sin swap extra (D-O41)
     logging:
       driver: json-file
       options: { max-size: "20m", max-file: "5" }
@@ -125,6 +126,7 @@ services:
       - "${OASIS_HUB_OASIS_CONFIG_FILE:-./config/hub/oasis-config.json}:/home/oasis/.ssb/oasis/oasis-config.json:ro"
     # sin ports: 3000 y 8008 solo en oasis_pub_net
     mem_limit: ${OASIS_HUB_MEM_LIMIT:-1536m}      # generoso el día 1; 1.5×pico tras 24 h (dosier 07 §G6)
+    memswap_limit: ${OASIS_HUB_MEM_LIMIT:-1536m}  # = mem_limit (D-O41)
     logging:
       driver: json-file
       options: { max-size: "20m", max-file: "5" }
@@ -148,7 +150,8 @@ services:
     volumes:
       - ./config/hub/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
       - "${OASIS_HUB_HTTP_CACHE_DIR:-../volumes-dev/oasis-hub/http-cache}:/var/cache/hub"
-    mem_limit: 128m
+    mem_limit: ${OASIS_HUB_CACHE_MEM_LIMIT:-128m}
+    memswap_limit: ${OASIS_HUB_CACHE_MEM_LIMIT:-128m}   # = mem_limit (D-O41)
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
@@ -177,6 +180,7 @@ services:
     # sin ports y sin depends_on: el RPC (7474) nunca sale de oasis_pub_net y el P2P (7408) es
     # solo saliente en fase 1; no depende de ningún otro servicio ni nadie arranca por él.
     mem_limit: ${OASIS_ECOIN_MEM_LIMIT:-512m}
+    memswap_limit: ${OASIS_ECOIN_MEM_LIMIT:-512m}   # = mem_limit (D-O41)
     cpus: ${OASIS_ECOIN_CPUS:-0.75}
     stop_grace_period: 60s                   # cierre limpio de Berkeley DB (wallet.dat)
     logging:
@@ -225,6 +229,7 @@ services:
     # corre solo si el ssb-config montado dice pub:true. Interruptor = OASIS_WALLET_BOT_SSB_CONFIG_FILE
     # (ssb-config | ssb-config.engine-on); gestión: devops/scripts/hub-wallet.sh (ECOIN-PROTOCOL §9).
     mem_limit: ${OASIS_WALLET_BOT_MEM_LIMIT:-768m}
+    memswap_limit: ${OASIS_WALLET_BOT_MEM_LIMIT:-768m}   # = mem_limit (D-O41)
     cpus: 1.0
     logging:
       driver: json-file
@@ -272,6 +277,7 @@ services:
       - "${OASIS_RETRO_BOT_ASSETS_DIR:-./templates/assets/campamento}:/app/pub/assets/campamento:ro"
     # sin ports y sin ruta en Caddy: 8008 solo en oasis_pub_net. Sin oasis-config.json: en modo server apenas se lee.
     mem_limit: ${OASIS_RETRO_BOT_MEM_LIMIT:-512m}
+    memswap_limit: ${OASIS_RETRO_BOT_MEM_LIMIT:-512m}   # = mem_limit (D-O41)
     logging:
       driver: json-file
       options: { max-size: "20m", max-file: "5" }
