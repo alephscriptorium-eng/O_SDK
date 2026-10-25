@@ -374,8 +374,12 @@ nueva + otro invite», no una pérdida.
 `mem_limit = ceil(1,5 · pico)` (mín. 768m). Presupuesto:
 `pub + mem_limit + 128m (nginx) + ~150m (caddy) + ~100m (panel) ≤ 3 GB`. Si no cabe, el
 orden de rebajas es **`ssbLogStream.limit` → hops 3→2 → nunca el pub** (con hops 2 `/c` se
-queda sin habitantes salvo que el pub siga directamente a gente con Clearnet). El pub hoy no tiene
-`mem_limit`: un pico del HUB puede empujarlo al OOM-killer → WP-O47.
+queda sin habitantes salvo que el pub siga directamente a gente con Clearnet). El pub tiene `mem_limit`
+desde WP-O121 (`OASIS_PUB_MEM_LIMIT`, 1024m). Todo `mem_limit` lleva `memswap_limit` **igual** (D-O41,
+WP-O148): sin él Docker concede el doble en swap y el presupuesto no vale. El swap del host (2 GB en el
+disco raíz, `swappiness` 10; `CAPACIDAD.md` §2) absorbe los picos que no caben; un nodo que vive en swap
+es una señal, no una solución. Cambiar un límite en caliente: `docker update --memory X --memory-swap X`
+más el valor en `.env.prod` para el próximo recreate (ECOIN §7); nunca un `up` solo por esto.
 
 ## 8. Rollback
 

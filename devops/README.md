@@ -97,7 +97,15 @@ Qué hace:
 - monta el volumen en `/srv/oasis` y lo persiste por UUID en `/etc/fstab`;
 - crea el layout `/opt/oasis-scriptorium` + `/srv/oasis/oasis-pub/*`;
 - instala Docker Engine y Compose v2 desde repos oficiales de Debian;
-- aplica UFW para `22`, `80`, `443` y `8008`.
+- aplica UFW para `22`, `80`, `443` y `8008`;
+- crea un `swapfile` de 2 GB en el disco raíz (`--swap-gb N`; `0` para no crearlo) y fija `vm.swappiness=10` en
+  `/etc/sysctl.d/90-oasis-swap.conf` (D-O41: red de seguridad para picos, no memoria; `docs/PUB/CAPACIDAD.md` §2).
+
+En un host que ya corre, solo el swap (idempotente: si ya existe con ese tamaño no toca nada; `/etc/fstab` con backup):
+
+```bash
+bash devops/scripts/bootstrap-debian13-base.sh --only-swap --swap-gb 2
+```
 
 El endurecimiento SSH se deja en modo seguro por defecto: el script revisa la configuración efectiva, pero **no** desactiva autenticación por contraseña salvo que lo lances con:
 
@@ -123,6 +131,7 @@ Ese script comprueba:
 - Docker activo y habilitado al arranque
 - `docker compose` disponible
 - reglas UFW esperadas
+- swap activa del tamaño pedido, `/swapfile` a `600` y en `/etc/fstab`; `vm.swappiness` = 10
 - que `127.0.0.1:8787` no quede expuesto públicamente
 - configuración SSH efectiva
 

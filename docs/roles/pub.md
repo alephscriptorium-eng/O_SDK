@@ -69,7 +69,8 @@ Lee docs/roles/pub.md y el protocolo del HUB.
 
 ## Qué necesitas tener
 
-- Un servidor con Linux y acceso por SSH. El método está medido en Debian 13 con 4 GB de memoria.
+- Un servidor con Linux y acceso por SSH. El método está medido en Debian 13 con 2 CPU y 4 GB de memoria;
+  con el swap que crea la base (2 GB) aguanta 3 GB. Con 2 GB vive en swap: no.
 - Tu clave SSH. El agente la usa desde `devops/.ssh/`, que queda fuera de git; no la imprime.
 - Un dominio, o al menos una IP fija. Con dominio hay certificado y web; con IP sola basta para que
   los clientes se conecten.
@@ -82,7 +83,7 @@ Lee docs/roles/pub.md y el protocolo del HUB.
 | 1 | Leer el [protocolo para agentes](/AGENTES): reglas e irreversibles | — | |
 | 2 | Crear tu instancia: `devops/hosts/` con tu host, tu usuario y el nombre de tu clave | los scripts apuntan a **tu** servidor | ver [Hazlo tuyo](/roles/tu-pub) |
 | 3 | Medir el servidor sin tocarlo: sistema, disco, memoria, puertos, Docker | un informe | **solo lectura** |
-| 4 | Preparar la base del servidor | Docker, cortafuegos, carpetas de datos | **PERMISO**: escribe en tu servidor. El script actual pide un segundo disco y lo formatea: si no lo tienes, **parar** |
+| 4 | Preparar la base del servidor | Docker, cortafuegos, carpetas de datos, swap | **PERMISO**: escribe en tu servidor. El script actual pide un segundo disco y lo formatea: si no lo tienes, **parar** |
 | 5 | Desplegar el pub | el pub responde en el 8008. **Hoy, parar aquí** si lo quieres sin las piezas de la demo: el despliegue del repo las arrastra | **DECISIÓN**. La variante de solo el pub está pendiente (WP-O117) |
 | 6 | Dar nombre al pub y anunciarlo | perfil publicado, pub visible | **PERMISO**: son mensajes que no se retiran |
 | 7 | Generar un invite y comprobarlo con un cliente | un cliente se conecta y se sincroniza | |

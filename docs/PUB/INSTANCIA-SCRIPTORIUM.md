@@ -14,7 +14,7 @@
 | Campo | Valor |
 |---|---|
 | Pub | `pub.escrivivir.co` (dominio del operador: `escrivivir.co`) |
-| Host | VPS Debian, 4 GB; definición en `devops/hosts/scriptorium/host.env` |
+| Host | VPS Gandi, Debian 13, 2 CPU · 4 GB (reducción a 3 GB / 1 CPU prevista por el custodio); swap 2 GB en `/swapfile` (disco raíz), `vm.swappiness` 10 (WP-O148, D-O41); definición en `devops/hosts/scriptorium/host.env` |
 | Layout vivo | `/opt/oasis-scriptorium/OASIS_PUB` (pre-refactor, **sin git**). `host.env` lleva esa ruta (el layout medido): los scripts de `devops/` no piden ningún `export`. Migración al layout canónico: pendiente (`devops/MIGRATION-2026-07.md`) |
 | Acceso | SSH con la clave `devops/.ssh/gandi_pub_ed25519` (carpeta fuera de git; nombre en `KEY_FILE` de `host.env`). Los scripts la toman solos |
 | Nodos de Oasis | tres contenedores de la misma imagen en el host: `oasis-pub-scriptorium` (`server`), `oasis-pub-hub` (`backend`), `oasis-pub-wallet-bot` (`backend`); el bot 3 no corre en el host (deprecated, D-O36; §3). Versión y modo de cada uno: `deploy-status.sh`, bloque «Piezas vivas» |
