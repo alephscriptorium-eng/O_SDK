@@ -595,8 +595,8 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
 
 - **D-O40 · 2026-10-25 · Un guard se retira cuando upstream cubre lo que perseguía: el séptimo guard (`/c/blob`,
   D-O31) se retira en 1.3.8. Recuento vigente: 6 guards en 6 ficheros, invariante de 7 ficheros.** Propuesto por el
-  agente en el ciclo 1.3.8 (WP-O147); **pendiente del refrendo del custodio antes de GO-1** (si no lo refrenda, el guard
-  se repone sobre la rama y este asiento se retira). Hechos medidos: desde 1.3.3 `backend.js`, en
+  agente en el ciclo 1.3.8 (WP-O147) y **refrendado por el custodio el 2026-10-25** («sí las decisiones. Go entero»),
+  junto con (a) y (b) de abajo. Hechos medidos: desde 1.3.3 `backend.js`, en
   `.get("/c/blob/:cnBlobId")`, hace `getLocal` y, si el blob falta, `wantClearnetBlob` (lo pide a la red en segundo plano,
   con reintento acotado; además pre-pide al indexar los blobs de todo objeto clearnet) y `sendPendingContent`
   (`Cache-Control: no-store`; SVG «todavía no disponible» para una `<img>`, 404 si no). La `location /c/blob/` de nginx no

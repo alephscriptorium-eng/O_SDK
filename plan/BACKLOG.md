@@ -926,8 +926,9 @@ Dep: WP-O141. Relación: WP-O103 (cableado de la cartera), WP-O124 (salto de mot
 
 | **WP-O147** | **P0** | Upgrade a Oasis 1.3.8 (1.3.2 → 1.3.8; 1.3.3-1.3.7 quedan dentro del salto): pub, HUB y bot de cartera |
 
-**Estado** · 🟡 2026-10-25 **local en verde; host pendiente de GO y de tres decisiones del custodio** (reporte §8: séptimo guard
-retirado / D-O40, guardián de feeds sin interruptor, salas en clearnet). Rama `upgrade/oasis-1.3.8` (desde `main` befb7ed6);
+**Estado** · ✅ 2026-10-25 **aplicado en el host** (pub, HUB y bot en 1.3.8; delta: `oasisVersion+1` por nodo y un `karmaScore` del
+bot, igual que en local salvo el nodo del karma; motor de RBU encendido al cierre; 31 min de host, GO-1…GO-4b; tres decisiones
+refrendadas: D-O40, guardián de feeds tal cual, salas en clearnet). Rama `upgrade/oasis-1.3.8` (desde `main` befb7ed6);
 reporte `plan/REPORTES/WP-O147-upgrade-oasis-1.3.8.md`. `OLD_REF=a44bce44`, `NEW_REF=09b829f8`. Sin cambio de motor. Hecho:
 overlay limpio + 6 guards (3-way: dos limpios, dos con conflictos de suma), **séptimo guard retirado** (upstream absorbe
 `/c/blob`), parcheador seguido a `src/patches/` (Dockerfile, audit, diff), audit `pendiente=0` (20 parches), 252 disposiciones
@@ -935,8 +936,7 @@ overlay limpio + 6 guards (3-way: dos limpios, dos con conflictos de suma), **s�
 búfer, `/c/pdf/page` cacheable), sonda `feed-guard-status.js`; gates U0-U6 en verde (`oasisVersion+1` por nodo y el HUB
 `karmaScore+1`; U6 pub `contact+1`; `feedGuard` `lastRepair: null` ×3). Hallazgos de 1.3.8: `feed_guard` (repara feeds solo),
 `blob_prefetch` (el pub pide los blobs de a quien sigue), cupo de salientes de `ssb-conn` configurable (10) y ranking «quien me
-sigue primero», salas en clearnet, PDF rasterizado en el HUB (`mupdf`). **Pendiente**: U7, US, decisiones, GO-1…GO-4b,
-cierre (journal, §7, `mantener.md`). Dep: WP-O146.
+sigue primero», salas en clearnet, PDF rasterizado en el HUB (`mupdf`). U7 y US en verde. Cierre hecho (journal, §7, `mantener.md`, ficha). Dep: WP-O146.
 
 | **WP-O142** | **P2** | Generalizar `retro-seed.sh` / `retro-tombstone.sh` a cualquier bot de plantilla (`--container`) |
 

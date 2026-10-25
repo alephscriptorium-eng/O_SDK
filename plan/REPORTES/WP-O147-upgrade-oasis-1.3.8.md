@@ -1,6 +1,6 @@
 # WP-O147 · Upgrade a Oasis 1.3.8 (1.3.2 → 1.3.8; 1.3.3-1.3.7 quedan dentro del salto)
 
-Rama `upgrade/oasis-1.3.8` desde `main` befb7ed6 (merge de WP-O146). 2026-10-25. Tercer ciclo con el protocolo v3
+Rama `upgrade/oasis-1.3.8` desde `main` befb7ed6 (merge de WP-O146). 2026-10-25 (local 17:06-17:34Z; host 17:40-18:11Z). Tercer ciclo con el protocolo v3
 (`docs/PUB/UPGRADE-PROTOCOL.md`). Encargo del custodio: «vamos a lanzar el protocolo de upgrade». Alcance: pub, HUB y bot de
 cartera de la instancia Scriptorium. Fuera: el cliente real (cerrado, D-O39), el bot retro (deprecated, D-O36), `ecoind`, la
 maint-ui (prohibida durante el ciclo) y `caps.shs` (ciclo 6: «mantener»).
@@ -53,7 +53,8 @@ del stack local parados 7 días en esa imagen; bot con el motor encendido (`ssb-
 | `3e6d2602` | `regen-node-configs.js`: `inboxMutedBots += social` en `pub/config/hub/oasis-config.json` y en la plantilla del bot (upstream añade el aviso `SOCIAL_SUPPORTED` a `INBOX_BOTS`) |
 | `cec7fd5b` | `link.tsv` al cupo configurable (+3 filas de upstream), `devops/scripts/feed-guard-status.js` (sonda), plantilla nginx (salas en clearnet sin búfer, `/c/pdf/page` cacheable; `nginx -t` ok) |
 | `e1f7848f` | Protocolos (UPGRADE §0.2, §2, §3.1, §3.4, §4, §7; AGENTES §4; HUB §2; CAPACIDAD), frase canónica (AGENTS.md, README, PRÁCTICAS, mantener), D-O40 propuesto, backlog, CHANGELOG |
-| (este) | reporte del tramo local |
+| `f526f6d1` | reporte del tramo local, build del portal |
+| (este) | §10 aplicación en el host, cierre (journal, ficha, `mantener.md`, protocolo §7, backlog, CHANGELOG) |
 
 Verificación de invariantes (UPGRADE §2), tras `6936bcc7`: `git diff 09b829f8 --stat -- src/` = **7 ficheros** (110+/32−:
 `backend.js`, `updater.js`, `blockchain-cycle.json`, `invite-codes.json`, `ssb_config.js`, `clearnet_view.js`,
@@ -284,7 +285,13 @@ UM y UR no aplican (el ciclo no cambia el motor, §1).
 `karma_model.js` recalcula el valor y el refresco de fondo lo publica: dentro del `+0..1` declarado) · bot `oasisVersion+1`.
 Nada más: ni `about`, ni `pubAvailability` (el bot lo había anunciado hace < 12 h), ni `ubiAllocation` (época abierta), ni
 cifrados (`social` ya silenciado). U6: pub `contact+1` (el invite, solo porque se usó). `feedGuard`: `lastRepair: null` en
-los tres nodos, en U3 y en U7. **Host**: pendiente de GO.
+los tres nodos, en U3 y en U7.
+
+**Host** (`pre138` 17:40:05Z → `post138` 18:11:04Z): pub `oasisVersion+1` (28 → 29) · HUB `oasisVersion+1` (27 → 28) · bot
+`oasisVersion+1`, `karmaScore+1` (107 → 109). Ni `about`, ni `pubAvailability` (motor apagado y encendido en el ciclo; < 12 h del
+último anuncio), ni `ubiAllocation` (época abierta), ni cifrados. **Mismo delta que en local** salvo que el `karmaScore` del
+`+0..1` salió en el bot y no en el HUB. `feedGuard.status()` tras cada GO: `lastRepair: null` en los tres (el pub, con 16
+comprobaciones contra pares externos).
 Delta declarado (`expect.conf`, sin cambios): pub `oasisVersion=+1`; HUB `oasisVersion=+1,karmaScore=+0..1`; bot
 `oasisVersion=+1,karmaScore=+0..1,about=+0..1,pubAvailability=+0..1`. Medida adicional de este ciclo: `feedGuard.status()`
 con `lastRepair: null` en cada nodo (arriba).
@@ -304,10 +311,14 @@ con `lastRepair: null` en cada nodo (arriba).
 - **Una barra dentro de código en una celda de tabla rompe el build del portal.** `(live|sound)` entre backticks en una fila de
   CAPACIDAD partió la celda y dejó `<id>` fuera del código: Vue lo leyó como etiqueta sin cierre (`npm run docs:build` rc 1,
   WP-O146 ya cazó el caso de `<pendiente>`). En tablas, `·` o `\|`. Corregido; build y `verificar-sitio` en verde.
+- **`/srv/oasis` es de root: el tgz de rollback de `src` (§4 paso 3) va con `sudo`.** El primer `tar` dio `Permission denied`
+  sin escribir nada; §4 lo dice ahora. Aplicado.
 - **Sonda del guardián de feeds.** Desde 1.3.8 cada nodo lleva `feedGuard`; su `status()` es la medida de que no ha reparado
   nada. Entra en U3 y en §4 (paso 7-9, tras cada `check`). Aplicado.
 
 ## 8. Decisiones que pide este ciclo (antes del host)
+
+**Refrendadas por el custodio el 2026-10-25** («sí las decisiones. Go entero»): las tres, con la recomendación de cada una.
 
 1. **Séptimo guard retirado (supera D-O31).** Propuesta: asiento D-O40 «desde 1.3.8 `/c/blob` es el de upstream; la frase
    canónica es 6 guards en 6 ficheros, invariante de 7 ficheros». Si el custodio prefiere conservarlo, se repone
@@ -321,6 +332,35 @@ con `lastRepair: null` en cada nodo (arriba).
 3. **Salas en clearnet.** Upstream retransmite a visitantes web las salas cuyo autor ha marcado `rooms` en clearnet (opt-in,
    mismo criterio que el resto del visor), con tope de 50 espectadores por sala. Recomendación: permitirlo con la `location`
    sin búfer (preparada); alternativa: `return 404` en esa `location`.
+
+## 10. Aplicación en el host (2026-10-25 UTC)
+
+GO del custodio para el ciclo entero («sí las decisiones. Go entero»), con parada ante cualquier salida distinta de la esperada.
+Una orden por paso. Estado de partida: §1 y foto `pre138` (remote, 17:40:05Z): pub 1.3.2 `server` seq 28 · HUB 1.3.2 `backend`
+seq 27 · bot 1.3.2 `backend` seq 107 (`pubAvailability=70`, `ubiAllocation=16`, `wallet=1`, motor encendido), los tres «cuadra ·
+sbot=», `enlace-pub=connected(out)` en HUB y bot. `/` 43 %, `/srv/oasis` 47 %, `sudo -n` ok.
+
+| # | Paso | Hecho | Puerta |
+|---|---|---|---|
+| 1 | Backups | pub → `devops/backups/oasis-pub/` (archivo de `ssb-data`, 17:40-17:43Z); `wallet.dat` → `devops/backups/ecoin/` (hot, 94 208 B, 17:43Z). En el host `oasis-hub.bak-o147-2026-10-25.tgz` (956 MB: solo `ssb-data`, sin `http-cache`) y `oasis-wallet-bot.bak-o147-2026-10-25.tgz` (214 MB), root 600. Los cuatro ficheros que cambian: sha256 del vivo = blob de `main` (medido) → `.bak-o147-2026-10-25` → `cat >` in place con el de la rama (`Dockerfile`, `oasis-config.json` del HUB, `oasis-config.json.tpl` del bot: sha = HEAD, 0 CR). `.dockerignore` del host no se toca | **GO-1** |
+| 2 | Disco | 0 contenedores sobre `:1.3.0` → `rm` de `src.old-1.3.0` y `src-1.3.0.tgz`, `rmi :1.3.0` (`8639c5f9`), `image prune` 0 B, `builder prune` 512 MB; `/` 43 % → 40 % | |
+| 3 | Rollback | `oasis-pub-scriptorium:1.3.2` = `96a5a32c` (= `latest`) · `/srv/oasis/src-1.3.2.tgz` (94 MB, root 600). **Tropiezo**: el primer `tar` fue sin `sudo` y `/srv/oasis` es de root: `Permission denied`, nada escrito; repetido con `sudo` (§4 del protocolo lo dice ahora) | |
+| 4 | `src/` | `git archive` LF de `upgrade/oasis-1.3.8` → `src.new` (17:41Z). Antes del `mv`: 1.3.8, 0 CR en `backend.js` e `is-map`, enlace a `src/base` + `ssb-db2`, 5.º guard (`url` = dominio del pub), 6.º (4 + 2), **7.º = 0 y `wantClearnetBlob…sendPendingContent` = 1**, `blobs.max 50`, `mergeDeep`, 0 `git reset --hard`, aviso del fork en `/update`, `src/patches/patch-node-modules.js` presente, 4 JSON en `configs/`, `src.old-1.3.2` no existía. `mv src src.old-1.3.2` · `src/` = 1.3.8 | |
+| 5 | Lo demás que viaja | render de la config del bot (`sudo bash scripts/render-wallet-bot-config.sh .env.prod`: OK, 400, con `social`). Plantilla nginx: a `/tmp` del host · `nginx -t` en `nginx:alpine` efímero (ok) · in place (sha = HEAD) · `up -d --no-deps --force-recreate hub-cache` · `$R hub` → **`GATE OK`** con el HUB aún en 1.3.2 (sitemap 211 URLs https). Caddy sin tocar (los demás vhosts no cambian) | |
+| 6 | Build y humo | `compose build oasis-pub` (17:44-17:45Z) → `latest` = `b6fd46db0ca0` (1,07 GB), `:1.3.2` = `96a5a32c`; `/` 46 %. `$R smoke oasis-pub-scriptorium:latest` → **`SMOKE OK`** a la primera: 1.3.8, `node --check` ×3, enlace a `src/base`, **0 `secret`**, 0 `.env` reales, `server` socket a los 2 s, `backend` `GET /c` 200 a los 2 s y `start_pub_link`, 3 parches ×2, 0 errores ×2 | |
+| 7 | Pub (17:46:39Z) | `up -d --no-deps --no-build oasis-pub` → `healthy` a los **6 s** (imagen `b6fd46db`; log: `Version: 1.3.8`, parches, snapshot programado, 0 errores). `$R check pre138 --wait --max 900 --expect 'pub:oasisVersion=+1 hub:karmaScore=+0..1 bot:karmaScore=+0..1,pubAvailability=+0..1'` → **`GATE OK` (316 s)**: pub `oasisVersion+1` (28 → 29), HUB Δ0, bot Δ0, enlaces `connected` (ahora `in`: el pub entra él, por el ranking nuevo). `feedGuard.status()`: `checks: 16` con pares externos, `reportedOk: true`, `lastRepair: null`. `/public/status` → `1.3.8`, `running`, `healthy`, invite presente (121 caracteres, no copiado) | **GO-2** |
+| 8 | HUB (17:52:53Z) | `oasis-config.json` (con `social`) y `ssb-config` del host = HEAD (sha). `up -d --no-deps --no-build oasis-hub` → `healthy` a los **18 s** (1.3.8, parches, «Admin access» presente y no copiado, `Media cache limit: 2048 MB`, 0 errores; `~/.ssb/oasis/oasis-config.json` lleva `social`). `$R check … hub:oasisVersion=+1,karmaScore=+0..1 …` → **`GATE OK` (287 s)**: **HUB `oasisVersion+1`** (27 → 28) y nada más. `feedGuard.status()`: `checks: 4`, `lastRepair: null`. `hub-disk.sh prune-cache` (2,05 GB → 52 KB, `nginx -s reload`) · `$R hub --strict` → **`GATE OK`**, 16 ok: MISS→HIT, **0 cruces en 18 peticiones de 6 idiomas**, tema por `?theme=`, 185 enlaces con `lang` y 193 con `theme`, sitemap 229 URLs https, RSS 37 + 4; `/c/rss` y `/c/pdf` (rutas nuevas) → 200 | **GO-3** |
+| 9a | Bot (17:59:16Z) | `hub-wallet.sh pause` → 1.3.8 con `pub=false`, `healthy`; `status`: `wallet=1`, cartera `EYdruX…` (la misma), saldo 0, `pares: 10 · pub: connected` (el cupo nuevo, 10), `ecoind` healthy (blocks 63838), 0 errores, config con `social`. `$R check … bot:oasisVersion=+1,karmaScore=+0..1,about=+0..1` → **`GATE OK` (261 s)**: **bot `oasisVersion+1` y `karmaScore+1`** (107 → 109; el `karmaScore` dentro de `+0..1`), `motor: pub=true → pub=false`, nada más. `feedGuard.status()`: `checks: 4`, `lastRepair: null` | **GO-4a** |
+| 9b | Motor (18:05:09Z) | `hub-wallet.sh on --yes` → `ready` en verde (pub `CONNECTED`; aviso de siempre: saldo ≤ 500, la época 2026-10 ya estaba abierta) → recreado con `pub=true`, `healthy`, «PUB engine on», `pares: 10 · pub: connected out`, cartera `EYdruX…`, saldo 0, 0 errores. `$R check pre138 --wait` (delta vigente completo, `expect.conf`) → **`GATE OK` (261 s)**: bot `oasisVersion+1` y `karmaScore+1` (los de 9a), **sin `pubAvailability` nuevo** (el último anuncio tenía < 12 h), sin `about`, sin `ubiAllocation` (época 2026-10 ya abierta), sin cifrados; pub y HUB sin cambios. `backup-ecoin.sh` después (hot, 94 208 B, 18:11Z) | **GO-4b** |
+| 10 | Cierre (18:11Z) | `snapshot post138`: pub 29 · HUB 28 · bot 109, los tres «cuadra · sbot=», v1.3.8 · journal `1.3.8`, `server+hub+wallet-engine-on` (18:11:12Z) · `deploy-status.sh`: tres nodos **1.3.8 `healthy` «imagen al día»**, `src/` 1.3.8, `Dockerfile`, entrypoint, compose, plantilla nginx, configs y `tools/*.js` **iguales que HEAD** (deriva solo en `.dockerignore`, esperada), restos = el rollback de este ciclo (`src.old-1.3.2`, `src-1.3.2.tgz`, `:1.3.2`), HUB `connected in` (6 pares) y bot `connected out` (10 pares: el cupo nuevo), pub **VERDE** en el directorio (ciclo 6), `/` 43 %, `/srv/oasis` 45 %, `hub-disk` y `ecoin-disk` OK, `capacity` **0 avisos** (la capa del contenedor se vació al recrear) | |
+
+Pub sin sbot ≈ 6 s; HUB ≈ 18 s; bot ≈ 0 s. **Nada publicado con identidad real fuera de lo declarado.** El bot retro sigue deprecated y
+parado (D-O36); el cliente real sigue cerrado (D-O39).
+
+### 10.1 Tiempos
+
+GO-1 (17:40Z) → cierre (18:11Z): **31 min**, de los que 4 × ≈ 4,5 min son los `--min-age 300` de los `check` remotos. Los tgz de
+`ssb-data` (1,2 GB) tardaron 3 min; el build en el host, 1 min 40 s.
 
 ## 9. Seguimiento
 

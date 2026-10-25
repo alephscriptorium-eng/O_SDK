@@ -7,8 +7,8 @@ encargos:
   - id: subir-version
     titulo: Subir mi pub a la versión nueva de Oasis
     estado: ejercido
-    medido: '2026-10-18'
-    prueba: plan/REPORTES/WP-O146-upgrade-oasis-1.3.2.md
+    medido: '2026-10-25'
+    prueba: plan/REPORTES/WP-O147-upgrade-oasis-1.3.8.md
     falta: prueba en frío (WP-O118)
   - id: recuperar
     titulo: Algo se ha roto, recupéralo
@@ -28,11 +28,13 @@ puerta es para quien ya tiene algo corriendo.
 - Subir de versión: <Sello rol="mantener" id="subir-version" />
 - Recuperar: <Sello rol="mantener" id="recuperar" />
 
-La última subida del pub de demostración, de 1.3.0 a 1.3.2, se hizo con este
-protocolo en 46 minutos de host: tres nodos, cada uno publicó exactamente lo que se
+La última subida del pub de demostración, de 1.3.2 a 1.3.8, se hizo con este
+protocolo en 31 minutos de host: tres nodos, cada uno publicó exactamente lo que se
 había declarado antes de tocar el servidor, y nada más. El ensayo en local destapó que
-la versión nueva retransmite vídeo en las llamadas; se paró, se decidió con el custodio
-y quedó escrito. En 1.2.8 fue la puntuación de karma, que un nodo publica solo. La de 1.1.10
+upstream había absorbido uno de los guards del fork (se retiró, con asiento), que la
+versión nueva trae un guardián que repara feeds por su cuenta (se mide, no se supone) y
+que las salas pueden salir a la web; las tres cosas se pararon, se decidieron con el
+custodio y quedaron escritas. En 1.3.2 fue el vídeo en las llamadas. En 1.2.8 fue la puntuación de karma, que un nodo publica solo. La de 1.1.10
 a 1.2.1 fue un cambio de motor de base de datos, de los que no tienen vuelta atrás.
 
 ## Qué le dices a tu agente
