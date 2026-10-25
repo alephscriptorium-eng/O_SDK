@@ -7,12 +7,16 @@
 #   bash devops/scripts/capacity.sh [--local] [--json]
 #
 #   --local   stack local (volumes-dev/); sin él, el host de la instancia por SSH
-#   --json    una línea JSON para un journal (devops/logs/capacity.jsonl)
+#   --json    una línea JSON: a stdout y al journal devops/logs/capacity.jsonl
 #
 # Qué mide, por nodo de Oasis (pub, HUB, bots): log (db2/log.bipf o flume/log.offset), índices
 # (db2/indexes, db2/jit), blobs, snapshots (oasis/content), /app/logs, log de Docker, capa del
-# contenedor (lo que se escribe fuera de los volúmenes: /tmp, src/maps/cache), memoria y su límite.
-# Del host: discos, imágenes y caché de build, restos de rollback, cadena de ecoind, caché HTTP.
+# contenedor (lo que se escribe fuera de los volúmenes: /tmp, src/maps/cache), memoria y su límite,
+# y que el límite de swap del contenedor sea el mismo (memswap_limit = mem_limit, D-O41: sin él
+# Docker concede otro tanto en swap). La memoria se mide también en los contenedores de
+# CAP_MEM_NODES (por defecto ecoind y la caché nginx del HUB), que no tienen datos de Oasis.
+# Del host: discos, RAM disponible, swap y swappiness, imágenes y caché de build, restos de
+# rollback, cadena de ecoind, caché HTTP.
 #
 # Cada fila lleva un estado: ok · AVISO (pasa su presupuesto, o no tiene límite donde debería
 # tenerlo) · ? (no se pudo medir). Los presupuestos son umbrales de aviso, no límites: el límite,
@@ -20,9 +24,11 @@
 #   CAP_LOG_MB=1024  CAP_INDEX_MB=1024  CAP_BLOBS_PUB_MB=4096  CAP_BLOBS_HUB_MB=2048  CAP_BLOBS_BOT_MB=256
 #   CAP_SNAPSHOT_MB=512  CAP_APPLOGS_MB=200  CAP_LAYER_MB=300  CAP_MEM_PCT=80
 #   CAP_DISK_SOFT=75  CAP_DISK_HARD=90  CAP_IMAGES_GB=12  CAP_CHAIN_MB=2048  CAP_HTTPCACHE_MB=2048
+#   CAP_RAM_MB=512 (RAM disponible mínima)  CAP_SWAP_PCT=25 (swap usada en reposo)  CAP_SWAPPINESS=10
 #
 # Códigos: 0 todo ok · 1 hay avisos · 2 disco por encima del umbral duro · 3 no se pudo medir
 # Nodos: GATE_NODES="alias:contenedor:servicio …" (los mismos que upgrade-gates.sh)
+#        CAP_MEM_NODES="alias:contenedor …" (solo memoria; se saltan los que no existan)
 # =============================================================================
 set -uo pipefail
 export MSYS_NO_PATHCONV=1
@@ -38,22 +44,24 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --local) LOCAL=1 ;;
     --json) JSON=1 ;;
-    -h|--help) sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,31p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "argumento desconocido: $1" >&2; exit 64 ;;
   esac
   shift
 done
 
 GATE_NODES="${GATE_NODES:-pub:${PUB_CONTAINER:-oasis-pub-scriptorium}:oasis-pub hub:oasis-pub-hub:oasis-hub bot:oasis-pub-wallet-bot:oasis-wallet-bot}"   # el retro de la casa vive en la máquina operadora (D-O33): GATE_NODES explícito si se quiere medir
+CAP_MEM_NODES="${CAP_MEM_NODES:-ecoin:oasis-pub-ecoin hub-cache:${HUB_CACHE_CONTAINER:-oasis-pub-hub-cache}}"   # con mem_limit en el compose pero sin datos de Oasis: solo memoria
 trap node_run_cleanup EXIT
 node_run_setup "$LOCAL" || exit 3
 if [ "$LOCAL" = 1 ]; then ROOT_MOUNT="$(cd "$DEVOPS_DIR/.." && pwd)"; DATA_MOUNT="$ROOT_MOUNT"; REPO_HOST="$ROOT_MOUNT"
 else ROOT_MOUNT="/"; DATA_MOUNT="${HUB_DATA_MOUNT:-/srv/oasis}"; REPO_HOST="$(dirname "${REMOTE_REPO_DIR:-/opt/oasis}")"; fi
 
 raw="$({ node_remote_preamble; node_remote_lib
-  printf 'GATE_NODES=%q; ROOT_MOUNT=%q; DATA_MOUNT=%q; REPO_HOST=%q\n' "$GATE_NODES" "$ROOT_MOUNT" "$DATA_MOUNT" "$REPO_HOST"
+  printf 'GATE_NODES=%q; CAP_MEM_NODES=%q; ROOT_MOUNT=%q; DATA_MOUNT=%q; REPO_HOST=%q\n' "$GATE_NODES" "$CAP_MEM_NODES" "$ROOT_MOUNT" "$DATA_MOUNT" "$REPO_HOST"
   for v in CAP_LOG_MB:1024 CAP_INDEX_MB:1024 CAP_BLOBS_PUB_MB:4096 CAP_BLOBS_HUB_MB:2048 CAP_BLOBS_BOT_MB:256 CAP_SNAPSHOT_MB:512 \
-           CAP_APPLOGS_MB:200 CAP_LAYER_MB:300 CAP_MEM_PCT:80 CAP_DISK_SOFT:75 CAP_DISK_HARD:90 CAP_IMAGES_GB:12 CAP_CHAIN_MB:2048 CAP_HTTPCACHE_MB:2048; do
+           CAP_APPLOGS_MB:200 CAP_LAYER_MB:300 CAP_MEM_PCT:80 CAP_DISK_SOFT:75 CAP_DISK_HARD:90 CAP_IMAGES_GB:12 CAP_CHAIN_MB:2048 CAP_HTTPCACHE_MB:2048 \
+           CAP_RAM_MB:512 CAP_SWAP_PCT:25 CAP_SWAPPINESS:10; do
     n="${v%%:*}"; printf '%s=%q\n' "$n" "${!n:-${v##*:}}"
   done
   cat <<'EOS'
@@ -66,6 +74,17 @@ row()   { local st="${7:-}"; if [ -z "$st" ]; then st=ok; if [ "$3" = "?" ]; the
 # Docker tarda en calcular tamaños y consumo: una sola llamada de cada para todos los contenedores.
 SIZES="$(docker ps -s --format '{{.Names}}|{{.Size}}' 2>/dev/null)"
 STATS="$(docker stats --no-stream --format '{{.Name}}|{{.MemPerc}}|{{.MemUsage}}' 2>/dev/null)"
+# memrows <alias> <contenedor>: memoria frente a su límite y el límite de swap del contenedor (D-O41).
+# HostConfig.MemorySwap: 0 = no fijado (Docker concede 2× mem_limit en swap) · -1 = ilimitado · = Memory → sin swap extra.
+memrows() { local a="$1" c="$2" mem ml msw
+  mem="$(printf '%s\n' "$STATS" | awk -F'|' -v c="$c" '$1==c{print $2}' | tr -d '%' | cut -d. -f1)"
+  ml="$(docker inspect -f '{{.HostConfig.Memory}}' "$c" 2>/dev/null)"
+  msw="$(docker inspect -f '{{.HostConfig.MemorySwap}}' "$c" 2>/dev/null)"
+  if [ "${ml:-0}" = 0 ]; then row "$a" "memoria" "$(printf '%s\n' "$STATS" | awk -F'|' -v c="$c" '$1==c{print $3}' | awk '{print $1}')" "" - "SIN LÍMITE" AVISO; return; fi
+  row "$a" "memoria" "${mem:-?}" "% del límite" "$CAP_MEM_PCT" "mem_limit=$(( ml / 1048576 )) MB"
+  if [ "${msw:-0}" = "$ml" ]; then row "$a" "memswap" "$(( msw / 1048576 ))" MB - "= mem_limit (sin swap extra)"
+  elif [ "${msw:-0}" = "-1" ]; then row "$a" "memswap" "-1" "" - "ILIMITADO en swap: falta memswap_limit = mem_limit (D-O41)" AVISO
+  else row "$a" "memswap" "$(( ${msw:-0} / 1048576 ))" MB - "≠ mem_limit: Docker concede el doble en swap; falta memswap_limit (D-O41)" AVISO; fi; }
 for n in $GATE_NODES; do
   a="${n%%:*}"; c="${n#*:}"; c="${c%%:*}"
   d="$(node_ssb_dir "$c")"
@@ -93,12 +112,13 @@ for n in $GATE_NODES; do
   layer="$(printf '%s
 ' "$SIZES" | awk -F'|' -v c="$c" '$1==c{print $2}' | awk '{v=$1; u=v; gsub(/[0-9.]/,"",u); gsub(/[A-Za-z]/,"",v); if(u=="GB")v*=1024; else if(u=="kB")v/=1024; else if(u=="B")v/=1048576; printf "%d", v}')"
   row "$a" "capa del contenedor (/tmp, maps/cache…)" "${layer:-?}" MB "$CAP_LAYER_MB" "se vacía al recrear"
-  mem="$(printf '%s
-' "$STATS" | awk -F'|' -v c="$c" '$1==c{print $2}' | tr -d '%' | cut -d. -f1)"
-  ml="$(docker inspect -f '{{.HostConfig.Memory}}' "$c" 2>/dev/null)"
-  if [ "${ml:-0}" = 0 ]; then row "$a" "memoria" "$(printf '%s
-' "$STATS" | awk -F'|' -v c="$c" '$1==c{print $3}' | awk '{print $1}')" "" - "SIN LÍMITE" AVISO
-  else row "$a" "memoria" "${mem:-?}" "% del límite" "$CAP_MEM_PCT" "mem_limit=$(( ml / 1048576 )) MB"; fi
+  memrows "$a" "$c"
+done
+# Contenedores con límite pero sin datos de Oasis (ecoind, caché nginx): solo memoria; si no existen, no son fila.
+for n in $CAP_MEM_NODES; do
+  a="${n%%:*}"; c="${n#*:}"; c="${c%%:*}"
+  docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null | grep -q true || continue
+  memrows "$a" "$c"
 done
 # --- host
 for m in "$ROOT_MOUNT" "$DATA_MOUNT"; do
@@ -106,6 +126,20 @@ for m in "$ROOT_MOUNT" "$DATA_MOUNT"; do
   st=""; if [ -n "$p" ] && [ "$p" -ge "$CAP_DISK_HARD" ]; then st=DURO; fi
   row host "disco $m" "${p:-?}" "%" "$CAP_DISK_SOFT" "umbral duro $CAP_DISK_HARD %" $st
 done
+# RAM, swap y swappiness de la máquina (D-O41). En el stack local (Windows/Mac) /proc no es el del host de Docker: se omiten.
+if [ "${NODE_LOCAL:-0}" != 1 ] || [ -r /proc/sys/vm/swappiness ]; then
+  ma="$(awk '/^MemAvailable:/{print int($2/1024)}' /proc/meminfo 2>/dev/null)"; mt="$(awk '/^MemTotal:/{print int($2/1024)}' /proc/meminfo 2>/dev/null)"
+  st=""; if [ -n "$ma" ] && [ "$ma" -lt "$CAP_RAM_MB" ]; then st=AVISO; fi
+  row host "RAM disponible" "${ma:-?}" "MB de ${mt:-?}" - "aviso < $CAP_RAM_MB MB: bajar un límite (HUB §7) o sacar del host lo que no es del pub" $st
+  sw="$(awk '/^SwapTotal:/{t=$2} /^SwapFree:/{f=$2} END{if (t+0==0) print "0|0|0"; else printf "%d|%d|%d", t/1024, (t-f)/1024, (t-f)*100/t}' /proc/meminfo 2>/dev/null)"
+  swt="${sw%%|*}"; swr="${sw#*|}"; swu="${swr%%|*}"; swp="${swr#*|}"
+  if [ -z "$sw" ]; then row host "swap" "?" "" - "-"
+  elif [ "$swt" = 0 ]; then row host "swap" 0 MB - "SIN SWAP: un pico mata un nodo (bootstrap-debian13-base.sh --only-swap, D-O41)" AVISO
+  else row host "swap usada" "$swp" "% de $swt MB ($swu MB)" "$CAP_SWAP_PCT" "red de seguridad: usada en reposo = un límite alto o la máquina es pequeña"; fi
+  sp="$(cat /proc/sys/vm/swappiness 2>/dev/null)"
+  st=""; if [ -n "$sp" ] && [ "$sp" != "$CAP_SWAPPINESS" ]; then st=AVISO; fi
+  row host "swappiness" "${sp:-?}" "" - "esperado $CAP_SWAPPINESS (/etc/sysctl.d/90-oasis-swap.conf)" $st
+fi
 # Suma de las imágenes por ID (no por etiqueta). No descuenta capas compartidas: es una cota superior.
 # `docker system df` daría la cifra exacta y la caché de build, pero puede tardar minutos: no se usa aquí.
 img="$(docker images --format '{{.ID}}|{{.Size}}' 2>/dev/null | sort -u | awk -F'|' '{v=$2; u=v; gsub(/[0-9.]/,"",u); gsub(/[A-Za-z]/,"",v); if(u=="MB")v/=1024; else if(u=="kB")v/=1048576; s+=v} END{printf "%d", s}')"
@@ -121,9 +155,12 @@ EOS
 [ -n "$raw" ] || { echo "capacity: no se pudo medir (¿Docker/SSH?)" >&2; exit 3; }
 
 if [ "$JSON" = 1 ]; then
-  printf '{"ts":"%s"' "$(date -u +%FT%TZ)"
-  printf '%s\n' "$raw" | awk -F'|' '{k=$1 "." $2; gsub(/[^A-Za-z0-9.]+/, "_", k); v=$3; if (v !~ /^[0-9]+$/) v="\"" v "\""; printf ",\"%s\":%s", k, v}'
-  printf '}\n'
+  JOURNAL="${CAPACITY_LOG_PATH:-$DEVOPS_DIR/logs/capacity.jsonl}"
+  line="$({ printf '{"ts":"%s","host":"%s"' "$(date -u +%FT%TZ)" "$([ "$LOCAL" = 1 ] && echo local || echo "${PUB_HOST:-host}")"
+    printf '%s\n' "$raw" | awk -F'|' '{k=$1 "." $2; gsub(/[^A-Za-z0-9.]+/, "_", k); v=$3; if (v !~ /^-?[0-9]+$/) v="\"" v "\""; printf ",\"%s\":%s", k, v}'
+    printf '}'; })"
+  printf '%s\n' "$line"
+  mkdir -p "$(dirname "$JOURNAL")" && printf '%s\n' "$line" >> "$JOURNAL"
 else
   echo "== capacidad · $([ "$LOCAL" = 1 ] && echo local || echo "${PUB_HOST:-host}") · $(date -u +%FT%TZ)"
   printf '%s\n' "$raw" | awk -F'|' '
