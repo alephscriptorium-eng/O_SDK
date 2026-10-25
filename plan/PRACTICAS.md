@@ -31,7 +31,7 @@ secuencia y el porqué.
 2. **Drill con identidad desechable** para todo lo que publique en SSB o toque una cartera. La
    identidad real de nadie —tampoco la del custodio— se usa para ensayar.
 3. `src/` no se toca fuera de los guards: invariante `git diff $NEW_REF --stat -- src/` = **7 ficheros**
-   (7 guards en 6 ficheros + `src/configs/blockchain-cycle.json`; D-O37), con `NEW_REF` el commit
+   (6 guards en 6 ficheros + `src/configs/blockchain-cycle.json`; D-O37, D-O40), con `NEW_REF` el commit
    «Oasis release X.Y.Z» que fija el preflight (`docs/PUB/UPGRADE-PROTOCOL.md` §1), **no**
    `oasis-upstream/main`. Los WPs `upgrade/` siguen ese protocolo de principio a fin.
 4. Docs: `npm run docs:build` y `.claude/skills/site-web/scripts/verificar-sitio.mjs` (enlaces muertos rompen el build).

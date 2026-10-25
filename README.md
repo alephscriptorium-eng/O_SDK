@@ -136,7 +136,7 @@ Una carpeta por responsabilidad — misma imagen, tres modos (`full`, `server`, 
 
 | Carpeta | Responsabilidad |
 |---------|-----------------|
-| [src/](src/) | Código Oasis (overlay 1-1 con upstream + los guards del fork: 7 guards en 6 ficheros; con `src/configs/blockchain-cycle.json` el invariante `git diff $NEW_REF --stat -- src/` es de 7 ficheros) |
+| [src/](src/) | Código Oasis (overlay 1-1 con upstream + los guards del fork: 6 guards en 6 ficheros; con `src/configs/blockchain-cycle.json` el invariante `git diff $NEW_REF --stat -- src/` es de 7 ficheros) |
 | [client/](client/) | Rol **cliente**: identidad del usuario (GPG/SSB) y entorno local |
 | [pub/](pub/) | Rol **pub**: compose, config SSB, panel, site y scripts del nodo de federación |
 | [devops/](devops/) | Operación remota por SSH del host que corre un pub (`devops/hosts/` = instancias) |

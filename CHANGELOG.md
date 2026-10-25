@@ -5,6 +5,21 @@ Web &amp; docs: <https://o-sdk.escrivivir.co> · Código: <https://github.com/al
 
 ## [Unreleased]
 
+### Changed — Upgrade a Oasis 1.3.8 (WP-O147, 2026-10-25; local en verde, host pendiente de GO)
+
+Overlay limpio de `src/` en `09b829f8` («Oasis release 1.3.8»; 1.3.3-1.3.7 quedan dentro) con **6 guards** repuestos (3-way: dos
+limpios, dos con conflictos de suma resueltos a mano; invariante de 7 ficheros). **El séptimo guard (`/c/blob`, D-O31) se retira**:
+upstream pide el blob ausente a la red en segundo plano y responde «pendiente» con `no-store` (D-O40, pendiente de refrendo).
+El parcheador de upstream se muda a `src/patches/`: `Dockerfile`, `upgrade-patches-audit.js` y `upgrade-behaviour-diff.sh` lo
+siguen por las dos rutas (`pendiente=0`, 20 parches). Gates locales U0-U6 en verde: pub, HUB y bot publican `oasisVersion+1` (el
+HUB además un `karmaScore`, dentro de lo declarado) y nada más; U6 con invite completo (pub `contact+1`). Qué trae 1.3.8 para el
+fork: tres plugins nuevos del sbot que carga también el pub (`feed_guard`: repara solo un feed bifurcado, sin interruptor,
+medido con la sonda nueva `devops/scripts/feed-guard-status.js`; `blob_prefetch`: el pub pide los blobs de a quien sigue;
+`long_content`: trocea al publicar); el cupo de salientes de `ssb-conn` deja de ser 4 (`connections` de la config, 10 por defecto)
+y el ranking pone primero a quien nos sigue (`link.tsv` al día); salas en clearnet (opt-in del autor) y PDF rasterizado en el HUB
+(`mupdf`): dos `location` nuevas en la plantilla nginx; `inboxMutedBots += social` (regen). Protocolo: un guard se retira cuando
+upstream cubre lo que perseguía; un `routes -` puede ser un array de paths; sonda del guardián de feeds en U3 y en el host.
+
 ### Changed — Upgrade a Oasis 1.3.2 (WP-O146, 2026-10-18; aplicado en el host) y cerrojo del cliente real (D-O39)
 
 Overlay limpio de `src/` en `a44bce44` («Oasis release 1.3.2»; la 1.3.1 queda dentro) con los 7 guards repuestos (3-way limpio en
