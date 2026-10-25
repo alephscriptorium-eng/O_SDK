@@ -938,6 +938,27 @@ búfer, `/c/pdf/page` cacheable), sonda `feed-guard-status.js`; gates U0-U6 en v
 `blob_prefetch` (el pub pide los blobs de a quien sigue), cupo de salientes de `ssb-conn` configurable (10) y ranking «quien me
 sigue primero», salas en clearnet, PDF rasterizado en el HUB (`mupdf`). U7 y US en verde. Cierre hecho (journal, §7, `mantener.md`, ficha). Dep: WP-O146.
 
+| **WP-O148** | **P1** | Memoria del host: swap de 2 GB en el disco raíz, `swappiness` 10, `memswap_limit = mem_limit` en los nodos, medida (`capacity.sh`, `verify-debian13-base.sh`) y docs; prepara la reducción del VPS a 3 GB / 1 CPU |
+
+**Estado** · ⬜ 2026-10-25 **planificado en paralelo con WP-O147; host después de su cierre** (PRÁCTICAS §6: los pasos sobre un host
+son secuenciales). Rama `wp/O148-swap-memoria` (desde `main` 3ca91107, merge de O147); reporte `plan/REPORTES/WP-O148-swap-memoria.md`;
+asiento D-O41. **BRIEF** · Medido el 2026-10-25 en el host (`free -m`, `docker stats`, `/proc/diskstats`, `journalctl -k`, solo
+lectura): 2 CPU, 3905 MiB, **2272 usados, 0 swap**, dos OOM-kill de cgroup (nginx de `hub-cache` el 05-oct; un backend de node al
+tocar 768 MiB el 22-oct), latencia media 0,5 ms/lectura en `xvda` y 12,2 en `xvdb`; `HostConfig.MemorySwap` = 2 × `Memory` en los
+cinco nodos con límite (defecto de Docker). Alcance: (a) `bootstrap-debian13-base.sh`: `ensure_swap` + `ensure_sysctl`, flags
+`--swap-gb N` y `--only-swap` (idempotente, fstab con backup); (b) `verify-debian13-base.sh`: `check_swap`; (c) `capacity.sh`:
+filas RAM disponible / swap / `swappiness` del host (`CAP_RAM_MB`, `CAP_SWAP_PCT`), AVISO por nodo si `MemorySwap ≠ Memory`
+(`CAP_MEM_NODES`: los de `GATE_NODES` + ecoin + hub-cache), `--json` escribe de verdad `devops/logs/capacity.jsonl`; (d) compose:
+`memswap_limit` en los 6 servicios con `mem_limit`, `OASIS_HUB_CACHE_MEM_LIMIT`, `OASIS_PUB_MEM_LIMIT` en los `.env*.example`;
+(e) docs: CAPACIDAD §2/§4, HUB §7 y ECOIN §7 (el pub sí tiene `mem_limit` desde O121), fichas de instancia, `devops/README` §4-5,
+`roles/pub`, AGENTES §3/§4; CHANGELOG. Fuera: node-red y verdaccio (repo externo `scriptorium-vps`; verdaccio es el registry de
+m-sdk/n-sdk: pararlos no es de este repo) y el redimensionado en Gandi (lo hace el custodio; reinicia el host). Host (con GO, un
+paso cada vez, parada dura): foto pre (`deploy-status`, `capacity`) → `fstab.bak-swap-<fecha>`, `--only-swap`, sysctl →
+`docker update --memory-swap=<mem_limit>` en los cinco (nada se recrea) → compose y `.env.prod` in place (sha del vivo = blob del
+repo; `.bak`), sin `up` → `verify` (`check_swap`), `capacity` post, `deploy-log`; a las 24 h, swap usada al reporte §9. CA:
+`swapon --show` = 2G en `/swapfile`; `/proc/sys/vm/swappiness` = 10; `Memory = MemorySwap` en los cinco; `capacity` sin AVISO
+nuevo y `capacity.jsonl` con línea; `deploy-status` VERDE; **Δ0** (nada publicado: no se recrea ningún nodo). Dep: WP-O147.
+
 | **WP-O142** | **P2** | Generalizar `retro-seed.sh` / `retro-tombstone.sh` a cualquier bot de plantilla (`--container`) |
 
 **Estado** · ⬜.
@@ -1510,7 +1531,7 @@ Retirado por O y **no** reencolado: patrón de contenedor genérico
 (2026-09-18: +WP-O102 P1 en L5 — hub-wallet del pub (ecoind + wallet-bot-2), +WP-O103 P1 en L4 — ECOin en el cliente, asiento D-O19.)
 (2026-09-19: +WP-O110 P2 en L4 — Teatro P2P con cartelera, planificado; dosier en docs/ROADMAP/p2p, asiento D-O24.)
 (2026-10-01: +WP-O112 P1, +WP-O113 P1, +WP-O114 P1 en L4 — protocolo de upgrade y ciclo 1.1.4 → 1.1.10, asiento D-O25.)
-(2026-10-15: +WP-O139 P1, +WP-O140 P0, +WP-O141 P0, +WP-O142 P2 — deuda documental, protocolo de upgrade v3, ciclo 1.3.0, scripts de plantilla genéricos; asiento D-O37. **Total real medido hoy**: `grep -c '^| \*\*WP-O' plan/BACKLOG.md` = **118** filas (P0 25 · P1 62 · P2 30 · P3 1); la tabla de arriba es la foto de la edición F2-unificada y no se recalcula. 2026-10-15, más tarde: +WP-O143 P1, +WP-O144 P1, +WP-O145 P0 → **121**. 2026-10-18: +WP-O146 P0 → **122**. 2026-10-25: +WP-O147 P0 → **123**.)
+(2026-10-15: +WP-O139 P1, +WP-O140 P0, +WP-O141 P0, +WP-O142 P2 — deuda documental, protocolo de upgrade v3, ciclo 1.3.0, scripts de plantilla genéricos; asiento D-O37. **Total real medido hoy**: `grep -c '^| \*\*WP-O' plan/BACKLOG.md` = **118** filas (P0 25 · P1 62 · P2 30 · P3 1); la tabla de arriba es la foto de la edición F2-unificada y no se recalcula. 2026-10-15, más tarde: +WP-O143 P1, +WP-O144 P1, +WP-O145 P0 → **121**. 2026-10-18: +WP-O146 P0 → **122**. 2026-10-25: +WP-O147 P0 → **123**. 2026-10-25, más tarde: +WP-O148 P1 → **124**.)
 
 **P0 (16)**: O01 fundar plan · **O07 gobierno ejecución** · **O08
 identidad/licencia FOSS** · **O09 CLI segura** · O10 modelo de nodo · O11

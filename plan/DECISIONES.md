@@ -613,6 +613,22 @@ Sembrado en el relevo de estación del 2026-07-26 (gorro declarado, ver D-O12).
   `location` de nginx sin búfer. Si decide lo contrario: (a) guard de entorno `OASIS_FEED_GUARD=off` (un fichero más en
   el invariante); (b) `return 404` en esa `location`.
 
+- **D-O41 · 2026-10-25 · El swap y los `sysctl` de memoria son de la máquina, no de una pieza: van en la base del host, con
+  su script, y se miden; y todo `mem_limit` lleva `memswap_limit` igual.** Dicho por el custodio el 2026-10-25 al sondear la
+  reducción del VPS (2 CPU / 4 GB): «Pues hay que reducir memoria, en qué se puede ahorrar» y, sobre dónde ponerlo, «igual entonces
+  hacer el swap en el disco de sistema para que vaya mas rapido que en el de datos?». Medido ese día en el host, solo lectura: 2272 MiB
+  usados de 3905 sin swap; dos OOM-kill de cgroup en el journal del kernel (hub-cache 05-oct, un backend a 768 MiB 22-oct); latencia
+  media por lectura 0,5 ms en el disco raíz y 12,2 ms en el volumen de datos (`/proc/diskstats`); `MemorySwap` = 2 × `Memory` en los
+  cinco contenedores con límite. Regla que fija: (a) la base de un host lleva un `swapfile` (2 GB por defecto) en el disco **raíz**
+  y `vm.swappiness=10`; es red de seguridad para picos, no presupuesto de memoria: swap usada en reposo es un aviso
+  (`capacity.sh`); (b) cada `mem_limit` del compose lleva `memswap_limit` **igual**, porque sin él Docker concede otro tanto en
+  swap y el límite deja de ser límite; (c) un cambio de límites en un nodo vivo va por `docker update` más el compose y `.env.prod`
+  para el siguiente recreate, nunca por un `up` cuyo único motivo sea ese (no se publica nada; Δ0). Excepción explícita a la trampa
+  de AGENTES §4 («lo que una pieza necesita va en el compose o en la imagen»): el swap no lo necesita una pieza, lo necesita la
+  máquina, y lo instala el mismo script que instala Docker. Corrige de paso dos frases falsas desde WP-O121 («el pub sigue sin
+  `mem_limit`», HUB §7 y ECOIN §7). El tamaño de la máquina (3 GB / 1 CPU recomendado con el swap; 2 GB viviría en swap) lo decide
+  el custodio en el panel del proveedor: fuera del repo. Aplicación: WP-O148.
+
 ## Índice de dependencias externas vivas
 
 | qué | quién | WP |
