@@ -20,20 +20,30 @@ module.exports = ({ cooler }) => {
     return ssb;
   };
 
-  const hasBlob = async (ssbClient, url) => {
-    return new Promise(resolve => {
-      ssbClient.blobs.has(url, (err, has) => {
-        resolve(!err && has);
-      });
-    });
-  };
-
   const validTypes = [
     'bookmark', 'votes', 'transfer',
     'feed', 'post', 'image', 'audio', 'video', 'document', 'torrent', 'file',
     'industry', 'project', 'report', 'task', 'event', 'shopProduct', 'housing', 'market', 'schoolCourse',
-    'podcast', 'podcastEpisode', 'campaign', 'logisticsRoute'
+    'podcast', 'podcastEpisode', 'campaign', 'logisticsRoute', 'wikiPage', 'map', 'industryBlueprint', 'job'
   ];
+  const OPINION_TYPES = [...new Set(Object.values(categories.messageTypes))];
+
+  const tallyOf = async (versionIds) => {
+    const want = new Set((versionIds || []).filter(Boolean));
+    const agg = { opinions: {}, opinions_inhabitants: [] };
+    if (!want.size) return agg;
+    const ssbClient = await openSsb();
+    const msgs = await readTyped(ssbClient, [...OPINION_TYPES, 'tombstone'], { limit: logLimit });
+    const gone = buildValidatedTombstoneSet(msgs);
+    for (const m of msgs) {
+      const c = m.value?.content;
+      if (!c || !OPINION_TYPES.includes(c.type) || !want.has(c.target) || gone.has(m.key)) continue;
+      if (agg.opinions_inhabitants.includes(m.value.author)) continue;
+      agg.opinions_inhabitants.push(m.value.author);
+      if (categories.includes(c.category)) agg.opinions[c.category] = (agg.opinions[c.category] || 0) + 1;
+    }
+    return agg;
+  };
 
   const getPreview = c => {
     if (c.type === 'bookmark' && c.bookmark) return `🔖 ${c.bookmark}`;
@@ -55,6 +65,7 @@ module.exports = ({ cooler }) => {
     const otype = OPINION_MSG_TYPE[type];
     if (!otype) throw new Error("Voting not allowed on this content type.");
     if (msg.content.opinions_inhabitants?.includes(userId)) throw new Error("Already voted.");
+    if ((await tallyOf([contentId])).opinions_inhabitants.includes(userId)) throw new Error("Already voted.");
     const content = { type: otype, target: contentId, category, createdAt: new Date().toISOString() };
     return new Promise((resolve, reject) =>
       ssbClient.publish(content, (err, result) => err ? reject(err) : resolve(result))
@@ -77,7 +88,7 @@ module.exports = ({ cooler }) => {
         opinionMsgs.push({ target: c.target, author: msg.value.author, category: c.category });
         continue;
       }
-      if (c.opinions && !['task', 'event', 'report'].includes(c.type)) {
+      if ((c.opinions || categories.opinable(c)) && !['task', 'event', 'report'].includes(c.type)) {
         byId.set(key, {
           key,
           value: {
@@ -136,23 +147,6 @@ module.exports = ({ cooler }) => {
       if (c.encryptedPayload) return false;
       return String(c.visibility || 'PUBLIC').toUpperCase() !== 'INVITE';
     });
-    const blobTypes = ['document', 'image', 'audio', 'video'];
-    const blobCheckCache = new Map();
-
-    filtered = await Promise.all(
-      filtered.map(async m => {
-        const c = m.value.content;
-        if (blobTypes.includes(c.type) && c.url) {
-          if (!blobCheckCache.has(c.url)) {
-            const valid = await hasBlob(ssbClient, c.url);
-            blobCheckCache.set(c.url, valid);
-          }
-          if (!blobCheckCache.get(c.url)) return null;
-        }
-        return m;
-      })
-    );
-    filtered = filtered.filter(Boolean);
 
     const signatureOf = (m) => {
       const c = m.value?.content || {};
@@ -267,6 +261,7 @@ module.exports = ({ cooler }) => {
   };
 
   return {
+    tallyOf,
     createVote,
     listOpinions,
     getMessageById,

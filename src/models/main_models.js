@@ -321,6 +321,7 @@ models.about = {
       wallet:   result.wallet   === true,
       ecoTax:   result.ecoTax   !== false,
       larpSign: result.larpSign === true,
+      aiAgent:  result.aiAgent  === true,
       gpg:      result.gpg      !== false,
       phone:    result.phone === 'mutuals' || result.phone === 'off' ? result.phone : 'whole',
       phoneDnd: result.phoneDnd === true,
@@ -384,7 +385,7 @@ models.about = {
         );
       });
       const now = Date.now();
-      for (const [id, p] of out) if (p.name) nameCache.set(id, p.name, now);
+      for (const [id, p] of out) { if (p.name) nameCache.set(id, p.name, now); if (p.image) nameCache.setImage(id, p.image); }
       return out;
     })();
     if (store) store.aboutProfiles = pending;
@@ -433,6 +434,7 @@ models.about = {
         return nullImage;
       }
       if (typeof raw.link === "string") {
+        nameCache.setImage(feedId, raw.link);
         return raw.link;
       }
       return raw;
@@ -629,6 +631,12 @@ models.friend = {
     const graph = await new Promise((resolve) => ssb.friends.graph((err, g) => resolve(err || !g ? {} : g)));
     const mine = graph[ssb.id] || {};
     return new Set(Object.keys(mine).filter(feed => Math.round(mine[feed]) === -1));
+  },
+  followingIds: async () => {
+    const ssb = await cooler.open();
+    const graph = await new Promise((resolve) => ssb.friends.graph((err, g) => resolve(err || !g ? {} : g)));
+    const mine = graph[ssb.id] || {};
+    return new Set(Object.keys(mine).filter(feed => Math.round(mine[feed]) === 1));
   },
   setRelationship: async ({ feedId, following, blocking }) => {
     if (following && blocking) {
@@ -1572,6 +1580,7 @@ const post = {
           wallet:   r.wallet   === true,
           ecoTax:   r.ecoTax   !== false,
           larpSign: r.larpSign === true,
+          aiAgent:  r.aiAgent  === true,
           gpg:      r.gpg      !== false,
           phone:    r.phone === 'mutuals' || r.phone === 'off' ? r.phone : 'whole',
           phoneDnd: !!(getConfig().phone || {}).dnd,
@@ -1969,15 +1978,47 @@ models.lifetime = (() => {
 
 const ownSpreadsByTarget = new Map();
 const ownTombstoned = new Set();
+let ownTargetsCache = null;
+let ownTargetsLoading = null;
 models.spreads = {
   noteOwnSpread: (target, key) => {
     if (!target || !key) return;
     const set = ownSpreadsByTarget.get(target) || new Set();
     set.add(key);
     ownSpreadsByTarget.set(target, set);
+    ownTargetsCache = null;
   },
   noteOwnTombstone: (key) => {
     if (key) ownTombstoned.add(key);
+    ownTargetsCache = null;
+  },
+  ownTargets: async () => {
+    if (ownTargetsCache && Date.now() - ownTargetsCache.at < 30000) return ownTargetsCache.set;
+    if (ownTargetsLoading) return ownTargetsLoading;
+    ownTargetsLoading = (async () => {
+      const ssb = await cooler.open();
+      const msgs = await new Promise((resolve) => {
+        pull(ssb.createUserStream({ id: ssb.id, private: !isPublic }), pull.collect((err, arr) => resolve(err ? [] : (arr || []))));
+      });
+      const targetOf = new Map();
+      const tombstoned = new Set();
+      for (const m of msgs) {
+        const c = m && m.value && m.value.content;
+        if (!c || typeof c !== 'object') continue;
+        if (c.type === 'spread' && typeof c.link === 'string') targetOf.set(m.key, c.link);
+        else if (c.type === 'vote' && c.vote && typeof c.vote.link === 'string' && Number(c.vote.value) === 1) {
+          const br = Array.isArray(c.branch) ? c.branch : (typeof c.branch === 'string' ? [c.branch] : []);
+          if (br.includes(c.vote.link)) targetOf.set(m.key, c.vote.link);
+        } else if (c.type === 'tombstone' && typeof c.target === 'string') tombstoned.add(c.target);
+      }
+      for (const [target, keys] of ownSpreadsByTarget) for (const k of keys) targetOf.set(k, target);
+      for (const k of ownTombstoned) tombstoned.add(k);
+      const set = new Set();
+      for (const [k, target] of targetOf) if (!tombstoned.has(k)) set.add(target);
+      ownTargetsCache = { at: Date.now(), set };
+      return set;
+    })().finally(() => { ownTargetsLoading = null; });
+    return ownTargetsLoading;
   },
   getCachedActiveOwnSpreadKey: (target) => {
     if (!target) return null;

@@ -1,11 +1,9 @@
-const { div, h2, p, section, button, form, a, span, textarea, br, input, h1, label, img } = require("../server/node_modules/hyperaxe");
+const { div, h2, p, section, button, form, a, span, textarea, input, h1, label, img } = require("../server/node_modules/hyperaxe");
 const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink } = require("./comments_view");
-const { clearnetItemHref, template, i18n, renderOpinionsVoting, userLink, renderContentActions, renderEngagement, renderModuleStats, moduleIsEmpty, paged } = require("./main_views");
+const { clearnetItemHref, template, i18n, renderOpinionsVoting, userLink, renderCardTop, renderCardByline, renderEngagement, renderModuleStats, moduleIsEmpty, paged, renderDetailShare, hasRelation, renderRelationFilters, RELATION_FILTERS, relationFilterLabel, hereAt } = require("./main_views");
 const { renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderTribeOriginChip } = require("./clearnet_view");
 const { config } = require("../server/SSB_server.js");
-const { renderStyledHtml, renderStyledText } = require("../backend/renderStyledText");
-const moment = require("../server/node_modules/moment");
-const { sanitizeHtml } = require('../backend/sanitizeHtml');
+const { renderStyledText } = require("../backend/renderStyledText");
 
 const FEED_TEXT_MIN = Number(config?.feed?.minLength ?? 1);
 const FEED_TEXT_MAX = Number(config?.feed?.maxLength ?? 280);
@@ -21,10 +19,9 @@ const normalizeOptions = (opts) => {
   };
 };
 
-const formatDate = (feed) => {
-  const ts = feed?.value?.timestamp || Date.parse(feed?.value?.content?.createdAt || "") || 0;
-  return ts ? moment(ts).format("YYYY/MM/DD HH:mm") : "";
-};
+const feedDateOf = (feed) => feed?.value?.timestamp || feed?.value?.content?.createdAt || null;
+
+const renderEditedBadge = (content) => content._textEdited ? span({ class: "edited-badge" }, ` · ${i18n.edited || "edited"}`) : null;
 
 const extractTags = (text) => {
   const list = (String(text || "").match(/#[A-Za-z0-9_]{1,32}/g) || []).map((t) => t.slice(1).toLowerCase());
@@ -44,7 +41,7 @@ const generateFilterButtons = (filters, currentFilter, action, extra = {}) => {
       { method: "GET", action },
       input({ type: "hidden", name: "filter", value: mode }),
       ...hiddenInputs(extra),
-      button({ type: "submit", class: cur === mode ? "filter-btn active" : "filter-btn" }, String(i18n[mode + "Button"] || mode).toUpperCase())
+      button({ type: "submit", class: cur === mode ? "filter-btn active" : "filter-btn" }, RELATION_FILTERS.includes(mode.toLowerCase()) ? relationFilterLabel(mode.toLowerCase()) : String(i18n[mode + "Button"] || mode).toUpperCase())
     )
   );
 };
@@ -85,7 +82,6 @@ const renderFeedComposer = ({ text = "", media = "", rows = 5, clearnet = false,
     { method: "POST", action: "/feed/create", enctype: "multipart/form-data" },
     textarea({
       name: "text",
-      required: true,
       minlength: String(FEED_TEXT_MIN),
       maxlength: String(FEED_TEXT_MAX),
       rows: String(rows),
@@ -117,7 +113,6 @@ const renderFeedCard = exports.renderFeedCard = (feed, spreadMap = null, opts = 
 
     const voteEntries = Object.entries(content.opinions || {});
     const totalCount = voteEntries.reduce((sum, [, count]) => sum + (Number(count) || 0), 0);
-    const createdAt = formatDate(feed);
     const me = config?.keys?.id;
 
     const alreadyRefeeded = Array.isArray(content.refeeds_inhabitants) && me ? content.refeeds_inhabitants.includes(me) : false;
@@ -129,57 +124,46 @@ const renderFeedCard = exports.renderFeedCard = (feed, spreadMap = null, opts = 
     const styledNodes = renderStyledText(safeText, { zoomImages: true, ...(typeof opts.hashtagHref === 'function' ? { hashtagHref: opts.hashtagHref } : {}) });
     const refeedAction = opts.refeedAction || `/feed/refeed/${encodeURIComponent(feed.key)}`;
     const canRefeed = opts.canRefeed !== false && !(authorId && String(authorId) === String(me));
-    const headerActions = opts.headerActions !== undefined
-        ? opts.headerActions
+    const feedHref = `/feed/${encodeURIComponent(feed.key)}`;
+    const byline = { author: authorId, date: feedDateOf(feed), bylineExtra: [renderEditedBadge(content)] };
+    const cardTop = opts.headerActions !== undefined
+        ? div({ class: "card-header activity-card-header card-top" }, renderCardByline(byline), opts.headerActions)
         : feed.tribeOrigin
-            ? renderContentActions(null, feed.tribeOrigin.href)
-            : renderContentActions(feed.key, `/feed/${encodeURIComponent(feed.key)}`, {
-                author: authorId,
+            ? renderCardTop(feed.key, feed.tribeOrigin.href, { ...byline, chips: [renderTribeOriginChip(feed.tribeOrigin)], spread: (spreadMap && spreadMap.get(feed.key)) || null, reportTitle: safeText })
+            : renderCardTop(feed.key, feedHref, {
+                ...byline,
+                chips: feed.clearnet === true ? [renderReachChip(true, i18n, clearnetItemHref("feed", "", feed.key))] : [],
                 spread: (spreadMap && spreadMap.get(feed.key)) || null,
                 reportTitle: safeText,
                 ...(((signerId && String(signerId) === String(me)) || (authorId && String(authorId) === String(me))) ? { deleteAction: `/feed/delete/${encodeURIComponent(feed.key)}` } : {})
             });
-    const chipsRow = opts.chips !== undefined
-        ? opts.chips
-        : feed.tribeOrigin ? div({ class: "card-chips-row" }, renderTribeOriginChip(feed.tribeOrigin)) : feed.clearnet === true ? div({ class: "card-chips-row" }, renderReachChip(true, i18n, clearnetItemHref("feed", "", feed.key))) : null;
+    const chipsRow = opts.chips !== undefined ? opts.chips : null;
     const engagement = opts.engagement !== undefined
         ? opts.engagement
-        : feed.tribeOrigin ? null : renderEngagement(feed.key,
-            renderOpinionsVoting('/feed/opinions', feed.key, content.opinions, null, content.opinions_inhabitants),
-            renderCommentsLink({ href: `/feed/${encodeURIComponent(feed.key)}`, count: commentCount })
-        );
+        : null;
 
     return div(
         { class: "trending-card feed-card" + (authorId && String(authorId) === String(me) ? " own-content" : "") },
-        div(
-            { class: "card-header activity-card-header" },
-            span(),
-            headerActions
-        ),
+        cardTop,
         div(
             { class: "card-section feed-card-body" },
         div(
             { class: "feed-row" },
-            feed.tribeOrigin ? null : div(
+            div(
                 { class: "refeed-column" },
                 h1(String(refeedsNum)),
                 canRefeed
                     ? form(
                         { method: "POST", action: refeedAction },
+                        input({ type: "hidden", name: "returnTo", value: hereAt(feed.key) || "" }),
                         button({ class: alreadyRefeeded ? "refeed-btn active" : "refeed-btn", type: "submit", title: i18n.refeedButton, "aria-label": i18n.refeedButton, ...(alreadyRefeeded ? { disabled: true } : {}) }, "▲")
                     )
-                    : null,
+                    : null
             ),
             div(
                 { class: "feed-main" },
                 div({ class: "feed-text" }, ...styledNodes),
-                chipsRow,
-                p(
-                    { class: "card-footer" },
-                    span({ class: "date-link" }, `${createdAt}`),
-                    userLink(authorId),
-                    content._textEdited ? span({ class: "edited-badge" }, ` · ${i18n.edited || "edited"}`) : null
-                )
+                chipsRow
             )
         ),
         engagement
@@ -216,6 +200,7 @@ const feedChipFor = (filter, censusF) => (mode) => {
   if (mode === filter) return true;
   if (!Array.isArray(censusF)) return true;
   if (mode === "MINE") return censusF.some((f) => String(f && f.value && f.value.author) === String(config.keys.id));
+  if (mode === "SUPPORTED" || mode === "REPLICATED") return hasRelation(mode.toLowerCase(), censusF);
   if (mode === "RECENT") return censusF.length > 0;
   return true;
 };
@@ -257,7 +242,7 @@ exports.feedView = (feeds, opts = "ALL") => {
     successBanner,
     div(
       { class: "mode-buttons-row" },
-      ...(emptyMod ? [] : generateFilterButtons(["ALL", "RECENT", "MINE", "TOP"].filter(feedChip), filter, "/feed", extra)),
+      ...(emptyMod ? [] : generateFilterButtons(["ALL", "RECENT", "MINE", "SUPPORTED", "REPLICATED", "TOP"].filter(feedChip), filter, "/feed", extra)),
       form({ method: "GET", action: "/feed/create" }, button({ type: "submit", class: "create-button filter-btn" }, i18n.createFeedTitle || "Create Feed"))
     ),
     emptyMod ? null : div(
@@ -316,7 +301,7 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
   const safeText = rawText.trim();
   const authorId = content.author || feed.value?.author || "";
   const signerId = feed.value?.author || "";
-  const createdAt = formatDate(feed);
+  const feedHref = `/feed/${encodeURIComponent(feed.key)}`;
   const styledNodes = renderStyledText(safeText, { zoomImages: true });
   const me = config?.keys?.id;
   const alreadyRefeeded = Array.isArray(content.refeeds_inhabitants) && me ? content.refeeds_inhabitants.includes(me) : false;
@@ -335,22 +320,22 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
           button({ type: "submit", name: "filter", value: "ALL", class: "filter-btn" }, i18n.ALLButton || "ALL"),
           ...(feedChip("RECENT") ? [button({ type: "submit", name: "filter", value: "RECENT", class: "filter-btn" }, i18n.RECENTButton || "RECENT")] : []),
           ...(feedChip("MINE") ? [button({ type: "submit", name: "filter", value: "MINE", class: "filter-btn" }, i18n.MINEButton || "MINE")] : []),
+          ...renderRelationFilters("", feedChip, { upper: true }),
           button({ type: "submit", name: "filter", value: "TOP", class: "filter-btn" }, i18n.TOPButton || "TOP"),
           form({ method: "GET", action: "/feed/create" }, button({ type: "submit", class: "create-button" }, i18n.createFeedTitle || "Create Feed"))
         )
       ),
       div(
         { class: "bookmark-item card feed-detail-card" },
-        div({ class: "card-header activity-card-header" },
-          span(),
-          renderContentActions(feed.key, `/feed/${encodeURIComponent(feed.key)}`, {
-            spread: params.spreads || null,
-            author: authorId,
-            reportTitle: safeText,
-            ...(((signerId && String(signerId) === String(me)) || (authorId && String(authorId) === String(me))) ? { deleteAction: `/feed/delete/${encodeURIComponent(feed.key)}` } : {})
-          })
-        ),
-        br,
+        renderCardTop(feed.key, feedHref, { arrow: false,
+          date: feedDateOf(feed),
+          bylineExtra: [renderEditedBadge(content)],
+          chips: [renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref("feed", "", feed.key) : null)],
+          spread: params.spreads || null,
+          author: authorId,
+          reportTitle: safeText,
+          ...(((signerId && String(signerId) === String(me)) || (authorId && String(authorId) === String(me))) ? { deleteAction: `/feed/delete/${encodeURIComponent(feed.key)}` } : {})
+        }),
         div(
           { class: "feed-row" },
           div(
@@ -361,7 +346,7 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
               : form(
                   { method: "POST", action: `/feed/refeed/${encodeURIComponent(feed.key)}` },
                   button({ class: alreadyRefeeded ? "refeed-btn active" : "refeed-btn", type: "submit", title: i18n.refeedButton, "aria-label": i18n.refeedButton, ...(alreadyRefeeded ? { disabled: true } : {}) }, "▲")
-              ),
+              )
           ),
           div(
             { class: "feed-main" },
@@ -372,15 +357,8 @@ exports.singleFeedView = (feed, comments = [], params = {}) => {
                   tags.map((tag) => a({ href: `/search?query=%23${encodeURIComponent(tag)}`, class: "tag-link" }, `#${tag}`))
                 )
               : null,
-            div({ class: "card-chips-row" }, renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref("feed", "", feed.key) : null)),
-            authorId && String(authorId) === String(me) ? renderClearnetSwitch("feed", feed.rootId || feed.key, isClearnet) : null,
-            br,
-            p(
-              { class: "card-footer" },
-              span({ class: "date-link" }, `${createdAt}`),
-              userLink(authorId),
-              content._textEdited ? span({ class: "edited-badge" }, ` · ${i18n.edited || "edited"}`) : null
-            )
+            renderDetailShare(feed.key, feedHref, safeText, null, null, null, feed.value && feed.value.author),
+            authorId && String(authorId) === String(me) ? renderClearnetSwitch("feed", feed.rootId || feed.key, isClearnet) : null
           )
         )
       ),

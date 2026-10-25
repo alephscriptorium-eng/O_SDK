@@ -16,10 +16,15 @@ const isLocalPath = (value) => {
 
 const SHARED_RETURN_PAGES = ['/activity', '/agenda', '/search', '/trending', '/favorites', '/opinions', '/mentions', '/melody', '/author', '/inhabitant', '/tribe'];
 const isSharedReturnPage = (rt) => SHARED_RETURN_PAGES.some(p => rt === p || (rt.startsWith(p) && /^[?#/]/.test(rt.slice(p.length))));
+const pathOnly = (value) => String(value || '').split('#')[0].split('?')[0];
+const comesBackHere = (ctx, rt) => {
+  const ref = refererPath(ctx?.request?.header?.referer, ctx?.host);
+  return !!ref && pathOnly(ref) === pathOnly(rt);
+};
 const safeReturnTo = (ctx, fallback, allowedPrefixes) => {
   const rt = ctx?.request?.body?.returnTo || ctx?.query?.returnTo;
   if (!isLocalPath(rt)) return fallback;
-  if (isSharedReturnPage(rt)) return rt;
+  if (isSharedReturnPage(rt) || comesBackHere(ctx, rt)) return rt;
   return Array.isArray(allowedPrefixes) && allowedPrefixes.some(p => rt.startsWith(p)) ? rt : fallback;
 };
 
@@ -36,6 +41,8 @@ const refererPath = (referer, host) => {
 };
 
 const safeRefererRedirect = (ctx, fallback = '/') => {
+  const rt = ctx?.request?.body?.returnTo || ctx?.query?.returnTo;
+  if (isLocalPath(rt) && (isSharedReturnPage(rt) || comesBackHere(ctx, rt))) { ctx.redirect(rt); return; }
   const target = refererPath(ctx.request.header.referer, ctx.host);
   ctx.redirect(target || fallback);
 };
@@ -68,7 +75,7 @@ const publicModeGuard = ({ isPublic, onBlocked }) => async (ctx, next) => {
   await next();
 };
 
-const buildCsp = (isClearnet, { frames = false } = {}) => (isClearnet
+const buildCsp = (isClearnet, { frames = '', framed = false, objects = '' } = {}) => (isClearnet
   ? [
       "default-src 'self'",
       "script-src 'none'",
@@ -76,24 +83,27 @@ const buildCsp = (isClearnet, { frames = false } = {}) => (isClearnet
       "img-src 'self' data:",
       "media-src 'self' blob:",
       "connect-src 'self'",
-      "frame-src 'none'",
+      frames ? `frame-src ${frames}` : "frame-src 'none'",
       "form-action 'self'",
-      "object-src 'none'",
+      objects ? `object-src ${objects}` : "object-src 'none'",
       "base-uri 'none'",
-      "frame-ancestors 'none'"
+      framed ? "frame-ancestors 'self'" : "frame-ancestors 'none'"
     ]
   : [
       "default-src 'self'",
-      "script-src 'self' http://localhost:3000/js",
+      "script-src 'none'",
       "style-src 'self'",
       "img-src 'self'",
       "media-src 'self' blob:",
-      "worker-src 'self' blob:",
-      frames ? "frame-src 'self'" : "frame-src 'none'",
+      frames ? `frame-src ${frames}` : "frame-src 'none'",
       "form-action 'self'",
-      "object-src 'none'",
+      objects ? `object-src ${objects}` : "object-src 'none'",
       "base-uri 'none'",
-      "frame-ancestors 'none'"
+      framed ? "frame-ancestors 'self'" : "frame-ancestors 'none'"
     ]).join('; ');
 
-module.exports = { isMsgKey, pickMsgKeys, isLocalPath, safeReturnTo, refererPath, safeRefererRedirect, isClearnetPath, isTrustedRequest, publicModeGuard, buildCsp };
+const IMAGE_SIZE_MIN = 16;
+const IMAGE_SIZE_MAX = 1024;
+const isImageSize = (value) => { const n = Number(value); return Number.isInteger(n) && n >= IMAGE_SIZE_MIN && n <= IMAGE_SIZE_MAX; };
+
+module.exports = { IMAGE_SIZE_MIN, IMAGE_SIZE_MAX, isImageSize, isMsgKey, pickMsgKeys, isLocalPath, safeReturnTo, refererPath, safeRefererRedirect, isClearnetPath, isTrustedRequest, publicModeGuard, buildCsp };

@@ -1,17 +1,21 @@
-const { div, h2, p, section, button, form, a, textarea, br, input, table, tr, th, td, label, span } = require("../server/node_modules/hyperaxe");
+const { div, h2, p, section, button, form, a, br, input, table, tr, th, td, label, span } = require("../server/node_modules/hyperaxe");
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { template, i18n, renderOpinionsVoting, renderEngagement, renderOpenClosedChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderDocumentActions, renderModuleStatsBy, moduleIsEmpty, contentDeleteAction, paged, renderCreatedRows } = require("./main_views");
+const { template, i18n, renderOpinionsVoting, renderEngagement, renderOpenClosedChip, renderLifespanChip, renderEcoTax, renderCardTop, renderCardByline, renderSpreadEditWarning, renderDocumentActions, renderModuleStatsBy, moduleIsEmpty, contentDeleteAction, paged, renderEditedChip, renderMediaLockNote, renderDetailShare, renderScheduledChip, hasRelation, renderRelationFilters, hereAt, anchorFor } = require("./main_views");
 const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 const { renderTribeOriginChip } = require("./clearnet_view");
+const { renderPollInline, renderVotedChip } = require("./polls_view");
 
 const userId = config.keys.id;
 const VOTE_QUORUM = 2;
 
 const safeArray = (v) => Array.isArray(v) ? v : [];
 
-const voteLabel = (opt) =>
-  i18n["vote" + opt.split("_").map(w => w.charAt(0) + w.slice(1).toLowerCase()).join("")] || opt;
+const voteLabel = (raw) => {
+  const opt = String(raw ?? "");
+  const k = opt.split("_").map(w => w.charAt(0) + w.slice(1).toLowerCase()).join("");
+  return i18n["voteOption" + k] || i18n["vote" + k] || opt;
+};
 
 const computeVoteOutcome = (baseCounts, voteOptions, totalVotesNum) => {
   const noResult = { text: i18n.voteNoQuorum || "NO QUORUM", variant: "pending" };
@@ -38,25 +42,9 @@ const statusLabel = (s) => {
   return up;
 };
 
-const { isVoteLocked } = require("../models/votes_model");
+const { isVoteEditLocked } = require("../models/votes_model");
 const isVoteAuthor = (v) => !!(v && v.createdBy && String(v.createdBy) === String(userId));
-const canModifyVote = (v) => isVoteAuthor(v) && !isVoteLocked(v);
-
-const renderVoteOwnerActions = (v, returnTo) => {
-  const showUpdateButton = canModifyVote(v);
-
-  const actions = [];
-  if (showUpdateButton) {
-    actions.push(
-      form(
-        { method: "GET", action: `/votes/edit/${encodeURIComponent(v.id)}` },
-        input({ type: "hidden", name: "returnTo", value: returnTo }),
-        button({ class: "update-btn", type: "submit" }, i18n.voteUpdateButton)
-      )
-    );
-  }
-  return actions;
-};
+const canModifyVote = (v) => isVoteAuthor(v) && !isVoteEditLocked(v);
 
 const renderVoteButtons = (v, voteOptions, firstRow, secondRow, returnTo) => {
   if (normalizeStatus(v.status) !== "OPEN") return null;
@@ -78,6 +66,55 @@ const renderVoteButtons = (v, voteOptions, firstRow, secondRow, returnTo) => {
   );
 };
 
+const votePollShape = (v, voteOptions = [], { creatorCanVote = false } = {}) => {
+  const own = safeArray(v.options).filter(o => typeof o === "string" && o);
+  const options = own.length ? own : voteOptions;
+  const voters = safeArray(v.voters);
+  const mine = v.choices && v.choices[userId];
+  const totalVoters = typeof v.totalVotes === "number" ? v.totalVotes : parseInt(String(v.totalVotes || "0"), 10) || voters.length;
+  return {
+    id: v.id,
+    options,
+    counts: options.reduce((acc, o) => { acc[o] = Number((v.votes || {})[o]) || 0; return acc; }, {}),
+    totalVoters,
+    myChoices: mine ? [mine] : [],
+    hasVoted: voters.includes(userId) || !!mine,
+    multiple: false,
+    status: normalizeStatus(v.status) === "OPEN" ? "OPEN" : "CLOSED",
+    readOnly: v.readOnly === true || !!v.tribeOrigin || !!v.scheduledAt || (!creatorCanVote && String(v.createdBy) === String(userId))
+  };
+};
+
+const renderVoteInline = (v, returnTo, idPrefix, opts = {}) =>
+  renderPollInline(votePollShape(v, opts.voteOptions, opts), returnTo, idPrefix, {
+    action: opts.action || `/votes/vote/${encodeURIComponent(v.id)}`,
+    inputName: opts.inputName || "choice",
+    optionValue: opts.optionValue,
+    labelOf: voteLabel,
+    voteBeforeVoters: !!opts.voteBeforeVoters,
+    extra: opts.extra,
+    afterVoters: opts.afterVoters
+  });
+
+const renderVoteResultsField = (v, voteOptionsDefault = []) => {
+  const own = safeArray(v.options).filter(o => typeof o === "string" && o);
+  const voteOptions = own.length ? own : voteOptionsDefault;
+  const counts = voteOptions.reduce((acc, opt) => { acc[opt] = (v.votes && v.votes[opt]) ? v.votes[opt] : 0; return acc; }, {});
+  const total = typeof v.totalVotes === "number" ? v.totalVotes : parseInt(String(v.totalVotes || "0"), 10) || 0;
+  const outcome = computeVoteOutcome(counts, voteOptions, total);
+  return div({ class: "card-field poll-inline-voters" },
+    span({ class: "card-label" }, `${i18n.voteResults || "Results"}:`),
+    span({ class: `card-value vote-outcome vote-outcome-${outcome.variant}` }, outcome.text)
+  );
+};
+exports.renderVoteResultsField = renderVoteResultsField;
+
+const renderVoteVotedChip = (v, opts = {}) => v ? renderVotedChip(votePollShape(v, opts.voteOptions, opts)) : null;
+
+exports.votePollShape = votePollShape;
+exports.renderVoteInline = renderVoteInline;
+exports.renderVoteVotedChip = renderVoteVotedChip;
+
 const renderOpinionsBar = (v, returnTo) =>
   renderOpinionsVoting('/votes/opinions', v.id, v.opinions, returnTo, v.opinions_inhabitants);
 
@@ -98,35 +135,36 @@ const renderVoteListItem = exports.renderVoteListItem = (v, voteOptionsDefault, 
   const href = opts.href !== undefined ? opts.href : (origin ? origin.href : `/votes/${encodeURIComponent(v.id)}`);
   const chips = [
     renderVoteStatusChip(v.status),
+    opts.votedChip !== undefined ? opts.votedChip : renderVoteVotedChip(v, { voteOptions }),
     renderLifespanChip(v.lifetime, i18n),
     origin ? renderTribeOriginChip(origin) : null,
     ...(Array.isArray(opts.extraChips) ? opts.extraChips : [])
   ].filter(Boolean);
   const returnTo = `/votes?filter=${encodeURIComponent(activeFilter || "all")}`;
+  const inline = opts.inline !== undefined ? opts.inline : ((v.scheduledAt || origin) ? null : renderVoteInline(v, hereAt(v.id) || returnTo, "vl", { voteOptions, voteBeforeVoters: true, afterVoters: [renderVoteResultsField(v, voteOptions)] }));
   const totalOpinions = Object.values(v.opinions || {}).reduce((s, n) => s + (Number(n) || 0), 0);
   const isOwn = isVoteAuthor(v);
-  const headerActions = opts.headerActions !== undefined
-    ? opts.headerActions
-    : origin ? null : renderContentActions(v.id, `/votes/${encodeURIComponent(v.id)}`, { spread: spreadInfo || null, author: v.createdBy, favKind: 'votes', isFavorite: v.isFavorite, reportTitle: v.question, returnTo, deleteAction: canModifyVote(v) ? contentDeleteAction('votes', v.id) : undefined });
+  const topOpts = { author: v.createdBy, date: v.createdAt, chips: v.scheduledAt ? [renderScheduledChip(v.scheduledAt)] : chips };
+  const cardTop = opts.headerActions !== undefined
+    ? div({ class: "card-header activity-card-header card-top", id: anchorFor(v.id) }, renderCardByline(topOpts), opts.headerActions)
+    : v.scheduledAt
+      ? renderCardTop(v.id, `/votes/${encodeURIComponent(v.id)}`, { ...topOpts, report: false, hide: false, arrow: opts.arrow, deleteAction: isOwn ? `/votes/scheduled/delete/${encodeURIComponent(v.id)}` : undefined })
+    : origin
+      ? renderCardTop(v.id, origin.href, { ...topOpts, spread: spreadInfo || null, reportTitle: v.question })
+      : renderCardTop(v.id, `/votes/${encodeURIComponent(v.id)}`, { ...topOpts, spread: spreadInfo || null, favKind: 'votes', isFavorite: v.isFavorite, reportTitle: v.question, returnTo, deleteAction: canModifyVote(v) ? contentDeleteAction('votes', v.id) : undefined });
 
   return div({ class: "trending-card vote-card" + (isOwn ? " own-content" : "") },
-    headerActions ? div({ class: "card-header activity-card-header" },
-      span(),
-      headerActions
-    ) : null,
+    cardTop,
     div({ class: "card-section vote-card-body" },
       div({ class: "shop-title-row" },
         h2({ class: "tribe-card-title" },
           href ? a({ href }, v.question || i18n.votationsTitle) : (v.question || i18n.votationsTitle)
         )
       ),
-      chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
       v.deadline ? p({ class: "time-chip" }, moment(v.deadline).format("YYYY/MM/DD HH:mm")) : null,
-      origin ? null : div({ class: "tribe-card-members" },
-        span({ class: "tribe-members-count" }, `${i18n.eventAttendees}: ${totalVotesNum}`)
-      ),
-      origin ? null : div({ class: `job-meta-line vote-outcome vote-outcome-${outcome.variant}` }, `${i18n.voteResults || "Results"}: ${outcome.text}`),
-      ...(Array.isArray(opts.bodyExtra) ? opts.bodyExtra.filter(Boolean) : [])
+      inline,
+      ...(Array.isArray(opts.bodyExtra) ? opts.bodyExtra.filter(Boolean) : []),
+      null
     )
   );
 };
@@ -174,9 +212,6 @@ const renderVoteDetail = (v, voteOptionsDefault, firstRow, secondRow, mode, acti
     renderEcoTax(v.msgSize, v.id)
   ].filter(Boolean);
 
-  const sideActions = [];
-  for (const a of renderVoteOwnerActions(v, returnTo)) sideActions.push(a);
-
   const cleanTags = (Array.isArray(v.tags) ? v.tags : []).filter((t) => t && !String(t).includes(":"));
   const tagsNode = cleanTags.length
     ? div({ class: "card-tags" },
@@ -194,25 +229,18 @@ const renderVoteDetail = (v, voteOptionsDefault, firstRow, secondRow, mode, acti
   pushRow(i18n.voteStatus, statusLabel(v.status));
 
   const voteSide = div({ class: "tribe-side" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(v.id, `/votes/${encodeURIComponent(v.id)}`, { spread: params.spreads || null, author: v.createdBy, favKind: 'votes', isFavorite: v.isFavorite, reportTitle: v.question, deleteAction: canModifyVote(v) ? contentDeleteAction('votes', v.id) : undefined })
-    ),
+    renderCardTop(v.id, `/votes/${encodeURIComponent(v.id)}`, { arrow: false, date: v.createdAt, chips, bylineExtra: [renderEditedChip(v.id, v.rootId)], spread: params.spreads || null, author: v.createdBy, favKind: 'votes', isFavorite: v.isFavorite, reportTitle: v.question, editAction: canModifyVote(v) ? `/votes/edit/${encodeURIComponent(v.id)}?returnTo=${encodeURIComponent(returnTo)}` : undefined, deleteAction: canModifyVote(v) ? contentDeleteAction('votes', v.id) : undefined }),
     div({ class: "shop-title-row" },
       h2({ class: "tribe-card-title" }, v.question)
     ),
-    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-    table({ class: "tribe-info-table jobs-info-table" }, ...infoRows, ...renderCreatedRows(v.createdAt, v.createdBy)),
-    tagsNode,
-    div({ class: "tribe-card-members" },
-      span({ class: "tribe-members-count" }, `${i18n.eventAttendees}: ${totalVotesNum}`)
-    ),
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
-    renderDocumentActions('votes', v.id)
+    renderDetailShare(v.id, `/votes/${encodeURIComponent(v.id)}`, v.question, null, null, null, v.createdBy || v.author),
+    tagsNode
   );
 
   const voteButtonsNode = renderVoteButtons(v, voteOptions, firstRow, secondRow, returnTo);
 
   const voteMain = div({ class: "tribe-main" },
+    table({ class: "tribe-info-table jobs-info-table" }, ...infoRows),
     voteButtonsNode
       ? div({ class: "job-section" },
           h2({ class: "job-section-title" }, i18n.voteCastTitle || "Cast Vote"),
@@ -220,17 +248,21 @@ const renderVoteDetail = (v, voteOptionsDefault, firstRow, secondRow, mode, acti
         )
       : null,
     div({ class: "job-section" },
-      h2({ class: "job-section-title" },
-        `${i18n.voteResults || "Results"}: `,
-        span({ class: `vote-outcome vote-outcome-${outcome.variant}` }, outcome.text)
+      div({ class: "tribe-card-members" },
+        span({ class: "tribe-members-count" }, `${i18n.eventAttendees}: ${totalVotesNum}`)
       ),
       div({ class: "vote-table" },
         table(
           tr(...voteOptions.map((opt) => th(voteLabel(opt)))),
           tr(...voteOptions.map((opt) => td(baseCounts[opt])))
         )
+      ),
+      h2({ class: "job-section-title vote-outcome-title" },
+        `${i18n.voteResults || "Results"}: `,
+        span({ class: `vote-outcome vote-outcome-${outcome.variant}` }, outcome.text)
       )
     ),
+    renderDocumentActions('votes', v.id),
     renderEngagement(v.id, renderOpinionsBar(v, returnTo),
       mode === "detail" ? renderCommentsSection(v.id, params.comments || [], activeFilter) : null)
   );
@@ -250,7 +282,7 @@ const renderCommentsSection = (voteId, comments, activeFilter) => {
 exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam, params = {}) => {
   const list = Array.isArray(votes) ? votes : [votes];
 
-  const standardFilters = ["all", "mine", "open", "closed"];
+  const standardFilters = ["all", "mine", "supported", "replicated", "open", "closed"];
   const activeFilter = standardFilters.includes(activeFilterParam)
     ? activeFilterParam
     : (standardFilters.includes(mode) ? mode : "all");
@@ -262,6 +294,8 @@ exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam,
 
   let filtered =
     mode === "mine" ? list.filter((v) => v.createdBy === userId) :
+    mode === "supported" ? list.filter((v) => v.isSupported) :
+    mode === "replicated" ? list.filter((v) => v.isReplicated) :
     mode === "open" ? list.filter((v) => normalizeStatus(v.status) === "OPEN") :
     mode === "closed" ? list.filter((v) => normalizeStatus(v.status) === "CLOSED") :
     list;
@@ -284,6 +318,7 @@ exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam,
   const voteChip = (m) => {
     if (m === mode) return true;
     if (m === "mine") return censusV.some((v) => v.createdBy === userId);
+    if (m === "supported" || m === "replicated") return hasRelation(m, censusV);
     if (m === "recent") return censusV.length > 0;
     if (m === "open") return censusV.some((v) => normalizeStatus(v.status) === "OPEN");
     if (m === "closed") return censusV.some((v) => normalizeStatus(v.status) === "CLOSED");
@@ -298,6 +333,7 @@ exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam,
     : (voteToEdit.deadline ? moment(voteToEdit.deadline).format("YYYY-MM-DDTHH:mm") : "");
   const questionValue = draft.question !== undefined && draft.question !== "" ? String(draft.question) : (voteToEdit.question || "");
   const tagsValue = draft.tags ? String(draft.tags) : editTags.join(", ");
+  const opinionLock = mode === "edit" ? renderMediaLockNote(voteToEdit) : null;
 
   return template(
     title,
@@ -311,6 +347,7 @@ exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam,
           button({ type: "submit", name: "filter", value: "all", class: mode === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.voteFilterAll).toUpperCase()),
           ...(voteChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: mode === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.voteFilterRecent).toUpperCase())] : []),
           ...(voteChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: mode === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.voteFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(mode, voteChip),
           ...(voteChip("open") ? [button({ type: "submit", name: "filter", value: "open", class: mode === "open" ? "filter-btn active" : "filter-btn" }, String(i18n.voteFilterOpen).toUpperCase())] : []),
           ...(voteChip("closed") ? [button({ type: "submit", name: "filter", value: "closed", class: mode === "closed" ? "filter-btn active" : "filter-btn" }, String(i18n.voteFilterClosed).toUpperCase())] : []),
           ]),
@@ -336,10 +373,10 @@ exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam,
             { class: "vote-form" },
             mode === "edit" ? await renderSpreadEditWarning(voteId) : null,
             form(
-              { action: mode === "edit" ? `/votes/update/${encodeURIComponent(voteId)}` : "/votes/create", method: "POST" },
+              { action: mode === "edit" && voteToEdit.scheduledAt ? `/votes/scheduled/update/${encodeURIComponent(voteId)}` : mode === "edit" ? `/votes/update/${encodeURIComponent(voteId)}` : "/votes/create", method: "POST" },
               input({ type: "hidden", name: "returnTo", value: listReturnTo }),
               h2(i18n.voteQuestionLabel),
-              input({ type: "text", name: "question", id: "question", required: true, value: questionValue }), br(), br(),
+              input({ type: "text", name: "question", id: "question", required: true, value: questionValue, ...(opinionLock ? { readonly: true } : {}) }), opinionLock, br(), br(),
               label(i18n.voteDeadlineLabel), br(),
               input({
                 type: "datetime-local",
@@ -351,11 +388,14 @@ exports.voteView = async (votes, mode, voteId, comments = [], activeFilterParam,
               }), br(), br(),
               label(i18n.voteTagsLabel), br(),
               input({ type: "text", name: "tags", id: "tags", value: tagsValue }), br(), br(),
-              button({ type: "submit" }, mode === "edit" ? i18n.voteUpdateButton : i18n.voteCreateButton)
+              ...(mode === "edit" && !voteToEdit.scheduledAt ? [] : [label(i18n.publishAtLabel), br(), input({ type: "datetime-local", name: "publishAt", id: "publishAt", min: moment().format("YYYY-MM-DDTHH:mm"), value: voteToEdit.scheduledAt ? moment(voteToEdit.scheduledAt).format("YYYY-MM-DDTHH:mm") : "", ...(voteToEdit.scheduledAt ? { required: true } : {}) }), br(), br()]),
+              button({ type: "submit" }, mode === "edit" ? i18n.save : i18n.voteCreateButton)
             )
           )
         : mode === "detail" && voteId
-          ? renderVoteDetail(filtered[0] || list.find(v => v.id === voteId) || {}, voteOptions, firstRow, secondRow, mode, activeFilter, { ...params, comments })
+          ? ((filtered[0] || list.find(v => v.id === voteId) || {}).scheduledAt
+              ? renderVoteListItem(filtered[0] || list.find(v => v.id === voteId), voteOptions, activeFilter, null, { arrow: false, bodyExtra: [isVoteAuthor(filtered[0] || list.find(v => v.id === voteId) || {}) ? form({ method: "GET", action: `/votes/edit/${encodeURIComponent(voteId)}` }, button({ type: "submit", class: "update-btn" }, i18n.voteUpdateButton)) : null] })
+              : renderVoteDetail(filtered[0] || list.find(v => v.id === voteId) || {}, voteOptions, firstRow, secondRow, mode, activeFilter, { ...params, comments }))
           : filtered.length > 0
             ? div({ class: "jobs-grid" }, paged(filtered).map((v) => renderVoteListItem(v, voteOptions, activeFilter, params.spreadMap && params.spreadMap.get(v.id))))
             : div({ class: "no-content-box" }, p(i18n.novotes)),

@@ -1,5 +1,5 @@
 const { hr, div, h2, h3, p, section, button, form, a, span, br, textarea, input, label, select, option, img, table, tr, td, video: videoHyperaxe } = require("../server/node_modules/hyperaxe");
-const { template, i18n, userLink, renderStateChip, renderContentActions, renderModuleStats, renderOpinionsVoting, renderEngagement, moduleIsEmpty, renderEcoValueChip, contentDeleteAction, paged } = require("./main_views");
+const { template, i18n, renderStateChip, renderCardTop, renderModuleStats, renderOpinionsVoting, renderEngagement, moduleIsEmpty, renderEcoValueChip, contentDeleteAction, paged, renderEditedChip, renderMediaLockNote, renderDetailShare, hasRelation, RELATION_FILTERS, relationFilterLabel } = require("./main_views");
 const { renderCommentsSection } = require("./comments_view");
 const { renderMapEmbed } = require("./maps_view");
 const { renderStyledText } = require("../backend/renderStyledText");
@@ -7,7 +7,7 @@ const moment = require("../server/node_modules/moment");
 const { config } = require("../server/SSB_server.js");
 
 const userId = config.keys.id;
-const BASE_FILTERS = ["ALL", "RECENT", "MINE", "BOOKED", "HISTORY", "TOP"];
+const BASE_FILTERS = ["ALL", "RECENT", "MINE", "SUPPORTED", "REPLICATED", "BOOKED", "HISTORY", "TOP"];
 const KIND_FILTERS = ["TRIPS", "SHIPMENTS"];
 const MODE_FILTERS = ["OFFERS", "REQUESTS"];
 const DATE_FILTERS = ["UPCOMING", "PAST", "CLOSED"];
@@ -18,7 +18,7 @@ const RECURRENCES = ["NONE", "DAILY", "WEEKLY", "MONTHLY"];
 
 const cap = (s) => s.charAt(0) + s.slice(1).toLowerCase();
 const lbl = (prefix, v) => String(i18n[`logistics${prefix}${cap(v)}`] || v).toUpperCase();
-const filterLabel = (f) => lbl("Filter", f);
+const filterLabel = (f) => RELATION_FILTERS.includes(String(f).toLowerCase()) ? relationFilterLabel(String(f).toLowerCase()) : lbl("Filter", f);
 const kindLabel = (k) => lbl("Kind", k);
 const modeLabel = (m) => lbl("Mode", m);
 const statusLabel = (s) => lbl("Status", s);
@@ -36,10 +36,10 @@ const priceText = (route) => {
   return priceLabel("FREE");
 };
 
-const kindChip = (route) => renderStateChip("neutral", route.kind === "TRIP" ? "🚗" : "📦", kindLabel(route.kind));
-const modeChip = (route) => renderStateChip(route.mode === "OFFER" ? "mutuals" : "whole", "", modeLabel(route.mode));
-const statusChip = (route) => renderStateChip(route.status === "OPEN" ? "mutuals" : (route.status === "PAST" ? "whole" : "closed"), route.status === "OPEN" ? "✓" : (route.status === "CLOSED" ? "✗" : ""), statusLabel(route.status));
-const priceChip = (route) => renderStateChip("neutral", "", priceText(route));
+const kindChip = (route) => renderStateChip("whole", route.kind === "TRIP" ? "🚗" : "📦", kindLabel(route.kind));
+const modeChip = (route) => renderStateChip("whole", "", modeLabel(route.mode));
+const statusChip = (route) => renderStateChip(route.status === "OPEN" ? "mutuals" : "hidden", route.status === "OPEN" ? "✓" : (route.status === "CLOSED" ? "✗" : ""), statusLabel(route.status));
+const priceChip = (route) => renderStateChip("whole", "", priceText(route));
 
 const renderTags = (tags) => (Array.isArray(tags) && tags.length)
   ? div({ class: "card-tags" }, ...tags.map(t => a({ href: `/search?query=%23${encodeURIComponent(t)}`, class: "tag-link" }, `#${t}`)))
@@ -69,6 +69,7 @@ const logisticsChipFor = (mode, census) => {
   if (mode === "ALL") return true;
   if (!Array.isArray(census)) return true;
   if (mode === "MINE") return census.some(r => String(r.author) === String(userId));
+  if (mode === "SUPPORTED" || mode === "REPLICATED") return hasRelation(mode.toLowerCase(), census);
   if (mode === "BOOKED") return census.some(r => !!r.myBooking);
   if (mode === "RECENT") return census.length > 0;
   if (mode === "HISTORY") return census.some(r => r.closed && r.participated);
@@ -87,18 +88,15 @@ exports.logisticsChipFor = logisticsChipFor;
 
 const renderRouteCard = (route, params = {}) =>
   div({ class: `tribe-card logistics-card logistics-${route.kind.toLowerCase()}` },
-    div({ class: "card-header activity-card-header" },
-      span(),
-      renderContentActions(route.id, routeHref(route), { author: route.author, favKind: "logistics", isFavorite: route.isFavorite, reportTitle: route.title, spread: (params.spreadMap && params.spreadMap.get(route.id)) || null, deleteAction: route.isOwner ? contentDeleteAction("logisticsRoute", route.id) : null })
-    ),
+    renderCardTop(route.id, routeHref(route), { date: route.createdAt, chips: [kindChip(route), modeChip(route), statusChip(route), priceChip(route)], author: route.author, favKind: "logistics", isFavorite: route.isFavorite, reportTitle: route.title, spread: (params.spreadMap && params.spreadMap.get(route.id)) || null, deleteAction: route.isOwner ? contentDeleteAction("logisticsRoute", route.id) : null }),
     div({ class: "tribe-card-body" },
       renderCover(route),
       div({ class: "shop-title-row" }, h2({ class: "tribe-card-title" }, a({ href: routeHref(route) }, route.title || "—"))),
-      div({ class: "card-chips-row" }, kindChip(route), modeChip(route), statusChip(route), priceChip(route)),
       routeLine(route),
       whenLine(route),
       capacityLine(route),
-      countersBlock(route)
+      countersBlock(route),
+      null
     )
   );
 
@@ -164,9 +162,9 @@ const renderForm = (route, params = {}) => {
       label(i18n.logisticsModeLabel), br(),
       select({ name: "mode" }, ...MODES.map(m => option({ value: m, ...((route ? route.mode : "OFFER") === m ? { selected: true } : {}) }, modeLabel(m)))), br(), br(),
       label(i18n.logisticsDescriptionLabel), br(),
-      textarea({ name: "description", rows: 5, maxlength: "3000", placeholder: i18n.logisticsDescriptionPlaceholder }, route ? route.description : ""), br(),
+      textarea({ name: "description", rows: 5, placeholder: i18n.logisticsDescriptionPlaceholder }, route ? route.description : ""), br(),
       label(i18n.uploadMedia), br(),
-      input({ type: "file", name: "blob", accept: "image/*,video/*,audio/*,application/pdf,.torrent" }), br(), br(),
+      (route && renderMediaLockNote(route)) || input({ type: "file", name: "blob", accept: "image/*,video/*,audio/*,application/pdf,.torrent" }), br(), br(),
       label(i18n.logisticsOriginLabel), br(),
       input({ type: "text", name: "origin", maxlength: "100", required: true, placeholder: i18n.logisticsOriginPlaceholder, value: route ? route.origin : "" }), br(),
       label(i18n.logisticsDestinationLabel), br(),
@@ -195,7 +193,7 @@ const renderForm = (route, params = {}) => {
       input({ type: "text", name: "orderRef", maxlength: "200", placeholder: i18n.logisticsOrderRefPlaceholder, value: route ? route.orderRef : "" }), br(),
       label(i18n.logisticsTagsLabel), br(),
       input({ type: "text", name: "tags", maxlength: "200", placeholder: i18n.logisticsTagsPlaceholder, value: route ? route.tags.join(", ") : "" }), br(), br(),
-      button({ type: "submit", class: "create-button" }, route ? i18n.logisticsUpdate : i18n.logisticsCreate)
+      button({ type: "submit", class: "create-button" }, route ? i18n.save : i18n.logisticsCreate)
     )
   );
 };
@@ -240,7 +238,7 @@ exports.logisticsView = async (routes, filter = "ALL", params = {}) => {
   );
 };
 
-const bookingStatusChip = (b) => renderStateChip(b.status === "CONFIRMED" || b.status === "DELIVERED" ? "mutuals" : (b.status === "PENDING" ? "whole" : "closed"), "", bookingLabel(b.status));
+const bookingStatusChip = (b) => renderStateChip(b.status === "CONFIRMED" || b.status === "DELIVERED" ? "mutuals" : (b.status === "PENDING" ? "pending" : "closed"), "", bookingLabel(b.status));
 
 const bookingStatusForm = (route, b, status, cls, text) =>
   form({ method: "POST", action: `/logistics/booking/${encodeURIComponent(b.id)}/status` },
@@ -251,8 +249,8 @@ const bookingStatusForm = (route, b, status, cls, text) =>
 
 const renderBooking = (route, b) =>
   div({ class: "logistics-booking" },
+    renderCardTop(null, null, { author: b.booker, date: b.createdAt, chips: [bookingStatusChip(b), route.kind === "TRIP" ? renderStateChip("whole", "💺", String(b.seats)) : null] }),
     div({ class: "emergency-update-head logistics-booking-head" },
-      div({ class: "card-chips-row" }, bookingStatusChip(b), route.kind === "TRIP" ? renderStateChip("neutral", "💺", String(b.seats)) : null),
       div({ class: "tribe-side-actions emergency-update-actions" },
         route.isOwner && b.status === "PENDING" ? bookingStatusForm(route, b, "CONFIRMED", "tribe-action-btn", i18n.logisticsConfirm) : null,
         route.isOwner && b.status === "PENDING" ? bookingStatusForm(route, b, "REJECTED", "delete-btn", i18n.logisticsReject) : null,
@@ -269,8 +267,7 @@ const renderBooking = (route, b) =>
           input({ type: "text", name: "receipt", maxlength: "200", placeholder: i18n.logisticsReceiptPlaceholder }),
           button({ type: "submit", class: "tribe-action-btn" }, String(i18n.logisticsDeliver).toUpperCase())
         )
-      : null,
-    p({ class: "card-footer" }, span({ class: "date-link" }, `${fmt(b.createdAt)}`), userLink(b.booker))
+      : null
   );
 
 const renderBookForm = (route) =>
@@ -278,7 +275,7 @@ const renderBookForm = (route) =>
     h3(i18n.logisticsBookTitle),
     route.kind === "TRIP" ? [label(i18n.logisticsSeatsLabel), br(), input({ type: "number", name: "seats", min: "1", max: String(route.seatsLeft || 99), step: "1", value: "1" }), br(), br()] : null,
     label(i18n.logisticsNotesLabel), br(),
-    textarea({ name: "notes", rows: 3, maxlength: "1000", placeholder: i18n.logisticsNotesPlaceholder }), br(), br(),
+    textarea({ name: "notes", rows: 3, placeholder: i18n.logisticsNotesPlaceholder }), br(), br(),
     label(i18n.logisticsOrderRefLabel), br(),
     input({ type: "text", name: "orderRef", maxlength: "200", placeholder: i18n.logisticsOrderRefPlaceholder }), br(), br(),
     button({ type: "submit", class: "create-button" }, i18n.logisticsBook)
@@ -289,16 +286,15 @@ const renderRatings = (route) =>
     h3(i18n.logisticsRatingsTitle),
     route.ratings.length
       ? div({ class: "logistics-ratings-list" }, ...route.ratings.map(r => div({ class: "logistics-rating" },
-          div({ class: "emergency-update-head logistics-rating-head" }, div({ class: "card-chips-row" }, renderStateChip("neutral", "", stars(r.score)))),
-          r.text ? p(r.text) : null,
-          p({ class: "card-footer" }, span({ class: "date-link" }, `${fmt(r.createdAt)}`), userLink(r.author))
+          renderCardTop(null, null, { author: r.author, date: r.createdAt, chips: [renderStateChip("whole", "", stars(r.score))] }),
+          r.text ? p(r.text) : null
         )))
       : p(route.closed ? i18n.logisticsNoRatings : i18n.logisticsRatingsWhenClosed),
     route.canRate
       ? form({ method: "POST", action: `/logistics/${encodeURIComponent(route.id)}/rate`, class: "logistics-rate-form" },
           label(i18n.logisticsScoreLabel), br(),
           select({ name: "score" }, ...[5, 4, 3, 2, 1].map(n => option({ value: String(n) }, stars(n)))), br(), br(),
-          textarea({ name: "text", rows: 3, maxlength: "1000", placeholder: i18n.logisticsRatingPlaceholder }), br(), br(),
+          textarea({ name: "text", rows: 3, placeholder: i18n.logisticsRatingPlaceholder }), br(), br(),
           button({ type: "submit", class: "create-button" }, i18n.logisticsRate)
         )
       : null
@@ -308,25 +304,29 @@ exports.singleLogisticsView = async (route, params = {}) => {
   const href = routeHref(route);
   const census = Array.isArray(params.censusList) ? params.censusList : [];
   const zones = Array.isArray(params.zones) ? params.zones : [];
-  const ownerActions = route.isOwner
-    ? [
-        form({ method: "GET", action: "/logistics" }, input({ type: "hidden", name: "filter", value: "edit" }), input({ type: "hidden", name: "id", value: route.id }), button({ type: "submit", class: "update-btn" }, i18n.logisticsUpdate))
-      ]
-    : [];
   const capacity = route.kind === "TRIP"
     ? (route.seats ? [{ label: i18n.logisticsSeatsLabel, value: `${route.seatsLeft} / ${route.seats}` }] : [])
     : [route.size ? { label: i18n.logisticsSizeLabel, value: route.size } : null, route.weight ? { label: i18n.logisticsWeightLabel, value: route.weight } : null].filter(Boolean);
+  const statusRow = route.isOwner
+    ? div({ class: "tribe-side-actions housing-status-row" },
+        span({ class: "card-label" }, `${i18n.statusLabel || "Status"}: `),
+        statusChip(route),
+        form({ method: "POST", action: `/logistics/status/${encodeURIComponent(route.id)}`, class: "inline-form" },
+          button({ class: "tribe-action-btn", type: "submit", name: "status", value: route.status === "CLOSED" ? "OPEN" : "CLOSED" },
+            String(route.status === "CLOSED" ? i18n.logisticsReopen : i18n.logisticsClose).toUpperCase())
+        )
+      )
+    : null;
   const side = div({ class: "tribe-side" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(route.id, href, { author: route.author, favKind: "logistics", isFavorite: route.isFavorite, reportTitle: route.title, spread: params.spread || null, deleteAction: route.isOwner ? contentDeleteAction("logisticsRoute", route.id) : null })
-    ),
+    renderCardTop(route.id, href, { arrow: false, date: route.createdAt, chips: [kindChip(route), modeChip(route), statusChip(route), priceChip(route)], bylineExtra: [renderEditedChip(route.tipId, route.rootId)], author: route.author, favKind: "logistics", isFavorite: route.isFavorite, reportTitle: route.title, spread: params.spread || null, editAction: route.isOwner ? `/logistics?filter=edit&id=${encodeURIComponent(route.id)}` : undefined, deleteAction: route.isOwner ? contentDeleteAction("logisticsRoute", route.id) : null }),
     div({ class: "shop-title-row" }, h2({ class: "tribe-card-title" }, route.title)),
-    div({ class: "card-chips-row" }, kindChip(route), modeChip(route), statusChip(route), priceChip(route)),
+    renderDetailShare(route.id, href, route.title, null, null, null, route.author),
+    renderTags(route.tags),
+    statusRow
+  );
+  const main = div({ class: "tribe-main" },
+    route.description ? div({ class: "job-section" }, h2({ class: "job-section-title" }, i18n.description), div({ class: "logistics-body" }, ...renderStyledText(route.description))) : null,
     table({ class: "tribe-info-table jobs-info-table" },
-      tr(
-        td({ class: "tribe-info-label" }, i18n.createdAtLabel || "Created at"),
-        td({ class: "tribe-info-value", colspan: "3" }, fmt(route.createdAt))
-      ),
       tr(
         td({ class: "tribe-info-label" }, i18n.logisticsDateLabel),
         td({ class: "tribe-info-value", colspan: "3" }, fmt(route.date))
@@ -348,37 +348,19 @@ exports.singleLogisticsView = async (route, params = {}) => {
       ...capacity.map(c => tr(
         td({ class: "tribe-info-label" }, c.label),
         td({ class: "tribe-info-value", colspan: "3" }, c.value)
-      )),
-      tr(
-        td({ class: "tribe-info-value", colspan: "4" }, userLink(route.author))
-      )
+      ))
     ),
     countersBlock(route),
     renderMapEmbed(params.mapData, route.mapUrl),
+    route.canBook ? div({ class: "card-section" }, renderBookForm(route)) : null,
     route.orderRef
       ? div({ class: "tribe-side-actions" }, form({ method: "GET", action: route.orderRef }, button({ type: "submit", class: "tribe-action-btn" }, `🛍 ${String(i18n.logisticsOrderLink).toUpperCase()}`)))
-      : null,
-    route.isOwner
-      ? div({ class: "tribe-side-actions housing-status-row" },
-          span({ class: "card-label" }, `${i18n.statusLabel || "Status"}: `),
-          statusChip(route),
-          form({ method: "POST", action: `/logistics/status/${encodeURIComponent(route.id)}`, class: "inline-form" },
-            button({ class: "tribe-action-btn", type: "submit", name: "status", value: route.status === "CLOSED" ? "OPEN" : "CLOSED" },
-              String(route.status === "CLOSED" ? i18n.logisticsReopen : i18n.logisticsClose).toUpperCase())
-          )
-        )
       : null,
     bookingsBlock(route),
     div({ class: "doc-export-actions" },
       form({ method: "GET", action: `${href}/pdf` }, button({ type: "submit", class: "filter-btn" }, i18n.logisticsGenerateReport)),
       form({ method: "POST", action: `${href}/share` }, button({ type: "submit", class: "filter-btn" }, i18n.sharePm))
     ),
-    renderTags(route.tags),
-    ownerActions.length ? div({ class: "tribe-side-actions owner-actions" }, ...ownerActions) : null
-  );
-  const main = div({ class: "tribe-main" },
-    route.description ? div({ class: "logistics-body" }, ...renderStyledText(route.description)) : null,
-    route.canBook ? div({ class: "card-section" }, renderBookForm(route)) : null,
     route.bookings.length
       ? div({ class: "card-section logistics-bookings" },
           h3(route.isOwner ? `${i18n.logisticsBookingsTitle} (${route.bookings.length})` : i18n.logisticsMyBookingTitle),
@@ -388,8 +370,7 @@ exports.singleLogisticsView = async (route, params = {}) => {
     renderRatings(route),
     renderEngagement(route.id,
       renderOpinionsVoting("/logistics/opinions", route.id, route.opinions, href, route.opinions_inhabitants),
-      renderCommentsSection({ action: `/logistics/${encodeURIComponent(route.id)}/comments`, comments: params.comments || [], returnTo: href })
-    )
+      renderCommentsSection({ action: `/logistics/${encodeURIComponent(route.id)}/comments`, comments: params.comments || [], returnTo: href }))
   );
   return template(
     route.title,

@@ -1,4 +1,5 @@
 const pull = require('../server/node_modules/pull-stream');
+const opinionRules = require('../backend/opinion_categories');
 const moment = require('../server/node_modules/moment');
 const { buildValidatedTombstoneSet } = require('./tombstone_validator');
 const { getConfig } = require('../configs/config-manager.js');
@@ -8,6 +9,7 @@ const categories = require('../backend/opinion_categories');
 const { readTyped, memoIndex } = require('./typed_log');
 const logLimit = getConfig().ssbLogStream?.limit || 1000;
 const MIN_VOTE_DAYS = 7;
+const SCHEDULED_KIND = 'vote';
 
 const INSTITUTIONAL_VOTE_TAG = /^(gov|govMethod|courtsCase|courtsMethod):/;
 const isVoteLocked = (v) => !!v && (
@@ -15,9 +17,13 @@ const isVoteLocked = (v) => !!v && (
   || Object.values(v.opinions || {}).some(n => (Number(n) || 0) > 0)
   || (Array.isArray(v.tags) && v.tags.some(t => INSTITUTIONAL_VOTE_TAG.test(String(t))))
 );
+const isVoteEditLocked = (v) => !!v && (
+  (parseInt(v.totalVotes || 0, 10) || 0) > 0
+  || (Array.isArray(v.tags) && v.tags.some(t => INSTITUTIONAL_VOTE_TAG.test(String(t))))
+);
 const lockedError = () => Object.assign(new Error('Vote locked'), { code: 'VOTE_LOCKED' });
 
-module.exports = ({ cooler }) => {
+module.exports = ({ cooler, scheduler = null }) => {
   let ssb;
   const openSsb = async () => {
     if (!ssb) ssb = await cooler.open();
@@ -118,11 +124,13 @@ module.exports = ({ cooler }) => {
       let votesMap;
       let voters;
       let totalVotes;
+      let choices = {};
       if (tally) {
         votesMap = Object.assign({}, tally.votes || {});
         for (const o of options) if (!(o in votesMap)) votesMap[o] = 0;
         voters = tally.voters.slice();
         totalVotes = tally.totalVotes;
+        choices = Object.assign({}, tally.choices || {});
       } else {
         votesMap = Object.assign({}, lc.votes || {});
         for (const o of options) if (!(o in votesMap)) votesMap[o] = 0;
@@ -133,6 +141,7 @@ module.exports = ({ cooler }) => {
           if (voterSet.has(cv.author)) continue;
           if (!options.includes(cv.choice)) continue;
           voterSet.add(cv.author); voters.push(cv.author);
+          choices[cv.author] = cv.choice;
           votesMap[cv.choice] = (votesMap[cv.choice] || 0) + 1;
           totalVotes += 1;
         }
@@ -151,8 +160,10 @@ module.exports = ({ cooler }) => {
         id: best.key,
         latestId: best.key,
         ...best.content,
+        rootId: root,
         votes: votesMap,
         voters,
+        choices,
         totalVotes,
         opinions,
         opinions_inhabitants: opInh,
@@ -175,8 +186,70 @@ module.exports = ({ cooler }) => {
     return cur;
   }
 
+  const scheduledVote = (entry) => ({
+    id: entry.id, latestId: entry.id, question: entry.data.question, options: entry.data.options || [], deadline: entry.data.deadline,
+    createdBy: entry.author, status: 'OPEN', votes: (entry.data.options || []).reduce((acc, o) => { acc[o] = 0; return acc; }, {}), totalVotes: 0, voters: [],
+    tags: entry.data.tags || [], createdAt: entry.createdAt, scheduledAt: entry.publishAt, opinions: {}, opinions_inhabitants: [], commentCount: 0
+  });
+
   return {
     MIN_VOTE_DAYS,
+
+    async scheduleVote(question, deadline, options = ['YES', 'NO', 'ABSTENTION', 'CONFUSED', 'FOLLOW_MAJORITY', 'NOT_INTERESTED'], tagsRaw = [], publishAt) {
+      if (!scheduler) throw new Error('Scheduling is not available');
+      if (!String(question || '').trim()) throw new Error('Question is required');
+      const parsedDeadline = moment(deadline, moment.ISO_8601, true);
+      if (!parsedDeadline.isValid()) throw new Error('Invalid deadline');
+      if (parsedDeadline.isBefore(moment(Date.parse(publishAt || '')).add(MIN_VOTE_DAYS, 'days').subtract(2, 'minutes'))) {
+        const err = new Error(`Deadline must be at least ${MIN_VOTE_DAYS} days after the publish date`);
+        err.code = 'VOTE_DEADLINE_MIN';
+        throw err;
+      }
+      const tags = Array.isArray(tagsRaw) ? tagsRaw.filter(Boolean) : String(tagsRaw || '').split(',').map(t => t.trim()).filter(Boolean);
+      return scheduledVote(await scheduler.schedule(SCHEDULED_KIND, { question, deadline: parsedDeadline.toISOString(), options, tags }, publishAt));
+    },
+
+    async updateScheduledVote(id, question, deadline, options, tagsRaw = [], publishAt) {
+      if (!scheduler) throw new Error('Scheduling is not available');
+      if (!String(question || '').trim()) throw new Error('Question is required');
+      const parsedDeadline = moment(deadline, moment.ISO_8601, true);
+      if (!parsedDeadline.isValid()) throw new Error('Invalid deadline');
+      if (parsedDeadline.isBefore(moment(Date.parse(publishAt || '')).add(MIN_VOTE_DAYS, 'days').subtract(2, 'minutes'))) {
+        const err = new Error(`Deadline must be at least ${MIN_VOTE_DAYS} days after the publish date`);
+        err.code = 'VOTE_DEADLINE_MIN';
+        throw err;
+      }
+      const current = await scheduler.get(id);
+      if (!current || current.kind !== SCHEDULED_KIND) throw new Error('Vote not found');
+      const tags = Array.isArray(tagsRaw) ? tagsRaw.filter(Boolean) : String(tagsRaw || '').split(',').map(t => t.trim()).filter(Boolean);
+      return scheduledVote(await scheduler.update(id, { question, deadline: parsedDeadline.toISOString(), options: Array.isArray(options) && options.length ? options : current.data.options, tags }, publishAt));
+    },
+
+    async listScheduledVotes() {
+      if (!scheduler) return [];
+      return (await scheduler.listMine(SCHEDULED_KIND)).map(scheduledVote);
+    },
+
+    async cancelScheduledVote(id) {
+      if (!scheduler) throw new Error('Scheduling is not available');
+      return scheduler.cancel(id);
+    },
+
+    async publishDue(now = Date.now()) {
+      if (!scheduler) return [];
+      const published = [];
+      for (const entry of await scheduler.due(SCHEDULED_KIND, now)) {
+        try {
+          const res = await this.createVote(entry.data.question, entry.data.deadline, entry.data.options, entry.data.tags);
+          await scheduler.remove(entry.id);
+          published.push({ res, entry });
+        } catch (e) {
+          await scheduler.fail(entry.id, e && e.message ? e.message : e);
+          console.error('[scheduler] vote', entry.id, 'could not be published:', e && e.message ? e.message : e);
+        }
+      }
+      return published;
+    },
 
     async createVote(question, deadline, options = ['YES', 'NO', 'ABSTENTION', 'CONFUSED', 'FOLLOW_MAJORITY', 'NOT_INTERESTED'], tagsRaw = []) {
       const ssbClient = await openSsb();
@@ -253,7 +326,7 @@ module.exports = ({ cooler }) => {
       if (c.createdBy !== userId) throw new Error('Not the author');
       const agg = await this.getVoteById(id);
       const aggTotalVotes = agg ? (parseInt(agg.totalVotes || 0, 10) || 0) : 0;
-      if (isVoteLocked(c) || isVoteLocked(agg)) throw lockedError();
+      if (isVoteEditLocked(c) || isVoteEditLocked(agg)) throw lockedError();
 
       let newDeadline = c.deadline;
       if (deadline != null && deadline !== '') {
@@ -275,6 +348,9 @@ module.exports = ({ cooler }) => {
         options.length !== newOptions.length ||
         options.some((o, i) => o !== newOptions[i])
       );
+
+      const questionChanged = question !== undefined && String(question) !== String(c.question || '');
+      opinionRules.assertMediaKept(agg && Object.keys(agg.opinions || {}).length ? agg : c, questionChanged || optionsChanged);
 
       if (optionsChanged) {
         if (aggTotalVotes > 0) {
@@ -329,6 +405,11 @@ module.exports = ({ cooler }) => {
     },
 
     async getVoteById(id) {
+      if (scheduler && scheduler.isScheduledId(id)) {
+        const entry = await scheduler.get(id);
+        if (!entry || entry.kind !== SCHEDULED_KIND) throw new Error('Vote not found');
+        return scheduledVote(entry);
+      }
       const ssbClient = await openSsb();
       const messages = await getAllMessages(ssbClient);
       const index = memoIndex('votes', messages, buildIndex);
@@ -354,7 +435,7 @@ module.exports = ({ cooler }) => {
       const userId = ssbClient.id;
       const messages = await getAllMessages(ssbClient);
       const index = buildIndex(messages);
-      let list = computeActiveVotes(index);
+      let list = computeActiveVotes(index).concat(await this.listScheduledVotes());
 
       if (filter === 'mine') {
         list = list.filter(v => v.createdBy === userId);
@@ -387,3 +468,4 @@ module.exports = ({ cooler }) => {
   };
 };
 module.exports.isVoteLocked = isVoteLocked;
+module.exports.isVoteEditLocked = isVoteEditLocked;

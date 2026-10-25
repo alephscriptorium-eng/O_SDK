@@ -4,7 +4,7 @@ const { renderCommentsSection: renderSharedCommentsSection, renderCommentsLink }
 
 const moment = require("../server/node_modules/moment");
 const { renderLicenseChip, renderLicenseSelect, renderReachChip, renderClearnetSelector, renderClearnetSwitch, renderTribeOriginChip } = require('./clearnet_view');
-const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderSpreadButton, renderEcoTax, renderLifespanChip, renderContentActions, renderSpreadEditWarning, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged, blobUrlOf } = require("./main_views");
+const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, renderEcoTax, renderLifespanChip, renderCardTop, renderCardByline, renderSpreadEditWarning, renderModuleStats, moduleIsEmpty, contentDeleteAction, paged, blobUrlOf, renderPdfDocument, renderMediaLockNote, renderEditedChip, renderDetailShare, hasRelation, renderRelationFilters } = require("./main_views");
 const { config } = require("../server/SSB_server.js");
 const { renderStyledText } = require("../backend/renderStyledText");
 
@@ -23,7 +23,6 @@ const buildReturnTo = (filter, params = {}) => {
   return `/documents?${parts.join("&")}`;
 };
 
-const safeDomId = (prefix, key) => `${prefix}${String(key || "").replace(/[^A-Za-z0-9_-]/g, "_")}`;
 
 const renderTags = (tags) => {
   const list = safeArr(tags).map((t) => String(t || "").trim()).filter(Boolean);
@@ -43,6 +42,15 @@ const renderDocumentCommentsSection = (documentKey, rootId, comments = [], retur
   });
 };
 
+const renderDocumentUpdated = (doc) => {
+  const createdTs = doc.createdAt ? new Date(doc.createdAt).getTime() : NaN;
+  const updatedTs = doc.updatedAt ? new Date(doc.updatedAt).getTime() : NaN;
+  const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
+  return showUpdated
+    ? span({ class: "votations-comment-date" }, `${i18n.documentUpdatedAt}: ${moment(doc.updatedAt).format("YYYY/MM/DD HH:mm")}`)
+    : null;
+};
+
 const renderDocumentList = exports.renderDocumentList = (documents, filter, params = {}) => {
   const returnTo = buildReturnTo(filter, params);
 
@@ -50,55 +58,38 @@ const renderDocumentList = exports.renderDocumentList = (documents, filter, para
     ? documents.map((doc) => {
         const commentCount = typeof doc.commentCount === "number" ? doc.commentCount : 0;
         const title = safeText(doc.title);
-        const pdfId = safeDomId("pdf-container-", doc.key);
+        const href = `/documents/${encodeURIComponent(doc.key)}`;
 
         const isOwn = doc.author && String(doc.author) === String(userId);
-        const headerActions = typeof params.headerActions === "function"
-          ? params.headerActions(doc)
+        const byline = {
+          author: doc.author,
+          date: doc.createdAt,
+          chips: [
+            doc.tribeOrigin ? renderTribeOriginChip(doc.tribeOrigin) : doc.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('documents', doc.title, doc.key)) : null,
+            renderLicenseChip(doc.license),
+            ...(typeof params.titleChips === "function" ? params.titleChips(doc) : []),
+            renderLifespanChip(doc.lifetime, i18n)
+          ],
+          bylineExtra: [renderDocumentUpdated(doc)]
+        };
+        const header = typeof params.headerActions === "function"
+          ? div({ class: "card-header activity-card-header card-top" }, renderCardByline(byline), params.headerActions(doc))
           : doc.tribeOrigin
-            ? renderContentActions(null, doc.tribeOrigin.href)
-            : renderContentActions(doc.key, `/documents/${encodeURIComponent(doc.key)}`, { spread: (params.spreadMap && params.spreadMap.get(doc.key)) || params.spreads || null, author: doc.author, favKind: 'documents', torrentFrom: { blobId: doc.url, name: doc.title }, isFavorite: doc.isFavorite, reportTitle: doc.title, deleteAction: isOwn ? contentDeleteAction('document', doc.key) : undefined, returnTo });
-        const titleHref = typeof params.headerActions === "function" ? null : doc.tribeOrigin ? doc.tribeOrigin.href : `/documents/${encodeURIComponent(doc.key)}`;
-        const engagement = typeof params.engagement === "function"
-          ? params.engagement(doc)
-          : doc.tribeOrigin ? null : renderEngagement(doc.key,
-            renderOpinionsVoting('/documents/opinions', doc.key, doc.opinions, returnTo, doc.opinions_inhabitants),
-            renderCommentsLink({ href: `/documents/${encodeURIComponent(doc.key)}`, count: commentCount })
-          );
+            ? renderCardTop(doc.key, doc.tribeOrigin.href, { ...byline, spread: (params.spreadMap && params.spreadMap.get(doc.key)) || null, reportTitle: doc.title })
+            : renderCardTop(doc.key, href, { ...byline, spread: (params.spreadMap && params.spreadMap.get(doc.key)) || params.spreads || null, favKind: 'documents', torrentFrom: { blobId: doc.url, name: doc.title }, isFavorite: doc.isFavorite, reportTitle: doc.title, deleteAction: isOwn ? contentDeleteAction('document', doc.key) : undefined, returnTo });
+        const titleHref = typeof params.headerActions === "function" ? null : doc.tribeOrigin ? doc.tribeOrigin.href : href;
+        const engagement = typeof params.engagement === "function" ? params.engagement(doc) : null;
         return div(
           { class: "trending-card document-card" + (isOwn ? " own-content" : "") },
-          div(
-            { class: "card-header activity-card-header" },
-            span(),
-            headerActions
-          ),
+          header,
           div(
             { class: "card-section document-card-body" },
-            div({ class: "shop-title-row" }, title ? h2(titleHref ? a({ href: titleHref, class: "card-title-link" }, title) : title) : null, doc.tribeOrigin ? renderTribeOriginChip(doc.tribeOrigin) : doc.clearnet === true ? renderReachChip(true, i18n, clearnetItemHref('documents', doc.title, doc.key)) : null, renderLicenseChip(doc.license), ...(typeof params.titleChips === "function" ? params.titleChips(doc) : [])),
-            doc.lifetime ? div({ class: "card-chips-row" }, renderLifespanChip(doc.lifetime, i18n)) : null,
+            title ? div({ class: "shop-title-row" }, h2(titleHref ? a({ href: titleHref, class: "card-title-link" }, title) : title)) : null,
             doc?.url
-              ? div({ id: pdfId, class: "pdf-viewer-container", "data-pdf-url": blobUrlOf(doc.url) })
+              ? renderPdfDocument(blobUrlOf(doc.url), { title: doc.title })
               : p(i18n.documentNoFile),
             ...(typeof params.bodyExtra === "function" ? params.bodyExtra(doc) : []),
-            engagement,
-            br(),
-            (() => {
-              const createdTs = doc.createdAt ? new Date(doc.createdAt).getTime() : NaN;
-              const updatedTs = doc.updatedAt ? new Date(doc.updatedAt).getTime() : NaN;
-              const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
-
-              return p(
-                { class: "card-footer" },
-                span({ class: "date-link" }, `${moment(doc.createdAt).format("YYYY/MM/DD HH:mm")}`),
-                userLink(doc.author),
-                showUpdated
-                  ? span(
-                      { class: "votations-comment-date" },
-                      ` | ${i18n.documentUpdatedAt}: ${moment(doc.updatedAt).format("YYYY/MM/DD HH:mm")}`
-                    )
-                  : null
-              );
-            })()
+            engagement
           )
         );
       })
@@ -122,7 +113,7 @@ const renderDocumentForm = (filter, documentId, docToEdit, params = {}) => {
       input({ type: "hidden", name: "returnTo", value: returnTo }),
       label(i18n.documentFileLabel),
       br(),
-      input({ type: "file", name: "document", accept: "application/pdf", required: filter !== "edit" }),
+      (filter === "edit" && renderMediaLockNote(docToEdit)) || input({ type: "file", name: "document", accept: "application/pdf", required: filter !== "edit" }),
       br(),
       br(),
       label(i18n.documentTitleLabel),
@@ -131,7 +122,7 @@ const renderDocumentForm = (filter, documentId, docToEdit, params = {}) => {
       br(),
       label(i18n.documentDescriptionLabel),
       br(),
-      textarea({ maxlength: "5000", name: "description", placeholder: i18n.documentDescriptionPlaceholder, rows: "4" }, docToEdit?.description || ""),
+      textarea({ name: "description", placeholder: i18n.documentDescriptionPlaceholder, rows: "4" }, docToEdit?.description || ""),
       br(),
       label(i18n.documentTagsLabel),
       br(),
@@ -141,7 +132,7 @@ const renderDocumentForm = (filter, documentId, docToEdit, params = {}) => {
       br(),
       renderClearnetSelector(filter === "edit" ? !!docToEdit?.clearnet : false, i18n),
       br(),
-      button({ type: "submit" }, filter === "edit" ? i18n.documentUpdateButton : i18n.documentCreateButton)
+      button({ type: "submit" }, filter === "edit" ? i18n.save : i18n.documentCreateButton)
     )
   );
 };
@@ -151,6 +142,7 @@ const mediaChipFor = (filter, censusM) => (mode) => {
   if (!Array.isArray(censusM)) return true;
   if (mode === "top") return censusM.some((x) => !x.tribeOrigin);
   if (mode === "mine") return censusM.some((x) => String(x.author) === String(userId));
+  if (mode === "supported" || mode === "replicated") return hasRelation(mode, censusM);
   if (mode === "recent") return censusM.length > 0;
   if (mode === "favorites") return censusM.some((x) => x.isFavorite);
   if (mode === "bcs") return censusM.some((x) => String(x.title || "").toUpperCase().startsWith("BCS-"));
@@ -185,6 +177,7 @@ exports.documentView = async (documents, filter = "all", documentId = null, para
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterAll).toUpperCase()),
           ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterRecent).toUpperCase())] : []),
           ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(filter, mediaChip),
           ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.documentFilterFavorites).toUpperCase()
@@ -223,7 +216,7 @@ exports.documentView = async (documents, filter = "all", documentId = null, para
     )
   );
 
-  return `${tpl}<script type="module" src="/js/pdf-viewer.js?v=102"></script>`;
+  return tpl;
 };
 
 exports.singleDocumentView = async (doc, filter = "all", comments = [], params = {}) => {
@@ -233,9 +226,7 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
   const returnTo = safeText(params.returnTo) || buildReturnTo(filter, { q, sort });
 
   const title = safeText(doc.title);
-  const pdfId = safeDomId("pdf-container-", doc.key);
   const isAuthor = String(doc.author) === String(userId);
-  const hasOpinions = Object.keys(doc.opinions || {}).length > 0;
   const isClearnet = !!doc.clearnet;
 
   const chips = [
@@ -243,70 +234,46 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
     doc.sizeBytes ? renderEcoTax(doc.sizeBytes, doc.key) : null
   ].filter(Boolean);
 
-  const sideActions = [];
-  if (isAuthor && !hasOpinions) {
-    sideActions.push(form(
-      { method: "GET", action: `/documents/edit/${encodeURIComponent(doc.key)}` },
-      input({ type: "hidden", name: "returnTo", value: returnTo }),
-      button({ class: "update-btn", type: "submit" }, i18n.documentUpdateButton)
-    ));
-  }
 
   const tagsNode = renderTags(doc.tags);
+  const href = `/documents/${encodeURIComponent(doc.key)}`;
 
-  const detailActions = div({ class: "card-header activity-card-header" },
-    renderContentActions(doc.key, `/documents/${encodeURIComponent(doc.key)}`, {
+  const docSide = div({ class: "tribe-side" },
+    renderCardTop(doc.key, href, { arrow: false,
       author: doc.author,
+      date: doc.createdAt,
+      chips: [
+        renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('documents', doc.title, doc.key) : null),
+        renderLicenseChip(doc.license),
+        ...chips
+      ],
+      bylineExtra: [renderEditedChip(doc.key, doc.rootId), renderDocumentUpdated(doc)],
       favKind: 'documents', torrentFrom: { blobId: doc.url, name: doc.title },
       isFavorite: doc.isFavorite,
       spread: params.spreads || null,
       returnTo: buildReturnTo(filter, { q, sort }),
       reportTitle: doc.title,
+      editAction: isAuthor ? `/documents/edit/${encodeURIComponent(doc.key)}?returnTo=${encodeURIComponent(returnTo)}` : undefined,
       deleteAction: isAuthor ? contentDeleteAction('document', doc.key) : undefined
-    })
-  );
-
-  const docSide = div({ class: "tribe-side" },
+    }),
     div({ class: "shop-title-row" },
       title ? h2({ class: "tribe-card-title" }, title) : null,
-      renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('documents', doc.title, doc.key) : null),
-      isAuthor ? renderClearnetSwitch('documents', doc.rootId || doc.key, isClearnet) : null,
-      renderLicenseChip(doc.license)
+      isAuthor ? renderClearnetSwitch('documents', doc.rootId || doc.key, isClearnet) : null
     ),
-    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-    safeText(doc.description)
-      ? p({ class: "tribe-side-description" }, ...renderStyledText(doc.description))
-      : null,
+    renderDetailShare(doc.key, href, doc.title, null, null, null, doc.author),
     tagsNode,
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
   );
 
   const docMain = div({ class: "tribe-main" },
-    detailActions,
+    safeText(doc.description)
+      ? div({ class: "job-section" }, h2({ class: "job-section-title" }, i18n.description), p({ class: "tribe-side-description" }, ...renderStyledText(doc.description)))
+      : null,
     doc?.url
-      ? div({ id: pdfId, class: "pdf-viewer-container", "data-pdf-url": blobUrlOf(doc.url) })
+      ? renderPdfDocument(blobUrlOf(doc.url), { title: doc.title, preview: true })
       : p(i18n.documentNoFile),
-    (() => {
-      const createdTs = doc.createdAt ? new Date(doc.createdAt).getTime() : NaN;
-      const updatedTs = doc.updatedAt ? new Date(doc.updatedAt).getTime() : NaN;
-      const showUpdated = Number.isFinite(updatedTs) && (!Number.isFinite(createdTs) || updatedTs !== createdTs);
-
-      return p(
-        { class: "card-footer" },
-        span({ class: "date-link" }, `${moment(doc.createdAt).format("YYYY/MM/DD HH:mm")}`),
-        userLink(doc.author),
-        showUpdated
-          ? span(
-              { class: "votations-comment-date" },
-              ` | ${i18n.documentUpdatedAt}: ${moment(doc.updatedAt).format("YYYY/MM/DD HH:mm")}`
-            )
-          : null
-      );
-    })(),
     renderEngagement(doc.key,
       renderOpinionsVoting('/documents/opinions', doc.key, doc.opinions, returnTo, doc.opinions_inhabitants),
-      renderDocumentCommentsSection(doc.key, doc.rootId || doc.key, comments, returnTo)
-    )
+      renderDocumentCommentsSection(doc.key, doc.rootId || doc.key, comments, returnTo))
   );
 
   const tpl = template(
@@ -324,6 +291,7 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
           button({ type: "submit", name: "filter", value: "all", class: filter === "all" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterAll).toUpperCase()),
           ...(mediaChip("recent") ? [button({ type: "submit", name: "filter", value: "recent", class: filter === "recent" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterRecent).toUpperCase())] : []),
           ...(mediaChip("mine") ? [button({ type: "submit", name: "filter", value: "mine", class: filter === "mine" ? "filter-btn active" : "filter-btn" }, String(i18n.documentFilterMine).toUpperCase())] : []),
+          ...renderRelationFilters(filter, mediaChip),
           ...(mediaChip("favorites") ? [button(
             { type: "submit", name: "filter", value: "favorites", class: filter === "favorites" ? "filter-btn active" : "filter-btn" },
             String(i18n.documentFilterFavorites).toUpperCase()
@@ -336,6 +304,6 @@ exports.singleDocumentView = async (doc, filter = "all", comments = [], params =
     )
   );
 
-  return `${tpl}<script type="module" src="/js/pdf-viewer.js?v=102"></script>`;
+  return tpl;
 };
 

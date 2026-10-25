@@ -1,4 +1,5 @@
 const pull = require("../server/node_modules/pull-stream");
+const opinionRules = require("../backend/opinion_categories");
 const { getConfig } = require("../configs/config-manager.js");
 const categories = require("../backend/opinion_categories");
 const { buildValidatedTombstoneSet } = require('./tombstone_validator');
@@ -107,12 +108,6 @@ module.exports = ({ cooler }) => {
     };
   };
 
-  const hasBlob = (ssbClient, blobId) =>
-    new Promise((resolve) => {
-      if (!blobId) return resolve(false);
-      ssbClient.blobs.has(blobId, (err, has) => resolve(!err && !!has));
-    });
-
   const favoritesSetForDocuments = async () => {
     try {
       return await contentFavorites.getFavoriteSet("documents");
@@ -180,7 +175,7 @@ module.exports = ({ cooler }) => {
       if (oldMsg.content?.type !== "document") throw new Error("Document not found");
       if (String(oldMsg.content.author) !== String(userId)) throw new Error("Not the author");
       const aggDoc = await this.getDocumentById(id);
-      if (aggDoc && Object.keys(aggDoc.opinions || {}).some(k => (aggDoc.opinions[k] || 0) > 0)) throw new Error("Cannot edit document after it has received opinions.");
+      opinionRules.assertMediaKept(aggDoc, !!blobMarkdown);
 
       const parsedTags = parseCSV(tagsRaw);
       const tags = parsedTags !== undefined ? parsedTags : safeArr(oldMsg.content.tags);
@@ -277,10 +272,7 @@ module.exports = ({ cooler }) => {
         out = out.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       }
 
-      const checked = await Promise.all(out.map(async (d) => ((await hasBlob(ssbClient, d.url)) ? d : null)));
-      return checked
-        .filter(Boolean)
-        .map((d) => ({ ...d, isFavorite: favorites.has(d.rootId || d.key) }));
+      return out.map((d) => ({ ...d, isFavorite: favorites.has(d.rootId || d.key) }));
     },
 
     async getDocumentById(id) {

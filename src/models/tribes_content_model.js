@@ -14,6 +14,8 @@ const VALID_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const EXPOSURE_TYPE = 'tribeExposure';
 const REACH_LEVELS = ['tribe', 'oasis', 'clearnet'];
 const REACH_RANK = { tribe: 0, oasis: 1, clearnet: 2 };
+const CLEARNET_CONTENT_TYPES = ['event', 'media', 'feed', 'calendar', 'map', 'wiki'];
+const reachFor = (contentType, level) => level === 'clearnet' && !CLEARNET_CONTENT_TYPES.includes(contentType) ? 'oasis' : level;
 const SNAPSHOT_FIELDS = ['contentType', 'title', 'description', 'status', 'date', 'location', 'price', 'salary', 'priority', 'options', 'category', 'tags', 'image', 'mediaType', 'license', 'url', 'deadline', 'goal', 'dates', 'lat', 'lng', 'markers', 'createdAt', 'updatedAt'];
 const snapshotOf = (item, replies = []) => {
   const out = {};
@@ -27,7 +29,7 @@ const snapshotOf = (item, replies = []) => {
   return out;
 };
 
-module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
+module.exports = ({ cooler, cryptoModel, tribesModel }) => {
   let ssb;
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb; };
 
@@ -38,15 +40,15 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
 
   const fingerprintsForRoot = (rootId) => {
     const fps = new Set();
-    for (const k of tribeCrypto.getKeys(rootId)) fps.add(tribeCrypto.fingerprint(k));
+    for (const k of cryptoModel.getKeys(rootId)) fps.add(cryptoModel.fingerprint(k));
     return fps;
   };
 
   const wrapAndPublishContent = async (rootId, body) => {
     const client = await openSsb();
-    const key = tribeCrypto.getKey(rootId);
+    const key = cryptoModel.getKey(rootId);
     if (!key) throw new Error('Missing tribe key for ' + rootId);
-    const envelope = tribeCrypto.wrapMsg(body, key);
+    const envelope = cryptoModel.wrapMsg(body, key);
     return new Promise((resolve, reject) =>
       client.publish(envelope, (err, r) => err ? reject(err) : resolve(r))
     );
@@ -59,7 +61,7 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
   };
 
   const decodeContentMsgs = async (msgs, opts) => {
-    const fpIdx = tribeCrypto.buildFingerprintIndex();
+    const fpIdx = cryptoModel.buildFingerprintIndex();
     const targetRootId = opts && opts.rootId ? opts.rootId : null;
     const wantType = opts && opts.contentType ? opts.contentType : null;
     const allowedFps = targetRootId ? fingerprintsForRoot(targetRootId) : null;
@@ -72,10 +74,10 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
     for (const m of msgs) {
       const c = m.value && m.value.content;
       if (!c) continue;
-      if (!tribeCrypto.isTribeMsg(c)) continue;
+      if (!cryptoModel.isSealedMsg(c)) continue;
       if (allowedFps && !allowedFps.has(c.fp)) continue;
 
-      const r = tribeCrypto.unwrapMsg(c, fpIdx);
+      const r = cryptoModel.unwrapMsg(c, fpIdx);
       if (!r || !r.body) continue;
       const b = r.body;
 
@@ -380,10 +382,12 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
     },
 
     reachLevels: REACH_LEVELS,
+    reachFor,
 
     async publishExposure(item, level, replies = []) {
       if (!REACH_LEVELS.includes(level)) throw new Error('Invalid level');
       if (!item || !item.rootId) throw new Error('Content not found');
+      level = reachFor(item.contentType, level);
       const client = await openSsb();
       const publish = (c) => new Promise((resolve, reject) => client.publish(c, (err, r) => err ? reject(err) : resolve(r)));
       const content = {
@@ -446,7 +450,7 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
         }
         if (!chosen) continue;
         const priv = await isPrivate(chosen.c.tribeId);
-        const level = !ignorePrivacy && priv ? 'tribe' : chosen.c.level;
+        const level = !ignorePrivacy && priv ? 'tribe' : reachFor(chosen.c.contentType, chosen.c.level);
         state.set(origin, { origin, tribeId: chosen.c.tribeId, contentType: chosen.c.contentType, level, item: level === 'tribe' || !chosen.c.item ? null : longText.resolveField(chosen.c.item, 'description', chosen.by, lookup), by: chosen.by, ts: chosen.ts });
       }
       return state;
@@ -489,3 +493,5 @@ module.exports = ({ cooler, tribeCrypto, tribesModel }) => {
     }
   };
 };
+
+module.exports.CLEARNET_CONTENT_TYPES = CLEARNET_CONTENT_TYPES;

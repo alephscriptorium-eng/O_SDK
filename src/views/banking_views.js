@@ -176,11 +176,11 @@ const renderChartBlock = (id, title, svg) =>
     )
   );
 
-const renderRangedChart = (id, title, filterName, range, hasAnyData, svg) => {
+const renderRangedChart = (id, title, filterName, range, hasAnyData, svg, base = "/banking") => {
   if (!hasAnyData) return null;
   return div({ class: "bank-eco-chart-block", id: `${id}-block` },
     h2({ class: "bank-eco-chart-title" }, title),
-    renderRangeTabs(filterName, range, `${id}-block`),
+    renderRangeTabs(filterName, range, `${id}-block`, base),
     svg ? a({ href: `#${id}`, id: `${id}-src`, class: "bank-eco-chart-zoom-link", title: i18n.bankChartZoomHint }, div({ class: "bank-eco-chart-canvas", [RAW_HTML]: svg })) : p({ class: "bank-chart-empty-note" }, i18n.bankChartNoDataYet),
     svg ? div({ id, class: "lightbox bank-eco-chart-lightbox" }, a({ href: `#${id}-src`, class: "lightbox-close" }, "\u00d7"), div({ class: "bank-eco-chart-canvas-zoom", [RAW_HTML]: svg })) : null
   );
@@ -241,9 +241,9 @@ const renderUbiCharts = (charts) => {
 
 const RANGES = ["today", "week", "month", "year", "5y", "all"];
 const rangeLabel = (r) => ({ today: i18n.bankRangeToday, week: i18n.bankRangeWeek, month: i18n.bankRangeMonth, year: i18n.bankRangeYear, "5y": i18n.bankRangeFiveYears, all: i18n.bankRangeAll })[r] || r;
-const renderRangeTabs = (filter, current, anchor) =>
+const renderRangeTabs = (filter, current, anchor, base = "/banking") =>
   div({ class: "bank-range-tabs" },
-    ...RANGES.map(r => a({ href: `/banking?filter=${filter}&range=${r}#${anchor}`, class: r === current ? "activity-chip active" : "activity-chip" }, String(rangeLabel(r)).toUpperCase()))
+    ...RANGES.map(r => a({ href: `${base}?filter=${encodeURIComponent(filter)}&range=${r}#${anchor}`, class: r === current ? "activity-chip active" : "activity-chip" }, String(rangeLabel(r)).toUpperCase()))
   );
 
 const renderValueChart = (history, range, hasAnyData) => {
@@ -381,7 +381,7 @@ const renderTaxes = (data, lookup) => {
           table({ class: "bank-info-table" },
             tbody(
               kvRow(i18n.bankTaxesTotalBlocks || 'Total blocks', String(taxStats.totalBlocks || 0)),
-              kvRow(i18n.bankTaxesSpan || 'Sampling span', `${Number(taxStats.spanDays || 0).toFixed(2)} days`),
+              kvRow(i18n.bankTaxesSpan || 'Sampling span', `${Number(taxStats.spanDays || 0).toFixed(2)} ${i18n.bankUnitDays || 'days'}`),
               isOn('eco') ? kvRow(i18n.bankTaxesEcoTaxLifetime || 'ECO Tax (lifetime)', `${Number(eco.lifetime || 0).toFixed(6)} ECO`) : null,
               isOn('eco') ? kvRow(i18n.bankTaxesAnnualEcoin || 'ECO Tax (annual)', `${Number(eco.annual || 0).toFixed(6)} ECO`) : null,
               isOn('eco') ? kvRow(i18n.bankTaxesMonthlyEcoin || 'ECO Tax (monthly)', `${Number(eco.monthly || 0).toFixed(6)} ECO`) : null,
@@ -442,17 +442,14 @@ const renderTaxes = (data, lookup) => {
         const label = i18n.ecoTaxLabel || 'ECO Tax';
         return p({ class: "bank-taxes-example-chips" },
           a({ href: sampleHref, class: 'eco-tax-chip eco-tax-chip-low', title: label + ' · low' },
-            span({ class: 'eco-tax-chip-label' }, label + ': '),
             span({ class: 'eco-tax-chip-value' }, sampleValue)
           ),
           ' ',
           a({ href: sampleHref, class: 'eco-tax-chip eco-tax-chip-mid', title: label + ' · mid' },
-            span({ class: 'eco-tax-chip-label' }, label + ': '),
             span({ class: 'eco-tax-chip-value' }, sampleValue)
           ),
           ' ',
           a({ href: sampleHref, class: 'eco-tax-chip eco-tax-chip-high', title: label + ' · high' },
-            span({ class: 'eco-tax-chip-label' }, label + ': '),
             span({ class: 'eco-tax-chip-value' }, sampleValue)
           )
         );
@@ -466,7 +463,7 @@ const renderTaxes = (data, lookup) => {
           kvRow(i18n.bankTaxesArchTaxFirstBlock || 'Your first block age', userArchTax > 0
             ? `${(userArchTax / Number(taxStats.ecoinPerDayOfHistory || 0.001)).toFixed(2)} days`
             : '—'),
-          kvRow(i18n.bankTaxesArchTaxRate || 'Rate', `${Number(taxStats.ecoinPerDayOfHistory || 0).toFixed(6)} ECO / day of history`),
+          kvRow(i18n.bankTaxesArchTaxRate || 'Rate', `${Number(taxStats.ecoinPerDayOfHistory || 0).toFixed(6)} ECO / ${i18n.bankUnitDays || 'days'}`),
           kvRow(i18n.bankTaxesArchTaxUserAmount || 'Your ARCH tax (price to return)', `${userArchTax.toFixed(6)} ECO`)
         )
       ),
@@ -709,7 +706,7 @@ const rulesBlock = (rules, taxRules) => {
     h2(i18n.bankRulesArchTaxTitle || "ARCH Tax"),
     table({ class: "bank-info-table" },
       tbody(
-        kvRow(i18n.bankRulesArchTaxRate || "Rate", `${fmt(tr.ecoinPerDayOfHistory, 6)} ECO / day of history`)
+        kvRow(i18n.bankRulesArchTaxRate || "Rate", `${fmt(tr.ecoinPerDayOfHistory, 6)} ECO / ${i18n.bankUnitDays || "days"}`)
       )
     ),
     p({ class: "bank-rules-formula" },
@@ -740,6 +737,8 @@ const flashText = (key) => {
   if (key === "forbidden") return i18n.bankAddressForbidden;
   return "";
 };
+
+const payHref = (r) => `/wallet/send?to=${encodeURIComponent(r.address || "")}${r.id ? `&payee=${encodeURIComponent(r.id)}` : ""}`;
 
 const renderAddresses = (data, userId) => {
   const rows = data.addresses || [];
@@ -776,9 +775,9 @@ const renderAddresses = (data, userId) => {
             thead(tr(th(i18n.bankAddAddressLabel.replace(/\s*\(.*\)\s*$/, "")), th(i18n.bankAddAddressUser), th(i18n.bankAddress), th(i18n.bankAddressSource), th(""))),
             tbody(
               ...paged(rows).map(r => tr(
-                td(r.label || (r.id ? "" : i18n.bankAddressUnnamed)),
+                td(a({ href: payHref(r), class: "bank-address-pay" }, r.label || (r.id ? "" : i18n.bankAddressUnnamed))),
                 td(r.id ? userLink(r.id) : ""),
-                td(strong({ class: "bank-address-code" }, r.address)),
+                td(a({ href: payHref(r), class: "bank-address-pay" }, strong({ class: "bank-address-code" }, r.address))),
                 td(r.source === "ssb" ? i18n.bankFromOasis : i18n.bankLocal),
                 td(r.source === "ssb" && String(r.id) !== String(userId)
                   ? ""
@@ -903,4 +902,4 @@ const renderEpochView = (epoch, allocations, userId = "", data = {}) => {
   );
 };
 
-module.exports = { renderBankingView, renderSingleAllocationView, renderEpochView, bankingFlashText: flashText };
+module.exports = { renderBankingView, renderSingleAllocationView, renderEpochView, bankingFlashText: flashText, buildSeriesChartSvg, renderRangedChart, bucketLabel, bucketXLabels };

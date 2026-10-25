@@ -81,7 +81,10 @@ const Server = SecretStack({ caps })
   .use(require('ssb-no-auth'))
   .use(require('./snapshot_plugin'))
   .use(require('./phone_module'))
-  .use(require('./network_pause'));
+  .use(require('./network_pause'))
+  .use(require('./blob_prefetch'))
+  .use(require('./feed_guard'))
+  .use(require('./long_content'));
 
 if (!config.pub) {
   Server.use(require('ssb-lan'));

@@ -1,10 +1,11 @@
 const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, progress, video, audio, table, tr, td, hr } = require("../server/node_modules/hyperaxe")
 const { renderZoomableImage } = require("./gallery_view")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { renderCallButton, clearnetItemHref, template, i18n, userLink, renderStateChip, renderOpenClosedChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, contentDeleteAction, paged, renderCreatedRows } = require("./main_views")
+const { renderCallButton, clearnetItemHref, template, i18n, userLink, renderStateChip, renderOpenClosedChip, renderVisibilityChip, renderLifespanChip, renderEcoTax, renderCardTop, renderSpreadEditWarning, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, contentDeleteAction, paged, renderOpinionsVoting, renderEditedChip, renderMediaLockNote, renderEngagement, renderDetailShare, hasRelation } = require("./main_views")
+const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderStyledText } = require("../backend/renderStyledText")
-const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel } = require("./maps_view")
+const { renderMapEmbed, renderMapLocationVisitLabel } = require("./maps_view")
 const { resolvePhoto } = require("./inhabitants_view")
 const { renderReachChip, renderClearnetSelector, renderClearnetSwitch } = require("./clearnet_view")
 
@@ -28,6 +29,8 @@ const FILTERS = [
   { key: "ALL", i18n: "jobsFilterAll", title: "jobsAllTitle" },
   { key: "RECENT", i18n: "jobsFilterRecent", title: "jobsRecentTitle" },
   { key: "MINE", i18n: "jobsFilterMine", title: "jobsMineTitle" },
+  { key: "SUPPORTED", i18n: "filterSupported", title: "jobsAllTitle" },
+  { key: "REPLICATED", i18n: "filterReplicated", title: "jobsAllTitle" },
   { key: "TOP", i18n: "jobsFilterTop", title: "jobsTopTitle" },
   { key: "APPLIED", i18n: "jobsFilterApplied", title: "jobsAppliedTitle" },
   { key: "REMOTE", i18n: "jobsFilterRemote", title: "jobsRemoteTitle" },
@@ -104,22 +107,17 @@ const renderApplicantsProgress = (subsCount, vacants) => {
   )
 }
 
-const renderJobOwnerActions = (job, returnTo) => {
-  const isAuthor = String(job.author) === String(userId)
-  if (!isAuthor) return []
+const renderJobStatusRow = (job, returnTo) => {
+  if (String(job.author) !== String(userId)) return null
   const isOpen = String(job.status || "").toUpperCase() === "OPEN"
-  return [
-    form(
-      { method: "POST", action: `/jobs/status/${encodeURIComponent(job.id)}` },
+  return div({ class: "tribe-side-actions housing-status-row" },
+    span({ class: "card-label" }, `${i18n.statusLabel}: `),
+    renderJobStatusChip(job.status),
+    form({ method: "POST", action: `/jobs/status/${encodeURIComponent(job.id)}`, class: "inline-form" },
       input({ type: "hidden", name: "returnTo", value: returnTo }),
-      button({ class: "status-btn", type: "submit", name: "status", value: isOpen ? "CLOSED" : "OPEN" }, isOpen ? i18n.jobSetClosed : i18n.jobSetOpen)
-    ),
-    form(
-      { method: "GET", action: `/jobs/edit/${encodeURIComponent(job.id)}` },
-      input({ type: "hidden", name: "returnTo", value: returnTo }),
-      button({ class: "update-btn", type: "submit" }, i18n.jobsUpdateButton)
+      button({ class: "tribe-action-btn", type: "submit", name: "status", value: isOpen ? "CLOSED" : "OPEN" }, isOpen ? i18n.jobSetClosed : i18n.jobSetOpen)
     )
-  ]
+  )
 }
 
 const renderJobStatusChip = (status) => {
@@ -129,7 +127,7 @@ const renderJobStatusChip = (status) => {
 }
 
 const renderJobAppliedChip = () =>
-  renderStateChip("whole", "★", i18n.jobsAppliedBadge)
+  renderStateChip("transport", "★", i18n.jobsAppliedBadge)
 
 const renderJobHiddenChip = () =>
   renderVisibilityChip("HIDDEN", i18n)
@@ -169,33 +167,55 @@ const renderJobInfoTable = (job, opts = {}) => {
   if (String(job.job_type || "").toLowerCase() !== "exchange") {
     pushRow(i18n.jobSalary, `${fmtSalary(job.salary)} ECO`, "card-salary")
   }
+  if (langLabel) pushRow(i18n.jobLanguages, langLabel)
   if (opts.includeVacants) pushRow(i18n.jobVacants, String(job.vacants ?? 1))
   if (job.mapUrl) {
     const mapNode = renderMapLocationVisitLabel(job.mapUrl)
     if (mapNode) pushRow(i18n.mapLocationTitle || "Map", mapNode)
   }
+  if (opts.includeSubscribers) {
+    const subs = safeArr(job.subscribers).filter(Boolean)
+    pushRow(i18n.jobSubscribers, [
+      String(subs.length),
+      subs.length ? div({ class: "card-assigned-list" }, ...subs.map(id => userLink(id))) : null
+    ])
+  }
   return table({ class: "tribe-info-table jobs-info-table" }, ...rows)
 }
 
-const renderJobExtraDetails = (job) => {
-  const langLabel = String(job.languages || "").toUpperCase()
+const renderJobExtraDetails = (job, opts = {}) => {
   const isExchange = String(job.job_type || "").toLowerCase() === "exchange"
   const skill = safeText(job.exchangeSkill)
-  if (!langLabel && !isExchange) return null
+  if (!isExchange) return null
   const rows = []
   const pushRow = (labelText, valueNode) =>
     rows.push(tr(
       td({ class: "tribe-info-label" }, labelText),
       td({ class: "tribe-info-value" }, valueNode)
     ))
-  if (langLabel) pushRow(i18n.jobLanguages, langLabel)
   if (isExchange) {
     pushRow(i18n.jobsHoursOffered || "Hours offered", `${Number(job.hoursOffered) || 0} h`)
     pushRow(i18n.jobsHoursRequested || "Hours requested", `${Number(job.hoursRequested) || 0} h`)
     if (skill) pushRow(i18n.jobsExchangeSkill || "Skill", skill)
   }
-  return table({ class: "tribe-info-table jobs-info-table" }, ...rows, ...(opts.includeCreated ? renderCreatedRows(job.createdAt, job.author, job.updatedAt) : []))
+  return table({ class: "tribe-info-table jobs-info-table" }, ...rows)
 }
+
+const jobChipFor = (filter, censusJ, params = {}) => (x) => {
+  const m = x.key;
+  if (m === filter) return true;
+  if (m === "TOP") return censusJ.length > 0;
+  if (m === "MINE") return censusJ.some(j => String(j.author) === String(userId));
+  if (m === "SUPPORTED" || m === "REPLICATED") return hasRelation(m.toLowerCase(), censusJ);
+  if (m === "RECENT") return censusJ.length > 0;
+  if (m === "APPLIED") return censusJ.some(j => safeArr(j.subscribers).includes(userId));
+  if (m === "REMOTE") return censusJ.some(j => String(j.location || "").toLowerCase() === "remote");
+  if (m === "PRESENCIAL") return censusJ.some(j => String(j.location || "").toLowerCase() === "presencial");
+  if (m === "FREELANCER" || m === "EMPLOYEE" || m === "EXCHANGE") return censusJ.some(j => String(j.job_type || "").toUpperCase() === m);
+  if (m === "OPEN" || m === "CLOSED") return censusJ.some(j => String(j.status || "OPEN").toUpperCase() === m);
+  if (m === "CV") return params.anyCVs === true;
+  return true;
+};
 
 const renderJobList = exports.renderJobList = (jobs, filter, params = {}) => {
   const list = safeArr(jobs)
@@ -229,25 +249,22 @@ const renderJobList = exports.renderJobList = (jobs, filter, params = {}) => {
         : `${fmtSalary(job.salary)} ECO`
 
       const isOwn = job.author && String(job.author) === String(userId)
+      const jobHref = `/jobs/${encodeURIComponent(job.id)}`
       return div({ class: "trending-card job-card" + (isOwn ? " own-content" : "") },
-        div(
-          { class: "card-header activity-card-header" },
-          span(),
-          renderContentActions(job.id, `/jobs/${encodeURIComponent(job.id)}`, { spread: params.spreadMap && params.spreadMap.get(job.id) || null, author: job.author, favKind: 'jobs', isFavorite: job.isFavorite, reportTitle: job.title, returnTo, deleteAction: isOwn ? contentDeleteAction("job", job.id) : null })
-        ),
+        renderCardTop(job.id, jobHref, { date: job.createdAt, chips, spread: params.spreadMap && params.spreadMap.get(job.id) || null, author: job.author, favKind: 'jobs', isFavorite: job.isFavorite, reportTitle: job.title, returnTo, deleteAction: isOwn ? contentDeleteAction("job", job.id) : null }),
         div({ class: "card-section job-card-body" },
           heroNode,
           div({ class: "tribe-card-body" },
             div({ class: "shop-title-row" },
               h2({ class: "tribe-card-title" },
-                a({ href: `/jobs/${encodeURIComponent(job.id)}` }, safeText(job.title) || i18n.jobsTitle)
+                a({ href: jobHref }, safeText(job.title) || i18n.jobsTitle)
               )
             ),
-            chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
             div({ class: "price-chip" }, compensationText),
             div({ class: "tribe-card-members" },
               span({ class: "tribe-members-count" }, `${i18n.jobSubscribers}: ${subs.length}`)
-            )
+            ),
+            null
           )
         )
       )
@@ -307,18 +324,18 @@ const renderJobForm = (job = {}, mode = "create", spreadWarning = null, params =
       br(),
       label(i18n.jobImage),
       br(),
-      input({ type: "file", name: "image" }),
+      (isEdit && renderMediaLockNote(job)) || input({ type: "file", name: "image" }),
       br(),
       job.image ? renderMediaBlob(job.image) : null,
       br(),
       label(i18n.jobDescription),
       br(),
-      textarea({ maxlength: "5000", name: "description", rows: "6", required: true, placeholder: i18n.jobDescriptionPlaceholder }, job.description || ""),
+      textarea({ name: "description", rows: "6", required: true, placeholder: i18n.jobDescriptionPlaceholder }, job.description || ""),
       br(),
       br(),
       label(i18n.jobRequirements),
       br(),
-      textarea({ maxlength: "5000", name: "requirements", rows: "6", placeholder: i18n.jobRequirementsPlaceholder }, job.requirements || ""),
+      textarea({ name: "requirements", rows: "6", placeholder: i18n.jobRequirementsPlaceholder }, job.requirements || ""),
       br(),
       br(),
       label(i18n.jobsTagsLabel),
@@ -342,7 +359,7 @@ const renderJobForm = (job = {}, mode = "create", spreadWarning = null, params =
       br(),
       label(i18n.jobTasks),
       br(),
-      textarea({ maxlength: "5000", name: "tasks", rows: "6", placeholder: i18n.jobTasksPlaceholder }, job.tasks || ""),
+      textarea({ name: "tasks", rows: "6", placeholder: i18n.jobTasksPlaceholder }, job.tasks || ""),
       br(),
       br(),
       label(i18n.jobLocation),
@@ -359,7 +376,6 @@ const renderJobForm = (job = {}, mode = "create", spreadWarning = null, params =
       input({ type: "text", name: "mapUrl", placeholder: i18n.mapUrlPlaceholder || "/maps/MAP_ID", value: job.mapUrl || "" }),
       br(),
       br(),
-      reach === "PUBLIC" && clearnetEligible({ ...job, visibility: reach }) ? renderClearnetSelector(job.clearnet === true || String(job.clearnet || "") === "1", i18n) : null,
       label(i18n.jobVacants),
       br(),
       input({ type: "number", name: "vacants", min: "1", placeholder: i18n.jobVacantsPlaceholder, value: job.vacants || 1, required: true }),
@@ -394,6 +410,7 @@ const renderJobForm = (job = {}, mode = "create", spreadWarning = null, params =
             br()
           ]
         : null,
+      reach === "PUBLIC" && clearnetEligible({ ...job, visibility: reach }) ? renderClearnetSelector(job.clearnet === true || String(job.clearnet || "") === "1", i18n) : null,
       button({ type: "submit" }, isEdit ? i18n.jobsUpdateButton : i18n.createJobButton)
     )
   )
@@ -460,20 +477,7 @@ exports.jobsView = async (jobsOrCVs, filter = "ALL", params = {}) => {
 
   const emptyMod = moduleIsEmpty(Array.isArray(jobsOrCVs) ? jobsOrCVs : [], filter, "ALL", search || String(minSalary || "") || String(maxSalary || ""));
   const censusJ = Array.isArray(params.censusList) ? params.censusList : (Array.isArray(jobsOrCVs) ? jobsOrCVs : []);
-  const jobChip = (x) => {
-    const m = x.key;
-    if (m === filter) return true;
-    if (m === "TOP") return censusJ.length > 0;
-    if (m === "MINE") return censusJ.some(j => String(j.author) === String(userId));
-    if (m === "RECENT") return censusJ.length > 0;
-    if (m === "APPLIED") return censusJ.some(j => safeArr(j.subscribers).includes(userId));
-    if (m === "REMOTE") return censusJ.some(j => String(j.location || "").toLowerCase() === "remote");
-    if (m === "PRESENCIAL") return censusJ.some(j => String(j.location || "").toLowerCase() === "presencial");
-    if (m === "FREELANCER" || m === "EMPLOYEE" || m === "EXCHANGE") return censusJ.some(j => String(j.job_type || "").toUpperCase() === m);
-    if (m === "OPEN" || m === "CLOSED") return censusJ.some(j => String(j.status || "OPEN").toUpperCase() === m);
-    if (m === "CV") return params.anyCVs === true;
-    return true;
-  };
+  const jobChip = jobChipFor(filter, censusJ, params);
   const filterObj = FILTERS.find((f) => f.key === filter) || FILTERS[0]
   const sectionTitle = i18n[filterObj.title] || i18n.jobsTitle
 
@@ -622,7 +626,6 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
   const isClearnet = canClearnet && !!job.clearnet
   const candidatesBlock = isAuthor ? renderCandidates(params.candidates || [], job.id) : null
 
-  const ownerActions = renderJobOwnerActions(job, returnTo)
   const applyToggle = renderJobApplyToggle(job, returnTo)
   const visibility = (job.visibility || 'PUBLIC').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'PUBLIC'
   const chips = [
@@ -632,13 +635,14 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
     job.industry ? a({ href: `/industry/${encodeURIComponent(job.industry)}` }, renderStateChip("whole", "🏭", String(i18n.industryTitle || "Industry").toUpperCase())) : null,
     renderLifespanChip(job.lifetime, i18n),
     renderEcoTax(job.msgSize, job.id),
-    renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('jobs', job.title, job.id) : null),
-    isAuthor && canClearnet ? renderClearnetSwitch('jobs', job.rootId || job.id, isClearnet) : null
+    renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('jobs', job.title, job.id) : null)
   ].filter(Boolean)
+  const updatedAt = job.updatedAt ? moment(job.updatedAt) : null
+  const showUpdated = updatedAt && updatedAt.isValid() && updatedAt.valueOf() !== new Date(job.createdAt).getTime()
 
   const nextVisibility = visibility === 'PUBLIC' ? 'HIDDEN' : 'PUBLIC'
   const visibilityRow = isAuthor
-    ? div({ class: "tribe-side-actions" },
+    ? div({ class: "tribe-side-actions housing-visibility-row" },
         span({ class: "card-label" }, `${i18n.visibilityLabel || 'Visibility'}: `),
         renderVisibilityChip(visibility, i18n),
         form({ method: "POST", action: `/jobs/visibility/${encodeURIComponent(job.id)}`, class: "inline-form" },
@@ -650,30 +654,24 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
       )
     : null
 
-  const sideActions = []
-  if (applyToggle) sideActions.push(applyToggle)
-  for (const a of ownerActions) sideActions.push(a)
-
   const jobSide = div({ class: "tribe-side" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(job.id, `/jobs/${encodeURIComponent(job.id)}`, { spread: params.spreads || null, author: job.author, favKind: 'jobs', isFavorite: job.isFavorite, reportTitle: job.title, returnTo, deleteAction: isAuthor ? contentDeleteAction("job", job.id) : null })
-    ),
+    renderCardTop(job.id, `/jobs/${encodeURIComponent(job.id)}`, { arrow: false,
+      date: job.createdAt,
+      chips,
+      bylineExtra: [
+        renderEditedChip(job.id, job.rootId),
+        showUpdated ? span({ class: "card-byline-time" }, `${i18n.jobsUpdatedAt}: ${updatedAt.format("YYYY/MM/DD HH:mm")}`) : null
+      ],
+      spread: params.spreads || null, author: job.author, favKind: 'jobs', isFavorite: job.isFavorite, reportTitle: job.title, returnTo, editAction: isAuthor ? `/jobs/edit/${encodeURIComponent(job.id)}?returnTo=${encodeURIComponent(returnTo)}` : undefined, deleteAction: isAuthor ? contentDeleteAction("job", job.id) : null
+    }),
     div({ class: "shop-title-row" },
       h2({ class: "tribe-card-title" }, safeText(job.title) || i18n.jobsTitle)
     ),
-    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-    job.image
-      ? renderMediaBlob(job.image, { class: "tribe-detail-image" })
-      : null,
-    renderJobInfoTable(job, { includeVacants: true, includeSubscribers: false, includeCreated: true }),
-    div({ class: "tribe-card-members" },
-      span({ class: "tribe-members-count" }, `${i18n.jobSubscribers}: ${subs.length}`)
-    ),
-    sideActions.length
-      ? div({ class: "tribe-side-actions" }, ...sideActions)
-      : null,
-    visibilityRow,
-    tagsNode
+    isAuthor && canClearnet ? renderClearnetSwitch('jobs', job.rootId || job.id, isClearnet) : null,
+    renderDetailShare(job.rootId || job.id, `/jobs/${encodeURIComponent(job.id)}`, job.title, null, null, null, job.author),
+    tagsNode,
+    renderJobStatusRow(job, returnTo),
+    visibilityRow
   )
 
   const renderJobSection = (titleText, bodyText) =>
@@ -686,13 +684,20 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
 
   const extraDetailsTable = renderJobExtraDetails(job)
   const jobMain = div({ class: "tribe-main" },
+    job.image
+      ? renderMediaBlob(job.image, { class: "tribe-detail-image" })
+      : null,
     renderJobSection(i18n.jobDescription, job.description),
     renderJobSection(i18n.jobRequirements, job.requirements),
-    extraDetailsTable ? div({ class: "job-section" }, extraDetailsTable) : null,
     renderJobSection(i18n.jobTasks, job.tasks),
+    renderJobInfoTable(job, { includeVacants: true, includeSubscribers: true }),
+    extraDetailsTable ? div({ class: "job-section" }, extraDetailsTable) : null,
     job.mapUrl ? div({ class: "job-section" }, renderMapEmbed(params.mapData, job.mapUrl)) : null,
+    applyToggle ? div({ class: "tribe-side-actions detail-action-row" }, applyToggle) : null,
     candidatesBlock ? candidatesBlock : null,
-    renderJobCommentsSection(job.id, returnTo, comments)
+    renderEngagement(job.rootId || job.id,
+      params.opinions ? renderOpinionsVoting('/jobs/opinions', job.rootId || job.id, params.opinions.opinions, `/jobs/${encodeURIComponent(job.rootId || job.id)}`, params.opinions.opinions_inhabitants) : null,
+      renderJobCommentsSection(job.id, returnTo, comments))
   )
 
   return template(
@@ -707,7 +712,7 @@ exports.singleJobsView = async (job, filter = "ALL", comments = [], params = {})
           input({ type: "hidden", name: "minSalary", value: String(params.minSalary ?? "") }),
           input({ type: "hidden", name: "maxSalary", value: String(params.maxSalary ?? "") }),
           input({ type: "hidden", name: "sort", value: safeText(params.sort || "recent") }),
-          ...FILTERS.map((f) =>
+          ...FILTERS.filter(jobChipFor(filter, Array.isArray(params.censusList) ? params.censusList : [], params)).map((f) =>
             button({ type: "submit", name: "filter", value: f.key, class: filter === f.key ? "filter-btn active" : "filter-btn" }, String(i18n[f.i18n]).toUpperCase())
           ),
           button({ type: "submit", name: "filter", value: "CREATE", class: "create-button" }, i18n.jobsCreateJob)

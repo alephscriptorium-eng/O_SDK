@@ -1,11 +1,11 @@
 const { form, button, div, h2, p, section, input, label, textarea, br, a, span, select, option, img, ul, li, table, thead, tbody, tr, th, td, progress, video, audio } = require("../server/node_modules/hyperaxe")
 const { renderZoomableImage } = require("./gallery_view")
 const { renderCommentsSection: renderSharedCommentsSection } = require("./comments_view");
-const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderSpreadButton, renderContentActions, renderSpreadEditWarning, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, contentDeleteAction, paged, renderCreatedRows } = require("./main_views")
+const { clearnetItemHref, template, i18n, renderOpinionsVoting, renderEngagement, userLink, renderStateChip, renderLifespanChip, renderEcoTax, renderCardTop, renderSpreadEditWarning, renderSubscriptionBox, renderModuleStatsBy, moduleIsEmpty, renderEcoValueChip, contentDeleteAction, paged, renderEditedChip, renderMediaLockNote, renderDetailShare, hasRelation } = require("./main_views")
 const moment = require("../server/node_modules/moment")
 const { config } = require("../server/SSB_server.js")
 const { renderStyledText } = require("../backend/renderStyledText")
-const { renderMapLocationUrl, renderMapEmbed, renderMapLocationVisitLabel, renderMapEmbedWithZoom } = require("./maps_view")
+const { renderMapEmbedWithZoom } = require("./maps_view")
 const { renderReachChip, renderClearnetSelector, renderClearnetSwitch } = require("./clearnet_view")
 
 const renderMediaBlob = (value, attrs = {}) => {
@@ -28,6 +28,8 @@ const FILTERS = [
   { key: "ALL", i18n: "projectFilterAll", title: "projectAllTitle" },
   { key: "RECENT", i18n: "projectFilterRecent", title: "projectRecentTitle" },
   { key: "MINE", i18n: "projectFilterMine", title: "projectMineTitle" },
+  { key: "SUPPORTED", i18n: "filterSupported", title: "projectAllTitle" },
+  { key: "REPLICATED", i18n: "filterReplicated", title: "projectAllTitle" },
   { key: "APPLIED", i18n: "projectFilterApplied", title: "projectAppliedTitle" },
   { key: "ACTIVE", i18n: "projectFilterActive", title: "projectActiveTitle" },
   { key: "PAUSED", i18n: "projectFilterPaused", title: "projectPausedTitle" },
@@ -378,8 +380,8 @@ const renderProjectStatusChip = (status) => {
   const s = String(status || "ACTIVE").toUpperCase()
   const variant =
     s === "ACTIVE" ? "mutuals" :
-    s === "PAUSED" ? "whole" :
-    s === "COMPLETED" ? "encrypted" :
+    s === "PAUSED" ? "pending" :
+    s === "COMPLETED" ? "hidden" :
     s === "CANCELLED" ? "closed" :
     "whole"
   const localized = i18n["projectStatus" + s] || s
@@ -408,34 +410,28 @@ const renderProjectList = exports.renderProjectList = (projects, filter, spreadM
         renderLifespanChip(pr.lifetime, i18n),
         pr.clearnet === true && clearnetEligible(pr) ? renderReachChip(true, i18n, clearnetItemHref('projects', pr.title, pr.id || pr.key)) : null,
         pr.subscriptionIn === true
-          ? renderStateChip("mutuals", "✉", i18n.subscriptionOn)
+          ? renderStateChip("transport", "✉", i18n.subscriptionOn)
           : (pr.subscriptionIn === false ? renderStateChip("closed", "✉", i18n.subscriptionOff) : null)
       ].filter(Boolean)
 
       const isOwn = pr.author && String(pr.author) === String(userId)
       return div({ class: "trending-card project-card" + (isOwn ? " own-content" : "") },
-        div(
-          { class: "card-header activity-card-header" },
-          span(),
-          renderContentActions(pr.id || pr.key, `/projects/${encodeURIComponent(pr.id)}`, { spread: spreadMap.get(pr.id || pr.key) || null, author: pr.author, favKind: 'projects', isFavorite: pr.isFavorite, reportTitle: pr.title, deleteAction: isOwn ? contentDeleteAction('project', pr.id || pr.key) : undefined })
-        ),
+        renderCardTop(pr.id || pr.key, `/projects/${encodeURIComponent(pr.id)}`, { date: pr.createdAt, chips, spread: spreadMap.get(pr.id || pr.key) || null, author: pr.author, favKind: 'projects', isFavorite: pr.isFavorite, reportTitle: pr.title, deleteAction: isOwn ? contentDeleteAction('project', pr.id || pr.key) : undefined }),
         div({ class: "card-section project-card-body" },
           heroNode,
           div({ class: "shop-title-row" },
             h2({ class: "tribe-card-title" },
               a({ href: `/projects/${encodeURIComponent(pr.id)}` }, pr.title || i18n.projectsTitle)
-            )
+            ),
+            goal > 0 ? div({ class: "price-chip" }, `${pr.goal} ECO`) : null
           ),
-          chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
-          goal > 0
-            ? div({ class: "price-chip" }, `${pr.goal} ECO`)
-            : null,
           goal > 0
             ? renderProgressBlock(i18n.projectFunding + ":", `${fundingPct}%`, fundingPct, 100)
             : null,
           div({ class: "tribe-card-members" },
             span({ class: "tribe-members-count" }, `${i18n.projectFollowers}: ${followersCount(pr)}`)
-          )
+          ),
+          null
         )
       )
     })
@@ -449,6 +445,7 @@ const renderProjectForm = (project, mode, spreadWarning = null) => {
   const deadlineValue = pr.deadline ? moment(pr.deadline).format("YYYY-MM-DDTHH:mm") : ""
   const milestoneMax = deadlineValue || undefined
   const returnTo = "/projects?filter=MINE"
+  const mediaLock = isEdit ? renderMediaLockNote(pr) : null
 
   return div(
     { class: "div-center project-form" },
@@ -466,14 +463,11 @@ const renderProjectForm = (project, mode, spreadWarning = null) => {
       br(),
       label(i18n.projectDescription),
       br(),
-      textarea({ maxlength: "5000", name: "description", rows: "6", required: true, placeholder: i18n.projectDescriptionPlaceholder }, pr.description || ""),
+      textarea({ name: "description", rows: "6", required: true, placeholder: i18n.projectDescriptionPlaceholder }, pr.description || ""),
       br(),
       label(i18n.projectImage),
       br(),
-      input({ type: "file", name: "image" }),
-      br(),
-      label(i18n.uploadMedia), br(),
-      input({ type: "file", name: "blob" }),
+      ...(mediaLock ? [mediaLock] : [input({ type: "file", name: "image" }), br(), label(i18n.uploadMedia), br(), input({ type: "file", name: "blob" })]),
       br(),
       pr.image ? renderMediaBlob(pr.image) : null,
       br(),
@@ -500,7 +494,7 @@ const renderProjectForm = (project, mode, spreadWarning = null) => {
       br(),
       label(i18n.projectMilestoneDescription),
       br(),
-      textarea({ maxlength: "5000", name: "milestoneDescription", rows: "3", placeholder: i18n.projectMilestoneDescriptionPlaceholder }),
+      textarea({ name: "milestoneDescription", rows: "3", placeholder: i18n.projectMilestoneDescriptionPlaceholder }),
       br(),
       label(i18n.projectMilestoneTargetPercent),
       br(),
@@ -533,6 +527,7 @@ exports.projectsView = async (projectsOrForm, filter, _unused, params = {}) => {
     if (m === f) return true;
     if (m === "TOP") return censusP.length > 0;
     if (m === "MINE") return censusP.some(pr => String(pr.author) === String(userId));
+    if (m === "SUPPORTED" || m === "REPLICATED") return hasRelation(m.toLowerCase(), censusP);
     if (m === "APPLIED") return censusP.some(pr => String(pr.author) !== String(userId) && [pr.members, pr.participants, pr.applicants].some(l => Array.isArray(l) && l.includes(userId)));
     if (m === "ACTIVE" || m === "PAUSED" || m === "COMPLETED") return censusP.some(pr => String(pr.status || "ACTIVE").toUpperCase() === m);
     if (m === "FOLLOWING") return censusP.some(pr => Array.isArray(pr.followers) && pr.followers.includes(userId));
@@ -600,35 +595,30 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
 
   const chips = [
     renderProjectStatusChip(pr.status),
-    isFollower ? renderStateChip("whole", "★", i18n.projectFollowing || "FOLLOWING") : null,
+    isFollower ? renderStateChip("transport", "★", i18n.projectFollowing || "FOLLOWING") : null,
     renderLifespanChip(pr.lifetime, i18n),
     renderEcoTax(pr.msgSize, pr.id || pr.key),
     renderReachChip(isClearnet, i18n, isClearnet ? clearnetItemHref('projects', pr.title, pr.id || pr.key) : null),
-    isAuthor && canClearnet ? renderClearnetSwitch('projects', pr.rootId || pr.id || pr.key, isClearnet) : null,
     pr.subscription
       ? ((isAuthor || pr.subscription.subscribed === true)
-          ? renderStateChip("mutuals", "✉", i18n.subscriptionOn)
+          ? renderStateChip("transport", "✉", i18n.subscriptionOn)
           : renderStateChip("closed", "✉", i18n.subscriptionOff))
       : null
   ].filter(Boolean)
 
   const sideActions = []
-  if (!isAuthor && statusUpper === "ACTIVE") {
-    sideActions.push(isFollower
+  const followToggle = (!isAuthor && statusUpper === "ACTIVE")
+    ? (isFollower
       ? form({ method: "POST", action: `/projects/unfollow/${encodeURIComponent(pr.id)}` },
           input({ type: "hidden", name: "returnTo", value: returnTo }),
-          button({ type: "submit", class: "unsubscribe-btn" }, i18n.projectUnfollowButton)
+          button({ type: "submit", class: "tribe-action-btn danger-btn" }, String(i18n.projectUnfollowButton).toUpperCase())
         )
       : form({ method: "POST", action: `/projects/follow/${encodeURIComponent(pr.id)}` },
           input({ type: "hidden", name: "returnTo", value: returnTo }),
-          button({ type: "submit", class: "subscribe-btn" }, i18n.projectFollowButton)
-        )
-    )
-  }
+          button({ type: "submit", class: "tribe-action-btn" }, String(i18n.projectFollowButton).toUpperCase())
+        ))
+    : null
   if (isAuthor) {
-    sideActions.push(form({ method: "GET", action: `/projects/edit/${encodeURIComponent(pr.id)}` },
-      button({ class: "tribe-action-btn", type: "submit" }, i18n.projectUpdateButton)
-    ))
     sideActions.push(form(
       { method: "POST", action: `/projects/status/${encodeURIComponent(pr.id)}`, class: "project-control-form project-control-form--status" },
       input({ type: "hidden", name: "returnTo", value: returnTo }),
@@ -649,32 +639,19 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
     ))
   }
 
+  const subscriptionOpts = pr.subscription ? { target: pr.rootId || pr.id, scope: "projects", subscribed: pr.subscription.subscribed === true, count: pr.subscription.count, isOwner: isAuthor, canWrite: isAuthor, returnTo } : null
   const projectSide = div({ class: "tribe-side" },
-    div({ class: "card-header activity-card-header" },
-      renderContentActions(pr.id || pr.key, `/projects/${encodeURIComponent(pr.id)}`, { spread: params.spreads || null, author: pr.author, favKind: 'projects', isFavorite: pr.isFavorite, reportTitle: pr.title, returnTo: `/projects/${encodeURIComponent(pr.id)}`, deleteAction: isAuthor ? contentDeleteAction('project', pr.id || pr.key) : undefined })
-    ),
+    renderCardTop(pr.id || pr.key, `/projects/${encodeURIComponent(pr.id)}`, { arrow: false, date: pr.createdAt, chips, bylineExtra: [renderEditedChip(pr.id, pr.rootId)], spread: params.spreads || null, author: pr.author, favKind: 'projects', isFavorite: pr.isFavorite, reportTitle: pr.title, returnTo: `/projects/${encodeURIComponent(pr.id)}`, subscription: subscriptionOpts, editAction: isAuthor ? `/projects/edit/${encodeURIComponent(pr.id)}` : undefined, deleteAction: isAuthor ? contentDeleteAction('project', pr.id || pr.key) : undefined }),
     div({ class: "shop-title-row" },
-      h2({ class: "tribe-card-title" }, pr.title)
+      h2({ class: "tribe-card-title" }, pr.title),
+      div({ class: "price-chip" }, `${pr.goal || 0} ECO`)
     ),
-    chips.length ? div({ class: "card-chips-row" }, ...chips) : null,
+    isAuthor && canClearnet ? renderClearnetSwitch('projects', pr.rootId || pr.id || pr.key, isClearnet) : null,
     pr.image ? renderMediaBlob(pr.image, { class: "tribe-detail-image" }) : null,
-    div({ class: "price-chip" }, `${pr.goal || 0} ECO`),
-    div({ class: "job-price-line card-salary" }, `${i18n.projectFollowers}: ${followersCount(pr)}`),
+    renderDetailShare(pr.id || pr.key, `/projects/${encodeURIComponent(pr.id)}`, pr.title, subscriptionOpts, null, null, pr.author),
     renderProgressBlock(i18n.projectProgress + ":", `${pct}%`, pct, 100),
     goal > 0 ? renderProgressBlock(i18n.projectFunding + ":", `${fundingPct}%`, fundingPct, 100) : null,
-    table({ class: "tribe-info-table" }, ...renderCreatedRows(pr.createdAt, pr.author)),
-    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null,
-    pr.subscription
-      ? renderSubscriptionBox({
-          target: pr.rootId || pr.id,
-          scope: "projects",
-          subscribed: pr.subscription.subscribed === true,
-          count: pr.subscription.count,
-          isOwner: isAuthor,
-          canWrite: isAuthor,
-          returnTo
-        })
-      : null
+    sideActions.length ? div({ class: "tribe-side-actions" }, ...sideActions) : null
   )
 
   const projectMain = div({ class: "tribe-main" },
@@ -690,6 +667,10 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
     renderBackers(pr, f),
     renderMilestonesAndBounties(pr, f, isAuthor),
     renderPledgeBox(pr, f, isAuthor),
+    div({ class: "tribe-side-actions project-followers-row" },
+      span({ class: "card-label" }, `${i18n.projectFollowers}: ${followersCount(pr)}`),
+      followToggle
+    ),
     renderFollowers(pr),
     renderEngagement(pr.id || pr.key,
       renderOpinionsVoting('/projects/opinions', pr.id || pr.key, pr.opinions, null, pr.opinions_inhabitants),
@@ -697,8 +678,7 @@ exports.singleProjectView = async (project, filter, comments, params = {}) => {
         action: `/projects/${encodeURIComponent(pr.id || pr.key)}/comments`,
         comments,
         returnTo: `/projects/${encodeURIComponent(pr.id || pr.key)}`
-      })
-    ),
+      })),
   )
 
   return template(

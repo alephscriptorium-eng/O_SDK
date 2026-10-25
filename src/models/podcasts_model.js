@@ -31,7 +31,9 @@ const parseMedia = (raw) => {
   return { kind: m[1], name: safeText(m[2]) || 'file', blobId: m[3] };
 };
 
-module.exports = ({ cooler }) => {
+const SCHEDULED_KIND = 'podcastEpisode';
+
+module.exports = ({ cooler, scheduler = null }) => {
   let ssb;
   const openSsb = async () => { if (!ssb) ssb = await cooler.open(); return ssb; };
   const publish = (ssbClient, content) => new Promise((resolve, reject) => ssbClient.publish(content, (err, res) => err ? reject(err) : resolve(res)));
@@ -131,7 +133,7 @@ module.exports = ({ cooler }) => {
       channels.set(root, {
         id: root, rootId: root, tipId: tip.key,
         title: safeText(c.title), description: safeText(c.description), category: normalizeCategory(c.category),
-        cover: parseMedia(c.cover), tags: normalizeTags(c.tags),
+        cover: parseMedia(c.cover), tags: normalizeTags(c.tags), license: typeof c.license === 'string' ? c.license : '',
         author: first.author, createdAt: first.c.createdAt || new Date(first.ts).toISOString(),
         updatedAt: c.updatedAt || new Date(tip.ts).toISOString(), ts: tip.ts,
         episodes: eps, episodeCount: eps.length, playCount, opinionCount,
@@ -162,11 +164,21 @@ module.exports = ({ cooler }) => {
     return null;
   };
 
-  return {
-    CATEGORIES,
-    parseMedia,
+  const scheduledEpisode = (entry, idx) => {
+    const d = entry.data || {};
+    const ch = idx.channels.get(d.channelId);
+    return {
+      id: entry.id, rootId: entry.id, tipId: entry.id, channelId: d.channelId,
+      number: num(d.number) || ((ch ? ch.episodeCount : 0) + 1), title: safeText(d.title), description: safeText(d.description),
+      media: parseMedia(d.media), tags: normalizeTags(d.tags),
+      author: entry.author, createdAt: entry.createdAt, updatedAt: entry.createdAt,
+      ts: Date.parse(entry.createdAt) || 0, publishedTs: Date.parse(entry.publishAt) || 0, scheduledAt: entry.publishAt,
+      opinions: {}, opinions_inhabitants: [], opinionCount: 0, listeners: [], playCount: 0
+    };
+  };
 
-    async createChannel({ title, description, category, cover, tags }) {
+  return {
+    async createChannel({ title, description, category, cover, tags, license }) {
       const ssbClient = await openSsb();
       const t = safeText(title);
       if (!t) throw new Error('Title is required');
@@ -174,7 +186,7 @@ module.exports = ({ cooler }) => {
       const media = parseMedia(cover);
       return publish(ssbClient, {
         type: CHANNEL_TYPE, title: t, description: safeText(description), category: normalizeCategory(category),
-        ...(media ? { cover: media } : {}), tags: normalizeTags(tags), author: ssbClient.id, createdAt: now, updatedAt: now
+        ...(media ? { cover: media } : {}), tags: normalizeTags(tags), ...(license ? { license } : {}), author: ssbClient.id, createdAt: now, updatedAt: now
       });
     },
 
@@ -183,6 +195,7 @@ module.exports = ({ cooler }) => {
       const ch = findChannel(idx, id);
       if (!ch) throw new Error('Podcast not found');
       if (ch.author !== ssbClient.id) throw new Error('Only the author can update this podcast');
+      categories.assertMediaKept(ch, data.cover !== undefined && !!data.cover);
       const media = data.cover !== undefined && data.cover ? parseMedia(data.cover) : ch.cover;
       const res = await publish(ssbClient, {
         type: CHANNEL_TYPE,
@@ -191,6 +204,7 @@ module.exports = ({ cooler }) => {
         category: data.category !== undefined ? normalizeCategory(data.category) : ch.category,
         ...(media ? { cover: media } : {}),
         tags: data.tags !== undefined ? normalizeTags(data.tags) : ch.tags,
+        ...((data.license !== undefined ? data.license : ch.license) ? { license: data.license !== undefined ? data.license : ch.license } : {}),
         author: ssbClient.id, createdAt: ch.createdAt, updatedAt: new Date().toISOString(), replaces: ch.tipId
       });
       return { key: res.key, rootId: ch.id };
@@ -223,11 +237,64 @@ module.exports = ({ cooler }) => {
       return { key: res.key, rootId: res.key, channelId: ch.id };
     },
 
+    async scheduleEpisode(channelId, { title, description, media, number, tags }, publishAt) {
+      if (!scheduler) throw new Error('Scheduling is not available');
+      const { ssbClient, idx } = await load();
+      const ch = findChannel(idx, channelId);
+      if (!ch) throw new Error('Podcast not found');
+      if (ch.author !== ssbClient.id) throw new Error('Only the author can publish episodes');
+      const m = parseMedia(media);
+      if (!m || (m.kind !== 'audio' && m.kind !== 'video')) throw new Error('An audio or video file is required');
+      const t = safeText(title);
+      if (!t) throw new Error('Title is required');
+      const entry = await scheduler.schedule(SCHEDULED_KIND, { channelId: ch.id, title: t, description: safeText(description), media: m, number: num(number) || 0, tags: normalizeTags(tags) }, publishAt);
+      return scheduledEpisode(entry, idx);
+    },
+
+    async listScheduledEpisodes(channelId) {
+      if (!scheduler) return [];
+      const { idx } = await load();
+      return (await scheduler.listMine(SCHEDULED_KIND)).filter(e => e.data.channelId === channelId).map(e => scheduledEpisode(e, idx));
+    },
+
+    async updateScheduledEpisode(id, { title, description, media, number, tags } = {}, publishAt) {
+      if (!scheduler) throw new Error('Scheduling is not available');
+      const { idx } = await load();
+      const current = await scheduler.get(id);
+      if (!current || current.kind !== SCHEDULED_KIND) throw new Error('Episode not found');
+      const m = media ? parseMedia(media) : current.data.media;
+      if (!m || (m.kind !== 'audio' && m.kind !== 'video')) throw new Error('An audio or video file is required');
+      const data = { title: safeText(title) || current.data.title, description: description !== undefined ? safeText(description) : current.data.description, media: m, number: number !== undefined && num(number) ? num(number) : current.data.number, tags: tags !== undefined ? normalizeTags(tags) : current.data.tags };
+      return scheduledEpisode(await scheduler.update(id, data, publishAt), idx);
+    },
+
+    async cancelScheduledEpisode(id) {
+      if (!scheduler) throw new Error('Scheduling is not available');
+      return scheduler.cancel(id);
+    },
+
+    async publishDue(now = Date.now()) {
+      if (!scheduler) return [];
+      const published = [];
+      for (const entry of await scheduler.due(SCHEDULED_KIND, now)) {
+        try {
+          const res = await this.addEpisode(entry.data.channelId, entry.data);
+          await scheduler.remove(entry.id);
+          published.push({ res, entry });
+        } catch (e) {
+          await scheduler.fail(entry.id, e && e.message ? e.message : e);
+          console.error('[scheduler] episode', entry.id, 'could not be published:', e && e.message ? e.message : e);
+        }
+      }
+      return published;
+    },
+
     async updateEpisode(id, data = {}) {
       const { ssbClient, idx } = await load();
       const ep = findEpisode(idx, id);
       if (!ep) throw new Error('Episode not found');
       if (ep.author !== ssbClient.id) throw new Error('Only the author can update this episode');
+      categories.assertMediaKept(ep, !!data.media);
       const m = data.media ? parseMedia(data.media) : ep.media;
       const res = await publish(ssbClient, {
         type: EPISODE_TYPE, channel: ep.channelId, number: data.number !== undefined && num(data.number) ? num(data.number) : ep.number,
@@ -276,6 +343,12 @@ module.exports = ({ cooler }) => {
 
     async getEpisodeById(id) {
       const { idx } = await load();
+      if (scheduler && scheduler.isScheduledId(id)) {
+        const entry = await scheduler.get(id);
+        if (!entry || entry.kind !== SCHEDULED_KIND) return null;
+        const ep = scheduledEpisode(entry, idx);
+        return { ...ep, channel: idx.channels.get(ep.channelId) || null };
+      }
       const ep = findEpisode(idx, id);
       if (!ep) return null;
       return { ...ep, channel: idx.channels.get(ep.channelId) || null };

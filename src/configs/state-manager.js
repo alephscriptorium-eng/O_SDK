@@ -18,6 +18,7 @@ const FOLDERS = {
   'content_favorites.json': 'content',
   'blob-access.json': 'content',
   'follow_state.json': 'content',
+  'supporters-seen.json': 'content',
   'viewer_hidden.json': 'content',
   'invites-used.json': 'content',
   'agenda-config.json': 'content',
@@ -37,6 +38,7 @@ const FOLDERS = {
   'peer-health.json': 'peers',
   'phone-history.json': 'phone',
   'phone-seen.json': 'phone',
+  'scheduled.json': 'content',
   'snapshot.oasissn': 'content',
   'snapshot-recent.oasissn': 'content'
 };
